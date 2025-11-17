@@ -1,8 +1,5 @@
-
-import { cn } from '../../lib/utils';
+import React from 'react';
 import { ChevronDownIcon } from 'lucide-react';
-
-
 
 export const Select = ({
   label,
@@ -22,11 +19,7 @@ export const Select = ({
       <div className="relative">
         <select
           id={id}
-          className={cn(
-            'w-full px-4 py-2 border rounded-md appearance-none focus:outline-none focus:ring-1 bg-surface pr-8',
-            error ? 'border-error focus:ring-error' : 'border-border focus:ring-primary',
-            className
-          )}
+          className={`w-full px-4 py-2 border rounded-md appearance-none focus:outline-none focus:ring-1 bg-surface pr-8 ${error ? 'border-error focus:ring-error' : 'border-border focus:ring-primary'} ${className || ''}`}
           {...props}>
           {options.map((option) => (
             <option key={option.value} value={option.value}>

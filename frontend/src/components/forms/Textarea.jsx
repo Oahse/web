@@ -1,7 +1,4 @@
-
-import { cn } from '../../lib/utils';
-
-
+import React from 'react';
 
 export const Textarea = ({
   label,
@@ -19,11 +16,7 @@ export const Textarea = ({
       )}
       <textarea
         id={id}
-        className={cn(
-          'w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-1 bg-transparent',
-          error ? 'border-red-500 focus:ring-red-500' : 'border-border focus:ring-primary',
-          className
-        )}
+        className={`w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-1 bg-transparent ${error ? 'border-red-500 focus:ring-red-500' : 'border-border focus:ring-primary'} ${className || ''}`}
         {...props}
       />
       {error && <p className="text-sm text-red-500 mt-1">{error}</p>}
