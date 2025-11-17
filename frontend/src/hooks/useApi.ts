@@ -39,7 +39,7 @@ interface UsePaginatedApiReturn<T> {
   data: T[];
   loading: boolean;
   error: any;
-  execute: () => Promise<any>;
+  execute: (customApiCall?: () => Promise<any>) => Promise<any>;
   page: number;
   limit: number;
   total: number;
@@ -49,7 +49,7 @@ interface UsePaginatedApiReturn<T> {
 }
 
 export const usePaginatedApi = <T = any>(
-  apiCall: (page: number, limit: number) => Promise<any>,
+  apiCall?: (page: number, limit: number) => Promise<any>,
   initialPage: number = 1,
   initialLimit: number = 10,
   options: UsePaginatedApiOptions = {}
@@ -62,11 +62,17 @@ export const usePaginatedApi = <T = any>(
   const [total, setTotal] = useState<number>(0);
   const [totalPages, setTotalPages] = useState<number>(0);
 
-  const execute = useCallback(async () => {
+  const execute = useCallback(async (customApiCall?: () => Promise<any>) => {
+    const callToUse = customApiCall || apiCall;
+    if (!callToUse) {
+      console.error('No API call provided to usePaginatedApi');
+      return null;
+    }
+    
     setLoading(true);
     setError(null);
     try {
-      const result = await apiCall(page, limit);
+      const result = await callToUse();
       
       // Handle different response structures
       if (result?.data) {
@@ -111,10 +117,10 @@ export const usePaginatedApi = <T = any>(
   }, []);
 
   useEffect(() => {
-    if (options.autoFetch !== false) {
+    if (options.autoFetch !== false && apiCall) {
       execute();
     }
-  }, [page, limit, execute, options.autoFetch]);
+  }, [page, limit, execute, options.autoFetch, apiCall]);
 
   return {
     data,
