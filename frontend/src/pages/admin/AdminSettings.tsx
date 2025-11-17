@@ -14,43 +14,24 @@ export const AdminSettings = () => {
   // State to indicate if an update operation is in progress
   const [updating, setUpdating] = useState(false);
 
-  // Function to call the API to get system settings
-  const getSystemSettingsApiCall = () => AdminAPI.getSystemSettings();
-
   // Custom hook to handle API fetching for system settings
-  const { data: fetchedSettings, loading, error, refetch } = useApi(
-    getSystemSettingsApiCall, // The API call function
-    { autoFetch: true, showErrorToast: false } // Options: auto-fetch on mount, suppress default error toasts
-  );
+  const { data: fetchedSettings, loading, error, execute } = useApi();
+
+  // Fetch settings on mount
+  useEffect(() => {
+    execute(AdminAPI.getSystemSettings);
+  }, [execute]);
 
   /**
    * Effect hook to update the local settings state when new settings are fetched.
-   * Uses a deep comparison to prevent unnecessary re-renders if settings haven't actually changed.
    */
   useEffect(() => {
-    // Helper function for deep comparison of two objects
-    const deepEqual = (obj1, obj2) => {
-      if (obj1 === obj2) return true;
-      if (typeof obj1 !== 'object' || obj1 === null || typeof obj2 !== 'object' || obj2 === null) return false;
-
-      const keys1 = Object.keys(obj1);
-      const keys2 = Object.keys(obj2);
-
-      if (keys1.length !== keys2.length) return false;
-
-      for (const key of keys1) {
-        if (!keys2.includes(key) || !deepEqual(obj1[key], obj2[key])) {
-          return false;
-        }
-      }
-      return true;
-    };
-
-    // Update settings only if fetchedSettings is available and different from current settings
-    if (fetchedSettings && !deepEqual(fetchedSettings, settings)) {
-      setSettings(fetchedSettings);
+    if (fetchedSettings) {
+      // Extract data from API response
+      const data = fetchedSettings?.data || fetchedSettings;
+      setSettings(data);
     }
-  }, [fetchedSettings, settings]); // Dependencies: re-run if fetchedSettings or local settings change
+  }, [fetchedSettings]);
 
   /**
    * Handles changes to form input fields.
@@ -79,10 +60,11 @@ export const AdminSettings = () => {
       setUpdating(true); // Show updating indicator
       try {
         // Call the API to update system settings
-        const data = await AdminAPI.updateSystemSettings(settings);
+        const response = await AdminAPI.updateSystemSettings(settings);
+        const data = response?.data || response;
         setSettings(data); // Update local state with the response data
         toast.success('Settings updated successfully!'); // Show success toast
-        refetch(); // Re-fetch settings to ensure UI is up-to-date
+        execute(AdminAPI.getSystemSettings); // Re-fetch settings to ensure UI is up-to-date
       } catch (err) {
         toast.error(`Failed to update settings: ${err.message}`); // Show error toast
       } finally {
@@ -102,7 +84,8 @@ export const AdminSettings = () => {
       <div className="p-6">
         <ErrorMessage
           error={error}
-          onRetry={refetch} // Provide a retry mechanism
+          onRetry={() => execute(AdminAPI.getSystemSettings)}
+          onDismiss={() => {}}
         />
       </div>
     );

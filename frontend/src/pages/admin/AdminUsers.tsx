@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { SearchIcon, FilterIcon, MoreHorizontalIcon, TrashIcon, EditIcon, CheckCircleIcon, XCircleIcon, UserPlusIcon, ChevronDownIcon } from 'lucide-react';
+import React, { useState, useCallback } from 'react';
+import { SearchIcon, FilterIcon, MoreHorizontalIcon, TrashIcon, EditIcon, CheckCircleIcon, XCircleIcon, UserPlusIcon, ChevronDownIcon, EyeIcon } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { usePaginatedApi } from '../../hooks/useApi';
 import { AdminAPI } from '../../apis';
@@ -13,7 +13,7 @@ export const AdminUsers = () => {
   const [status, setStatus] = useState('all');
   const [verified, setVerified] = useState('all');
 
-  const apiCall = useCallback((page, limit) => {
+  const apiCall = useCallback((page: number, limit: number) => {
     return AdminAPI.getUsers({
       role: filterRole !== 'all' ? filterRole : undefined,
       search: submittedSearchTerm || undefined,
@@ -41,7 +41,7 @@ export const AdminUsers = () => {
     { showErrorToast: false, autoFetch: true }
   );
 
-  const handleSearch = (e) => {
+  const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     setSubmittedSearchTerm(searchTerm);
     goToPage(1);
@@ -68,6 +68,7 @@ export const AdminUsers = () => {
         <ErrorMessage
           error={usersError}
           onRetry={() => fetchUsers()}
+          onDismiss={() => {}}
         />
       </div>
     );
@@ -176,7 +177,7 @@ export const AdminUsers = () => {
                   </tr>
                 ))
               ) : (
-                console.log('Rendering users:', users) || users.map((user) => (
+                users.map((user) => (
                   <tr key={user.id} className="border-t border-border-light hover:bg-surface-hover">
                     <td className="py-3 px-4">
                       <div className="flex items-center">
@@ -220,6 +221,9 @@ export const AdminUsers = () => {
                   </td>
                   <td className="py-3 px-4 text-right">
                     <div className="flex items-center justify-end space-x-2">
+                      <Link to={`/admin/users/${user.id}`} className="p-1 text-copy-light hover:text-main" title="View Profile">
+                        <EyeIcon size={18} />
+                      </Link>
                       <Link to={`/admin/users/${user.id}/edit`} className="p-1 text-copy-light hover:text-primary" title="Edit">
                         <EditIcon size={18} />
                       </Link>
@@ -232,9 +236,9 @@ export const AdminUsers = () => {
                         </button>
                         <div className="absolute right-0 mt-1 hidden group-hover:block bg-surface rounded-md shadow-lg border border-border-light z-10 w-36">
                           <div className="py-1">
-                            <button className="w-full text-left px-4 py-2 text-sm text-copy hover:bg-surface-hover">
+                            <Link to={`/admin/users/${user.id}`} className="block w-full text-left px-4 py-2 text-sm text-copy hover:bg-surface-hover">
                               View Profile
-                            </button>
+                            </Link>
                             <button className="w-full text-left px-4 py-2 text-sm text-copy hover:bg-surface-hover">
                               Reset Password
                             </button>
@@ -312,10 +316,16 @@ export const AdminUsers = () => {
 
                     <div className="flex space-x-2 pt-2">
                       <Link 
+                        to={`/admin/users/${user.id}`}
+                        className="flex-1 text-center py-2 px-3 border border-primary text-primary rounded-md text-sm font-medium hover:bg-primary/10"
+                      >
+                        View
+                      </Link>
+                      <Link 
                         to={`/admin/users/${user.id}/edit`}
                         className="flex-1 text-center py-2 px-3 bg-primary text-white rounded-md text-sm font-medium hover:bg-primary/90"
                       >
-                        Edit User
+                        Edit
                       </Link>
                       <button className="py-2 px-3 border border-error text-error rounded-md text-sm hover:bg-error/10">
                         <TrashIcon size={16} />

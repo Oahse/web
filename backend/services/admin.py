@@ -423,7 +423,7 @@ class AdminService:
         await self.db.delete(user)
         await self.db.commit()
 
-    async def get_order_by_id(self, order_id: str) -> Optional[Order]:
+    async def get_order_by_id(self, order_id: str) -> Optional[dict]:
         """Get a single order by ID, with related items and transactions."""
         query = (
             select(Order)
@@ -436,7 +436,64 @@ class AdminService:
             )
         )
         result = await self.db.execute(query)
-        return result.scalar_one_or_none()
+        order = result.scalar_one_or_none()
+        
+        if not order:
+            return None
+        
+        # Serialize the order to a dictionary
+        return {
+            "id": str(order.id),
+            "user_id": str(order.user_id),
+            "user": {
+                "id": str(order.user.id),
+                "firstname": order.user.firstname,
+                "lastname": order.user.lastname,
+                "email": order.user.email
+            } if order.user else None,
+            "status": order.status,
+            "total_amount": float(order.total_amount),
+            "shipping_address_id": str(order.shipping_address_id) if order.shipping_address_id else None,
+            "shipping_method_id": str(order.shipping_method_id) if order.shipping_method_id else None,
+            "payment_method_id": str(order.payment_method_id) if order.payment_method_id else None,
+            "promocode_id": str(order.promocode_id) if order.promocode_id else None,
+            "carrier_name": order.carrier_name,
+            "tracking_number": order.tracking_number,
+            "notes": order.notes,
+            "created_at": order.created_at.isoformat() if order.created_at else None,
+            "updated_at": order.updated_at.isoformat() if order.updated_at else None,
+            "items": [
+                {
+                    "id": str(item.id),
+                    "order_id": str(item.order_id),
+                    "variant_id": str(item.variant_id),
+                    "quantity": item.quantity,
+                    "price_per_unit": float(item.price_per_unit),
+                    "total_price": float(item.total_price),
+                    "variant": {
+                        "id": str(item.variant.id),
+                        "sku": item.variant.sku,
+                        "name": item.variant.name,
+                        "product": {
+                            "id": str(item.variant.product.id),
+                            "name": item.variant.product.name,
+                            "description": item.variant.product.description
+                        } if item.variant.product else None
+                    } if item.variant else None
+                }
+                for item in order.items
+            ] if order.items else [],
+            "transactions": [
+                {
+                    "id": str(transaction.id),
+                    "amount": float(transaction.amount),
+                    "status": transaction.status,
+                    "payment_method": transaction.payment_method,
+                    "created_at": transaction.created_at.isoformat()
+                }
+                for transaction in order.transactions
+            ] if order.transactions else []
+        }
 
     async def get_all_variants(self, page: int = 1, limit: int = 10, search: Optional[str] = None, product_id: Optional[str] = None) -> dict:
         """Get all variants with pagination."""
@@ -487,6 +544,32 @@ class AdminService:
                 "total": total,
                 "pages": (total + limit - 1) // limit
             }
+        }
+
+    async def get_user_by_id(self, user_id: str) -> Optional[dict]:
+        """Get a single user by ID with their order count."""
+        query = select(User).where(User.id == user_id).options(
+            selectinload(User.orders)
+        )
+        result = await self.db.execute(query)
+        user = result.scalar_one_or_none()
+        
+        if not user:
+            return None
+        
+        return {
+            "id": str(user.id),
+            "firstname": user.firstname,
+            "lastname": user.lastname,
+            "email": user.email,
+            "phone": user.phone,
+            "role": user.role,
+            "verified": user.verified,
+            "active": user.active,
+            "avatar_url": user.avatar_url,
+            "last_login": user.last_login.isoformat() if user.last_login else None,
+            "orders_count": len(user.orders) if user.orders else 0,
+            "created_at": user.created_at.isoformat() if user.created_at else None,
         }
 
     async def create_user(self, user_data: UserCreate, background_tasks: BackgroundTasks) -> User:

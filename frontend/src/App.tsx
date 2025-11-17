@@ -82,6 +82,12 @@ const AdminRegister = lazy(() =>
 const AdminOrderDetail = lazy(() =>
   import('./pages/admin/AdminOrderDetail').then((module) => ({ default: module.AdminOrderDetail }))
 );
+const AdminProductDetail = lazy(() =>
+  import('./pages/admin/AdminProductDetail').then((module) => ({ default: module.AdminProductDetail }))
+);
+const AdminUserDetail = lazy(() =>
+  import('./pages/admin/AdminUserDetail').then((module) => ({ default: module.AdminUserDetail }))
+);
 const AdminVariants = lazy(() =>
   import('./pages/admin/AdminVariants').then((module) => ({ default: module.AdminVariants }))
 );
@@ -171,10 +177,26 @@ export const App: React.FC = () => {
                                 }
                               />
                               <Route
+                                path="/admin/products/:id"
+                                element={
+                                  <AdminLayout>
+                                    <AdminProductDetail />
+                                  </AdminLayout>
+                                }
+                              />
+                              <Route
                                 path="/admin/users"
                                 element={
                                   <AdminLayout>
                                     <AdminUsers />
+                                  </AdminLayout>
+                                }
+                              />
+                              <Route
+                                path="/admin/users/:id"
+                                element={
+                                  <AdminLayout>
+                                    <AdminUserDetail />
                                   </AdminLayout>
                                 }
                               />

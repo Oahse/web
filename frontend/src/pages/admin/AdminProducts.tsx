@@ -1,12 +1,14 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { PlusIcon, SearchIcon, FilterIcon, EditIcon, TrashIcon, ChevronDownIcon, EyeIcon, MoreHorizontalIcon } from 'lucide-react';
 import { usePaginatedApi } from '../../hooks/useApi';
 import { AdminAPI } from '../../apis';
 import { useCategories } from '../../contexts/CategoryContext';
 import ErrorMessage from '../../components/common/ErrorMessage';
+import { ResponsiveTable } from '../../components/ui/ResponsiveTable';
 
 export const AdminProducts = () => {
+  const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [submittedSearchTerm, setSubmittedSearchTerm] = useState('');
   const [filterCategory, setFilterCategory] = useState('all');
@@ -14,7 +16,7 @@ export const AdminProducts = () => {
   const [status, setStatus] = useState('all');
   const [supplier, setSupplier] = useState('');
 
-  const apiCall = useCallback((page, limit) => {
+  const apiCall = useCallback((page: number, limit: number) => {
     return AdminAPI.getAllProducts({
       search: submittedSearchTerm || undefined,
       category: filterCategory !== 'all' ? filterCategory : undefined,
@@ -46,10 +48,10 @@ export const AdminProducts = () => {
 
   const categories = categoriesData ? [
     { id: 'all', name: 'All Categories' },
-    ...categoriesData.map(cat => ({ id: cat.name, name: cat.name }))
+    ...(categoriesData as any[]).map((cat: any) => ({ id: cat.name, name: cat.name }))
   ] : [];
 
-  const handleSearch = (e) => {
+  const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     setSubmittedSearchTerm(searchTerm);
     goToPage(1); // Reset to first page when searching
@@ -61,6 +63,7 @@ export const AdminProducts = () => {
         <ErrorMessage
           error={productsError}
           onRetry={() => fetchProducts()}
+          onDismiss={() => {}}
         />
       </div>
     );
@@ -135,146 +138,146 @@ export const AdminProducts = () => {
       </div>
       {/* Products table */}
       <div className="bg-surface rounded-lg shadow-sm border border-border-light overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="bg-background text-left text-copy-light text-sm">
-                <th className="py-3 px-4 font-medium">Product</th>
-                <th className="py-3 px-4 font-medium">SKU</th>
-                <th className="py-3 px-4 font-medium">Category</th>
-                <th className="py-3 px-4 font-medium">Price</th>
-                <th className="py-3 px-4 font-medium">Stock</th>
-                <th className="py-3 px-4 font-medium">Status</th>
-                <th className="py-3 px-4 font-medium">Variants</th>
-                <th className="py-3 px-4 font-medium text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {productsLoading ? (
-                // Loading skeleton
-                [...Array(5)].map((_, index) => (
-                  <tr key={index} className="border-t border-border-light animate-pulse">
-                    <td className="py-3 px-4">
-                      <div className="flex items-center">
-                        <div className="w-10 h-10 bg-surface-hover rounded-md mr-3"></div>
-                        <div>
-                          <div className="w-32 h-4 bg-surface-hover rounded mb-1"></div>
-                          <div className="w-16 h-3 bg-surface-hover rounded"></div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="py-3 px-4"><div className="w-20 h-4 bg-surface-hover rounded"></div></td>
-                    <td className="py-3 px-4"><div className="w-24 h-4 bg-surface-hover rounded"></div></td>
-                    <td className="py-3 px-4"><div className="w-16 h-4 bg-surface-hover rounded"></div></td>
-                    <td className="py-3 px-4"><div className="w-12 h-4 bg-surface-hover rounded"></div></td>
-                    <td className="py-3 px-4"><div className="w-16 h-6 bg-surface-hover rounded-full"></div></td>
-                    <td className="py-3 px-4"><div className="w-8 h-4 bg-surface-hover rounded"></div></td>
-                    <td className="py-3 px-4"><div className="w-20 h-8 bg-surface-hover rounded"></div></td>
-                  </tr>
-                ))
-              ) : (
-                products.map((product) => {
-                  const primaryVariant = product.variants?.[0];
-                  const totalStock = Array.isArray(product.variants)
-                    ? product.variants.reduce((sum, variant) => sum + (variant.stock || 0), 0)
-                    : 0;
-                  const status = totalStock === 0 ? 'Out of Stock' : totalStock < 10 ? 'Low Stock' : 'Active';
-                  
-                  return (
-                    <tr key={product.id} className="border-t border-border-light hover:bg-surface-hover">
-                      <td className="py-3 px-4">
-                        <div className="flex items-center">
-                          <img 
-                            src={primaryVariant?.images?.[0]?.url || 'https://via.placeholder.com/100'} 
-                            alt={product.name} 
-                            className="w-10 h-10 rounded-md object-cover mr-3" 
-                          />
-                          <div>
-                            <p className="font-medium text-main">{product.name}</p>
-                            <p className="text-xs text-copy-light">
-                              ID: {product.id}
-                            </p>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="py-3 px-4 text-copy-light">{primaryVariant?.sku || 'N/A'}</td>
-                      <td className="py-3 px-4 text-copy-light">
-                        {product.category?.name || 'Uncategorized'}
-                      </td>
-                      <td className="py-3 px-4">
-                        {primaryVariant?.sale_price ? (
-                          <div>
-                            <span className="font-medium text-main">
-                              ${primaryVariant.sale_price.toFixed(2)}
-                            </span>
-                            <span className="text-xs text-copy-light line-through ml-2">
-                              ${primaryVariant.base_price.toFixed(2)}
-                            </span>
-                          </div>
-                        ) : (
-                          <span className="font-medium text-main">
-                            ${primaryVariant?.base_price?.toFixed(2) || '0.00'}
-                          </span>
-                        )}
-                      </td>
-                      <td className="py-3 px-4 text-copy-light">{totalStock}</td>
-                      <td className="py-3 px-4">
-                        <span className={`px-2 py-1 rounded-full text-xs ${
-                          status === 'Active' ? 'bg-success/10 text-success' :
-                          status === 'Low Stock' ? 'bg-warning/10 text-warning' :
-                          'bg-error/10 text-error'
-                        }`}>
-                          {status}
-                        </span>
-                      </td>
-                      <td className="py-3 px-4 text-center">
-                        <Link to={`/admin/products/${product.id}/variants`} className="text-primary hover:underline">
-                          {product.variants?.length || 0}
-                    </Link>
-                  </td>
-                  <td className="py-3 px-4 text-right">
-                    <div className="flex items-center justify-end space-x-2">
-                      <Link to={`/product/${product.id}`} className="p-1 text-copy-light hover:text-main" title="View">
-                        <EyeIcon size={18} />
-                      </Link>
-                      <Link to={`/admin/products/${product.id}/edit`} className="p-1 text-copy-light hover:text-primary" title="Edit">
-                        <EditIcon size={18} />
-                      </Link>
-                      <button className="p-1 text-copy-light hover:text-error" title="Delete">
-                        <TrashIcon size={18} />
-                      </button>
-                      <div className="relative group">
-                        <button className="p-1 text-copy-light hover:text-main">
-                          <MoreHorizontalIcon size={18} />
-                        </button>
-                        <div className="absolute right-0 mt-1 hidden group-hover:block bg-surface rounded-md shadow-lg border border-border-light z-10 w-36">
-                          <div className="py-1">
-                            <button className="w-full text-left px-4 py-2 text-sm text-copy hover:bg-surface-hover">
-                              Duplicate
-                            </button>
-                            <button className="w-full text-left px-4 py-2 text-sm text-copy hover:bg-surface-hover">
-                              Add Variant
-                            </button>
-                            <button className="w-full text-left px-4 py-2 text-sm text-copy hover:bg-surface-hover">
-                              Archive
-                            </button>
-                          </div>
-                        </div>
-                      </div>
+        <ResponsiveTable
+          data={products}
+          loading={productsLoading}
+          keyExtractor={(product) => product.id}
+          emptyMessage="No products found"
+          onRowClick={(product) => navigate(`/admin/products/${product.id}`)}
+          columns={[
+            {
+              key: 'product',
+              label: 'Product',
+              mobileLabel: 'Product',
+              render: (product) => {
+                const primaryVariant = product.variants?.[0];
+                return (
+                  <div className="flex items-center">
+                    <img 
+                      src={primaryVariant?.images?.[0]?.url || 'https://via.placeholder.com/100'} 
+                      alt={product.name} 
+                      className="w-10 h-10 rounded-md object-cover mr-3" 
+                    />
+                    <div>
+                      <p className="font-medium text-main">{product.name}</p>
+                      <p className="text-xs text-copy-light">ID: {product.id}</p>
                     </div>
-                  </td>
-                </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
-        {products.length === 0 && !productsLoading && (
-          <div className="py-12 text-center text-copy-light">
-            <p>No products found</p>
-          </div>
-        )}
+                  </div>
+                );
+              },
+            },
+            {
+              key: 'sku',
+              label: 'SKU',
+              hideOnMobile: true,
+              render: (product) => (
+                <span className="text-copy-light">{product.variants?.[0]?.sku || 'N/A'}</span>
+              ),
+            },
+            {
+              key: 'category',
+              label: 'Category',
+              render: (product) => (
+                <span className="text-copy-light">{product.category?.name || 'Uncategorized'}</span>
+              ),
+            },
+            {
+              key: 'price',
+              label: 'Price',
+              render: (product) => {
+                const primaryVariant = product.variants?.[0];
+                return primaryVariant?.sale_price ? (
+                  <div>
+                    <span className="font-medium text-main">
+                      ${primaryVariant.sale_price.toFixed(2)}
+                    </span>
+                    <span className="text-xs text-copy-light line-through ml-2">
+                      ${primaryVariant.base_price.toFixed(2)}
+                    </span>
+                  </div>
+                ) : (
+                  <span className="font-medium text-main">
+                    ${primaryVariant?.base_price?.toFixed(2) || '0.00'}
+                  </span>
+                );
+              },
+            },
+            {
+              key: 'stock',
+              label: 'Stock',
+              render: (product) => {
+                const totalStock = Array.isArray(product.variants)
+                  ? product.variants.reduce((sum: number, variant: any) => sum + (variant.stock || 0), 0)
+                  : 0;
+                return <span className="text-copy-light">{totalStock}</span>;
+              },
+            },
+            {
+              key: 'status',
+              label: 'Status',
+              render: (product) => {
+                const totalStock = Array.isArray(product.variants)
+                  ? product.variants.reduce((sum: number, variant: any) => sum + (variant.stock || 0), 0)
+                  : 0;
+                const status = totalStock === 0 ? 'Out of Stock' : totalStock < 10 ? 'Low Stock' : 'Active';
+                return (
+                  <span className={`px-2 py-1 rounded-full text-xs ${
+                    status === 'Active' ? 'bg-success/10 text-success' :
+                    status === 'Low Stock' ? 'bg-warning/10 text-warning' :
+                    'bg-error/10 text-error'
+                  }`}>
+                    {status}
+                  </span>
+                );
+              },
+            },
+            {
+              key: 'variants',
+              label: 'Variants',
+              hideOnMobile: true,
+              render: (product) => (
+                <Link 
+                  to={`/admin/products/${product.id}/variants`} 
+                  className="text-primary hover:underline"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {product.variants?.length || 0}
+                </Link>
+              ),
+            },
+            {
+              key: 'actions',
+              label: 'Actions',
+              render: (product) => (
+                <div className="flex items-center justify-end space-x-2">
+                  <Link 
+                    to={`/admin/products/${product.id}`} 
+                    className="p-1 text-copy-light hover:text-main" 
+                    title="View"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <EyeIcon size={18} />
+                  </Link>
+                  <Link 
+                    to={`/admin/products/${product.id}/edit`} 
+                    className="p-1 text-copy-light hover:text-primary" 
+                    title="Edit"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <EditIcon size={18} />
+                  </Link>
+                  <button 
+                    className="p-1 text-copy-light hover:text-error" 
+                    title="Delete"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <TrashIcon size={18} />
+                  </button>
+                </div>
+              ),
+            },
+          ]}
+        />
       </div>
       {/* Pagination */}
       {totalPages > 1 && (

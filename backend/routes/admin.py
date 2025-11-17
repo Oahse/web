@@ -150,6 +150,31 @@ async def create_user_admin(
         )
 
 
+@router.get("/users/{user_id}")
+async def get_user_by_id(
+    user_id: str,
+    current_user: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db)
+):
+    """Get a single user by ID (admin only)."""
+    try:
+        admin_service = AdminService(db)
+        user = await admin_service.get_user_by_id(user_id)
+        if not user:
+            raise APIException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                message="User not found"
+            )
+        return Response(success=True, data=user)
+    except APIException:
+        raise
+    except Exception as e:
+        raise APIException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            message=f"Failed to fetch user: {str(e)}"
+        )
+
+
 @router.get("/products")
 async def get_all_products_admin(
     page: int = Query(1, ge=1),
