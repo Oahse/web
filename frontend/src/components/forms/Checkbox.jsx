@@ -1,7 +1,4 @@
-
-import { cn } from '../../lib/utils';
-
-
+import React from 'react';
 
 export const Checkbox = ({
   label,
@@ -15,10 +12,7 @@ export const Checkbox = ({
       <input
         type="checkbox"
         id={id}
-        className={cn(
-          'h-4 w-4 text-primary focus:ring-primary border-border rounded bg-transparent',
-          className
-        )}
+        className={`h-4 w-4 text-primary focus:ring-primary border-border rounded bg-transparent ${className || ''}`}
         {...props}
       />
       {label && (
