@@ -20,7 +20,7 @@ export const AdminAnalytics = () => {
   const overviewStats = dashboardData ? [
     {
       title: 'Total Revenue',
-      value: `${dashboardData.total_sales.toLocaleString()}`,
+      value: `${(dashboardData.total_sales || 0).toLocaleString()}`,
       previousValue: '$0', // Placeholder
       change: '+0%', // Placeholder
       increasing: true, // Placeholder
@@ -29,7 +29,7 @@ export const AdminAnalytics = () => {
     },
     {
       title: 'Orders',
-      value: dashboardData.total_orders.toLocaleString(),
+      value: (dashboardData.total_orders || 0).toLocaleString(),
       previousValue: '0', // Placeholder
       change: '+0%', // Placeholder
       increasing: true, // Placeholder
@@ -38,7 +38,7 @@ export const AdminAnalytics = () => {
     },
     {
       title: 'Customers',
-      value: dashboardData.total_users.toLocaleString(),
+      value: (dashboardData.total_users || 0).toLocaleString(),
       previousValue: '0', // Placeholder
       change: '+0%', // Placeholder
       increasing: true, // Placeholder
@@ -47,7 +47,7 @@ export const AdminAnalytics = () => {
     },
     {
       title: 'Conversion Rate',
-      value: `${dashboardData.conversion_rate.toFixed(2)}%`,
+      value: `${(dashboardData.conversion_rate || 0).toFixed(2)}%`,
       previousValue: '0%', // Placeholder
       change: '-0%', // Placeholder
       increasing: false, // Placeholder
