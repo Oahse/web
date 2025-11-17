@@ -38,8 +38,8 @@ const transformProduct = (product) => ({
   discountPrice: product.variants?.[0]?.sale_price || null,
   rating: product.rating || 0,
   reviewCount: product.review_count || 0,
-  image: product.variants?.[0]?.images?.[0]?.url || 'https://images.unsplash.com/photo-1560472354-b33ff0c44a43?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80',
-  category: product.category?.name || 'General',
+  image: product.variants?.[0]?.images?.[0]?.url,
+  category: product.category?.name,
   isNew: false,
   isFeatured: product.featured,
   variants: product.variants?.map(v => ({

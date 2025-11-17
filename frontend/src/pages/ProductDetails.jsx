@@ -36,20 +36,18 @@ const transformProduct = (product, averageRating, reviewCount) => {
   
   return {
     id: product.id,
-    name: product.name || 'Product',
+    name: product.name,
     price: product.variants?.[0]?.base_price || 0,
     discountPrice: product.variants?.[0]?.sale_price || null,
     rating: averageRating || 0, 
     reviewCount: reviewCount || 0, 
-    description: product.description || '',
-    longDescription: product.description || '', 
-    category: product.category?.name || 'General',
-    brand: product.supplier ? `${product.supplier.firstname || ''} ${product.supplier.lastname || ''}`.trim() : 'Banwee',
-    sku: product.variants?.[0]?.sku || 'N/A',
+    description: product.description,
+    longDescription: product.description, 
+    category: product.category?.name,
+    brand: product.supplier ? `${product.supplier.firstname || ''} ${product.supplier.lastname || ''}`.trim() : null,
+    sku: product.variants?.[0]?.sku,
     stock: product.variants?.[0]?.stock || 0,
-    images: product.variants?.[0]?.images?.map(img => img?.url).filter(Boolean) || [
-      'https://images.unsplash.com/photo-1560472354-b33ff0c44a43?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80'
-    ],
+    images: product.variants?.[0]?.images?.map(img => img?.url).filter(Boolean) || [],
     variants: product.variants?.map(variant => ({
       id: variant.id,
       name: variant.name || '',
@@ -66,10 +64,10 @@ const transformProduct = (product, averageRating, reviewCount) => {
       'Secure Payment',
     ],
     specifications: {
-      'Product Name': product.name || 'N/A',
-      'Category': product.category?.name || 'General',
-      'Supplier': product.supplier ? `${product.supplier.firstname || ''} ${product.supplier.lastname || ''}`.trim() : 'Banwee',
-      'SKU': product.variants?.[0]?.sku || 'N/A',
+      'Product Name': product.name,
+      'Category': product.category?.name,
+      'Supplier': product.supplier ? `${product.supplier.firstname || ''} ${product.supplier.lastname || ''}`.trim() : null,
+      'SKU': product.variants?.[0]?.sku,
     },
     reviews: [], 
   };
@@ -806,13 +804,13 @@ export const ProductDetails = () => {
                   
                   const transformedProduct = {
                     id: relatedProduct.id,
-                    name: relatedProduct.name || 'Product',
+                    name: relatedProduct.name,
                     price: relatedProduct.variants?.[0]?.base_price || 0,
                     discountPrice: relatedProduct.variants?.[0]?.sale_price || null,
-                    rating: relatedProduct.rating || 4.5,
+                    rating: relatedProduct.rating || 0,
                     reviewCount: relatedProduct.review_count || 0,
-                    image: relatedProduct.variants?.[0]?.images?.[0]?.url || 'https://images.unsplash.com/photo-1560472354-b33ff0c44a43?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80',
-                    category: relatedProduct.category?.name || 'General',
+                    image: relatedProduct.variants?.[0]?.images?.[0]?.url,
+                    category: relatedProduct.category?.name,
                     isNew: false,
                     isFeatured: false,
                   };

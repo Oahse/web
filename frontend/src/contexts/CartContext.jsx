@@ -16,9 +16,11 @@ export const CartProvider = ({ children }) => {
     try {
       setLoading(true);
       const response = await CartAPI.getCart(token);
-      if (response?.data) {
-        setCart(response.data);
-      }
+      // Backend returns { success: true, data: cart }
+      // apiClient returns response.data, so we get { success: true, data: cart }
+      // We need to access response.data to get the actual cart
+      const cartData = response?.data || response;
+      setCart(cartData);
     } catch (error) {
       console.error('Failed to fetch cart:', error);
     } finally {
@@ -41,9 +43,9 @@ export const CartProvider = ({ children }) => {
     try {
       setLoading(true);
       const response = await CartAPI.addToCart(item, token);
-      if (response?.data) {
-        setCart(response.data);
-      }
+      const cartData = response?.data || response;
+      setCart(cartData);
+      return true;
     } catch (error) {
       console.error('Failed to add item to cart:', error);
       throw error;
@@ -62,9 +64,8 @@ export const CartProvider = ({ children }) => {
     try {
       setLoading(true);
       const response = await CartAPI.removeFromCart(itemId, token);
-      if (response?.data) {
-        setCart(response.data);
-      }
+      const cartData = response?.data || response;
+      setCart(cartData);
     } catch (error) {
       console.error('Failed to remove item from cart:', error);
       throw error;
@@ -83,9 +84,8 @@ export const CartProvider = ({ children }) => {
     try {
       setLoading(true);
       const response = await CartAPI.updateCartItem(itemId, quantity, token);
-      if (response?.data) {
-        setCart(response.data);
-      }
+      const cartData = response?.data || response;
+      setCart(cartData);
     } catch (error) {
       console.error('Failed to update cart item:', error);
       throw error;
