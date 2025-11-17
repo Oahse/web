@@ -1,11 +1,18 @@
 import { useState, useCallback, useEffect } from 'react';
 
-export const useApi = () => {
-  const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
+interface UseApiReturn<T> {
+  data: T | null;
+  loading: boolean;
+  error: any;
+  execute: (apiFunc: (...args: any[]) => Promise<T>, ...args: any[]) => Promise<T | null>;
+}
 
-  const execute = useCallback(async (apiFunc, ...args) => {
+export const useApi = <T = any>(): UseApiReturn<T> => {
+  const [data, setData] = useState<T | null>(null);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<any>(null);
+
+  const execute = useCallback(async (apiFunc: (...args: any[]) => Promise<T>, ...args: any[]): Promise<T | null> => {
     setLoading(true);
     setError(null);
     try {
@@ -23,14 +30,37 @@ export const useApi = () => {
   return { data, loading, error, execute };
 };
 
-export const usePaginatedApi = (apiCall, initialPage = 1, initialLimit = 10, options = {}) => {
-  const [data, setData] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const [page, setPage] = useState(initialPage);
-  const [limit, setLimit] = useState(initialLimit);
-  const [total, setTotal] = useState(0);
-  const [totalPages, setTotalPages] = useState(0);
+interface UsePaginatedApiOptions {
+  autoFetch?: boolean;
+  showErrorToast?: boolean;
+}
+
+interface UsePaginatedApiReturn<T> {
+  data: T[];
+  loading: boolean;
+  error: any;
+  execute: () => Promise<any>;
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+  goToPage: (newPage: number) => void;
+  changeLimit: (newLimit: number) => void;
+}
+
+export const usePaginatedApi = <T = any>(
+  apiCall: (page: number, limit: number) => Promise<any>,
+  initialPage: number = 1,
+  initialLimit: number = 10,
+  options: UsePaginatedApiOptions = {}
+): UsePaginatedApiReturn<T> => {
+  const [data, setData] = useState<T[]>([]);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<any>(null);
+  const [page, setPage] = useState<number>(initialPage);
+  const [limit, setLimit] = useState<number>(initialLimit);
+  const [total, setTotal] = useState<number>(0);
+  const [totalPages, setTotalPages] = useState<number>(0);
 
   const execute = useCallback(async () => {
     setLoading(true);
@@ -40,7 +70,9 @@ export const usePaginatedApi = (apiCall, initialPage = 1, initialLimit = 10, opt
       
       // Handle different response structures
       if (result?.data) {
-        setData(result.data);
+        // Ensure data is always an array
+        const dataArray = Array.isArray(result.data) ? result.data : [];
+        setData(dataArray);
         
         // Check for pagination info
         if (result.pagination) {
@@ -52,6 +84,9 @@ export const usePaginatedApi = (apiCall, initialPage = 1, initialLimit = 10, opt
         }
       } else if (Array.isArray(result)) {
         setData(result);
+      } else {
+        // Fallback to empty array if result is not in expected format
+        setData([]);
       }
       
       return result;
@@ -66,11 +101,11 @@ export const usePaginatedApi = (apiCall, initialPage = 1, initialLimit = 10, opt
     }
   }, [apiCall, page, limit, options.showErrorToast]);
 
-  const goToPage = useCallback((newPage) => {
+  const goToPage = useCallback((newPage: number) => {
     setPage(newPage);
   }, []);
 
-  const changeLimit = useCallback((newLimit) => {
+  const changeLimit = useCallback((newLimit: number) => {
     setLimit(newLimit);
     setPage(1); // Reset to first page when changing limit
   }, []);

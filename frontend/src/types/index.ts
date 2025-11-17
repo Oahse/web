@@ -107,6 +107,7 @@ export interface Cart {
   id: string;
   user_id: string;
   items: CartItem[];
+  total_items: number;
   total_amount: number;
   created_at: string;
   updated_at?: string;
