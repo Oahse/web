@@ -383,7 +383,7 @@ export const Home = () => {
             ) : categoriesError ? (
               <p>Error loading categories: {typeof categoriesError === 'string' ? categoriesError : 'Failed to load categories'}</p>
             ) : (
-              (apiCategories || []).slice(0, 10).map((category) => {
+              (Array.isArray(apiCategories) ? apiCategories : []).slice(0, 10).map((category) => {
                 const convertedCategory = convertApiCategoryToDemo(category);
                 return (
                   <div key={convertedCategory.id} className="flex-none w-40">
