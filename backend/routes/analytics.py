@@ -49,7 +49,6 @@ async def get_dashboard_data(
     except Exception as e:
         raise APIException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            message="Failed to fetch analytics dashboard data",  # Added message
             # Modified detail to include original exception
             message=f"Failed to fetch analytics data: {e}"
         )
@@ -73,7 +72,6 @@ async def get_sales_trend(
     except Exception as e:
         raise APIException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            message="Failed to fetch sales trend data",  # Added message
             message=f"Failed to fetch sales trend: {e}"  # Modified detail
         )
 
@@ -96,6 +94,5 @@ async def get_top_products(
     except Exception as e:
         raise APIException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            message="Failed to fetch top products data",  # Added message
             message=f"Failed to fetch top products: {e}"  # Modified detail
         )

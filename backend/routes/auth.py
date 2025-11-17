@@ -78,11 +78,18 @@ async def get_profile(
             "email": current_user.email,
             "firstname": current_user.firstname,
             "lastname": current_user.lastname,
+            "full_name": f"{current_user.firstname} {current_user.lastname}",
             "phone": current_user.phone,
             "role": current_user.role,
             "verified": current_user.verified,
             "active": current_user.active,
-            "created_at": current_user.created_at.isoformat()
+            "age": current_user.age,
+            "gender": current_user.gender,
+            "country": current_user.country,
+            "language": current_user.language,
+            "timezone": current_user.timezone,
+            "created_at": current_user.created_at.isoformat(),
+            "updated_at": current_user.updated_at.isoformat() if current_user.updated_at else None
         }
         return Response(success=True, data=user_data)
     except Exception as e:
@@ -244,9 +251,35 @@ async def update_profile(
 ):
     """Update user profile."""
     try:
-        user_service = UserService(db)
-        updated_user = await user_service.update_user(current_user.id, user_data)
-        return Response(success=True, data=UserResponse.from_orm(updated_user), message="Profile updated successfully")
+        # Update user fields
+        for field, value in user_data.items():
+            if hasattr(current_user, field) and field not in ['id', 'hashed_password', 'created_at']:
+                setattr(current_user, field, value)
+        
+        await db.commit()
+        await db.refresh(current_user)
+        
+        # Return user data
+        user_response = {
+            "id": str(current_user.id),
+            "email": current_user.email,
+            "firstname": current_user.firstname,
+            "lastname": current_user.lastname,
+            "full_name": f"{current_user.firstname} {current_user.lastname}",
+            "phone": current_user.phone,
+            "role": current_user.role,
+            "verified": current_user.verified,
+            "active": current_user.active,
+            "age": current_user.age,
+            "gender": current_user.gender,
+            "country": current_user.country,
+            "language": current_user.language,
+            "timezone": current_user.timezone,
+            "created_at": current_user.created_at.isoformat(),
+            "updated_at": current_user.updated_at.isoformat() if current_user.updated_at else None
+        }
+        
+        return Response(success=True, data=user_response, message="Profile updated successfully")
     except Exception as e:
         raise APIException(
             status_code=status.HTTP_400_BAD_REQUEST,

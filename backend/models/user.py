@@ -18,6 +18,17 @@ class User(BaseModel):
     phone = Column(String(20), nullable=True)
     avatar_url = Column(String(500), nullable=True)
     last_login = Column(DateTime(timezone=True), nullable=True)
+    
+    # Profile fields
+    age = Column(String(10), nullable=True)
+    gender = Column(String(50), nullable=True)
+    country = Column(String(100), nullable=True)
+    language = Column(String(10), default="en")
+    timezone = Column(String(100), nullable=True)
+    
+    # Verification fields
+    verification_token = Column(String(255), nullable=True)
+    token_expiration = Column(DateTime(timezone=True), nullable=True)
 
     # Relationships with lazy loading
     addresses = relationship(

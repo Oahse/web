@@ -145,6 +145,15 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const updateUser = (updatedUserData) => {
+    if (!user) return;
+
+    // Update user state with new data
+    const transformedUser = transformUser(updatedUserData);
+    setUser(transformedUser);
+    TokenManager.setUser(transformedUser);
+  };
+
   // Derived roles
   const isAdmin = user?.role === 'Admin';
   const isSupplier = user?.role === 'Supplier';
@@ -164,6 +173,7 @@ export const AuthProvider = ({ children }) => {
     redirectPath,
     setRedirectPath,
     updateUserPreferences,
+    updateUser,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

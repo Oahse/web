@@ -44,7 +44,35 @@ class UserCreate(UserBase):
 
 
 class UserUpdate(BaseModel):
-    firstname: Optional[str]
-    lastname: Optional[str]
-    phone: Optional[str]
-    active: Optional[bool]
+    firstname: Optional[str] = None
+    lastname: Optional[str] = None
+    email: Optional[EmailStr] = None
+    phone: Optional[str] = None
+    age: Optional[int] = None
+    gender: Optional[str] = None
+    country: Optional[str] = None
+    language: Optional[str] = None
+    timezone: Optional[str] = None
+    active: Optional[bool] = None
+
+
+class UserResponse(BaseModel):
+    id: UUID
+    email: EmailStr
+    firstname: str
+    lastname: str
+    full_name: Optional[str] = None
+    phone: Optional[str] = None
+    role: str
+    verified: bool
+    active: bool
+    age: Optional[int] = None
+    gender: Optional[str] = None
+    country: Optional[str] = None
+    language: Optional[str] = None
+    timezone: Optional[str] = None
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
