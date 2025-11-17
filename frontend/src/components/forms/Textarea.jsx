@@ -1,0 +1,32 @@
+
+import { cn } from '../../lib/utils';
+
+
+
+export const Textarea = ({
+  label,
+  error,
+  id,
+  className,
+  ...props
+}) => {
+  return (
+    <div className="space-y-1">
+      {label && (
+        <label htmlFor={id} className="block text-sm font-medium text-main">
+          {label}
+        </label>
+      )}
+      <textarea
+        id={id}
+        className={cn(
+          'w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-1 bg-transparent',
+          error ? 'border-red-500 focus:ring-red-500' : 'border-border focus:ring-primary',
+          className
+        )}
+        {...props}
+      />
+      {error && <p className="text-sm text-red-500 mt-1">{error}</p>}
+    </div>
+  );
+};

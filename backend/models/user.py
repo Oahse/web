@@ -1,0 +1,91 @@
+from sqlalchemy import Column, String, Boolean, ForeignKey, Text,DateTime
+from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.orm import relationship, selectinload
+from core.database import BaseModel, CHAR_LENGTH
+
+
+
+class User(BaseModel):
+    __tablename__ = "users"
+
+    email = Column(String(CHAR_LENGTH), unique=True, index=True, nullable=False)
+    firstname = Column(String(CHAR_LENGTH), nullable=False)
+    lastname = Column(String(CHAR_LENGTH), nullable=False)
+    hashed_password = Column(String(CHAR_LENGTH), nullable=False)
+    role = Column(String(50), default="Customer")  # Customer, Supplier, Admin
+    verified = Column(Boolean, default=False)
+    active = Column(Boolean, default=True)
+    phone = Column(String(20), nullable=True)
+    avatar_url = Column(String(500), nullable=True)
+    last_login = Column(DateTime(timezone=True), nullable=True)
+
+    # Relationships with lazy loading
+    addresses = relationship("Address", back_populates="user", cascade="all, delete-orphan", lazy="selectin")
+    orders = relationship("Order", back_populates="user", lazy="selectin")
+    reviews = relationship("Review", back_populates="user", lazy="selectin")
+    wishlists = relationship("Wishlist", back_populates="user", lazy="selectin")
+    blog_posts = relationship("BlogPost", back_populates="author", lazy="selectin")
+    subscriptions = relationship("Subscription", back_populates="user", lazy="selectin")
+    payment_methods = relationship("PaymentMethod", back_populates="user", lazy="selectin")
+    transactions = relationship("Transaction", back_populates="user", lazy="selectin")
+    supplied_products = relationship("Product", back_populates="supplier", lazy="selectin")
+    notifications = relationship("Notification", back_populates="user", lazy="selectin")
+
+    @property
+    def full_name(self) -> str:
+        """Get user's full name"""
+        return f"{self.firstname} {self.lastname}"
+
+    @property
+    def default_address(self):
+        """Get user's default address"""
+        return next((addr for addr in self.addresses if addr.is_default), None)
+
+    def to_dict(self) -> dict:
+        """Convert user to dictionary for API responses"""
+        return {
+            "id": str(self.id),
+            "email": self.email,
+            "firstname": self.firstname,
+            "lastname": self.lastname,
+            "full_name": self.full_name,
+            "role": self.role,
+            "verified": self.verified,
+            "active": self.active,
+            "phone": self.phone,
+            "avatar_url": self.avatar_url,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+        }
+
+
+class Address(BaseModel):
+    __tablename__ = "addresses"
+
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    street = Column(String(CHAR_LENGTH), nullable=False)
+    city = Column(String(100), nullable=False)
+    state = Column(String(100), nullable=False)
+    country = Column(String(100), nullable=False)
+    post_code = Column(String(20), nullable=False)
+    kind = Column(String(50), default="Shipping")  # Shipping, Billing
+    is_default = Column(Boolean, default=False)
+
+    # Relationships
+    user = relationship("User", back_populates="addresses")
+
+    def to_dict(self) -> dict:
+        """Convert address to dictionary for API responses"""
+        return {
+            "id": str(self.id),
+            "user_id": str(self.user_id),
+            "street": self.street,
+            "city": self.city,
+            "state": self.state,
+            "country": self.country,
+            "post_code": self.post_code,
+            "kind": self.kind,
+            "is_default": self.is_default,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+        }

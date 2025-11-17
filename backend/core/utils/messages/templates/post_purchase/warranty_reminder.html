@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🛡️ Your Warranty for {{ product_name | default("Your Product") }} - Don't Forget!</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333333;
+            background-color: #f8f8f8;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 600px;
+            margin: 20px auto;
+            background-color: #ffffff;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+        }
+        .header {
+            text-align: center;
+            padding-bottom: 25px;
+            border-bottom: 1px solid #eeeeee;
+        }
+        .header img {
+            max-width: 180px;
+            height: auto;
+            margin-bottom: 15px;
+        }
+        .header h1 {
+            color: #e67e22; /* Orange for reminders/important info */
+            font-size: 32px;
+            margin: 0;
+            line-height: 1.2;
+        }
+        .content {
+            padding: 25px 0;
+            text-align: center;
+        }
+        .content p {
+            margin-bottom: 18px;
+            font-size: 17px;
+        }
+        .warranty-details {
+            background-color: #f4fcf4;
+            border: 1px solid #d4edda;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 25px;
+            text-align: left;
+        }
+        .warranty-details h3 {
+            color: #28a745;
+            font-size: 20px;
+            margin-top: 0;
+            margin-bottom: 15px;
+        }
+        .warranty-details p {
+            margin-bottom: 10px;
+            font-size: 16px;
+        }
+        .button-container {
+            text-align: center;
+            padding: 25px 0;
+        }
+        .button {
+            display: inline-block;
+            background-color: #4CAF50;
+            color: #ffffff;
+            padding: 15px 30px;
+            text-decoration: none;
+            border-radius: 6px;
+            font-size: 20px;
+            font-weight: bold;
+            transition: background-color 0.3s ease;
+        }
+        .button:hover {
+            background-color: #45a049;
+        }
+        .footer {
+            text-align: center;
+            padding-top: 25px;
+            border-top: 1px solid #eeeeee;
+            font-size: 13px;
+            color: #777777;
+        }
+        .footer a {
+            color: #28a745;
+            text-decoration: none;
+        }
+        .footer a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            {% if logo_url %}
+            <img src="{{ logo_url }}" alt="{{ company_name | default('Our Company') }} Logo">
+            {% endif %}
+            <h1>Your Product Warranty Reminder</h1>
+        </div>
+
+        <div class="content">
+            <p>Hi {{ customer_name | default("there") }},</p>
+            <p>
+                This is a friendly reminder about the warranty covering your recent purchase,
+                the **{{ product_name | default("product you purchased") }}**, from
+                **{{ company_name | default('our store') }}**.
+            </p>
+
+            {% if product_image_url %}
+            <img src="{{ product_image_url }}" alt="{{ product_name }}" style="max-width: 200px; height: auto; border-radius: 8px; margin-bottom: 20px;">
+            {% endif %}
+
+            <div class="warranty-details">
+                <h3>Your Warranty Details:</h3>
+                <p><strong>Product:</strong> {{ product_name | default("N/A") }}</p>
+                <p><strong>Purchase Date:</strong> {{ purchase_date | default("N/A") }}</p>
+                <p><strong>Warranty Period:</strong> {{ warranty_period | default("N/A") }}</p>
+                <p><strong>Warranty Expiry:</strong> {{ warranty_expiry_date | default("N/A") }}</p>
+                {% if registration_link %}
+                <p>If you haven't already, please **register your product** to activate your full warranty benefits:</p>
+                <p><a href="{{ registration_link }}" style="color: #e67e22; text-decoration: none; font-weight: bold;">Register Your Product Here &rarr;</a></p>
+                {% endif %}
+            </div>
+
+            <p>
+                We want to ensure your complete satisfaction and that you're covered in case of any issues.
+            </p>
+
+            <div class="button-container">
+                <a href="{{ warranty_info_url | default('https://www.yourstoreurl.com/warranty') }}" class="button">Learn More About Your Warranty</a>
+            </div>
+
+            <p>
+                If you have any questions or need to make a claim, please visit our support page or contact us directly.
+            </p>
+        </div>
+
+        <div class="footer">
+            <p>
+                &copy; {{ current_year | default("2025") }} {{ company_name | default("Your Company Name") }}. All rights reserved.<br>
+                <a href="{{ unsubscribe_url | default('#') }}">Unsubscribe</a> |
+                <a href="{{ privacy_policy_url | default('#') }}">Privacy Policy</a>
+            </p>
+            <p>Stay connected:
+                {% if social_links.facebook %}<a href="{{ social_links.facebook }}">Facebook</a>{% endif %}
+                {% if social_links.twitter %}| <a href="{{ social_links.twitter }}">Twitter</a>{% endif %}
+                {% if social_links.instagram %}| <a href="{{ social_links.instagram }}">Instagram</a>{% endif %}
+            </p>
+        </div>
+    </div>
+</body>
+</html>

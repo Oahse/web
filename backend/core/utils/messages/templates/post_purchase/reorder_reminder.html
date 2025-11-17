@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔄 Time to Reorder Your Favorite {{ product_name | default("Product") }}?</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333333;
+            background-color: #f8f8f8;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 600px;
+            margin: 20px auto;
+            background-color: #ffffff;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+        }
+        .header {
+            text-align: center;
+            padding-bottom: 25px;
+            border-bottom: 1px solid #eeeeee;
+        }
+        .header img {
+            max-width: 180px;
+            height: auto;
+            margin-bottom: 15px;
+        }
+        .header h1 {
+            color: #e67e22; /* Orange for a gentle reminder/reorder prompt */
+            font-size: 32px;
+            margin: 0;
+            line-height: 1.2;
+        }
+        .content {
+            padding: 25px 0;
+            text-align: center;
+        }
+        .content p {
+            margin-bottom: 18px;
+            font-size: 17px;
+        }
+        .product-reorder-card {
+            background-color: #f4fcf4;
+            border: 1px solid #d4edda;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 25px;
+            text-align: center;
+        }
+        .product-reorder-card img {
+            max-width: 150px;
+            height: auto;
+            border-radius: 6px;
+            margin-bottom: 15px;
+        }
+        .product-reorder-card h2 {
+            margin-top: 0;
+            margin-bottom: 10px;
+            font-size: 22px;
+            color: #333333;
+        }
+        .product-reorder-card .price {
+            font-weight: bold;
+            font-size: 20px;
+            color: #28a745;
+        }
+        .button-container {
+            text-align: center;
+            padding: 25px 0;
+        }
+        .button {
+            display: inline-block;
+            background-color: #4CAF50;
+            color: #ffffff;
+            padding: 15px 30px;
+            text-decoration: none;
+            border-radius: 6px;
+            font-size: 20px;
+            font-weight: bold;
+            transition: background-color 0.3s ease;
+        }
+        .button:hover {
+            background-color: #45a049;
+        }
+        .footer {
+            text-align: center;
+            padding-top: 25px;
+            border-top: 1px solid #eeeeee;
+            font-size: 13px;
+            color: #777777;
+        }
+        .footer a {
+            color: #28a745;
+            text-decoration: none;
+        }
+        .footer a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            {% if logo_url %}
+            <img src="{{ logo_url }}" alt="{{ company_name | default('Our Company') }} Logo">
+            {% endif %}
+            <h1>Time to Reorder?</h1>
+        </div>
+
+        <div class="content">
+            <p>Hi {{ customer_name | default("there") }},</p>
+            <p>
+                It might be time to restock your favorite **{{ product_name | default("product") }}**!
+                Based on your past purchase, we thought you might be running low.
+            </p>
+
+            <div class="product-reorder-card">
+                {% if product_image_url %}
+                <img src="{{ product_image_url }}" alt="{{ product_name }}">
+                {% endif %}
+                <h2>{{ product_name | default("Product Name") }}</h2>
+                <p class="price">{{ product_price | default("$XX.XX") }}</p>
+                <p>{{ product_description | default("A short description of the product.") }}</p>
+            </div>
+
+            <p>
+                Don't run out! Click below to easily reorder or set up a subscription for hassle-free delivery.
+            </p>
+
+            <div class="button-container">
+                <a href="{{ reorder_url | default('https://www.yourstoreurl.com/reorder') }}" class="button">Reorder Now!</a>
+            </div>
+
+            {% if subscription_url %}
+            <p>Or, consider setting up a <a href="{{ subscription_url }}" style="color: #28a745; text-decoration: none; font-weight: bold;">subscription</a> to ensure you never run out!</p>
+            {% endif %}
+
+            <p>
+                We're here to make your life easier!
+            </p>
+        </div>
+
+        <div class="footer">
+            <p>
+                &copy; {{ current_year | default("2025") }} {{ company_name | default("Your Company Name") }}. All rights reserved.<br>
+                <a href="{{ unsubscribe_url | default('#') }}">Unsubscribe</a> |
+                <a href="{{ privacy_policy_url | default('#') }}">Privacy Policy</a>
+            </p>
+            <p>Stay connected:
+                {% if social_links.facebook %}<a href="{{ social_links.facebook }}">Facebook</a>{% endif %}
+                {% if social_links.twitter %}| <a href="{{ social_links.twitter }}">Twitter</a>{% endif %}
+                {% if social_links.instagram %}| <a href="{{ social_links.instagram }}">Instagram</a>{% endif %}
+            </p>
+        </div>
+    </div>
+</body>
+</html>

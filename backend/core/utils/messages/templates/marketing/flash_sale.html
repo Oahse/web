@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>⚡ Flash Sale Alert! Don't Miss Out at {{ company_name | default('Our Store') }}!</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333333;
+            background-color: #f8f8f8;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 600px;
+            margin: 20px auto;
+            background-color: #ffffff;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+        }
+        .header {
+            text-align: center;
+            padding-bottom: 25px;
+            border-bottom: 1px solid #eeeeee;
+        }
+        .header img {
+            max-width: 180px;
+            height: auto;
+            margin-bottom: 15px;
+        }
+        .header h1 {
+            color: #e67e22; /* Orange for urgency/sales */
+            font-size: 38px; /* Larger for impact */
+            margin: 0;
+            line-height: 1.2;
+            text-transform: uppercase;
+        }
+        .content {
+            padding: 25px 0;
+            text-align: center;
+        }
+        .content p {
+            margin-bottom: 18px;
+            font-size: 17px;
+        }
+        .sale-banner {
+            background-color: #ffeeba; /* Light orange background for sale banner */
+            border: 2px dashed #e67e22; /* Orange dashed border */
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 25px;
+            text-align: center;
+        }
+        .sale-banner h2 {
+            color: #e67e22;
+            font-size: 30px;
+            margin-top: 0;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+        }
+        .sale-banner p {
+            font-size: 20px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 10px;
+        }
+        .timer {
+            font-size: 24px;
+            font-weight: bold;
+            color: #28a745; /* Green for countdown */
+            margin-top: 15px;
+        }
+        .button-container {
+            text-align: center;
+            padding: 25px 0;
+        }
+        .button {
+            display: inline-block;
+            background-color: #4CAF50;
+            color: #ffffff;
+            padding: 15px 30px;
+            text-decoration: none;
+            border-radius: 6px;
+            font-size: 20px;
+            font-weight: bold;
+            transition: background-color 0.3s ease;
+        }
+        .button:hover {
+            background-color: #45a049;
+        }
+        .footer {
+            text-align: center;
+            padding-top: 25px;
+            border-top: 1px solid #eeeeee;
+            font-size: 13px;
+            color: #777777;
+        }
+        .footer a {
+            color: #28a745;
+            text-decoration: none;
+        }
+        .footer a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            {% if logo_url %}
+            <img src="{{ logo_url }}" alt="{{ company_name | default('Our Company') }} Logo">
+            {% endif %}
+            <h1>⚡ FLASH SALE ON NOW! ⚡</h1>
+        </div>
+
+        <div class="content">
+            <p>Hi {{ customer_name | default("there") }},</p>
+            <p>
+                This is not a drill! For a very limited time, get incredible discounts on your favorite items at
+                **{{ company_name | default('our store') }}**!
+            </p>
+
+            <div class="sale-banner">
+                <h2>{{ sale_headline | default("Up to 50% Off Everything!") }}</h2>
+                <p>Use code: <strong style="font-size: 28px; color: #e67e22;">{{ discount_code | default("FLASH20") }}</strong></p>
+                <p class="timer">Sale Ends: **{{ sale_end_time | default("in 24 hours") }}**</p>
+            </div>
+
+            <p>
+                These deals won't last long, so hurry and grab your favorites before they're gone!
+            </p>
+
+            <div class="button-container">
+                <a href="{{ sale_url | default('https://www.yourstoreurl.com/flash-sale') }}" class="button">Shop the Flash Sale!</a>
+            </div>
+
+            <p>
+                Happy Shopping!
+            </p>
+        </div>
+
+        <div class="footer">
+            <p>
+                &copy; {{ current_year | default("2025") }} {{ company_name | default("Your Company Name") }}. All rights reserved.<br>
+                <a href="{{ unsubscribe_url | default('#') }}">Unsubscribe</a> |
+                <a href="{{ privacy_policy_url | default('#') }}">Privacy Policy</a>
+            </p>
+            <p>Stay tuned for more:
+                {% if social_links.facebook %}<a href="{{ social_links.facebook }}">Facebook</a>{% endif %}
+                {% if social_links.twitter %}| <a href="{{ social_links.twitter }}">Twitter</a>{% endif %}
+                {% if social_links.instagram %}| <a href="{{ social_links.instagram }}">Instagram</a>{% endif %}
+            </p>
+        </div>
+    </div>
+</body>
+</html>

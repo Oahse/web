@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🚨 Urgent: Suspected Fraudulent Activity on Your Account</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333333;
+            background-color: #f8f8f8;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 600px;
+            margin: 20px auto;
+            background-color: #ffffff;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+        }
+        .header {
+            text-align: center;
+            padding-bottom: 25px;
+            border-bottom: 1px solid #eeeeee;
+        }
+        .header img {
+            max-width: 180px;
+            height: auto;
+            margin-bottom: 15px;
+        }
+        .header h1 {
+            color: #c0392b; /* Red for urgent security alerts */
+            font-size: 32px;
+            margin: 0;
+            line-height: 1.2;
+        }
+        .content {
+            padding: 25px 0;
+            text-align: center;
+        }
+        .content p {
+            margin-bottom: 18px;
+            font-size: 17px;
+        }
+        .alert-details-box {
+            background-color: #fff0f0; /* Light red background for alert details */
+            border: 1px solid #c0392b;
+            padding: 20px;
+            border-radius: 5px;
+            margin-bottom: 25px;
+            text-align: left;
+        }
+        .alert-details-box h3 {
+            color: #c0392b;
+            margin-top: 0;
+            font-size: 20px;
+            text-align: center;
+            margin-bottom: 15px;
+        }
+        .alert-details-box p {
+            margin-bottom: 10px;
+            font-size: 16px;
+        }
+        .alert-details-box strong {
+            color: #c0392b;
+        }
+        .button-container {
+            text-align: center;
+            padding: 25px 0;
+        }
+        .button {
+            display: inline-block;
+            background-color: #c0392b; /* Red for critical action */
+            color: #ffffff;
+            padding: 15px 30px;
+            text-decoration: none;
+            border-radius: 6px;
+            font-size: 20px;
+            font-weight: bold;
+            transition: background-color 0.3s ease;
+        }
+        .button:hover {
+            background-color: #a93226;
+        }
+        .footer {
+            text-align: center;
+            padding-top: 25px;
+            border-top: 1px solid #eeeeee;
+            font-size: 13px;
+            color: #777777;
+        }
+        .footer a {
+            color: #28a745;
+            text-decoration: none;
+        }
+        .footer a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            {% if logo_url %}
+            <img src="{{ logo_url }}" alt="{{ company_name | default('Our Company') }} Logo">
+            {% endif %}
+            <h1>Urgent Fraud Alert!</h1>
+        </div>
+
+        <div class="content">
+            <p>Dear {{ customer_name | default("Valued Customer") }},</p>
+            <p>
+                We have detected **suspicious activity** on your account or a recent transaction associated with
+                **{{ company_name | default('our service') }}**.
+            </p>
+
+            <div class="alert-details-box">
+                <h3>Details of Suspected Activity:</h3>
+                <p><strong>Activity:</strong> {{ activity_type | default("Unauthorized login attempt") }}</p>
+                <p><strong>Time:</strong> {{ activity_time | default("N/A") }}</p>
+                <p><strong>Location/IP:</strong> {{ activity_location | default("N/A") }}</p>
+                {% if transaction_details %}
+                <p><strong>Transaction Amount:</strong> <span style="color: #e67e22;">{{ transaction_details.amount }}</span></p>
+                <p><strong>Transaction Item:</strong> {{ transaction_details.item }}</p>
+                {% endif %}
+            </div>
+
+            <p>
+                For your security, we recommend taking immediate action to protect your account.
+            </p>
+
+            <div class="button-container">
+                <a href="{{ security_action_url | default('https://www.yourstoreurl.com/security') }}" class="button">Secure My Account Now</a>
+            </div>
+
+            <p>
+                If you initiated this activity, please disregard this email. If not, please click the button above
+                or contact our fraud prevention team directly at {{ fraud_contact_phone | default("N/A") }} or {{ fraud_contact_email | default("N/A") }}.
+            </p>
+        </div>
+
+        <div class="footer">
+            <p>
+                &copy; {{ current_year | default("2025") }} {{ company_name | default("Your Company Name") }}. All rights reserved.<br>
+                <a href="{{ unsubscribe_url | default('#') }}">Unsubscribe</a> |
+                <a href="{{ privacy_policy_url | default('#') }}">Privacy Policy</a>
+            </p>
+            <p>Stay safe:
+                {% if social_links.facebook %}<a href="{{ social_links.facebook }}">Facebook</a>{% endif %}
+                {% if social_links.twitter %}| <a href="{{ social_links.twitter }}">Twitter</a>{% endif %}
+                {% if social_links.instagram %}| <a href="{{ social_links.instagram }}">Instagram</a>{% endif %}
+            </p>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🍪 Cookie Settings - {{ company_name | default('Our Service') }}</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333333;
+            background-color: #f8f8f8;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 600px;
+            margin: 20px auto;
+            background-color: #ffffff;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+        }
+        .header {
+            text-align: center;
+            padding-bottom: 25px;
+            border-bottom: 1px solid #eeeeee;
+        }
+        .header img {
+            max-width: 180px;
+            height: auto;
+            margin-bottom: 15px;
+        }
+        .header h1 {
+            color: #34495e; /* Dark grey-blue for settings/neutral */
+            font-size: 32px;
+            margin: 0;
+            line-height: 1.2;
+        }
+        .content {
+            padding: 25px 0;
+            text-align: center;
+        }
+        .content p {
+            margin-bottom: 18px;
+            font-size: 17px;
+        }
+        .cookie-category {
+            background-color: #fcfcfc;
+            border: 1px solid #e0e0e0;
+            padding: 15px 20px;
+            border-radius: 5px;
+            margin-bottom: 15px;
+            text-align: left;
+        }
+        .cookie-category h3 {
+            color: #34495e;
+            margin-top: 0;
+            font-size: 20px;
+            margin-bottom: 10px;
+        }
+        .cookie-category p {
+            font-size: 15px;
+            margin-bottom: 10px;
+            color: #666;
+        }
+        .toggle-switch {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-top: 10px;
+        }
+        .toggle-switch label {
+            font-weight: bold;
+            color: #333;
+            flex-grow: 1;
+        }
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 48px; /* Adjusted width */
+            height: 28px; /* Adjusted height */
+        }
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            -webkit-transition: .4s;
+            transition: .4s;
+            border-radius: 28px; /* Adjusted for full roundness */
+        }
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 20px; /* Adjusted height */
+            width: 20px; /* Adjusted width */
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            -webkit-transition: .4s;
+            transition: .4s;
+            border-radius: 50%;
+        }
+        input:checked + .slider {
+            background-color: #4CAF50; /* Green when checked */
+        }
+        input:focus + .slider {
+            box-shadow: 0 0 1px #4CAF50;
+        }
+        input:checked + .slider:before {
+            -webkit-transform: translateX(20px); /* Adjusted translation */
+            -ms-transform: translateX(20px);
+            transform: translateX(20px);
+        }
+
+        .button-container {
+            text-align: center;
+            padding: 25px 0;
+        }
+        .button {
+            display: inline-block;
+            background-color: #4CAF50; /* Green for "Save" */
+            color: #ffffff;
+            padding: 15px 30px;
+            text-decoration: none;
+            border-radius: 6px;
+            font-size: 20px;
+            font-weight: bold;
+            transition: background-color 0.3s ease;
+            margin: 0 10px;
+        }
+        .button.secondary {
+            background-color: #6c757d; /* Grey for "Reject All" */
+        }
+        .button.secondary:hover {
+            background-color: #5a6268;
+        }
+        .button:hover {
+            background-color: #45a049;
+        }
+        .footer {
+            text-align: center;
+            padding-top: 25px;
+            border-top: 1px solid #eeeeee;
+            font-size: 13px;
+            color: #777777;
+        }
+        .footer a {
+            color: #34495e; /* Darker links */
+            text-decoration: none;
+        }
+        .footer a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            {% if logo_url %}
+            <img src="{{ logo_url }}" alt="{{ company_name | default('Our Company') }} Logo">
+            {% endif %}
+            <h1>Cookie Settings</h1>
+        </div>
+
+        <div class="content">
+            <p>
+                We use cookies to improve your experience on our site. You can choose to accept or decline certain categories of cookies.
+            </p>
+
+            <div class="cookie-category">
+                <h3>Strictly Necessary Cookies</h3>
+                <p>These cookies are essential for the website to function and cannot be switched off in our systems. They are usually only set in response to actions made by you which amount to a request for services, such as setting your privacy preferences, logging in or filling in forms.</p>
+                <div class="toggle-switch">
+                    <label for="necessary-cookies">Always Active</label>
+                    <label class="switch">
+                        <input type="checkbox" id="necessary-cookies" checked disabled>
+                        <span class="slider"></span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="cookie-category">
+                <h3>Performance Cookies</h3>
+                <p>These cookies allow us to count visits and traffic sources so we can measure and improve the performance of our site. They help us to know which pages are the most and least popular and see how visitors move around the site.</p>
+                <div class="toggle-switch">
+                    <label for="performance-cookies">Enable Performance Cookies</label>
+                    <label class="switch">
+                        <input type="checkbox" id="performance-cookies" {% if performance_cookies_enabled %}checked{% endif %}>
+                        <span class="slider"></span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="cookie-category">
+                <h3>Functional Cookies</h3>
+                <p>These cookies enable the website to provide enhanced functionality and personalization. They may be set by us or by third-party providers whose services we have added to our pages.</p>
+                <div class="toggle-switch">
+                    <label for="functional-cookies">Enable Functional Cookies</label>
+                    <label class="switch">
+                        <input type="checkbox" id="functional-cookies" {% if functional_cookies_enabled %}checked{% endif %}>
+                        <span class="slider"></span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="cookie-category">
+                <h3>Targeting Cookies</h3>
+                <p>These cookies may be set through our site by our advertising partners. They may be used by those companies to build a profile of your interests and show you relevant adverts on other sites.</p>
+                <div class="toggle-switch">
+                    <label for="targeting-cookies">Enable Targeting Cookies</label>
+                    <label class="switch">
+                        <input type="checkbox" id="targeting-cookies" {% if targeting_cookies_enabled %}checked{% endif %}>
+                        <span class="slider"></span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="button-container">
+                <a href="{{ accept_all_url | default('#') }}" class="button">Accept All</a>
+                <a href="{{ save_preferences_url | default('#') }}" class="button">Save Preferences</a>
+                <a href="{{ reject_all_url | default('#') }}" class="button secondary">Reject All</a>
+            </div>
+
+            <p>
+                For more information about how we use cookies, please visit our <a href="{{ cookie_policy_url | default('#') }}">Cookie Policy</a>.
+            </p>
+        </div>
+
+        <div class="footer">
+            <p>
+                &copy; {{ current_year | default("2025") }} {{ company_name | default("Your Company Name") }}. All rights reserved.<br>
+                <a href="{{ unsubscribe_url | default('#') }}">Unsubscribe</a> |
+                <a href="{{ privacy_policy_url | default('#') }}">Privacy Policy</a>
+            </p>
+            <p>Stay connected:
+                {% if social_links.facebook %}<a href="{{ social_links.facebook }}">Facebook</a>{% endif %}
+                {% if social_links.twitter %}| <a href="{{ social_links.twitter }}">Twitter</a>{% endif %}
+                {% if social_links.instagram %}| <a href="{{ social_links.instagram }}">Instagram</a>{% endif %}
+            </p>
+        </div>
+    </div>
+</body>
+</html>

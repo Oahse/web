@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title> 🎉 Exciting News! {{ store_name | default("Our New Store") }} is Now Open! 🎉</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333333;
+            background-color: #f8f8f8;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 600px;
+            margin: 20px auto;
+            background-color: #ffffff;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+        }
+        .header {
+            text-align: center;
+            padding-bottom: 25px;
+            border-bottom: 1px solid #eeeeee;
+        }
+        .header img {
+            max-width: 180px;
+            height: auto;
+            margin-bottom: 15px;
+        }
+        .header h1 {
+            color: #28a745; /* Primary brand green */
+            font-size: 32px;
+            margin: 0;
+            line-height: 1.2;
+        }
+        .content {
+            padding: 25px 0;
+            text-align: center;
+        }
+        .content p {
+            margin-bottom: 18px;
+            font-size: 17px;
+        }
+        .button-container {
+            text-align: center;
+            padding: 25px 0;
+        }
+        .button {
+            display: inline-block;
+            background-color: #4CAF50; /* Vibrant green for action */
+            color: #ffffff;
+            padding: 15px 30px;
+            text-decoration: none;
+            border-radius: 6px;
+            font-size: 20px;
+            font-weight: bold;
+            transition: background-color 0.3s ease;
+        }
+        .button:hover {
+            background-color: #45a049;
+        }
+        .footer {
+            text-align: center;
+            padding-top: 25px;
+            border-top: 1px solid #eeeeee;
+            font-size: 13px;
+            color: #777777;
+        }
+        .footer a {
+            color: #28a745;
+            text-decoration: none;
+        }
+        .footer a:hover {
+            text-decoration: underline;
+        }
+        .highlight-text {
+            color: #e67e22; /* Orange for special offers */
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            {% if logo_url %}
+            <img src="{{ logo_url }}" alt="{{ store_name | default('Our Store') }} Logo">
+            {% endif %}
+            <h1>We're Officially Open!</h1>
+        </div>
+
+        <div class="content">
+            <p>Dear {{ customer_name | default("Valued Customer") }},</p>
+            <p>
+                We're absolutely delighted to announce the grand opening of **{{ store_name | default("our brand new online store") }}**!
+                Your new destination for quality products and a seamless shopping experience is now live.
+            </p>
+            <p>
+                To celebrate our exciting launch, we're offering a special <span class="highlight-text">{{ offer_details | default("15% discount") }}</span>
+                on your very first purchase! Simply use code: <strong class="alert-text">{{ discount_code | default("WELCOME15") }}</strong> at checkout.
+            </p>
+            {% if call_to_action_message %}
+            <p>{{ call_to_action_message }}</p>
+            {% endif %}
+            <div class="button-container">
+                <a href="{{ store_url | default('https://www.yourstoreurl.com') }}" class="button">Start Shopping Now!</a>
+            </div>
+            <p>
+                We've stocked up with a fantastic selection and can't wait for you to explore everything we have to offer.
+                Thank you for your incredible support!
+            </p>
+        </div>
+
+        <div class="footer">
+            <p>
+                &copy; {{ current_year | default("2025") }} {{ company_name | default("Your Company Name") }}. All rights reserved.<br>
+                <a href="{{ unsubscribe_url | default('#') }}">Unsubscribe</a> |
+                <a href="{{ privacy_policy_url | default('#') }}">Privacy Policy</a>
+            </p>
+            <p>Connect with us:
+                {% if social_links.facebook %}<a href="{{ social_links.facebook }}">Facebook</a>{% endif %}
+                {% if social_links.twitter %}| <a href="{{ social_links.twitter }}">Twitter</a>{% endif %}
+                {% if social_links.instagram %}| <a href="{{ social_links.instagram }}">Instagram</a>{% endif %}
+                {% if social_links.pinterest %}| <a href="{{ social_links.pinterest }}">Pinterest</a>{% endif %}
+            </p>
+        </div>
+    </div>
+</body>
+</html>

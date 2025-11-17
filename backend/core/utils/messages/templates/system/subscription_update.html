@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔔 Your Subscription Update for {{ service_name | default('Our Service') }}</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333333;
+            background-color: #f8f8f8;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 600px;
+            margin: 20px auto;
+            background-color: #ffffff;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+        }
+        .header {
+            text-align: center;
+            padding-bottom: 25px;
+            border-bottom: 1px solid #eeeeee;
+        }
+        .header img {
+            max-width: 180px;
+            height: auto;
+            margin-bottom: 15px;
+        }
+        .header h1 {
+            color: #28a745; /* Green for updates/positive changes */
+            font-size: 32px;
+            margin: 0;
+            line-height: 1.2;
+        }
+        .content {
+            padding: 25px 0;
+            text-align: center;
+        }
+        .content p {
+            margin-bottom: 18px;
+            font-size: 17px;
+        }
+        .update-summary {
+            background-color: #f4fcf4;
+            border: 1px solid #d4edda;
+            padding: 20px;
+            border-radius: 5px;
+            margin-bottom: 25px;
+            text-align: left;
+        }
+        .update-summary h3 {
+            color: #28a745;
+            margin-top: 0;
+            font-size: 20px;
+            text-align: center;
+            margin-bottom: 15px;
+        }
+        .update-summary p {
+            margin-bottom: 10px;
+            font-size: 16px;
+        }
+        .update-summary strong {
+            color: #e67e22;
+        }
+        .button-container {
+            text-align: center;
+            padding: 25px 0;
+        }
+        .button {
+            display: inline-block;
+            background-color: #4CAF50;
+            color: #ffffff;
+            padding: 15px 30px;
+            text-decoration: none;
+            border-radius: 6px;
+            font-size: 20px;
+            font-weight: bold;
+            transition: background-color 0.3s ease;
+        }
+        .button:hover {
+            background-color: #45a049;
+        }
+        .footer {
+            text-align: center;
+            padding-top: 25px;
+            border-top: 1px solid #eeeeee;
+            font-size: 13px;
+            color: #777777;
+        }
+        .footer a {
+            color: #28a745;
+            text-decoration: none;
+        }
+        .footer a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            {% if logo_url %}
+            <img src="{{ logo_url }}" alt="{{ company_name | default('Our Company') }} Logo">
+            {% endif %}
+            <h1>Your Subscription Has Been Updated!</h1>
+        </div>
+
+        <div class="content">
+            <p>Hi {{ customer_name | default("there") }},</p>
+            <p>
+                This email confirms a recent update to your **{{ service_name | default('subscription') }}** with
+                **{{ company_name | default('us') }}**.
+            </p>
+
+            <div class="update-summary">
+                <h3>Subscription Details:</h3>
+                <p><strong>Subscription ID:</strong> {{ subscription_id | default("N/A") }}</p>
+                <p><strong>Plan Name:</strong> <span style="color: #28a745;">{{ new_plan_name | default(old_plan_name) }}</span></p>
+                <p><strong>Status:</strong> <span style="color: {% if subscription_status == 'Active' %}#28a745{% else %}#e67e22{% endif %}; font-weight: bold;">{{ subscription_status | default("Active") }}</span></p>
+                <p><strong>Next Billing Date:</strong> {{ next_billing_date | default("N/A") }}</p>
+                <p><strong>Amount:</strong> {{ next_billing_amount | default("N/A") }}</p>
+
+                {% if old_plan_name and new_plan_name and old_plan_name != new_plan_name %}
+                <p style="margin-top: 15px;">You have successfully changed your plan from {{ old_plan_name }} to {{ new_plan_name }}.</p>
+                {% elif update_reason %}
+                <p style="margin-top: 15px;">Reason for update: {{ update_reason }}</p>
+                {% endif %}
+            </div>
+
+            <div class="button-container">
+                <a href="{{ manage_subscription_url | default('https://www.yourstoreurl.com/manage-subscription') }}" class="button">Manage Your Subscription</a>
+            </div>
+
+            <p>
+                If you have any questions about this update, please contact our support team.
+            </p>
+        </div>
+
+        <div class="footer">
+            <p>
+                &copy; {{ current_year | default("2025") }} {{ company_name | default("Your Company Name") }}. All rights reserved.<br>
+                <a href="{{ unsubscribe_url | default('#') }}">Unsubscribe</a> |
+                <a href="{{ privacy_policy_url | default('#') }}">Privacy Policy</a>
+            </p>
+            <p>Stay connected:
+                {% if social_links.facebook %}<a href="{{ social_links.facebook }}">Facebook</a>{% endif %}
+                {% if social_links.twitter %}| <a href="{{ social_links.twitter }}">Twitter</a>{% endif %}
+                {% if social_links.instagram %}| <a href="{{ social_links.instagram }}">Instagram</a>{% endif %}
+            </p>
+        </div>
+    </div>
+</body>
+</html>

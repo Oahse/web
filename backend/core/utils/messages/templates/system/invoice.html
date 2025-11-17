@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📄 Your Invoice from {{ company_name | default('Our Company') }}</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333333;
+            background-color: #f8f8f8;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 600px;
+            margin: 20px auto;
+            background-color: #ffffff;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+        }
+        .header {
+            text-align: center;
+            padding-bottom: 25px;
+            border-bottom: 1px solid #eeeeee;
+        }
+        .header img {
+            max-width: 180px;
+            height: auto;
+            margin-bottom: 15px;
+        }
+        .header h1 {
+            color: #28a745; /* Green for official documents */
+            font-size: 32px;
+            margin: 0;
+            line-height: 1.2;
+        }
+        .content {
+            padding: 25px 0;
+            text-align: center;
+        }
+        .content p {
+            margin-bottom: 18px;
+            font-size: 17px;
+        }
+        .invoice-details {
+            background-color: #f4fcf4;
+            border: 1px solid #d4edda;
+            padding: 20px;
+            border-radius: 5px;
+            margin-bottom: 25px;
+            text-align: left;
+        }
+        .invoice-details h2 {
+            color: #28a745;
+            font-size: 24px;
+            margin-top: 0;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+        .invoice-details table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 15px;
+        }
+        .invoice-details th, .invoice-details td {
+            padding: 8px 0;
+            border-bottom: 1px solid #eee;
+            text-align: left;
+            font-size: 15px;
+        }
+        .invoice-details th {
+            font-weight: bold;
+            color: #555;
+        }
+        .invoice-details .total-row td {
+            font-weight: bold;
+            font-size: 17px;
+            border-bottom: none;
+            padding-top: 10px;
+            color: #e67e22; /* Warm orange for total amount */
+        }
+        .address-block {
+            margin-bottom: 15px;
+            font-size: 15px;
+        }
+        .button-container {
+            text-align: center;
+            padding: 25px 0;
+        }
+        .button {
+            display: inline-block;
+            background-color: #4CAF50;
+            color: #ffffff;
+            padding: 15px 30px;
+            text-decoration: none;
+            border-radius: 6px;
+            font-size: 20px;
+            font-weight: bold;
+            transition: background-color 0.3s ease;
+        }
+        .button:hover {
+            background-color: #45a049;
+        }
+        .footer {
+            text-align: center;
+            padding-top: 25px;
+            border-top: 1px solid #eeeeee;
+            font-size: 13px;
+            color: #777777;
+        }
+        .footer a {
+            color: #28a745;
+            text-decoration: none;
+        }
+        .footer a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            {% if logo_url %}
+            <img src="{{ logo_url }}" alt="{{ company_name | default('Our Company') }} Logo">
+            {% endif %}
+            <h1>Invoice</h1>
+        </div>
+
+        <div class="content">
+            <p>Hi {{ customer_name | default("there") }},</p>
+            <p>
+                Thank you for your business! Here is your invoice for your recent transaction with
+                **{{ company_name | default('us') }}**.
+            </p>
+
+            <div class="invoice-details">
+                <h2>Invoice #<span style="color: #e67e22;">{{ invoice_number }}</span></h2>
+                <p><strong>Invoice Date:</strong> {{ invoice_date }}</p>
+                <p><strong>Due Date:</strong> {{ due_date }}</p>
+                {% if order_number %}
+                <p><strong>Related Order:</strong> <a href="{{ order_tracking_url }}" style="color: #28a745; text-decoration: none;">#{{ order_number }}</a></p>
+                {% endif %}
+
+                <div class="address-block">
+                    <p><strong>Billed To:</strong><br>
+                        {{ billing_address.name }}<br>
+                        {{ billing_address.line1 }}<br>
+                        {% if billing_address.line2 %}{{ billing_address.line2 }}<br>{% endif %}
+                        {{ billing_address.city }}, {{ billing_address.state_zip }}<br>
+                        {{ billing_address.country }}
+                    </p>
+                </div>
+
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Item Description</th>
+                            <th>Qty</th>
+                            <th>Unit Price</th>
+                            <th>Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in invoice_items %}
+                        <tr>
+                            <td>{{ item.description }}</td>
+                            <td>{{ item.quantity }}</td>
+                            <td>{{ item.unit_price }}</td>
+                            <td>{{ item.total }}</td>
+                        </tr>
+                        {% endfor %}
+                        {% if subtotal %}
+                        <tr>
+                            <td colspan="3" style="text-align: right;">Subtotal:</td>
+                            <td>{{ subtotal }}</td>
+                        </tr>
+                        {% endif %}
+                        {% if tax_amount %}
+                        <tr>
+                            <td colspan="3" style="text-align: right;">Tax:</td>
+                            <td>{{ tax_amount }}</td>
+                        </tr>
+                        {% endif %}
+                        {% if discount_amount %}
+                        <tr>
+                            <td colspan="3" style="text-align: right;">Discount:</td>
+                            <td>-{{ discount_amount }}</td>
+                        </tr>
+                        {% endif %}
+                        <tr class="total-row">
+                            <td colspan="3" style="text-align: right;">Amount Due:</td>
+                            <td>{{ amount_due }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <p><strong>Payment Status:</strong> <span style="font-weight: bold; color: {% if payment_status == 'Paid' %}#28a745{% else %}#e67e22{% endif %};">{{ payment_status }}</span></p>
+            </div>
+
+            <div class="button-container">
+                <a href="{{ view_invoice_url | default('https://www.yourstoreurl.com/invoice') }}" class="button">View Online Invoice</a>
+            </div>
+
+            <p>
+                Please keep this for your records. Contact us if you have any questions.
+            </p>
+        </div>
+
+        <div class="footer">
+            <p>
+                &copy; {{ current_year | default("2025") }} {{ company_name | default("Your Company Name") }}. All rights reserved.<br>
+                <a href="{{ unsubscribe_url | default('#') }}">Unsubscribe</a> |
+                <a href="{{ privacy_policy_url | default('#') }}">Privacy Policy</a>
+            </p>
+            <p>Stay connected:
+                {% if social_links.facebook %}<a href="{{ social_links.facebook }}">Facebook</a>{% endif %}
+                {% if social_links.twitter %}| <a href="{{ social_links.twitter }}">Twitter</a>{% endif %}
+                {% if social_links.instagram %}| <a href="{{ social_links.instagram }}">Instagram</a>{% endif %}
+            </p>
+        </div>
+    </div>
+</body>
+</html>

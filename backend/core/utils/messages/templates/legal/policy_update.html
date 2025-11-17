@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>⚖️ Important Policy Update - {{ company_name | default('Our Service') }}</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333333;
+            background-color: #f8f8f8;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 600px;
+            margin: 20px auto;
+            background-color: #ffffff;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+        }
+        .header {
+            text-align: center;
+            padding-bottom: 25px;
+            border-bottom: 1px solid #eeeeee;
+        }
+        .header img {
+            max-width: 180px;
+            height: auto;
+            margin-bottom: 15px;
+        }
+        .header h1 {
+            color: #2c3e50; /* Darker blue for legal/official notices */
+            font-size: 32px;
+            margin: 0;
+            line-height: 1.2;
+        }
+        .content {
+            padding: 25px 0;
+            text-align: center;
+        }
+        .content p {
+            margin-bottom: 18px;
+            font-size: 17px;
+        }
+        .policy-info {
+            background-color: #f0f8ff; /* Light blue background for info */
+            border: 1px solid #cce5ff; /* Blue border */
+            padding: 20px;
+            border-radius: 5px;
+            margin-bottom: 25px;
+            text-align: left;
+        }
+        .policy-info h3 {
+            color: #007bff; /* Blue for heading */
+            margin-top: 0;
+            font-size: 20px;
+            text-align: center;
+            margin-bottom: 15px;
+        }
+        .policy-info ul {
+            list-style-type: disc;
+            padding-left: 25px;
+            margin-bottom: 15px;
+            font-size: 16px;
+            color: #555;
+        }
+        .policy-info li {
+            margin-bottom: 8px;
+        }
+        .button-container {
+            text-align: center;
+            padding: 25px 0;
+        }
+        .button {
+            display: inline-block;
+            background-color: #007bff; /* Blue button */
+            color: #ffffff;
+            padding: 15px 30px;
+            text-decoration: none;
+            border-radius: 6px;
+            font-size: 20px;
+            font-weight: bold;
+            transition: background-color 0.3s ease;
+        }
+        .button:hover {
+            background-color: #0056b3;
+        }
+        .footer {
+            text-align: center;
+            padding-top: 25px;
+            border-top: 1px solid #eeeeee;
+            font-size: 13px;
+            color: #777777;
+        }
+        .footer a {
+            color: #007bff; /* Blue links */
+            text-decoration: none;
+        }
+        .footer a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            {% if logo_url %}
+            <img src="{{ logo_url }}" alt="{{ company_name | default('Our Company') }} Logo">
+            {% endif %}
+            <h1>Important Policy Update</h1>
+        </div>
+
+        <div class="content">
+            <p>Dear {{ customer_name | default("valued user") }},</p>
+            <p>
+                We're updating our **{{ policy_type | default('Terms of Service and Privacy Policy') }}** to enhance clarity and reflect changes in our services.
+                These updates will take effect on **{{ effective_date | default('August 31, 2025') }}**.
+            </p>
+
+            <div class="policy-info">
+                <h3>Key Changes Include:</h3>
+                <ul>
+                    <li>{{ change_1 | default("Revised sections on data handling and privacy.") }}</li>
+                    <li>{{ change_2 | default("Updates to user responsibilities and content guidelines.") }}</li>
+                    <li>{{ change_3 | default("Clarifications on service limitations and liability.") }}</li>
+                    {% if change_4 %}<li>{{ change_4 }}</li>{% endif %}
+                </ul>
+                <p>We encourage you to read the full updated policies below.</p>
+            </div>
+
+            <div class="button-container">
+                <a href="{{ full_policy_url | default('#') }}" class="button">Review Updated Policies</a>
+            </div>
+
+            <p>
+                By continuing to use our services after {{ effective_date | default('August 31, 2025') }}, you agree to the updated policies.
+                If you have any questions, please <a href="{{ contact_us_url | default('#') }}">contact us</a>.
+            </p>
+        </div>
+
+        <div class="footer">
+            <p>
+                &copy; {{ current_year | default("2025") }} {{ company_name | default("Your Company Name") }}. All rights reserved.<br>
+                <a href="{{ unsubscribe_url | default('#') }}">Unsubscribe</a> |
+                <a href="{{ privacy_policy_url | default('#') }}">Privacy Policy</a>
+            </p>
+            <p>Stay connected:
+                {% if social_links.facebook %}<a href="{{ social_links.facebook }}">Facebook</a>{% endif %}
+                {% if social_links.twitter %}| <a href="{{ social_links.twitter }}">Twitter</a>{% endif %}
+                {% if social_links.instagram %}| <a href="{{ social_links.instagram }}">Instagram</a>{% endif %}
+            </p>
+        </div>
+    </div>
+</body>
+</html>
