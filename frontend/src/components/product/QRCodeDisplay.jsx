@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { QrCodeIcon, DownloadIcon, PrinterIcon, CopyIcon, CheckIcon } from 'lucide-react';
-import { cn } from '../../lib/utils';
 
 /**
  * @typedef {object} QRCodeDisplayProps
@@ -113,11 +112,7 @@ export const QRCodeDisplay = ({
 
   if (!qrCode) {
     return (
-      <div className={cn(
-        'flex items-center justify-center bg-gray-100 rounded-lg border-2 border-dashed border-gray-300',
-        sizeClasses[size],
-        className
-      )}>
+      <div className={`flex items-center justify-center bg-gray-100 rounded-lg border-2 border-dashed border-gray-300 ${sizeClasses[size]} ${className || ''}`}>
         <div className="text-center">
           <QrCodeIcon size={24} className="text-gray-400 mx-auto mb-2" />
           <span className="text-xs text-gray-500">No QR Code</span>
@@ -127,16 +122,13 @@ export const QRCodeDisplay = ({
   }
 
   return (
-    <div className={cn('space-y-3', className)}>
+    <div className={`space-y-3 ${className || ''}`}>
       {/* QR Code Image */}
       <div className="relative group">
         <img
           src={`data:image/png;base64,${qrCode}`}
           alt={`QR Code for ${variant.name}`}
-          className={cn(
-            'border border-gray-200 rounded-lg shadow-sm bg-white p-2',
-            sizeClasses[size]
-          )}
+          className={`border border-gray-200 rounded-lg shadow-sm bg-white p-2 ${sizeClasses[size]}`}
         />
         
         {/* Hover overlay with info */}
@@ -170,12 +162,7 @@ export const QRCodeDisplay = ({
           
           <button
             onClick={copyToClipboard}
-            className={cn(
-              'p-2 rounded-md transition-colors',
-              copied
-                ? 'text-green-600 bg-green-100'
-                : 'text-gray-600 hover:text-primary hover:bg-gray-100'
-            )}
+            className={`p-2 rounded-md transition-colors ${copied ? 'text-green-600 bg-green-100' : 'text-gray-600 hover:text-primary hover:bg-gray-100'}`}
             title="Copy QR Code"
           >
             {copied ? <CheckIcon size={16} /> : <CopyIcon size={16} />}

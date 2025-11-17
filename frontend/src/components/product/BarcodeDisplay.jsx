@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { ScanIcon, DownloadIcon, PrinterIcon, CopyIcon, CheckIcon } from 'lucide-react';
-import { cn } from '../../lib/utils';
 
 /**
  * @typedef {object} BarcodeDisplayProps
@@ -118,10 +117,7 @@ export const BarcodeDisplay = ({
 
   if (!barcode) {
     return (
-      <div className={cn(
-        'flex items-center justify-center bg-gray-100 rounded-lg border-2 border-dashed border-gray-300 p-4',
-        className
-      )}>
+      <div className={`flex items-center justify-center bg-gray-100 rounded-lg border-2 border-dashed border-gray-300 p-4 ${className || ''}`}>
         <div className="text-center">
           <ScanIcon size={24} className="text-gray-400 mx-auto mb-2" />
           <span className="text-xs text-gray-500">No Barcode</span>
@@ -131,13 +127,13 @@ export const BarcodeDisplay = ({
   }
 
   return (
-    <div className={cn('space-y-3', className)}>
+    <div className={`space-y-3 ${className || ''}`}>
       {/* Barcode Image */}
       <div className="relative group bg-white border border-gray-200 rounded-lg p-3">
         <img
           src={`data:image/png;base64,${barcode}`}
           alt={`Barcode for ${variant.name}`}
-          className={cn('w-full object-contain', sizeClasses[size])}
+          className={`w-full object-contain ${sizeClasses[size]}`}
         />
         
         {/* SKU Text */}
@@ -178,12 +174,7 @@ export const BarcodeDisplay = ({
           
           <button
             onClick={copyToClipboard}
-            className={cn(
-              'p-2 rounded-md transition-colors',
-              copied
-                ? 'text-green-600 bg-green-100'
-                : 'text-gray-600 hover:text-primary hover:bg-gray-100'
-            )}
+            className={`p-2 rounded-md transition-colors ${copied ? 'text-green-600 bg-green-100' : 'text-gray-600 hover:text-primary hover:bg-gray-100'}`}
             title="Copy Barcode"
           >
             {copied ? <CheckIcon size={16} /> : <CopyIcon size={16} />}
