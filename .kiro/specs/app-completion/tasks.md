@@ -74,7 +74,7 @@
   - _Requirements: 1.1, 1.2, 1.3, 1.4_
   - **Git Commit:** "fix: improve product details page error handling"
 
-- [ ] 11. Complete Checkout Page
+- [-] 11. Complete Checkout Page
   - Create Checkout.jsx component with order summary
   - Implement shipping address form with validation
   - Add payment method selection (Adyen integration)

@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { ChevronRightIcon, TrashIcon, MinusIcon, PlusIcon, ShoppingCartIcon } from 'lucide-react';
 import { useCart } from '../contexts/CartContext';
 import { motion } from 'framer-motion';
-import { CartSkeleton } from '../components/skeletons/CartSkeleton';
+import { CartSkeleton } from '../components/ui/CartSkeleton';
 
 export const Cart = () => {
   const { cart, removeItem, updateQuantity, clearCart, loading } = useCart();

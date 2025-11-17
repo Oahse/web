@@ -199,28 +199,63 @@ export class AuthAPI {
    * Get user's addresses
    */
   static async getAddresses() {
-    return await apiClient.get(`/users/me/addresses`);
+    return await apiClient.get(`/auth/addresses`);
   }
 
   /**
-   * Add new address
+   * Create new address
    */
-  static async addAddress(address) {
-    return await apiClient.post('/users/addresses', address);
+  static async createAddress(address) {
+    return await apiClient.post('/auth/addresses', address);
   }
 
   /**
    * Update address
    */
   static async updateAddress(addressId, address) {
-    return await apiClient.put(`/users/addresses/${addressId}`, address);
+    return await apiClient.put(`/auth/addresses/${addressId}`, address);
   }
 
   /**
    * Delete address
    */
   static async deleteAddress(addressId) {
-    return await apiClient.delete(`/users/addresses/${addressId}`);
+    return await apiClient.delete(`/auth/addresses/${addressId}`);
+  }
+
+  /**
+   * Get user's payment methods
+   */
+  static async getPaymentMethods() {
+    return await apiClient.get('/users/me/payment-methods');
+  }
+
+  /**
+   * Add payment method
+   */
+  static async addPaymentMethod(paymentMethod) {
+    return await apiClient.post('/users/payment-methods', paymentMethod);
+  }
+
+  /**
+   * Update payment method
+   */
+  static async updatePaymentMethod(paymentMethodId, paymentMethod) {
+    return await apiClient.put(`/users/payment-methods/${paymentMethodId}`, paymentMethod);
+  }
+
+  /**
+   * Delete payment method
+   */
+  static async deletePaymentMethod(paymentMethodId) {
+    return await apiClient.delete(`/users/payment-methods/${paymentMethodId}`);
+  }
+
+  /**
+   * Set default payment method
+   */
+  static async setDefaultPaymentMethod(paymentMethodId) {
+    return await apiClient.put(`/users/payment-methods/${paymentMethodId}/default`);
   }
 }
 
