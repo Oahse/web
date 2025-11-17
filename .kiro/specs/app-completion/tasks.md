@@ -144,7 +144,7 @@
   - _Requirements: 9.1, 9.2, 9.3, 9.4, 9.5_
   - **Git Commit:** "test: verify and fix product search and filters"
 
-- [ ] 19. Test Cart Flow End-to-End
+- [x] 19. Test Cart Flow End-to-End
   - Test adding products to cart
   - Test updating quantities
   - Test removing items
