@@ -4,7 +4,7 @@
  */
 
 import React from 'react';
-import { GoogleLogin, CredentialResponse } from '@react-oauth/google';
+import { GoogleLogin } from '@react-oauth/google';
 import FacebookLogin from '@greatsumini/react-facebook-login';
 import { FaFacebook, FaTiktok } from 'react-icons/fa';
 import { toast } from 'react-hot-toast';
