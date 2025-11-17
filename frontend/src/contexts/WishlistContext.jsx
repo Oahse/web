@@ -1,4 +1,4 @@
-import { useEffect, useState, createContext, useCallback, useContext } from 'react';
+import React, { useEffect, useState, createContext, useCallback, useContext } from 'react';
 import { useAuth } from './AuthContext';
 import { toast } from 'react-hot-toast';
 import WishlistAPI from '../apis/wishlists';
