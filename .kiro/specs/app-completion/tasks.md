@@ -202,7 +202,7 @@
   - _Requirements: Repository Management_
   - **Status:** Already configured
 
-- [ ] 26. Convert Frontend from JSX to TSX
+- [-] 26. Convert Frontend from JSX to TSX
   - Convert all .jsx files to .tsx in frontend/src
   - Add proper TypeScript types and interfaces
   - Fix type errors and add type annotations
