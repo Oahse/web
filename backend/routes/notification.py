@@ -60,6 +60,25 @@ async def mark_notification_as_read(
         )
 
 
+@router.put("/mark-all-read")
+async def mark_all_notifications_as_read(
+    current_user: User = Depends(get_current_auth_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Mark all notifications as read."""
+    try:
+        notification_service = NotificationService(db)
+        result = await notification_service.mark_all_as_read(str(current_user.id))
+        return Response(success=True, data=result, message=result["message"])
+    except APIException:
+        raise
+    except Exception as e:
+        raise APIException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            message=f"Failed to mark all notifications as read: {str(e)}"
+        )
+
+
 @router.delete("/{notification_id}")
 async def delete_notification(
     notification_id: str,

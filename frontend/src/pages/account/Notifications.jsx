@@ -1,133 +1,245 @@
-import React, { useState, useEffect } from 'react';
-import { CheckCircle, Mail, Trash2 } from 'lucide-react';
-import { useApi } from '../../hooks/useApi';
+import { useState, useEffect } from 'react';
+import { BellIcon, CheckIcon, TrashIcon, RefreshCwIcon } from 'lucide-react';
 import { NotificationAPI } from '../../apis/notification';
-import { toast } from 'react-hot-toast';
 
-/**
- * Notifications component displays a user's notifications and allows them to mark as read or delete them.
- */
 export const Notifications = () => {
-  // State for current page and limit for pagination
-  const [page] = useState(1);
-  const [limit] = useState(10);
+  const [notifications, setNotifications] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState('all'); // 'all', 'unread', 'read'
+  const [page, setPage] = useState(1);
+  const [pagination, setPagination] = useState(null);
 
-  // Fetch notifications using the custom useApi hook
-  const { data: notificationsData, loading, error, refetch } = useApi(
-    () => NotificationAPI.getUserNotifications({ page: 1, limit }),
-    { autoFetch: true } // Automatically fetch data on component mount
-  );
+  const fetchNotifications = async (currentPage = 1, readFilter = null) => {
+    try {
+      setLoading(true);
+      const params = { page: currentPage, limit: 20 };
+      if (readFilter !== null) {
+        params.read = readFilter;
+      }
+      
+      const response = await NotificationAPI.getUserNotifications(params);
+      if (response.success && response.data?.data) {
+        setNotifications(response.data.data);
+        setPagination(response.data.pagination);
+      }
+    } catch (error) {
+      console.error('Failed to fetch notifications:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  /**
-   * Handles marking a specific notification as read.
-   * Displays a toast notification on success or failure and refetches notifications.
-   * @param {string} notificationId - The ID of the notification to mark as read.
-   */
+  useEffect(() => {
+    const readFilter = filter === 'unread' ? false : filter === 'read' ? true : null;
+    fetchNotifications(page, readFilter);
+  }, [page, filter]);
+
   const handleMarkAsRead = async (notificationId) => {
     try {
       await NotificationAPI.markNotificationAsRead(notificationId);
-      toast.success('Notification marked as read!');
-      refetch(); // Re-fetch notifications to update the UI
-    } catch (err) {
-      toast.error(`Failed to mark notification as read: ${err.message}`);
+      setNotifications(prev =>
+        prev.map(n => n.id === notificationId ? { ...n, read: true } : n)
+      );
+    } catch (error) {
+      console.error('Failed to mark notification as read:', error);
     }
   };
 
-  /**
-   * Handles deleting a specific notification.
-   * Displays a toast notification on success or failure and refetches notifications.
-   * @param {string} notificationId - The ID of the notification to delete.
-   */
-  const handleDeleteNotification = async (notificationId) => {
+  const handleMarkAllAsRead = async () => {
+    try {
+      await NotificationAPI.markAllNotificationsAsRead();
+      setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+    } catch (error) {
+      console.error('Failed to mark all as read:', error);
+    }
+  };
+
+  const handleDelete = async (notificationId) => {
     try {
       await NotificationAPI.deleteNotification(notificationId);
-      toast.success('Notification deleted!');
-      refetch(); // Re-fetch notifications to update the UI
-    } catch (err) {
-      toast.error(`Failed to delete notification: ${err.message}`);
+      setNotifications(prev => prev.filter(n => n.id !== notificationId));
+    } catch (error) {
+      console.error('Failed to delete notification:', error);
     }
   };
 
-  // Display loading spinner while fetching notifications
-  if (loading) {
-    return (
-      <div className="max-w-md mx-auto mt-8 p-4">
-        <div className="flex justify-center items-center min-h-[200px]">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-        </div>
-      </div>
-    );
-  }
+  const handleRefresh = () => {
+    const readFilter = filter === 'unread' ? false : filter === 'read' ? true : null;
+    fetchNotifications(page, readFilter);
+  };
 
-  // Display error message if fetching notifications fails
-  if (error) {
-    return (
-      <div className="max-w-md mx-auto mt-8 p-4">
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
-          <strong className="font-bold">Error!</strong>
-          <span className="block sm:inline"> Error loading notifications: {error.message}</span>
-        </div>
-      </div>
-    );
-  }
+  const getNotificationIcon = (type) => {
+    switch (type) {
+      case 'order':
+        return '📦';
+      case 'success':
+        return '✅';
+      case 'warning':
+        return '⚠️';
+      case 'error':
+        return '❌';
+      default:
+        return '🔔';
+    }
+  };
 
-  // Extract notifications and pagination data
-  const notifications = notificationsData?.data || [];
-  const pagination = notificationsData?.pagination;
+  const formatTimestamp = (timestamp) => {
+    if (!timestamp) return '';
+    const date = new Date(timestamp);
+    return date.toLocaleString();
+  };
+
+  const unreadCount = notifications.filter(n => !n.read).length;
 
   return (
-    <div className="max-w-md mx-auto mt-8 p-4">
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">Your Notifications</h1>
-
-      {notifications.length === 0 ? (
-        <div className="bg-blue-100 border border-blue-400 text-blue-700 px-4 py-3 rounded relative" role="alert">
-          <strong className="font-bold">Info!</strong>
-          <span className="block sm:inline"> You have no notifications.</span>
-        </div>
-      ) : (
-        <ul className="space-y-3">
-          {notifications.map((notification) => (
-            <li
-              key={notification.id}
-              className={`flex items-center p-4 rounded-lg shadow-sm border ${notification.read ? 'bg-white border-gray-200' : 'bg-blue-50 border-blue-200'}`}
+    <div className="max-w-4xl mx-auto">
+      <div className="bg-surface rounded-lg shadow-md p-6">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h1 className="text-2xl font-bold text-copy">Notifications</h1>
+            {unreadCount > 0 && (
+              <p className="text-sm text-copy-light mt-1">
+                You have {unreadCount} unread notification{unreadCount !== 1 ? 's' : ''}
+              </p>
+            )}
+          </div>
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={handleRefresh}
+              className="p-2 hover:bg-surface-hover rounded-full transition-colors"
+              title="Refresh"
             >
-              <div className="flex-shrink-0 mr-3">
-                {notification.read ? <Mail size={20} className="text-gray-500" /> : <Mail size={20} className="text-blue-600" />}
-              </div>
-              <div className="flex-1">
-                <p className="font-medium text-gray-800">{notification.message}</p>
-                <p className="text-sm text-gray-500">Type: {notification.type} - {new Date(notification.created_at).toLocaleString()}</p>
-              </div>
-              <div className="flex items-center ml-4">
-                {!notification.read && (
-                  <button
-                    onClick={() => handleMarkAsRead(notification.id)}
-                    className="p-2 rounded-full text-blue-600 hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    title="Mark as read"
-                  >
-                    <CheckCircle size={20} />
-                  </button>
-                )}
-                <button
-                  onClick={() => handleDeleteNotification(notification.id)}
-                  className="p-2 rounded-full text-red-600 hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-red-500 ml-2"
-                  title="Delete notification"
-                >
-                  <Trash2 size={20} />
-                </button>
-              </div>
-            </li>
-          ))}
-        </ul>
-      )}
-
-      {/* Pagination controls */}
-      {pagination && pagination.total_pages > 1 && (
-        <div className="flex justify-center mt-6">
-          <p className="text-gray-600">Page {pagination.page} of {pagination.total_pages}</p>
-          {/* Add actual pagination buttons here if needed */}
+              <RefreshCwIcon size={20} className="text-copy" />
+            </button>
+            {unreadCount > 0 && (
+              <button
+                onClick={handleMarkAllAsRead}
+                className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-dark transition-colors text-sm"
+              >
+                Mark all as read
+              </button>
+            )}
+          </div>
         </div>
-      )}
+
+        {/* Filter Tabs */}
+        <div className="flex space-x-4 mb-6 border-b border-border">
+          <button
+            onClick={() => { setFilter('all'); setPage(1); }}
+            className={`pb-2 px-1 transition-colors ${
+              filter === 'all'
+                ? 'border-b-2 border-primary text-primary font-semibold'
+                : 'text-copy-light hover:text-copy'
+            }`}
+          >
+            All
+          </button>
+          <button
+            onClick={() => { setFilter('unread'); setPage(1); }}
+            className={`pb-2 px-1 transition-colors ${
+              filter === 'unread'
+                ? 'border-b-2 border-primary text-primary font-semibold'
+                : 'text-copy-light hover:text-copy'
+            }`}
+          >
+            Unread
+          </button>
+          <button
+            onClick={() => { setFilter('read'); setPage(1); }}
+            className={`pb-2 px-1 transition-colors ${
+              filter === 'read'
+                ? 'border-b-2 border-primary text-primary font-semibold'
+                : 'text-copy-light hover:text-copy'
+            }`}
+          >
+            Read
+          </button>
+        </div>
+
+        {/* Notifications List */}
+        {loading ? (
+          <div className="text-center py-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+            <p className="text-copy-light mt-4">Loading notifications...</p>
+          </div>
+        ) : notifications.length === 0 ? (
+          <div className="text-center py-12">
+            <BellIcon size={64} className="mx-auto text-copy-light opacity-50 mb-4" />
+            <p className="text-copy-light text-lg">No notifications to display</p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {notifications.map((notification) => (
+              <div
+                key={notification.id}
+                className={`p-4 rounded-lg border transition-colors ${
+                  !notification.read
+                    ? 'bg-primary/5 border-primary/20'
+                    : 'bg-surface-hover border-border'
+                }`}
+              >
+                <div className="flex items-start space-x-4">
+                  <span className="text-3xl flex-shrink-0">
+                    {getNotificationIcon(notification.type)}
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <p className={`${!notification.read ? 'font-semibold' : ''} text-copy`}>
+                      {notification.message}
+                    </p>
+                    <p className="text-sm text-copy-light mt-1">
+                      {formatTimestamp(notification.created_at)}
+                    </p>
+                  </div>
+                  <div className="flex items-center space-x-2 flex-shrink-0">
+                    {!notification.read && (
+                      <button
+                        onClick={() => handleMarkAsRead(notification.id)}
+                        className="p-2 hover:bg-surface-active rounded transition-colors"
+                        title="Mark as read"
+                      >
+                        <CheckIcon size={20} className="text-primary" />
+                      </button>
+                    )}
+                    <button
+                      onClick={() => handleDelete(notification.id)}
+                      className="p-2 hover:bg-surface-active rounded transition-colors"
+                      title="Delete"
+                    >
+                      <TrashIcon size={20} className="text-copy-light hover:text-error" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Pagination */}
+        {pagination && pagination.pages > 1 && (
+          <div className="flex items-center justify-center space-x-2 mt-6">
+            <button
+              onClick={() => setPage(p => Math.max(1, p - 1))}
+              disabled={page === 1}
+              className="px-4 py-2 border border-border rounded-md hover:bg-surface-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Previous
+            </button>
+            <span className="text-copy">
+              Page {page} of {pagination.pages}
+            </span>
+            <button
+              onClick={() => setPage(p => Math.min(pagination.pages, p + 1))}
+              disabled={page === pagination.pages}
+              className="px-4 py-2 border border-border rounded-md hover:bg-surface-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Next
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   );
 };
+
+export default Notifications;

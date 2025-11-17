@@ -109,7 +109,7 @@
   - _Requirements: 6.1, 6.2, 6.3, 6.4_
   - **Git Commit:** "fix: enhance admin dashboard with proper data display"
 
-- [-] 15. Fix Admin Orders Management
+- [x] 15. Fix Admin Orders Management
   - Verify admin orders API endpoint functionality
   - Update AdminOrders.jsx to handle pagination correctly
   - Add status filter dropdown functionality
@@ -126,7 +126,7 @@
   - _Requirements: 8.1, 8.2, 8.3, 8.4_
   - **Status:** Already implemented, needs integration testing
 
-- [ ] 17. Complete Notifications System
+- [x] 17. Complete Notifications System
   - NotificationService already exists in backend
   - Add notification creation on order status changes
   - Implement mark as read functionality in frontend

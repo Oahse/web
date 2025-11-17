@@ -29,6 +29,7 @@ const ThemeSettings = lazy(() =>
 const NotificationSettings = lazy(() =>
   import('../components/account/NotificationSettings').then(module => ({ default: module.NotificationSettings }))
 );
+const Notifications = lazy(() => import('./account/Notifications'));
 const PaymentMethods = lazy(() =>
   import('../components/account/PaymentMethods').then(module => ({ default: module.PaymentMethods }))
 );
@@ -167,7 +168,8 @@ export const Account = () => {
               <Route path="/wishlist" element={<Wishlist />} />
               <Route path="/addresses" element={<Addresses />} />
               <Route path="/payment-methods" element={<PaymentMethods />} />
-              <Route path="/notifications" element={<NotificationSettings />} />
+              <Route path="/notifications" element={<Notifications />} />
+              <Route path="/notification-settings" element={<NotificationSettings />} />
               <Route path="/theme" element={<ThemeSettings />} />
               <Route path="*" element={<Dashboard />} />
             </Routes>

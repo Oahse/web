@@ -8,6 +8,7 @@ import { motion } from 'framer-motion';
 
 import { SkeletonHeader } from '../ui/SkeletonNavigation';
 import { getCountryByCode } from '../../lib/countries';
+import { NotificationBell } from '../ui/NotificationBell';
 
 
 
@@ -248,6 +249,9 @@ export const Header = ({
                   </span>
                 </div>
               </Link>
+
+              {/* Notifications */}
+              <NotificationBell />
 
               {/* Wishlist */}
               <Link to="/account/wishlist" className="hidden md:flex items-center hover:text-primary">

@@ -59,6 +59,23 @@ class NotificationService:
         await self.db.refresh(notification)
         return notification.to_dict()
 
+    async def mark_all_as_read(self, user_id: str) -> dict:
+        """Mark all notifications as read for a user."""
+        query = select(Notification).where(
+            Notification.user_id == user_id,
+            Notification.read == False
+        )
+        result = await self.db.execute(query)
+        notifications = result.scalars().all()
+
+        count = 0
+        for notification in notifications:
+            notification.read = True
+            count += 1
+
+        await self.db.commit()
+        return {"marked_count": count, "message": f"Marked {count} notifications as read"}
+
     async def create_notification(self, user_id: str, message: str, type: str = "info", related_id: Optional[str] = None) -> Notification:
         """Create a new notification."""
         notification = Notification(

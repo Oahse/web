@@ -127,8 +127,9 @@ class OrderService:
                 # Clear cart after successful order and commit
                 await cart_service.clear_cart(user_id)
                 
-                # Send order confirmation email in background
+                # Send order confirmation email and notification in background
                 background_tasks.add_task(self._send_order_confirmation, order.id)
+                background_tasks.add_task(self._notify_order_created, str(order.id), str(user_id))
 
             else:
                 # Payment failed
@@ -323,6 +324,11 @@ class OrderService:
 
         await self.db.commit()
         await self.db.refresh(order)
+        
+        # Send notification to user about status change
+        notification_service = NotificationService(self.db)
+        await notification_service.notify_order_updated(str(order_id), str(order.user_id), status)
+        
         return order
 
     async def _format_order_response(self, order: Order) -> OrderResponse:

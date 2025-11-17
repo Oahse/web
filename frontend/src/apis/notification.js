@@ -28,6 +28,21 @@ export class NotificationAPI {
   }
 
   /**
+   * Mark all notifications as read
+   */
+  static async markAllNotificationsAsRead() {
+    return await apiClient.put('/notifications/mark-all-read');
+  }
+
+  /**
+   * Get unread notification count
+   */
+  static async getUnreadCount() {
+    const response = await apiClient.get('/notifications?read=false&limit=1');
+    return response.data?.pagination?.total || 0;
+  }
+
+  /**
    * Delete a notification
    */
   static async deleteNotification(notificationId) {
