@@ -1,4 +1,3 @@
-import React, { useEffect } from 'react';
 import { ShoppingCartIcon, UsersIcon, DollarSignIcon, ArrowUpIcon, ArrowDownIcon, TrendingUpIcon, CalendarIcon, PackageIcon } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useApi } from '../../hooks/useApi';
@@ -31,8 +30,6 @@ export const AdminDashboard = () => {
     error: ordersError,
     refetch: refetchRecentOrders,
   } = useApi(getAllOrdersCallback, { autoFetch: true, showErrorToast: false });
-
-  // Removed useEffect for data fetching as useApi now handles autoFetch
 
   // Fallback data for when API fails
   const fallbackStats = [{
@@ -102,32 +99,34 @@ export const AdminDashboard = () => {
     name: 'Organic Shea Butter',
     sales: 142,
     revenue: 1419.58,
-    image: 'https://images.unsplash.com/photo-1626806787461-102c1bfaaea1?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=100&q=80'
+    image_url: 'https://images.unsplash.com/photo-1626806787461-102c1bfaaea1?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=100&q=80'
   }, {
     id: 'admin-prod-550e8400-e29b-41d4-a716-446655440002',
     name: 'Premium Arabica Coffee',
     sales: 98,
     revenue: 1861.02,
-    image: 'https://images.unsplash.com/photo-1559525839-8f27c16df8d2?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=100&q=80'
+    image_url: 'https://images.unsplash.com/photo-1559525839-8f27c16df8d2?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=100&q=80'
   }, {
     id: 'admin-prod-550e8400-e29b-41d4-a716-446655440003',
     name: 'Organic Quinoa',
     sales: 76,
     revenue: 532.24,
-    image: 'https://images.unsplash.com/photo-1612257999968-a42df8159183?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=100&q=80'
+    image_url: 'https://images.unsplash.com/photo-1612257999968-a42df8159183?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=100&q=80'
   }, {
     id: 'admin-prod-550e8400-e29b-41d4-a716-446655440004',
     name: 'Moringa Powder',
     sales: 65,
     revenue: 1039.35,
-    image: 'https://images.unsplash.com/photo-1515362655824-9a74989f318e?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=100&q=80'
+    image_url: 'https://images.unsplash.com/photo-1515362655824-9a74989f318e?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=100&q=80'
   }];
 
   // Use API data or fallback to demo data
-  const stats = adminStats ? [
+  // API returns {success: true, data: {...}}, so we need to access .data
+  const statsData = adminStats?.data;
+  const stats = statsData ? [
     {
       title: 'Total Revenue',
-      value: `$${adminStats.total_revenue?.toLocaleString() || '0'}`,
+      value: `$${statsData.total_revenue?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}`,
       change: '+12.5%', // This would come from API
       increasing: true,
       icon: <DollarSignIcon size={20} />,
@@ -135,7 +134,7 @@ export const AdminDashboard = () => {
     },
     {
       title: 'Orders',
-      value: adminStats.total_orders?.toString() || '0',
+      value: statsData.total_orders?.toString() || '0',
       change: '+8.2%', // This would come from API
       increasing: true,
       icon: <ShoppingCartIcon size={20} />,
@@ -143,7 +142,7 @@ export const AdminDashboard = () => {
     },
     {
       title: 'Customers',
-      value: adminStats.total_customers?.toString() || '0',
+      value: statsData.total_customers?.toString() || '0',
       change: '+5.7%', // This would come from API
       increasing: true,
       icon: <UsersIcon size={20} />,
@@ -151,7 +150,7 @@ export const AdminDashboard = () => {
     },
     {
       title: 'Products',
-      value: adminStats.total_products?.toString() || '0',
+      value: statsData.total_products?.toString() || '0',
       change: '+2.1%', // This would come from API
       increasing: true,
       icon: <PackageIcon size={20} />,
@@ -159,8 +158,9 @@ export const AdminDashboard = () => {
     }
   ] : fallbackStats;
 
-  const recentOrders = recentOrdersData?.data || fallbackRecentOrders;
-  const topProducts = platformOverview?.top_products || fallbackTopProducts;
+  // API returns {success: true, data: {data: [...], pagination: {...}}}
+  const recentOrders = recentOrdersData?.data?.data || fallbackRecentOrders;
+  const topProducts = platformOverview?.data?.top_products || fallbackTopProducts;
 
   if (statsError && overviewError && ordersError) {
     return (
@@ -265,10 +265,10 @@ export const AdminDashboard = () => {
                       </Link>
                     </td>
                     <td className={`${themeClasses.text.primary} py-3`}>
-                      {`${order.user?.firstname} ${order.user?.lastname}` || 'N/A'}
+                      {order.user ? `${order.user.firstname || ''} ${order.user.lastname || ''}`.trim() || 'N/A' : order.customer || 'N/A'}
                     </td>
                     <td className={`${themeClasses.text.muted} py-3`}>
-                      {order.date || new Date(order.created_at).toLocaleDateString()}
+                      {order.date || (order.created_at ? new Date(order.created_at).toLocaleDateString() : 'N/A')}
                     </td>
                     <td className="py-3">
                       <span className={`px-2 py-1 rounded-full text-xs ${
@@ -276,7 +276,7 @@ export const AdminDashboard = () => {
                         order.status === 'shipped' ? 'bg-blue-100 text-blue-800' : 
                         'bg-yellow-100 text-yellow-800'
                       }`}>
-                        {order.status?.charAt(0).toUpperCase() + order.status?.slice(1) || 'Processing'}
+                        {order.status ? order.status.charAt(0).toUpperCase() + order.status.slice(1) : 'Processing'}
                       </span>
                     </td>
                     <td className="py-3 font-medium">
@@ -312,7 +312,7 @@ export const AdminDashboard = () => {
             ) : (
               topProducts.map(product => <div key={product.id} className="flex items-center">
                 <img 
-                  src={product.image_url || 'https://images.unsplash.com/photo-1560472354-b33ff0c44a43?ixlib=rb-4.0.3&auto=format&fit=crop&w=100&q=80'} 
+                  src={product.image_url || product.image || 'https://images.unsplash.com/photo-1560472354-b33ff0c44a43?ixlib=rb-4.0.3&auto=format&fit=crop&w=100&q=80'} 
                   alt={product.name} 
                   className="w-10 h-10 rounded-md object-cover mr-3" 
                 />
