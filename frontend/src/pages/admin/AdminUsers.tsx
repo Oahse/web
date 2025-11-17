@@ -175,7 +175,7 @@ export const AdminUsers = () => {
                   </tr>
                 ))
               ) : (
-                users.map((user) => (
+                console.log('Rendering users:', users) || users.map((user) => (
                   <tr key={user.id} className="border-t border-border-light hover:bg-surface-hover">
                     <td className="py-3 px-4">
                       <div className="flex items-center">
