@@ -1,7 +1,7 @@
 from sqlalchemy import Column, String, Boolean, ForeignKey, DateTime
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
-from core.database import BaseModel, CHAR_LENGTH
+from core.database import BaseModel, CHAR_LENGTH, GUID
 
 
 class User(BaseModel):
@@ -81,8 +81,7 @@ class User(BaseModel):
 class Address(BaseModel):
     __tablename__ = "addresses"
 
-    user_id = Column(UUID(as_uuid=True), ForeignKey(
-        "users.id"), nullable=False)
+    user_id = Column(GUID(), ForeignKey("users.id"), nullable=False)
     street = Column(String(CHAR_LENGTH), nullable=False)
     city = Column(String(100), nullable=False)
     state = Column(String(100), nullable=False)

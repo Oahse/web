@@ -1,13 +1,13 @@
 from sqlalchemy import Column, String, Boolean, ForeignKey, Text, Integer
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
-from core.database import BaseModel
+from core.database import BaseModel, GUID
 
 
 class PaymentMethod(BaseModel):
     __tablename__ = "payment_methods"
 
-    user_id = Column(UUID(as_uuid=True), ForeignKey(
+    user_id = Column(GUID(), ForeignKey(
         "users.id"), nullable=False)
     # card, bank_account, mobile_money
     type = Column(String(50), nullable=False)

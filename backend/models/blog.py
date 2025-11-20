@@ -1,7 +1,7 @@
 from sqlalchemy import Column, String, Boolean, DateTime, ForeignKey, Text, JSON
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
-from core.database import BaseModel, CHAR_LENGTH
+from core.database import BaseModel, CHAR_LENGTH, GUID
 
 
 class BlogPost(BaseModel):
@@ -10,8 +10,7 @@ class BlogPost(BaseModel):
     title = Column(String(CHAR_LENGTH), nullable=False)
     content = Column(Text, nullable=False)
     excerpt = Column(Text, nullable=True)
-    author_id = Column(UUID(as_uuid=True), ForeignKey(
-        "users.id"), nullable=False)
+    author_id = Column(GUID(), ForeignKey("users.id"), nullable=False)
     tags = Column(JSON, nullable=True)  # ["organic", "farming", "health"]
     image_url = Column(String(500), nullable=True)
     is_published = Column(Boolean, default=False)

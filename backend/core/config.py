@@ -61,18 +61,15 @@ class Settings:
     SQLITE_DB_PATH: str = os.getenv('SQLITE_DB_PATH', 'db1.db')
 
     # Security
-    SECRET_KEY: str = os.getenv('SECRET_KEY', 'changeme-super-secret-key')
-    STRIPE_SECRET_KEY: str = os.getenv(
-        'STRIPE_SECRET_KEY', 'changeme-super-secret-key')
-    STRIPE_WEBHOOK_SECRET: str = os.getenv(
-        'STRIPE_WEBHOOK_SECRET', 'changeme-super-secret-webhook-key')
+    SECRET_KEY: str = os.getenv('SECRET_KEY')
+    STRIPE_SECRET_KEY: str = os.getenv('STRIPE_SECRET_KEY')
+    STRIPE_WEBHOOK_SECRET: str = os.getenv('STRIPE_WEBHOOK_SECRET')
     ALGORITHM: str = os.getenv('ALGORITHM', "HS256")
     ACCESS_TOKEN_EXPIRE_MINUTES: int = int(
         os.getenv('ACCESS_TOKEN_EXPIRE_MINUTES', 30))
     REFRESH_TOKEN_EXPIRE_DAYS: int = int(
         os.getenv('REFRESH_TOKEN_EXPIRE_DAYS', 7))
-    RESEND_API_KEY: str = os.getenv(
-        'RESEND_API_KEY', "re_J9sfHbqG_Go1YUSTfYS14y6Te1L2jNEUj")
+    RESEND_API_KEY: str = os.getenv('RESEND_API_KEY')
 
     MAILGUN_API_KEY: str = os.getenv('MAILGUN_API_KEY', '')
     MAILGUN_DOMAIN: str = os.getenv('MAILGUN_DOMAIN', '')
@@ -99,11 +96,11 @@ class Settings:
     WHATSAPP_ACCESS_TOKEN: str = os.getenv('WHATSAPP_ACCESS_TOKEN', '')
     PHONE_NUMBER_ID: str = os.getenv('PHONE_NUMBER_ID', '')
 
-    FACEBOOK_APP_ID: str = os.getenv('FACEBOOK_APP_ID', '')
-    FACEBOOK_APP_SECRET: str = os.getenv('FACEBOOK_APP_SECRET', '')
+    FACEBOOK_APP_ID: str = os.getenv('FACEBOOK_APP_ID')
+    FACEBOOK_APP_SECRET: str = os.getenv('FACEBOOK_APP_SECRET')
 
-    TIKTOK_CLIENT_KEY: str = os.getenv('TIKTOK_CLIENT_KEY', '')
-    TIKTOK_CLIENT_SECRET: str = os.getenv('TIKTOK_CLIENT_SECRET', '')
+    TIKTOK_CLIENT_KEY: str = os.getenv('TIKTOK_CLIENT_KEY')
+    TIKTOK_CLIENT_SECRET: str = os.getenv('TIKTOK_CLIENT_SECRET')
 
     @property
     def server_host(self) -> str:

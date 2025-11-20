@@ -57,7 +57,7 @@ app.add_middleware(
 # Session middleware for session management
 app.add_middleware(
     SessionMiddleware,
-    secret_key=getattr(settings, 'SECRET_KEY', 'your-secret-key-here')
+    secret_key=settings.SECRET_KEY
 )
 
 # Trusted host middleware for security

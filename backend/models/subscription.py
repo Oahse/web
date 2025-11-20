@@ -1,13 +1,13 @@
 from sqlalchemy import Column, String, Boolean, DateTime, ForeignKey, Float
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
-from core.database import BaseModel
+from core.database import BaseModel, GUID
 
 
 class Subscription(BaseModel):
     __tablename__ = "subscriptions"
 
-    user_id = Column(UUID(as_uuid=True), ForeignKey(
+    user_id = Column(GUID(), ForeignKey(
         "users.id"), nullable=False)
     plan_id = Column(String(100), nullable=False)  # basic, premium, enterprise
     # active, cancelled, expired, paused

@@ -1,16 +1,15 @@
 from sqlalchemy import Column, String, Boolean, ForeignKey, Float, Integer
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
-from core.database import BaseModel
+from core.database import BaseModel, GUID
 
 
 class Cart(BaseModel):
     __tablename__ = "carts"
 
-    user_id = Column(UUID(as_uuid=True), ForeignKey(
-        "users.id"), nullable=False)
+    user_id = Column(GUID(), ForeignKey("users.id"), nullable=False)
     session_id = Column(String(255), nullable=True)  # For guest carts
-    promocode_id = Column(UUID(as_uuid=True), ForeignKey(
+    promocode_id = Column(GUID(), ForeignKey(
         "promocodes.id"), nullable=True)
     discount_amount = Column(Float, default=0.0)
 
@@ -80,9 +79,9 @@ class Cart(BaseModel):
 class CartItem(BaseModel):
     __tablename__ = "cart_items"
 
-    cart_id = Column(UUID(as_uuid=True), ForeignKey(
+    cart_id = Column(GUID(), ForeignKey(
         "carts.id"), nullable=False)
-    variant_id = Column(UUID(as_uuid=True), ForeignKey(
+    variant_id = Column(GUID(), ForeignKey(
         "product_variants.id"), nullable=False)
     quantity = Column(Integer, nullable=False, default=1)
     price_per_unit = Column(Float, nullable=False)

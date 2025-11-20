@@ -1,7 +1,7 @@
 from sqlalchemy import Column, String, Boolean, ForeignKey, Text, Float, JSON, Integer
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
-from core.database import BaseModel, CHAR_LENGTH
+from core.database import BaseModel, CHAR_LENGTH, GUID
 
 
 class Category(BaseModel):
@@ -33,9 +33,9 @@ class Product(BaseModel):
 
     name = Column(String(CHAR_LENGTH), nullable=False)
     description = Column(Text, nullable=True)
-    category_id = Column(UUID(as_uuid=True), ForeignKey(
+    category_id = Column(GUID(), ForeignKey(
         "categories.id"), nullable=False)
-    supplier_id = Column(UUID(as_uuid=True),
+    supplier_id = Column(GUID(),
                          ForeignKey("users.id"), nullable=False)
     featured = Column(Boolean, default=False)
     rating = Column(Float, default=0.0)
@@ -107,7 +107,7 @@ class Product(BaseModel):
 class ProductVariant(BaseModel):
     __tablename__ = "product_variants"
 
-    product_id = Column(UUID(as_uuid=True), ForeignKey(
+    product_id = Column(GUID(), ForeignKey(
         "products.id"), nullable=False)
     sku = Column(String(100), unique=True, nullable=False)
     # e.g., "1kg Bag", "5kg Pack"
@@ -177,7 +177,7 @@ class ProductVariant(BaseModel):
 class ProductImage(BaseModel):
     __tablename__ = "product_images"
 
-    variant_id = Column(UUID(as_uuid=True), ForeignKey(
+    variant_id = Column(GUID(), ForeignKey(
         "product_variants.id"), nullable=False)
     url = Column(String(500), nullable=False)
     alt_text = Column(String(CHAR_LENGTH), nullable=True)

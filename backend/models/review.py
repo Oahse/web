@@ -1,15 +1,15 @@
 from sqlalchemy import Column, Boolean, ForeignKey, Text, Integer
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
-from core.database import BaseModel
+from core.database import BaseModel, GUID
 
 
 class Review(BaseModel):
     __tablename__ = "reviews"
 
-    product_id = Column(UUID(as_uuid=True), ForeignKey(
+    product_id = Column(GUID(), ForeignKey(
         "products.id"), nullable=False)
-    user_id = Column(UUID(as_uuid=True), ForeignKey(
+    user_id = Column(GUID(), ForeignKey(
         "users.id"), nullable=False)
     rating = Column(Integer, nullable=False)  # 1-5 stars
     comment = Column(Text, nullable=True)

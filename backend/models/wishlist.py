@@ -1,13 +1,13 @@
 from sqlalchemy import Column, String, Boolean, ForeignKey, Integer
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
-from core.database import BaseModel
+from core.database import BaseModel, GUID
 
 
 class Wishlist(BaseModel):
     __tablename__ = "wishlists"
 
-    user_id = Column(UUID(as_uuid=True), ForeignKey(
+    user_id = Column(GUID(), ForeignKey(
         "users.id"), nullable=False)
     name = Column(String(225), nullable=False)
     is_default = Column(Boolean, default=False)
@@ -22,11 +22,11 @@ class Wishlist(BaseModel):
 class WishlistItem(BaseModel):
     __tablename__ = "wishlist_items"
 
-    wishlist_id = Column(UUID(as_uuid=True), ForeignKey(
+    wishlist_id = Column(GUID(), ForeignKey(
         "wishlists.id"), nullable=False)
-    product_id = Column(UUID(as_uuid=True), ForeignKey(
+    product_id = Column(GUID(), ForeignKey(
         "products.id"), nullable=False)
-    variant_id = Column(UUID(as_uuid=True), ForeignKey(
+    variant_id = Column(GUID(), ForeignKey(
         "product_variants.id"), nullable=True)
     quantity = Column(Integer, default=1)
 

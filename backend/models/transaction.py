@@ -1,15 +1,15 @@
 from sqlalchemy import Column, String, ForeignKey, Float, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
-from core.database import BaseModel
+from core.database import BaseModel, GUID
 
 
 class Transaction(BaseModel):
     __tablename__ = "transactions"
 
-    user_id = Column(UUID(as_uuid=True), ForeignKey(
+    user_id = Column(GUID(), ForeignKey(
         "users.id"), nullable=False)
-    order_id = Column(UUID(as_uuid=True), ForeignKey(
+    order_id = Column(GUID(), ForeignKey(
         "orders.id"), nullable=True)
     stripe_payment_intent_id = Column(String(225), nullable=True)
     amount = Column(Float, nullable=False)
