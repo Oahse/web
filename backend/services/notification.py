@@ -105,10 +105,10 @@ class NotificationService:
 
     async def delete_old_notifications(self, days_old: int = 30):
         """Deletes notifications older than a specified number of days."""
-        from datetime import datetime, timedelta
+        from datetime import datetime, timedelta, UTC
         from sqlalchemy import delete
 
-        threshold_date = datetime.utcnow() - timedelta(days=days_old)
+        threshold_date = datetime.now(UTC) - timedelta(days=days_old)
 
         # Delete notifications older than threshold_date
         delete_stmt = delete(Notification).where(

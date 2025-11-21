@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from typing import Optional, List
 from uuid import UUID
 from datetime import datetime
@@ -23,11 +23,7 @@ class WishlistItemResponse(WishlistItemBase):
     product: Optional[ProductResponse] = None
     variant: Optional[ProductVariantResponse] = None
 
-    class Config:
-        from_attributes = True
-        json_encoders = {
-            datetime: lambda v: v.isoformat() if v else None
-        }
+    model_config = ConfigDict(from_attributes=True)
 
 
 class WishlistBase(BaseModel):
@@ -51,8 +47,4 @@ class WishlistResponse(WishlistBase):
     updated_at: str = Field(..., description="ISO format datetime string")
     items: List[WishlistItemResponse] = []
 
-    class Config:
-        from_attributes = True
-        json_encoders = {
-            datetime: lambda v: v.isoformat() if v else None
-        }
+    model_config = ConfigDict(from_attributes=True)

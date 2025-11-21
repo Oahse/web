@@ -35,12 +35,25 @@ from routes.wishlist import router as wishlist_router
 from routes.notification import router as notification_router
 
 
+from contextlib import asynccontextmanager
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup event
+    asyncio.create_task(run_notification_cleanup())
+    yield
+    # Shutdown event (if any)
+    # For example, gracefully stop background tasks here
+
+
 app = FastAPI(
     title="Banwee API",
     description="E-commerce platform with user management, product catalog, and order tracking.",
     version="1.0.0",
     docs_url="/docs",
     redoc_url="/redoc",
+    lifespan=lifespan,
 )
 
 # Add standard FastAPI middleware
@@ -98,10 +111,7 @@ async def run_notification_cleanup():
         await asyncio.sleep(settings.NOTIFICATION_CLEANUP_INTERVAL_SECONDS)
 
 
-@app.on_event("startup")
-async def startup_event():
-    # Start the notification cleanup task in the background
-    asyncio.create_task(run_notification_cleanup())
+
 
 
 @app.get("/")

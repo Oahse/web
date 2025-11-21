@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import TypeVar, Generic, Optional
 
 # Define a generic type for the data payload
@@ -11,5 +11,4 @@ class APIResponse(BaseModel, Generic[DataType]):
     data: Optional[DataType]
     pagination: Optional[dict]
 
-    class Config:
-        from_attributes = True  # For Pydantic v2
+    model_config = ConfigDict(from_attributes=True)  # For Pydantic v2

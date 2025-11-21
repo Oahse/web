@@ -73,7 +73,7 @@ async def get_reviews_for_product(
     min_rating: Optional[int] = Query(None, ge=1, le=5),
     max_rating: Optional[int] = Query(None, ge=1, le=5),
     sort_by: Optional[str] = Query(
-        None, regex="^(created_at|rating)_(asc|desc)$"),
+        None, pattern="^(created_at|rating)_(asc|desc)$"),
     db: AsyncSession = Depends(get_db)
 ):
     """Get all reviews for a specific product with optional filtering and sorting."""
