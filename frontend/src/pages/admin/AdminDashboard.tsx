@@ -1,4 +1,4 @@
-import { ShoppingCartIcon, UsersIcon, DollarSignIcon, ArrowUpIcon, ArrowDownIcon, TrendingUpIcon, CalendarIcon, PackageIcon } from 'lucide-react';
+import { ShoppingCartIcon, UsersIcon, DollarSignIcon, ArrowUpIcon, ArrowDownIcon, TrendingUpIcon, CalendarIcon, PackageIcon, Activity } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useApi } from '../../hooks/useApi';
 import { AdminAPI } from '../../apis';
@@ -181,6 +181,17 @@ export const AdminDashboard = () => {
       <div className="mb-6 flex flex-col md:flex-row md:items-center md:justify-between">
         <h1 className={`${themeClasses.text.heading} text-2xl mb-2 md:mb-0`}>Dashboard</h1>
         <div className="flex items-center space-x-2">
+          <button 
+            onClick={() => {
+              refetchStats();
+              refetchOverview();
+              refetchRecentOrders();
+            }}
+            className={`${themeClasses.button.outline} flex items-center px-3 py-1.5 rounded-md text-sm`}
+          >
+            <Activity size={16} className="mr-2" />
+            Refresh
+          </button>
           <button className={`${themeClasses.button.outline} flex items-center px-3 py-1.5 rounded-md text-sm`}>
             <CalendarIcon size={16} className="mr-2" />
             Last 30 Days
