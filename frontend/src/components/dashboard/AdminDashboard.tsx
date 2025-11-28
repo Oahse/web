@@ -1,9 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { CustomizableDashboard } from './widgets/CustomizableDashboard';
 import { InteractiveChart } from './charts/InteractiveChart';
 import { GeographicChart } from './charts/GeographicChart';
 import { AdvancedTable } from './tables/AdvancedTable';
 import { RealTimeWidget } from './widgets/RealTimeWidget';
+import { useApi } from '../../hooks/useApi';
+import { AdminAPI } from '../../apis';
 import {
   BarChart3Icon,
   MapIcon,
@@ -13,10 +15,40 @@ import {
   LineChartIcon
 } from 'lucide-react';
 
+interface MetricWidgetProps {
+  value: string | number;
+  change: number;
+  label: string;
+}
 
+interface ChartWidgetProps {
+  data: any;
+  type: string;
+}
+
+interface TableData {
+  headers: string[];
+  rows: any[][];
+}
+
+interface TableWidgetProps {
+  data: TableData;
+}
+
+interface CountryData {
+  country: string;
+  users: number;
+  percentage: number;
+}
+
+interface GeographicWidgetProps {
+  data: {
+    countries: CountryData[];
+  };
+}
 
 // Metric Widget Component
-const MetricWidget = ({ value, change, label }) => (
+const MetricWidget = ({ value, change, label }: MetricWidgetProps) => (
   <div className="text-center">
     <div className="text-3xl font-bold text-gray-900 mb-2">{value}</div>
     <div className="text-sm text-gray-500 mb-2">{label}</div>
@@ -27,58 +59,77 @@ const MetricWidget = ({ value, change, label }) => (
 );
 
 // Chart Widget Component
-const ChartWidget = ({ data, type }) => (
+const ChartWidget = ({ data, type }: ChartWidgetProps) => (
   <InteractiveChart
     type={type}
     data={data}
+    title=""
     height={200}
     showTooltips={true}
     showLegend={true}
+    drillDownData={null}
+    onDataPointClick={() => {}}
+    onExport={() => {}}
+    onRefresh={() => {}}
     className="border-0 shadow-none"
   />
 );
 
 // Table Widget Component
-const TableWidget = ({ data }) => (
+const TableWidget = ({ data }: TableWidgetProps) => (
   <AdvancedTable
-    columns={data.headers.map(header => ({
+    columns={data.headers.map((header: string) => ({
       key: header.toLowerCase().replace(/\s+/g, '_'),
       label: header,
       sortable: true
     }))}
-    data={data.rows.map((row, index) => ({
+    data={data.rows.map((row: any[], index: number) => ({
       id: index,
       ...Object.fromEntries(
-        data.headers.map((header, i) => [
+        data.headers.map((header: string, i: number) => [
           header.toLowerCase().replace(/\s+/g, '_'),
           row[i]
         ])
       )
     }))}
+    title=""
     pagination={false}
     searchable={false}
+    onRowClick={() => {}}
+    onSelectionChange={() => {}}
+    onExport={() => {}}
     className="border-0 shadow-none"
   />
 );
 
 // Geographic Widget Component
-const GeographicWidget = ({ data }) => (
+const GeographicWidget = ({ data }: GeographicWidgetProps) => (
   <GeographicChart
-    data={data.countries.map((country) => ({
+    data={data.countries.map((country: CountryData) => ({
       country: country.country,
       countryCode: country.country.substring(0, 2).toUpperCase(),
-      coordinates: [0, 0], // Would be actual coordinates
+      coordinates: [0, 0] as [number, number],
       value: country.users,
       percentage: country.percentage
     }))}
+    title=""
     height={250}
     viewMode="list"
+    onCountryClick={() => {}}
+    onViewModeChange={() => {}}
     className="border-0 shadow-none"
   />
 );
 
 export const AdminDashboard = () => {
-  const [widgets, setWidgets] = useState([]);
+  const [widgets, setWidgets] = useState<any[]>([]);
+  const { data: statsData, loading, execute: fetchStats } = useApi();
+
+  useEffect(() => {
+    fetchStats(() => AdminAPI.getAdminStats());
+  }, [fetchStats]);
+
+  const stats = statsData?.data || statsData || {};
 
   const widgetTemplates = [
     {
@@ -157,18 +208,18 @@ export const AdminDashboard = () => {
   ];
 
   useEffect(() => {
-    // Initialize default widgets
+    // Initialize default widgets with real data
     const defaultWidgets = [
       {
         id: 'total-users',
         type: 'metric',
-        title: 'Total Users',
+        title: 'Total Customers',
         component: MetricWidget,
         props: {
-          title: 'Total Users',
-          value: '12,847',
+          title: 'Total Customers',
+          value: loading ? '...' : (stats.total_customers || 0).toLocaleString(),
           label: 'Active Users',
-          change: 12.5
+          change: stats.customers_change || 0
         },
         layout: { x: 0, y: 0, w: 3, h: 3 }
       },
@@ -179,9 +230,9 @@ export const AdminDashboard = () => {
         component: MetricWidget,
         props: {
           title: 'Total Orders',
-          value: '3,421',
+          value: loading ? '...' : (stats.total_orders || 0).toLocaleString(),
           label: 'This Month',
-          change: 8.2
+          change: stats.orders_change || 0
         },
         layout: { x: 3, y: 0, w: 3, h: 3 }
       },
@@ -192,22 +243,22 @@ export const AdminDashboard = () => {
         component: MetricWidget,
         props: {
           title: 'Revenue',
-          value: '$284,592',
+          value: loading ? '...' : `$${(stats.total_revenue || 0).toLocaleString()}`,
           label: 'This Month',
-          change: 15.3
+          change: stats.revenue_change || 0
         },
         layout: { x: 6, y: 0, w: 3, h: 3 }
       },
       {
-        id: 'conversion-rate',
+        id: 'total-products',
         type: 'metric',
-        title: 'Conversion Rate',
+        title: 'Total Products',
         component: MetricWidget,
         props: {
-          title: 'Conversion Rate',
-          value: '3.24%',
-          label: 'Last 30 Days',
-          change: -2.1
+          title: 'Total Products',
+          value: loading ? '...' : (stats.total_products || 0).toLocaleString(),
+          label: 'In Catalog',
+          change: stats.products_change || 0
         },
         layout: { x: 9, y: 0, w: 3, h: 3 }
       },
@@ -290,15 +341,15 @@ export const AdminDashboard = () => {
     ];
 
     setWidgets(defaultWidgets);
-  }, []);
+  }, [stats, loading]);
 
-  const handleWidgetsChange = (updatedWidgets) => {
+  const handleWidgetsChange = (updatedWidgets: any[]) => {
     setWidgets(updatedWidgets);
   };
 
-  const handleSave = (layout) => {
-    console.log('Saving dashboard layout:', layout);
-    // Here you would save to backend
+  const handleSave = (_layout: any) => {
+    // Save dashboard layout to backend
+    // TODO: Implement API call to persist layout preferences
   };
 
   return (

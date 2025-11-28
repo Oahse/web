@@ -18,8 +18,9 @@ const TrackingMap = ({
   // For now, we'll create a simple placeholder map
   // In a real implementation, you would integrate with Google Maps, Mapbox, or similar
   useEffect(() => {
-    // This would initialize the actual map
-    console.log('Map would be initialized here with:', {
+    // Initialize map with current location and delivery address
+    // TODO: Integrate with actual mapping library (e.g., Google Maps, Mapbox)
+    const mapConfig = {
       currentLocation,
       deliveryAddress,
       route,

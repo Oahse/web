@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { CustomizableDashboard } from './widgets/CustomizableDashboard';
 import { InteractiveChart } from './charts/InteractiveChart';
 import { TimeSeriesChart } from './charts/TimeSeriesChart';
@@ -15,14 +15,16 @@ import {
   TableIcon
 } from 'lucide-react';
 
-/**
- * @typedef {object} FinancialDashboardProps
- * @property {(widgetId?: string) => void} [onRefresh]
- * @property {(widgetId: string, format: string) => void} [onExport]
- */
+interface FinancialMetricWidgetProps {
+  value: string | number;
+  change: number;
+  label: string;
+  icon?: React.ReactNode;
+  color?: string;
+}
 
 // Financial Metric Widget
-const FinancialMetricWidget = ({ value, change, label, icon, color = 'green' }) => (
+const FinancialMetricWidget = ({ value, change, label, icon, color = 'green' }: FinancialMetricWidgetProps) => (
   <div className="text-center">
     <div className="flex items-center justify-center mb-3">
       {icon && (
@@ -481,7 +483,8 @@ export const FinancialDashboard = () => {
   };
 
   const handleSave = (layout) => {
-    console.log('Saving financial dashboard layout:', layout);
+    // Save dashboard layout to backend
+    // TODO: Implement API call to persist layout preferences
   };
 
   return (

@@ -68,7 +68,7 @@ async def get_sales_trend(
             user_role=current_user.role,
             days=days
         )
-        return Response(success=True, data=trend)
+        return Response(success=True, data={"sales_trend": trend})
     except Exception as e:
         raise APIException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

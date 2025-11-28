@@ -175,7 +175,6 @@ const SocialAuthButtons = ({
           onFail={handleFacebookError}
           onProfileSuccess={(response) => {
             // Handle profile data if needed
-            console.log('Facebook profile:', response);
           }}
           className="w-full"
           render={({ onClick }) => (

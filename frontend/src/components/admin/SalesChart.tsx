@@ -14,7 +14,7 @@ export const SalesChart = () => {
 
   useEffect(() => {
     fetchSalesData(() => AdminAPI.getSalesTrend(days));
-  }, [days, fetchSalesData]);
+  }, [days]);
 
   const handleTimeRangeChange = (newDays: number) => {
     setDays(newDays);
@@ -22,7 +22,7 @@ export const SalesChart = () => {
 
   if (loading) {
     return (
-      <div className="h-64 flex items-center justify-center bg-gray-50 rounded-md border border-gray-200">
+      <div className="h-64 flex items-center justify-center bg-gray-50 dark:bg-gray-800 rounded-md border border-gray-200 dark:border-gray-700">
         <p className={themeClasses.text.muted}>Loading chart...</p>
       </div>
     );
@@ -30,11 +30,15 @@ export const SalesChart = () => {
 
   if (error) {
     return (
-      <div className="h-64 flex items-center justify-center bg-gray-50 rounded-md border border-gray-200">
-        <p className={themeClasses.text.muted}>Error loading chart data.</p>
+      <div className="h-64 flex flex-col items-center justify-center bg-gray-50 dark:bg-gray-800 rounded-md border border-gray-200 dark:border-gray-700">
+        <p className="text-red-600 dark:text-red-400 mb-2">Error loading chart data</p>
+        <p className={`${themeClasses.text.muted} text-sm`}>{error.message || 'Please try again later'}</p>
       </div>
     );
   }
+
+  // Extract the sales trend data from the response
+  const chartData = salesData?.data?.sales_trend || salesData?.sales_trend || [];
 
   return (
     <div>
@@ -95,9 +99,9 @@ export const SalesChart = () => {
         </div>
       </div>
       <div className="h-64">
-        {salesData?.sales_trend && salesData.sales_trend.length > 0 ? (
+        {chartData && chartData.length > 0 ? (
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={salesData.sales_trend}>
+            <BarChart data={chartData}>
               <CartesianGrid strokeDasharray="3 3" className="stroke-gray-200 dark:stroke-gray-700" />
               <XAxis 
                 dataKey="date" 
@@ -118,6 +122,12 @@ export const SalesChart = () => {
                   borderRadius: '0.5rem',
                 }}
                 labelStyle={{ color: 'var(--color-copy, #000000)' }}
+                formatter={(value: number) => {
+                  if (chartView === 'sales') {
+                    return `$${value.toFixed(2)}`;
+                  }
+                  return value;
+                }}
               />
               <Legend />
               <Bar 
@@ -132,7 +142,8 @@ export const SalesChart = () => {
           <div className="h-full flex items-center justify-center bg-gray-50 dark:bg-gray-800 rounded-md border border-gray-200 dark:border-gray-700">
             <div className="text-center">
               <BarChart3Icon size={48} className="mx-auto text-gray-300 dark:text-gray-600 mb-2" />
-              <p className="text-gray-500 dark:text-gray-400">No data available for the selected period</p>
+              <p className="text-gray-500 dark:text-gray-400">No sales data available for the selected period</p>
+              <p className="text-gray-400 dark:text-gray-500 text-sm mt-1">Create some orders to see the chart</p>
             </div>
           </div>
         )}

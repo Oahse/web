@@ -116,7 +116,6 @@ export const RealTimeWidget = ({
         setIsConnected(true);
         setError(null);
         setConnectionAttempts(0);
-        console.log(`WebSocket connected to ${dataSource}`);
       };
       
       wsRef.current.onmessage = (event) => {
@@ -130,7 +129,6 @@ export const RealTimeWidget = ({
       
       wsRef.current.onclose = () => {
         setIsConnected(false);
-        console.log('WebSocket connection closed');
       };
       
       wsRef.current.onerror = (error) => {

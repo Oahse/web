@@ -464,8 +464,8 @@ export const SupplierDashboard = () => {
   };
 
   const handleSave = (layout) => {
-    console.log('Saving supplier dashboard layout:', layout);
-    // Here you would save to backend
+    // Save dashboard layout to backend
+    // TODO: Implement API call to persist layout preferences
   };
 
   return (

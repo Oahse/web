@@ -12,6 +12,41 @@ The API uses JWT for authentication. Include the token in the `Authorization` he
 
 `Authorization: Bearer <your_jwt_token>`
 
+## Image Upload & CDN Delivery
+
+The platform uses GitHub as an image storage backend with jsDelivr CDN for fast global delivery.
+
+### How It Works
+
+1. **Upload**: Product images are uploaded to a GitHub repository via the GitHub API
+2. **Storage**: Images are organized in category folders (e.g., `food/product.jpg`)
+3. **Delivery**: Images are served via jsDelivr CDN for optimal performance
+4. **URL Format**: `https://cdn.jsdelivr.net/gh/{owner}/{repo}@{branch}/{path}`
+
+### Image Upload Flow
+
+When creating or updating products:
+
+1. Admin selects images in the product form
+2. Frontend uploads images to GitHub using `uploadSingleFile()` or `uploadMultipleFiles()`
+3. GitHub API returns the file path
+4. Frontend generates jsDelivr CDN URL
+5. CDN URL is sent to backend and stored in database
+6. Images are loaded from CDN when displaying products
+
+### Security
+
+- GitHub Personal Access Token is encrypted using AES encryption
+- Token should be stored in environment variables in production
+- Only authenticated admin/supplier users can upload images
+
+### Configuration
+
+See `frontend/src/lib/github.tsx` for GitHub integration configuration:
+- Repository owner, name, and branch
+- Encrypted token (should be moved to environment variables)
+- Upload and delete functions
+
 ### Authentication Endpoints
 
 - **POST /api/v1/auth/register**

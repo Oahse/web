@@ -172,7 +172,7 @@ const OrderHistoryWidget = () => {
       exportable={true}
       pagination={true}
       pageSize={5}
-      onRowClick={(row) => console.log('View order:', row.order_id)}
+      onRowClick={(row) => {/* Navigate to order details */}}
       className="border-0 shadow-none"
     />
   );
@@ -456,7 +456,7 @@ export const CustomerDashboard = ({
           icon: <ShoppingBagIcon size={20} />,
           color: 'blue',
           actionText: 'View All',
-          onAction: () => console.log('View all orders')
+          onAction: () => {/* Navigate to orders page */}
         },
         layout: { x: 0, y: 0, w: 3, h: 4 }
       },
@@ -492,7 +492,7 @@ export const CustomerDashboard = ({
           icon: <TruckIcon size={20} />,
           color: 'orange',
           actionText: 'Track',
-          onAction: () => console.log('Track orders')
+          onAction: () => {/* Navigate to order tracking */}
         },
         layout: { x: 9, y: 0, w: 3, h: 4 }
       },
@@ -538,8 +538,8 @@ export const CustomerDashboard = ({
   };
 
   const handleSave = (layout) => {
-    console.log('Saving customer dashboard layout:', layout);
-    // Here you would save to backend
+    // Save dashboard layout to backend
+    // TODO: Implement API call to persist layout preferences
   };
 
   return (

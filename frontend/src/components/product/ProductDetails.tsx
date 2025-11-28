@@ -87,7 +87,6 @@ export const ProductDetails = () => {
     if (product && product.variants && product.variants.length > 0) {
       setSelectedVariant(product.variants[0]);
     }
-    console.log('Selected Variant:', product.variants);
   }, [product]);
 
   if (loading) {
