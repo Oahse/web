@@ -118,6 +118,7 @@ export class OrdersAPI {
     if (params?.date_from) queryParams.append('date_from', params.date_from);
     if (params?.date_to) queryParams.append('date_to', params.date_to);
 
+    const url = `/supplier/orders${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
     return await apiClient.get(url);
   }
 

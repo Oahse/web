@@ -1,31 +1,48 @@
-import React, { useEffect } from 'react';
+import { useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { ShoppingBagIcon, HeartIcon, MapPinIcon, CreditCardIcon } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { SkeletonDashboard } from '../ui/SkeletonDashboard';
 import { usePaginatedApi } from '../../hooks/useApi';
-import { apiClient } from '../../apis';
 import OrdersAPI from '../../apis/orders';
 
-/**
- * @typedef {object} DashboardProps
- * @property {'shimmer' | 'pulse' | 'wave'} [animation='shimmer']
- */
+interface DashboardProps {
+  animation?: 'shimmer' | 'pulse' | 'wave';
+}
+
+interface Order {
+  id: string;
+  created_at: string;
+  status: string;
+  total_amount: number;
+}
+
+interface User {
+  firstname?: string;
+  lastname?: string;
+  email?: string;
+  [key: string]: any;
+}
 
 export const Dashboard = ({
   animation = 'shimmer' 
-}) => {
-  const { user } = useAuth();
-  const { data: paginatedOrders, loading, error, execute: fetchRecentOrders } = usePaginatedApi();
+}: DashboardProps) => {
+  const { user } = useAuth() as { user: User | null };
+  const { data: paginatedOrders, loading, error, execute: fetchRecentOrders } = usePaginatedApi<{ data: Order[]; pagination?: any }>();
 
   useEffect(() => {
     fetchRecentOrders(() => OrdersAPI.getOrders({ limit: 3 }));
   }, [fetchRecentOrders]);
 
-  const recentOrders = paginatedOrders?.data || [];
+  // Handle both array and object responses
+  const recentOrders: Order[] = Array.isArray(paginatedOrders) 
+    ? paginatedOrders 
+    : (paginatedOrders && typeof paginatedOrders === 'object' && 'data' in paginatedOrders)
+      ? ((paginatedOrders as any).data || [])
+      : [];
 
   if (loading) {
-    return <SkeletonDashboard animation={animation} />;
+    return <SkeletonDashboard className="p-6" animation={animation} />;
   }
 
   if (error) {
@@ -136,7 +153,7 @@ export const Dashboard = ({
                 </tr>
               </thead>
               <tbody>
-                {recentOrders.map(order => <tr key={order.id} className="border-b dark:border-gray-700">
+                {recentOrders.map((order: Order) => <tr key={order.id} className="border-b dark:border-gray-700">
                     <td className="px-4 py-3">
                       <Link to={`/account/orders/${order.id}`} className="text-primary hover:underline">
                         {order.id}

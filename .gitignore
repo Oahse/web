@@ -172,6 +172,7 @@ poetry.toml
 pyrightconfig.json
 
 backend/generated_invoices/*.pdf
+.kiro/
 
 ### venv ###
 # Virtualenv

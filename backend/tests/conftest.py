@@ -45,3 +45,30 @@ def client() -> TestClient:
 async def async_client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
     async with AsyncClient(app=app, base_url="http://test") as client:
         yield client
+
+@pytest.fixture
+async def auth_headers(db_session: AsyncSession) -> dict:
+    """Create a test user and return auth headers"""
+    from models.user import User
+    from core.utils.auth.jwt_auth import create_access_token
+    from uuid import uuid4
+    
+    # Create a test supplier user
+    test_user = User(
+        id=uuid4(),
+        email="test@example.com",
+        firstname="Test",
+        lastname="User",
+        role="Supplier",
+        is_active=True,
+        is_verified=True
+    )
+    test_user.set_password("testpassword123")
+    
+    db_session.add(test_user)
+    await db_session.commit()
+    
+    # Create access token
+    access_token = create_access_token(data={"sub": test_user.email})
+    
+    return {"Authorization": f"Bearer {access_token}"}
