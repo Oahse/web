@@ -26,34 +26,101 @@ class AdminService:
             db)  # Initialize NotificationService
 
     async def get_dashboard_stats(self) -> dict:
-        """Get admin dashboard statistics."""
-        # Get user counts
+        """Get admin dashboard statistics with percentage changes."""
+        from datetime import datetime, timedelta
+        
+        # Calculate date ranges
+        now = datetime.now()
+        thirty_days_ago = now - timedelta(days=30)
+        sixty_days_ago = now - timedelta(days=60)
+        
+        # Get current period stats (last 30 days)
+        # Users
         user_count_query = select(func.count(User.id))
         user_result = await self.db.execute(user_count_query)
-        total_users = user_result.scalar()
-
-        # Get product counts
+        total_users = user_result.scalar() or 0
+        
+        user_current_query = select(func.count(User.id)).where(User.created_at >= thirty_days_ago)
+        user_current_result = await self.db.execute(user_current_query)
+        users_current = user_current_result.scalar() or 0
+        
+        user_previous_query = select(func.count(User.id)).where(
+            User.created_at >= sixty_days_ago,
+            User.created_at < thirty_days_ago
+        )
+        user_previous_result = await self.db.execute(user_previous_query)
+        users_previous = user_previous_result.scalar() or 0
+        
+        # Products
         product_count_query = select(func.count(Product.id))
         product_result = await self.db.execute(product_count_query)
-        total_products = product_result.scalar()
-
-        # Get order counts
+        total_products = product_result.scalar() or 0
+        
+        product_current_query = select(func.count(Product.id)).where(Product.created_at >= thirty_days_ago)
+        product_current_result = await self.db.execute(product_current_query)
+        products_current = product_current_result.scalar() or 0
+        
+        product_previous_query = select(func.count(Product.id)).where(
+            Product.created_at >= sixty_days_ago,
+            Product.created_at < thirty_days_ago
+        )
+        product_previous_result = await self.db.execute(product_previous_query)
+        products_previous = product_previous_result.scalar() or 0
+        
+        # Orders
         order_count_query = select(func.count(Order.id))
         order_result = await self.db.execute(order_count_query)
-        total_orders = order_result.scalar()
-
-        # Get revenue (sum of order totals)
+        total_orders = order_result.scalar() or 0
+        
+        order_current_query = select(func.count(Order.id)).where(Order.created_at >= thirty_days_ago)
+        order_current_result = await self.db.execute(order_current_query)
+        orders_current = order_current_result.scalar() or 0
+        
+        order_previous_query = select(func.count(Order.id)).where(
+            Order.created_at >= sixty_days_ago,
+            Order.created_at < thirty_days_ago
+        )
+        order_previous_result = await self.db.execute(order_previous_query)
+        orders_previous = order_previous_result.scalar() or 0
+        
+        # Revenue
         revenue_query = select(func.sum(Order.total_amount))
         revenue_result = await self.db.execute(revenue_query)
         total_revenue = revenue_result.scalar() or 0
+        
+        revenue_current_query = select(func.sum(Order.total_amount)).where(Order.created_at >= thirty_days_ago)
+        revenue_current_result = await self.db.execute(revenue_current_query)
+        revenue_current = revenue_current_result.scalar() or 0
+        
+        revenue_previous_query = select(func.sum(Order.total_amount)).where(
+            Order.created_at >= sixty_days_ago,
+            Order.created_at < thirty_days_ago
+        )
+        revenue_previous_result = await self.db.execute(revenue_previous_query)
+        revenue_previous = revenue_previous_result.scalar() or 0
+        
+        # Calculate percentage changes
+        def calculate_change(current, previous):
+            if previous == 0:
+                return 100.0 if current > 0 else 0.0
+            return round(((current - previous) / previous) * 100, 1)
+        
+        revenue_change = calculate_change(revenue_current, revenue_previous)
+        orders_change = calculate_change(orders_current, orders_previous)
+        customers_change = calculate_change(users_current, users_previous)
+        products_change = calculate_change(products_current, products_previous)
 
         return {
             "total_customers": total_users,
             "total_products": total_products,
             "total_orders": total_orders,
             "total_revenue": float(total_revenue),
-            "pending_orders": 0,  # Would need to filter by status
-            "low_stock_items": 0  # Would need to check inventory
+            "revenue_change": revenue_change,
+            "orders_change": orders_change,
+            "customers_change": customers_change,
+            "products_change": products_change,
+            "pending_orders": 0,
+            "low_stock_items": 0
         }
 
     async def get_platform_overview(self) -> dict:

@@ -50,25 +50,30 @@ async def async_client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, 
 async def auth_headers(db_session: AsyncSession) -> dict:
     """Create a test user and return auth headers"""
     from models.user import User
-    from core.utils.auth.jwt_auth import create_access_token
+    from core.utils.auth.jwt_auth import JWTManager
     from uuid import uuid4
+    import bcrypt
+    
+    # Store email before creating user
+    test_email = "test@example.com"
     
     # Create a test supplier user
     test_user = User(
         id=uuid4(),
-        email="test@example.com",
+        email=test_email,
         firstname="Test",
         lastname="User",
         role="Supplier",
-        is_active=True,
-        is_verified=True
+        active=True,
+        verified=True,
+        hashed_password=bcrypt.hashpw("testpassword123".encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
     )
-    test_user.set_password("testpassword123")
     
     db_session.add(test_user)
     await db_session.commit()
     
-    # Create access token
-    access_token = create_access_token(data={"sub": test_user.email})
+    # Create access token using stored email
+    jwt_manager = JWTManager()
+    access_token = jwt_manager.create_access_token(data={"sub": test_email})
     
     return {"Authorization": f"Bearer {access_token}"}

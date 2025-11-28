@@ -4,7 +4,6 @@
 
 import { apiClient } from './client';
 
-
 export class CategoriesAPI {
   /**
    * Get all categories
@@ -16,8 +15,8 @@ export class CategoriesAPI {
   /**
    * Get category by ID
    */
-  static async getCategory(id) {
-    return await apiClient.get(`/products/categories/${id}`);
+  static async getCategory(categoryId: string) {
+    return await apiClient.get(`/products/categories/${categoryId}`);
   }
 }
 

@@ -173,6 +173,7 @@ pyrightconfig.json
 
 backend/generated_invoices/*.pdf
 .kiro/
+backend/tests/INTEGRATION_TEST_RESULTS.md
 
 ### venv ###
 # Virtualenv

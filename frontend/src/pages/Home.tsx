@@ -109,10 +109,8 @@ export const Home = () => {
   }, [execute]);
 
   useEffect(() => {
-    console.log('Home data received:', homeData);
     if (homeData && homeData.data) {
       const { categories: categoriesData, featured, popular, deals: dealsData } = homeData.data;
-      console.log('Extracted data:', { categoriesData, featured, popular, dealsData });
 
       // Helper function to convert API products to demo format
       const convertProduct = (product) => ({
@@ -146,14 +144,12 @@ export const Home = () => {
       // Convert featured products
       if (featured && Array.isArray(featured)) {
         const convertedFeatured = featured.map(convertProduct);
-        console.log('Converted featured products:', convertedFeatured);
         setFeaturedProducts(convertedFeatured);
       }
 
       // Convert popular products
       if (popular && Array.isArray(popular)) {
         const convertedPopular = popular.map(convertProduct);
-        console.log('Converted popular products:', convertedPopular);
         setPopularProducts(convertedPopular);
       }
 
