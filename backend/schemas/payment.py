@@ -20,7 +20,8 @@ class PaymentMethodBase(BaseModel):
 
 
 class PaymentMethodCreate(PaymentMethodBase):
-    pass
+    stripe_token: Optional[str] = Field(
+        None, description="Stripe token for card tokenization")
 
 
 class PaymentMethodUpdate(PaymentMethodBase):

@@ -1,19 +1,56 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { BarChart3Icon, TrendingUpIcon, UsersIcon, ShoppingCartIcon, DollarSignIcon, CalendarIcon, ArrowUpIcon, ArrowDownIcon, ArrowRightIcon, PackageIcon } from 'lucide-react';
+import { BarChart3Icon, TrendingUpIcon, UsersIcon, ShoppingCartIcon, DollarSignIcon, CalendarIcon, ArrowUpIcon, ArrowDownIcon, ArrowRightIcon, PackageIcon, FilterIcon, XIcon } from 'lucide-react';
 import { useApi } from '../../hooks/useApi';
 import { AnalyticsAPI } from '../../apis';
 
 import { ResponsiveContainer, BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
 
+interface AnalyticsFilters {
+  startDate: string;
+  endDate: string;
+  category?: string;
+  product?: string;
+  userSegment?: string;
+  orderStatus?: string;
+}
+
 export const AdminAnalytics = () => {
   const [timeRange, setTimeRange] = useState('30d');
   const [chartView, setChartView] = useState('revenue');
+  const [showCustomDatePicker, setShowCustomDatePicker] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
+  const [filters, setFilters] = useState<AnalyticsFilters>({
+    startDate: '',
+    endDate: '',
+    category: '',
+    product: '',
+    userSegment: '',
+    orderStatus: ''
+  });
   const { data: dashboardData, loading, error, execute: fetchDashboardData } = useApi();
 
   useEffect(() => {
-    fetchDashboardData(() => AnalyticsAPI.getDashboardData({ date_range: timeRange }));
-  }, [fetchDashboardData, timeRange]);
+    const apiFilters: any = {};
+    
+    // Handle time range or custom dates
+    if (timeRange === 'custom' && filters.startDate && filters.endDate) {
+      apiFilters.date_range = {
+        start: filters.startDate,
+        end: filters.endDate
+      };
+    } else if (timeRange !== 'custom') {
+      apiFilters.date_range = timeRange;
+    }
+    
+    // Add other filters
+    if (filters.category) apiFilters.category = filters.category;
+    if (filters.product) apiFilters.product = filters.product;
+    if (filters.userSegment) apiFilters.userSegment = filters.userSegment;
+    if (filters.orderStatus) apiFilters.orderStatus = filters.orderStatus;
+    
+    fetchDashboardData(() => AnalyticsAPI.getDashboardData(apiFilters));
+  }, [fetchDashboardData, timeRange, filters]);
 
   const analyticsData = dashboardData?.data || dashboardData;
   

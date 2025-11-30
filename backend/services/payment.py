@@ -28,16 +28,38 @@ class PaymentService:
         return result.scalars().all()
 
     async def add_payment_method(self, user_id: UUID, payload: PaymentMethodCreate) -> PaymentMethod:
-        # Ensure only one default payment method per user
-        if payload.is_default:
+        # If stripe_token is provided, retrieve card details from Stripe
+        if payload.stripe_token:
+            try:
+                # Retrieve token details from Stripe
+                token = stripe.Token.retrieve(payload.stripe_token)
+                
+                # Extract card details from token
+                card = token.card
+                payload.provider = card.brand.lower()
+                payload.last_four = card.last4
+                payload.expiry_month = card.exp_month
+                payload.expiry_year = card.exp_year
+                
+            except stripe.StripeError as e:
+                print(f"Stripe Error: {e}")
+                raise Exception(f"Failed to retrieve card details from Stripe: {str(e)}")
+        
+        # Check if this is the first payment method for the user
+        existing_methods = await self.get_payment_methods(user_id)
+        is_first_method = len(existing_methods) == 0
+        
+        # Set as default if it's the first payment method or explicitly requested
+        if is_first_method or payload.is_default:
             await self._clear_default_payment_method(user_id)
+            payload.is_default = True
 
         new_method = PaymentMethod(
             user_id=user_id,
             type=payload.type,
             provider=payload.provider,
             last_four=payload.last_four,
-            expiry_month=payload.expiry_year,
+            expiry_month=payload.expiry_month,
             expiry_year=payload.expiry_year,
             is_default=payload.is_default
         )
