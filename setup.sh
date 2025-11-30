@@ -52,14 +52,6 @@ echo ""
 echo "⏳ Waiting for PostgreSQL to be ready..."
 sleep 10
 
-echo ""
-echo "📊 Migrating data from SQLite to PostgreSQL (if db1.db exists)..."
-if [ -f backend/db1.db ]; then
-    docker-compose run --rm backend python migrate_sqlite_to_postgres.py
-    echo "✅ Data migration completed"
-else
-    echo "ℹ️  No SQLite database found, skipping migration"
-fi
 
 echo ""
 echo "🔧 Initializing PostgreSQL database..."
