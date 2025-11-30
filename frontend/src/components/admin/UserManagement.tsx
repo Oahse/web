@@ -7,7 +7,10 @@ import {
   Trash2, 
   Eye,
   UserCheck,
-  UserX
+  UserX,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown
 } from 'lucide-react';
 import { ExportButton } from '../dashboard/utils/ExportUtils';
 import { exportDataViaAPI } from '../../lib/exportUtils';
@@ -22,6 +25,8 @@ const UserManagement = () => {
   const [roleFilter, setRoleFilter] = useState('');
   const [activeFilter, setActiveFilter] = useState(null);
   const [selectedUsers, setSelectedUsers] = useState([]);
+  const [sortField, setSortField] = useState(null);
+  const [sortDirection, setSortDirection] = useState('asc');
 
   const fetchUsers = async () => {
     try {
@@ -114,6 +119,49 @@ const UserManagement = () => {
     } else {
       setSelectedUsers(data.users.map(user => user.id));
     }
+  };
+
+  const handleSort = (field) => {
+    if (sortField === field) {
+      // Toggle direction if same field
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      // New field, default to ascending
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
+
+  const getSortedUsers = () => {
+    if (!data || !data.users) return [];
+    
+    if (!sortField) return data.users;
+
+    const sorted = [...data.users].sort((a, b) => {
+      let aValue = a[sortField];
+      let bValue = b[sortField];
+
+      // Handle null/undefined values
+      if (aValue === null || aValue === undefined) aValue = 0;
+      if (bValue === null || bValue === undefined) bValue = 0;
+
+      if (sortDirection === 'asc') {
+        return aValue > bValue ? 1 : aValue < bValue ? -1 : 0;
+      } else {
+        return aValue < bValue ? 1 : aValue > bValue ? -1 : 0;
+      }
+    });
+
+    return sorted;
+  };
+
+  const getSortIcon = (field) => {
+    if (sortField !== field) {
+      return <ArrowUpDown className="h-4 w-4 inline ml-1" />;
+    }
+    return sortDirection === 'asc' 
+      ? <ArrowUp className="h-4 w-4 inline ml-1" />
+      : <ArrowDown className="h-4 w-4 inline ml-1" />;
   };
 
   if (loading && !data) {
@@ -270,8 +318,14 @@ const UserManagement = () => {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Status
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100">
-                  Orders
+                <th 
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none"
+                  onClick={() => handleSort('orders_count')}
+                >
+                  <div className="flex items-center">
+                    Orders
+                    {getSortIcon('orders_count')}
+                  </div>
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Created
@@ -282,7 +336,7 @@ const UserManagement = () => {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {data.users.map((user) => (
+              {getSortedUsers().map((user) => (
                 <tr key={user.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4">
                     <input
