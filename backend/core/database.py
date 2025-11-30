@@ -88,10 +88,12 @@ engine_db = create_async_engine(
 )
 
 # Session factory for the database (Async)
+# expire_on_commit=False prevents SQLAlchemy from expiring objects after commit
+# This is crucial for async operations to avoid greenlet errors
 AsyncSessionDB = sessionmaker(
     bind=engine_db,
     class_=AsyncSession,
-    expire_on_commit=False
+    expire_on_commit=False  # Critical for async operations
 )
 
 

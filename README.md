@@ -40,7 +40,7 @@
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/banwee/platform.git
+   git clone https://github.com/Oahse/banweemvp.git
    cd banwee-platform
    ```
 

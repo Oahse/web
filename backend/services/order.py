@@ -120,17 +120,19 @@ class OrderService:
                 )
                 self.db.add(tracking_event)
 
-                # Commit order and tracking event
+                # Commit order and tracking event BEFORE triggering Celery tasks
                 await self.db.commit()
                 await self.db.refresh(order)
 
                 # Clear cart after successful order and commit
                 await cart_service.clear_cart(user_id)
                 
-                # Send order confirmation email and notification via Celery
+                # IMPORTANT: Trigger Celery tasks AFTER commit to avoid greenlet errors
+                # Celery tasks run in separate sync context and should not be in transaction
                 from tasks.email_tasks import send_order_confirmation_email
                 from tasks.notification_tasks import create_notification
                 
+                # Use .delay() for non-blocking execution
                 send_order_confirmation_email.delay(str(order.id))
                 create_notification.delay(
                     str(user_id),
@@ -165,10 +167,7 @@ class OrderService:
                 detail=f"Payment processing failed: {str(e)}"
             )
 
-        # Send order confirmation email via Celery
-        from tasks.email_tasks import send_order_confirmation_email
-        send_order_confirmation_email.delay(str(order.id))
-
+        # Email already sent above after successful payment
         return await self._format_order_response(order)
 
     async def get_user_orders(self, user_id: UUID, page: int = 1, limit: int = 10, status_filter: Optional[str] = None) -> Dict[str, Any]:

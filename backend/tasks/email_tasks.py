@@ -1,12 +1,9 @@
 """
 Celery tasks for sending emails using Mailgun
 """
-import asyncio
-from celery import Task
-from celery_app import celery_app, run_async_task
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
-from sqlalchemy.orm import sessionmaker
-from sqlalchemy import select
+from celery_app import celery_app
+from sqlalchemy import create_engine, select
+from sqlalchemy.orm import sessionmaker, Session
 from uuid import UUID
 from datetime import datetime, timedelta
 
@@ -18,41 +15,37 @@ from models.product import ProductVariant
 from core.utils.messages.email import send_email
 
 
-# Create async engine for Celery tasks
-async_engine = create_async_engine(
-    settings.DATABASE_URL,
+# Create SYNC engine for Celery tasks
+# Celery tasks run in separate worker processes and should use sync operations
+# to avoid greenlet errors
+sync_database_url = str(settings.DATABASE_URL).replace('+asyncpg', '')
+if 'postgresql' in sync_database_url and '+' not in sync_database_url:
+    sync_database_url = sync_database_url.replace('postgresql://', 'postgresql+psycopg2://')
+
+sync_engine = create_engine(
+    sync_database_url,
     echo=False,
     pool_pre_ping=True,
     pool_size=10,
     max_overflow=20
 )
 
-AsyncSessionLocal = sessionmaker(
-    async_engine,
-    class_=AsyncSession,
+SyncSessionLocal = sessionmaker(
+    bind=sync_engine,
+    class_=Session,
     expire_on_commit=False
 )
 
 
-class AsyncTask(Task):
-    """Base task class that supports async operations"""
-    
-    def __call__(self, *args, **kwargs):
-        return run_async_task(self.run(*args, **kwargs))
-    
-    async def run(self, *args, **kwargs):
-        raise NotImplementedError()
-
-
-@celery_app.task(name='tasks.email_tasks.send_order_confirmation_email', base=AsyncTask)
-async def send_order_confirmation_email(order_id: str):
+@celery_app.task(name='tasks.email_tasks.send_order_confirmation_email')
+def send_order_confirmation_email(order_id: str):
     """
-    Send order confirmation email
+    Send order confirmation email (SYNC - no await)
     """
-    async with AsyncSessionLocal() as db:
+    with SyncSessionLocal() as db:
         try:
-            # Fetch order with related data
-            result = await db.execute(
+            # Fetch order with related data (SYNC)
+            result = db.execute(
                 select(Order).where(Order.id == UUID(order_id))
             )
             order = result.scalar_one_or_none()
@@ -61,8 +54,8 @@ async def send_order_confirmation_email(order_id: str):
                 print(f"Order {order_id} not found")
                 return
             
-            # Fetch user
-            user_result = await db.execute(
+            # Fetch user (SYNC)
+            user_result = db.execute(
                 select(User).where(User.id == order.user_id)
             )
             user = user_result.scalar_one_or_none()
@@ -71,10 +64,10 @@ async def send_order_confirmation_email(order_id: str):
                 print(f"User not found for order {order_id}")
                 return
             
-            # Fetch order items
+            # Fetch order items (SYNC)
             order_items = []
             for item in order.items:
-                variant_result = await db.execute(
+                variant_result = db.execute(
                     select(ProductVariant).where(ProductVariant.id == item.variant_id)
                 )
                 variant = variant_result.scalar_one_or_none()
@@ -84,10 +77,10 @@ async def send_order_confirmation_email(order_id: str):
                     "price": f"${item.total_price:.2f}"
                 })
             
-            # Fetch shipping address
+            # Fetch shipping address (SYNC)
             shipping_address = None
             if order.shipping_address_id:
-                address_result = await db.execute(
+                address_result = db.execute(
                     select(Address).where(Address.id == order.shipping_address_id)
                 )
                 shipping_address = address_result.scalar_one_or_none()
@@ -125,15 +118,15 @@ async def send_order_confirmation_email(order_id: str):
             raise
 
 
-@celery_app.task(name='tasks.email_tasks.send_shipping_update_email', base=AsyncTask)
-async def send_shipping_update_email(order_id: str, carrier_name: str):
+@celery_app.task(name='tasks.email_tasks.send_shipping_update_email')
+def send_shipping_update_email(order_id: str, carrier_name: str):
     """
-    Send shipping update email
+    Send shipping update email (SYNC - no await)
     """
-    async with AsyncSessionLocal() as db:
+    with SyncSessionLocal() as db:
         try:
-            # Fetch order
-            result = await db.execute(
+            # Fetch order (SYNC)
+            result = db.execute(
                 select(Order).where(Order.id == UUID(order_id))
             )
             order = result.scalar_one_or_none()
@@ -141,8 +134,8 @@ async def send_shipping_update_email(order_id: str, carrier_name: str):
             if not order:
                 return
             
-            # Fetch user
-            user_result = await db.execute(
+            # Fetch user (SYNC)
+            user_result = db.execute(
                 select(User).where(User.id == order.user_id)
             )
             user = user_result.scalar_one_or_none()
@@ -150,10 +143,10 @@ async def send_shipping_update_email(order_id: str, carrier_name: str):
             if not user:
                 return
             
-            # Fetch shipping address
+            # Fetch shipping address (SYNC)
             shipping_address = None
             if order.shipping_address_id:
-                address_result = await db.execute(
+                address_result = db.execute(
                     select(Address).where(Address.id == order.shipping_address_id)
                 )
                 shipping_address = address_result.scalar_one_or_none()
@@ -186,14 +179,14 @@ async def send_shipping_update_email(order_id: str, carrier_name: str):
             raise
 
 
-@celery_app.task(name='tasks.email_tasks.send_welcome_email', base=AsyncTask)
-async def send_welcome_email(user_id: str):
+@celery_app.task(name='tasks.email_tasks.send_welcome_email')
+def send_welcome_email(user_id: str):
     """
-    Send welcome email to new user
+    Send welcome email to new user (SYNC - no await)
     """
-    async with AsyncSessionLocal() as db:
+    with SyncSessionLocal() as db:
         try:
-            user_result = await db.execute(
+            user_result = db.execute(
                 select(User).where(User.id == UUID(user_id))
             )
             user = user_result.scalar_one_or_none()
@@ -223,14 +216,14 @@ async def send_welcome_email(user_id: str):
             raise
 
 
-@celery_app.task(name='tasks.email_tasks.send_password_reset_email', base=AsyncTask)
-async def send_password_reset_email(user_id: str, reset_token: str):
+@celery_app.task(name='tasks.email_tasks.send_password_reset_email')
+def send_password_reset_email(user_id: str, reset_token: str):
     """
-    Send password reset email
+    Send password reset email (SYNC - no await)
     """
-    async with AsyncSessionLocal() as db:
+    with SyncSessionLocal() as db:
         try:
-            user_result = await db.execute(
+            user_result = db.execute(
                 select(User).where(User.id == UUID(user_id))
             )
             user = user_result.scalar_one_or_none()
@@ -269,14 +262,14 @@ def send_cart_abandonment_emails():
     print("🔄 Checking for abandoned carts...")
 
 
-@celery_app.task(name='tasks.email_tasks.send_email_verification', base=AsyncTask)
-async def send_email_verification(user_id: str, verification_token: str):
+@celery_app.task(name='tasks.email_tasks.send_email_verification')
+def send_email_verification(user_id: str, verification_token: str):
     """
-    Send email verification link
+    Send email verification link (SYNC - no await)
     """
-    async with AsyncSessionLocal() as db:
+    with SyncSessionLocal() as db:
         try:
-            user_result = await db.execute(
+            user_result = db.execute(
                 select(User).where(User.id == UUID(user_id))
             )
             user = user_result.scalar_one_or_none()
@@ -305,14 +298,14 @@ async def send_email_verification(user_id: str, verification_token: str):
             raise
 
 
-@celery_app.task(name='tasks.email_tasks.send_email_change_confirmation', base=AsyncTask)
-async def send_email_change_confirmation(user_id: str, new_email: str, old_email: str, confirmation_token: str):
+@celery_app.task(name='tasks.email_tasks.send_email_change_confirmation')
+def send_email_change_confirmation(user_id: str, new_email: str, old_email: str, confirmation_token: str):
     """
-    Send email change confirmation
+    Send email change confirmation (SYNC - no await)
     """
-    async with AsyncSessionLocal() as db:
+    with SyncSessionLocal() as db:
         try:
-            user_result = await db.execute(
+            user_result = db.execute(
                 select(User).where(User.id == UUID(user_id))
             )
             user = user_result.scalar_one_or_none()
@@ -343,14 +336,14 @@ async def send_email_change_confirmation(user_id: str, new_email: str, old_email
             raise
 
 
-@celery_app.task(name='tasks.email_tasks.send_order_delivered_email', base=AsyncTask)
-async def send_order_delivered_email(order_id: str):
+@celery_app.task(name='tasks.email_tasks.send_order_delivered_email')
+def send_order_delivered_email(order_id: str):
     """
-    Send order delivered email
+    Send order delivered email (SYNC - no await)
     """
-    async with AsyncSessionLocal() as db:
+    with SyncSessionLocal() as db:
         try:
-            result = await db.execute(
+            result = db.execute(
                 select(Order).where(Order.id == UUID(order_id))
             )
             order = result.scalar_one_or_none()
@@ -358,7 +351,7 @@ async def send_order_delivered_email(order_id: str):
             if not order:
                 return
             
-            user_result = await db.execute(
+            user_result = db.execute(
                 select(User).where(User.id == order.user_id)
             )
             user = user_result.scalar_one_or_none()
@@ -366,10 +359,10 @@ async def send_order_delivered_email(order_id: str):
             if not user:
                 return
             
-            # Fetch order items
+            # Fetch order items (SYNC)
             order_items = []
             for item in order.items:
-                variant_result = await db.execute(
+                variant_result = db.execute(
                     select(ProductVariant).where(ProductVariant.id == item.variant_id)
                 )
                 variant = variant_result.scalar_one_or_none()
@@ -402,14 +395,14 @@ async def send_order_delivered_email(order_id: str):
             raise
 
 
-@celery_app.task(name='tasks.email_tasks.send_return_process_email', base=AsyncTask)
-async def send_return_process_email(order_id: str, return_instructions: str):
+@celery_app.task(name='tasks.email_tasks.send_return_process_email')
+def send_return_process_email(order_id: str, return_instructions: str):
     """
-    Send return process instructions email
+    Send return process instructions email (SYNC - no await)
     """
-    async with AsyncSessionLocal() as db:
+    with SyncSessionLocal() as db:
         try:
-            result = await db.execute(
+            result = db.execute(
                 select(Order).where(Order.id == UUID(order_id))
             )
             order = result.scalar_one_or_none()
@@ -417,7 +410,7 @@ async def send_return_process_email(order_id: str, return_instructions: str):
             if not order:
                 return
             
-            user_result = await db.execute(
+            user_result = db.execute(
                 select(User).where(User.id == order.user_id)
             )
             user = user_result.scalar_one_or_none()
@@ -448,14 +441,14 @@ async def send_return_process_email(order_id: str, return_instructions: str):
             raise
 
 
-@celery_app.task(name='tasks.email_tasks.send_referral_request_email', base=AsyncTask)
-async def send_referral_request_email(user_id: str, referral_code: str):
+@celery_app.task(name='tasks.email_tasks.send_referral_request_email')
+def send_referral_request_email(user_id: str, referral_code: str):
     """
-    Send referral request email after positive review or repeat purchase
+    Send referral request email after positive review or repeat purchase (SYNC - no await)
     """
-    async with AsyncSessionLocal() as db:
+    with SyncSessionLocal() as db:
         try:
-            user_result = await db.execute(
+            user_result = db.execute(
                 select(User).where(User.id == UUID(user_id))
             )
             user = user_result.scalar_one_or_none()

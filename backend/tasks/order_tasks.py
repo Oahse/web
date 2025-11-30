@@ -1,23 +1,23 @@
 """
 Celery tasks for order processing
 """
-from celery_app import celery_app, AsyncTask
-from tasks.email_tasks import AsyncSessionLocal
+from celery_app import celery_app
+from tasks.email_tasks import SyncSessionLocal
 from sqlalchemy import select
 from uuid import UUID
 
 from models.order import Order
 
 
-@celery_app.task(name='tasks.order_tasks.process_order_confirmation', base=AsyncTask)
-async def process_order_confirmation(order_id: str):
+@celery_app.task(name='tasks.order_tasks.process_order_confirmation')
+def process_order_confirmation(order_id: str):
     """
-    Process order confirmation - send email and create notification
+    Process order confirmation - send email and create notification (SYNC - no await)
     """
-    async with AsyncSessionLocal() as db:
+    with SyncSessionLocal() as db:
         try:
-            # Verify order exists
-            result = await db.execute(
+            # Verify order exists (SYNC)
+            result = db.execute(
                 select(Order).where(Order.id == UUID(order_id))
             )
             order = result.scalar_one_or_none()
@@ -46,15 +46,15 @@ async def process_order_confirmation(order_id: str):
             raise
 
 
-@celery_app.task(name='tasks.order_tasks.process_shipping_update', base=AsyncTask)
-async def process_shipping_update(order_id: str, carrier_name: str):
+@celery_app.task(name='tasks.order_tasks.process_shipping_update')
+def process_shipping_update(order_id: str, carrier_name: str):
     """
-    Process shipping update - send email and create notification
+    Process shipping update - send email and create notification (SYNC - no await)
     """
-    async with AsyncSessionLocal() as db:
+    with SyncSessionLocal() as db:
         try:
-            # Verify order exists
-            result = await db.execute(
+            # Verify order exists (SYNC)
+            result = db.execute(
                 select(Order).where(Order.id == UUID(order_id))
             )
             order = result.scalar_one_or_none()
@@ -83,15 +83,15 @@ async def process_shipping_update(order_id: str, carrier_name: str):
             raise
 
 
-@celery_app.task(name='tasks.order_tasks.process_order_delivered', base=AsyncTask)
-async def process_order_delivered(order_id: str):
+@celery_app.task(name='tasks.order_tasks.process_order_delivered')
+def process_order_delivered(order_id: str):
     """
-    Process order delivered - send email and create notification
+    Process order delivered - send email and create notification (SYNC - no await)
     """
-    async with AsyncSessionLocal() as db:
+    with SyncSessionLocal() as db:
         try:
-            # Verify order exists
-            result = await db.execute(
+            # Verify order exists (SYNC)
+            result = db.execute(
                 select(Order).where(Order.id == UUID(order_id))
             )
             order = result.scalar_one_or_none()

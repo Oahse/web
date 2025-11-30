@@ -226,3 +226,7 @@ def send_email_mailgun_sync(to_email: str, mail_type: str, context: dict = {}):
         )
     finally:
         loop.close()
+
+
+# Alias for backward compatibility
+send_email = send_email_mailgun_sync
