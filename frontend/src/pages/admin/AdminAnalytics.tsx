@@ -101,32 +101,173 @@ export const AdminAnalytics = () => {
     return <div>Error: {error.message}</div>
   }
 
+  const handleFilterChange = (key: keyof AnalyticsFilters, value: string) => {
+    setFilters(prev => ({ ...prev, [key]: value }));
+  };
+
+  const handleResetFilters = () => {
+    setFilters({
+      startDate: '',
+      endDate: '',
+      category: '',
+      product: '',
+      userSegment: '',
+      orderStatus: ''
+    });
+    setTimeRange('30d');
+    setShowCustomDatePicker(false);
+  };
+
+  const hasActiveFilters = filters.category || filters.product || filters.userSegment || filters.orderStatus || timeRange === 'custom';
+
   return <div>
       <div className="mb-6 flex flex-col md:flex-row md:items-center md:justify-between">
         <h1 className="text-2xl font-bold text-main mb-2 md:mb-0">Analytics</h1>
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center space-x-2 flex-wrap gap-2">
           <div className="bg-surface border border-border rounded-md overflow-hidden flex">
-            <button className={`px-3 py-1.5 text-sm ${timeRange === '7d' ? 'bg-primary text-white' : 'bg-surface text-copy'}`} onClick={() => setTimeRange('7d')}>
+            <button className={`px-3 py-1.5 text-sm ${timeRange === '7d' ? 'bg-primary text-white' : 'bg-surface text-copy'}`} onClick={() => { setTimeRange('7d'); setShowCustomDatePicker(false); }}>
               7D
             </button>
-            <button className={`px-3 py-1.5 text-sm ${timeRange === '30d' ? 'bg-primary text-white' : 'bg-surface text-copy'}`} onClick={() => setTimeRange('30d')}>
+            <button className={`px-3 py-1.5 text-sm ${timeRange === '30d' ? 'bg-primary text-white' : 'bg-surface text-copy'}`} onClick={() => { setTimeRange('30d'); setShowCustomDatePicker(false); }}>
               30D
             </button>
-            <button className={`px-3 py-1.5 text-sm ${timeRange === '3m' ? 'bg-primary text-white' : 'bg-surface text-copy'}`} onClick={() => setTimeRange('3m')}>
+            <button className={`px-3 py-1.5 text-sm ${timeRange === '3m' ? 'bg-primary text-white' : 'bg-surface text-copy'}`} onClick={() => { setTimeRange('3m'); setShowCustomDatePicker(false); }}>
               3M
             </button>
-            <button className={`px-3 py-1.5 text-sm ${timeRange === '12m' ? 'bg-primary text-white' : 'bg-surface text-copy'}`} onClick={() => setTimeRange('12m')}>
+            <button className={`px-3 py-1.5 text-sm ${timeRange === '12m' ? 'bg-primary text-white' : 'bg-surface text-copy'}`} onClick={() => { setTimeRange('12m'); setShowCustomDatePicker(false); }}>
               12M
             </button>
           </div>
-          <button className="flex items-center px-3 py-1.5 bg-surface border border-border rounded-md text-sm">
+          <button 
+            className={`flex items-center px-3 py-1.5 border rounded-md text-sm ${timeRange === 'custom' ? 'bg-primary text-white border-primary' : 'bg-surface border-border text-copy'}`}
+            onClick={() => {
+              setShowCustomDatePicker(!showCustomDatePicker);
+              setTimeRange('custom');
+            }}
+          >
             <CalendarIcon size={16} className="mr-2" />
             Custom
+          </button>
+          <button 
+            className={`flex items-center px-3 py-1.5 border rounded-md text-sm ${showFilters ? 'bg-primary text-white border-primary' : 'bg-surface border-border text-copy'}`}
+            onClick={() => setShowFilters(!showFilters)}
+          >
+            <FilterIcon size={16} className="mr-2" />
+            Filters
+            {hasActiveFilters && <span className="ml-1 bg-white text-primary rounded-full w-4 h-4 text-xs flex items-center justify-center">!</span>}
           </button>
           <button className="px-3 py-1.5 bg-primary text-white rounded-md text-sm">
             Export
           </button>
         </div>
+      </div>
+
+      {/* Custom Date Picker */}
+      {showCustomDatePicker && (
+        <div className="mb-4 p-4 bg-surface border border-border rounded-lg">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-semibold text-main">Custom Date Range</h3>
+            <button onClick={() => setShowCustomDatePicker(false)} className="text-copy-light hover:text-main">
+              <XIcon size={16} />
+            </button>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm text-copy-light mb-1">Start Date</label>
+              <input
+                type="date"
+                value={filters.startDate}
+                onChange={(e) => handleFilterChange('startDate', e.target.value)}
+                className="w-full px-3 py-2 border border-border rounded-md bg-background text-copy"
+              />
+            </div>
+            <div>
+              <label className="block text-sm text-copy-light mb-1">End Date</label>
+              <input
+                type="date"
+                value={filters.endDate}
+                onChange={(e) => handleFilterChange('endDate', e.target.value)}
+                className="w-full px-3 py-2 border border-border rounded-md bg-background text-copy"
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Filters Panel */}
+      {showFilters && (
+        <div className="mb-4 p-4 bg-surface border border-border rounded-lg">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-semibold text-main">Filters</h3>
+            <div className="flex items-center space-x-2">
+              <button 
+                onClick={handleResetFilters}
+                className="text-sm text-primary hover:underline"
+              >
+                Reset All
+              </button>
+              <button onClick={() => setShowFilters(false)} className="text-copy-light hover:text-main">
+                <XIcon size={16} />
+              </button>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div>
+              <label className="block text-sm text-copy-light mb-1">Category</label>
+              <select
+                value={filters.category}
+                onChange={(e) => handleFilterChange('category', e.target.value)}
+                className="w-full px-3 py-2 border border-border rounded-md bg-background text-copy"
+              >
+                <option value="">All Categories</option>
+                <option value="supplements">Supplements</option>
+                <option value="herbs">Herbs</option>
+                <option value="oils">Oils</option>
+                <option value="teas">Teas</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm text-copy-light mb-1">Product</label>
+              <input
+                type="text"
+                placeholder="Search product..."
+                value={filters.product}
+                onChange={(e) => handleFilterChange('product', e.target.value)}
+                className="w-full px-3 py-2 border border-border rounded-md bg-background text-copy"
+              />
+            </div>
+            <div>
+              <label className="block text-sm text-copy-light mb-1">User Segment</label>
+              <select
+                value={filters.userSegment}
+                onChange={(e) => handleFilterChange('userSegment', e.target.value)}
+                className="w-full px-3 py-2 border border-border rounded-md bg-background text-copy"
+              >
+                <option value="">All Users</option>
+                <option value="new">New Customers</option>
+                <option value="returning">Returning Customers</option>
+                <option value="vip">VIP Customers</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm text-copy-light mb-1">Order Status</label>
+              <select
+                value={filters.orderStatus}
+                onChange={(e) => handleFilterChange('orderStatus', e.target.value)}
+                className="w-full px-3 py-2 border border-border rounded-md bg-background text-copy"
+              >
+                <option value="">All Statuses</option>
+                <option value="pending">Pending</option>
+                <option value="processing">Processing</option>
+                <option value="confirmed">Confirmed</option>
+                <option value="shipped">Shipped</option>
+                <option value="delivered">Delivered</option>
+                <option value="cancelled">Cancelled</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      )}
       </div>
       {/* Overview Stats */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
