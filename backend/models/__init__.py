@@ -12,6 +12,7 @@ from .shipping import ShippingMethod
 from .transaction import Transaction
 from .wishlist import Wishlist, WishlistItem
 from .notification import Notification  # Added Notification model
+from .activity_log import ActivityLog
 
 __all__ = [
     # User models
@@ -52,4 +53,7 @@ __all__ = [
 
     # Notification models
     "Notification",
+
+    # Activity models
+    "ActivityLog",
 ]

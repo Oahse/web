@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { BarChart3Icon, TrendingUpIcon, UsersIcon, ShoppingCartIcon, DollarSignIcon, CalendarIcon, ArrowUpIcon, ArrowDownIcon, ArrowRightIcon, PackageIcon, FilterIcon, XIcon } from 'lucide-react';
+import { BarChart3Icon, TrendingUpIcon, UsersIcon, ShoppingCartIcon, DollarSignIcon, CalendarIcon, ArrowUpIcon, ArrowDownIcon, ArrowRightIcon, PackageIcon, FilterIcon, XIcon, DownloadIcon, ChevronDownIcon } from 'lucide-react';
 import { useApi } from '../../hooks/useApi';
 import { AnalyticsAPI } from '../../apis';
+import { toast } from 'react-hot-toast';
 
-import { ResponsiveContainer, BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
+import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
 
 interface AnalyticsFilters {
   startDate: string;
@@ -20,6 +21,8 @@ export const AdminAnalytics = () => {
   const [chartView, setChartView] = useState('revenue');
   const [showCustomDatePicker, setShowCustomDatePicker] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
+  const [showExportDropdown, setShowExportDropdown] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   const [filters, setFilters] = useState<AnalyticsFilters>({
     startDate: '',
     endDate: '',
@@ -29,6 +32,19 @@ export const AdminAnalytics = () => {
     orderStatus: ''
   });
   const { data: dashboardData, loading, error, execute: fetchDashboardData } = useApi();
+
+  // Close export dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (showExportDropdown && !target.closest('.export-dropdown-container')) {
+        setShowExportDropdown(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showExportDropdown]);
 
   useEffect(() => {
     const apiFilters: any = {};
@@ -120,6 +136,44 @@ export const AdminAnalytics = () => {
 
   const hasActiveFilters = filters.category || filters.product || filters.userSegment || filters.orderStatus || timeRange === 'custom';
 
+  const handleExport = async (format: 'csv' | 'xlsx') => {
+    setIsExporting(true);
+    setShowExportDropdown(false);
+    
+    try {
+      const exportFilters: any = {};
+      
+      // Handle time range or custom dates
+      if (timeRange === 'custom' && filters.startDate && filters.endDate) {
+        exportFilters.date_range = {
+          start: filters.startDate,
+          end: filters.endDate
+        };
+      } else if (timeRange !== 'custom') {
+        exportFilters.date_range = timeRange;
+      }
+      
+      // Add other filters
+      if (filters.category) exportFilters.category = filters.category;
+      if (filters.product) exportFilters.product = filters.product;
+      if (filters.userSegment) exportFilters.userSegment = filters.userSegment;
+      if (filters.orderStatus) exportFilters.orderStatus = filters.orderStatus;
+      
+      await AnalyticsAPI.exportAnalytics({
+        type: 'dashboard',
+        format,
+        filters: exportFilters
+      });
+      
+      toast.success(`Analytics exported successfully as ${format.toUpperCase()}`);
+    } catch (error: any) {
+      console.error('Export error:', error);
+      toast.error(error?.message || 'Failed to export analytics data');
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   return <div>
       <div className="mb-6 flex flex-col md:flex-row md:items-center md:justify-between">
         <h1 className="text-2xl font-bold text-main mb-2 md:mb-0">Analytics</h1>
@@ -156,9 +210,42 @@ export const AdminAnalytics = () => {
             Filters
             {hasActiveFilters && <span className="ml-1 bg-white text-primary rounded-full w-4 h-4 text-xs flex items-center justify-center">!</span>}
           </button>
-          <button className="px-3 py-1.5 bg-primary text-white rounded-md text-sm">
-            Export
-          </button>
+          <div className="relative export-dropdown-container">
+            <button 
+              className="flex items-center px-3 py-1.5 bg-primary text-white rounded-md text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+              onClick={() => setShowExportDropdown(!showExportDropdown)}
+              disabled={isExporting}
+            >
+              {isExporting ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  Exporting...
+                </>
+              ) : (
+                <>
+                  <DownloadIcon size={16} className="mr-2" />
+                  Export
+                  <ChevronDownIcon size={16} className="ml-1" />
+                </>
+              )}
+            </button>
+            {showExportDropdown && !isExporting && (
+              <div className="absolute right-0 mt-2 w-32 bg-surface border border-border rounded-md shadow-lg z-10">
+                <button
+                  className="w-full text-left px-4 py-2 text-sm text-copy hover:bg-surface-hover"
+                  onClick={() => handleExport('csv')}
+                >
+                  Export as CSV
+                </button>
+                <button
+                  className="w-full text-left px-4 py-2 text-sm text-copy hover:bg-surface-hover"
+                  onClick={() => handleExport('xlsx')}
+                >
+                  Export as Excel
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -268,7 +355,7 @@ export const AdminAnalytics = () => {
           </div>
         </div>
       )}
-      </div>
+
       {/* Overview Stats */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         {overviewStats.map((stat, index) => <div key={index} className="bg-surface rounded-lg shadow-sm p-6 border border-border-light">
@@ -345,6 +432,7 @@ export const AdminAnalytics = () => {
             {Object.entries(analyticsData?.order_status_distribution || {}).map(([status, count], index) => {
               const colors = ['bg-success', 'bg-warning', 'bg-info', 'bg-error', 'bg-secondary'];
               const color = colors[index % colors.length];
+              const countNum = Number(count);
               return (
                 <div key={index}>
                   <div className="flex items-center justify-between mb-1">
@@ -352,12 +440,12 @@ export const AdminAnalytics = () => {
                       {status}
                     </span>
                     <span className="text-sm font-medium text-main">
-                      {count}
+                      {countNum}
                     </span>
                   </div>
                   <div className="w-full h-2 bg-surface-hover rounded-full overflow-hidden">
                     <div className={`h-full ${color}`} style={{
-                      width: `${(count / (analyticsData.total_orders || 1)) * 100}%`
+                      width: `${(countNum / (analyticsData.total_orders || 1)) * 100}%`
                     }}></div>
                   </div>
                 </div>
@@ -378,7 +466,7 @@ export const AdminAnalytics = () => {
             </Link>
           </div>
           <div className="space-y-4">
-            {(analyticsData?.top_products || []).map(product => <div key={product.id} className="flex items-center">
+            {(analyticsData?.top_products || []).map((product: any) => <div key={product.id} className="flex items-center">
                 <img src={product.image_url} alt={product.name} className="w-10 h-10 rounded-md object-cover mr-3" />
                 <div className="flex-grow">
                   <h3 className="font-medium text-main text-sm">

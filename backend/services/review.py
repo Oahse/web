@@ -7,6 +7,7 @@ from models.product import Product
 from models.user import User
 from schemas.review import ReviewCreate, ReviewUpdate, ReviewResponse
 from core.exceptions import APIException
+from services.activity import ActivityService
 from uuid import uuid4, UUID
 from datetime import datetime
 from sqlalchemy.orm import selectinload, load_only
@@ -42,6 +43,19 @@ class ReviewService:
 
         # Update product rating and review count
         await self._update_product_rating(review_data.product_id)
+
+        # Log activity for new review
+        activity_service = ActivityService(self.db)
+        await activity_service.log_activity(
+            action_type="review",
+            description=f"New review posted for product {product.name}",
+            user_id=user_id,
+            metadata={
+                "product_id": str(review_data.product_id),
+                "product_name": product.name,
+                "rating": review_data.rating
+            }
+        )
 
         return new_review
 

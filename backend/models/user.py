@@ -49,6 +49,8 @@ class User(BaseModel):
         "Product", back_populates="supplier", lazy="selectin")
     notifications = relationship(
         "Notification", back_populates="user", lazy="selectin")
+    activity_logs = relationship(
+        "ActivityLog", back_populates="user", lazy="selectin")
 
     @property
     def full_name(self) -> str:

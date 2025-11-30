@@ -13,6 +13,7 @@ from schemas.auth import UserCreate, Token, UserResponse, AuthResponse
 from services.user import UserService
 # Added NotificationService import
 from services.notification import NotificationService
+from services.activity import ActivityService
 from core.database import get_db
 from core.utils.messages.email import send_email
 from core.utils.encryption import PasswordManager
@@ -101,6 +102,20 @@ class AuthService:
                 related_id=str(new_user.id)
             )
         # --- End Notification ---
+
+        # Log activity for new user registration
+        activity_service = ActivityService(self.db)
+        await activity_service.log_activity(
+            action_type="registration",
+            description=f"New user registered: {new_user.email}",
+            user_id=new_user.id,
+            metadata={
+                "email": new_user.email,
+                "firstname": new_user.firstname,
+                "lastname": new_user.lastname,
+                "role": new_user.role
+            }
+        )
 
         return UserResponse.from_orm(new_user)
 

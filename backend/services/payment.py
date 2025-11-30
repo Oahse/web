@@ -11,11 +11,10 @@ from models.payment import PaymentMethod
 from models.transaction import Transaction
 from schemas.payment import PaymentMethodCreate, PaymentMethodUpdate, PaymentMethodResponse
 from schemas.transaction import TransactionCreate
+from services.activity import ActivityService
 
 stripe.api_key = settings.STRIPE_SECRET_KEY
 
-
-stripe.api_key = settings.STRIPE_SECRET_KEY
 
 
 class PaymentService:
@@ -323,6 +322,21 @@ class PaymentService:
             self.db.add(new_transaction)
             await self.db.commit()
             await self.db.refresh(new_transaction)
+
+            # Log activity for successful payment
+            activity_service = ActivityService(self.db)
+            await activity_service.log_activity(
+                action_type="payment",
+                description=f"Payment processed for order #{order_id}",
+                user_id=user_id,
+                metadata={
+                    "order_id": str(order_id),
+                    "amount": float(amount),
+                    "currency": "USD",
+                    "payment_intent_id": payment_intent.id,
+                    "transaction_id": str(new_transaction.id)
+                }
+            )
 
             # For demo purposes, we'll consider the payment successful if intent is created
             # In production, you'd wait for webhook confirmation

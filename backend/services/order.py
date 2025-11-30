@@ -12,6 +12,7 @@ from schemas.order import OrderResponse, OrderItemResponse, CheckoutRequest, Ord
 from services.cart import CartService
 from services.payment import PaymentService
 from services.notification import NotificationService
+from services.activity import ActivityService
 from uuid import UUID
 from datetime import datetime, timedelta
 from typing import Optional, List, Dict, Any
@@ -123,6 +124,19 @@ class OrderService:
                 # Commit order and tracking event BEFORE triggering Celery tasks
                 await self.db.commit()
                 await self.db.refresh(order)
+
+                # Log activity for new order
+                activity_service = ActivityService(self.db)
+                await activity_service.log_activity(
+                    action_type="order",
+                    description=f"New order placed: #{order.id}",
+                    user_id=user_id,
+                    metadata={
+                        "order_id": str(order.id),
+                        "total_amount": float(total_amount),
+                        "status": order.status
+                    }
+                )
 
                 # Clear cart after successful order and commit
                 await cart_service.clear_cart(user_id)
