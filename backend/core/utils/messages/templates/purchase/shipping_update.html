@@ -1,154 +1,81 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🚚 Shipping Update for Your Order #{{ order_number | default('XYZ123') }}</title>
-    <style>
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            line-height: 1.6;
-            color: #333333;
-            background-color: #f8f8f8;
-            margin: 0;
-            padding: 0;
-        }
-        .container {
-            max-width: 600px;
-            margin: 20px auto;
-            background-color: #ffffff;
-            padding: 30px;
-            border-radius: 8px;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
-        }
-        .header {
-            text-align: center;
-            padding-bottom: 25px;
-            border-bottom: 1px solid #eeeeee;
-        }
-        .header img {
-            max-width: 180px;
-            height: auto;
-            margin-bottom: 15px;
-        }
-        .header h1 {
-            color: #28a745; /* Green for positive updates */
-            font-size: 32px;
-            margin: 0;
-            line-height: 1.2;
-        }
-        .content {
-            padding: 25px 0;
-            text-align: center;
-        }
-        .content p {
-            margin-bottom: 18px;
-            font-size: 17px;
-        }
-        .update-box {
-            background-color: #f4fcf4;
-            border: 1px solid #d4edda;
-            padding: 20px;
-            border-radius: 5px;
-            margin-bottom: 25px;
-            text-align: left;
-        }
-        .update-box h3 {
-            color: #28a745;
-            margin-top: 0;
-            font-size: 20px;
-            text-align: center;
-            margin-bottom: 15px;
-        }
-        .update-box p {
-            margin-bottom: 10px;
-            font-size: 16px;
-        }
-        .tracking-number {
-            font-weight: bold;
-            color: #e67e22; /* Orange for important numbers */
-            font-size: 18px;
-            word-break: break-all; /* Ensures long tracking numbers wrap */
-        }
-        .button-container {
-            text-align: center;
-            padding: 25px 0;
-        }
-        .button {
-            display: inline-block;
-            background-color: #4CAF50; /* Vibrant green for action */
-            color: #ffffff;
-            padding: 15px 30px;
-            text-decoration: none;
-            border-radius: 6px;
-            font-size: 20px;
-            font-weight: bold;
-            transition: background-color 0.3s ease;
-        }
-        .button:hover {
-            background-color: #45a049;
-        }
-        .footer {
-            text-align: center;
-            padding-top: 25px;
-            border-top: 1px solid #eeeeee;
-            font-size: 13px;
-            color: #777777;
-        }
-        .footer a {
-            color: #28a745;
-            text-decoration: none;
-        }
-        .footer a:hover {
-            text-decoration: underline;
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="header">
-            {% if logo_url %}
-            <img src="{{ logo_url }}" alt="{{ company_name | default('Our Company') }} Logo">
-            {% endif %}
-            <h1>Your Order Is On Its Way!</h1>
-        </div>
+{% extends "base_banwee.html" %}
 
-        <div class="content">
-            <p>Hi {{ customer_name | default("there") }},</p>
-            <p>
-                Great news! Your order #<strong style="color: #28a745;">{{ order_number }}</strong> from
-                **{{ company_name | default('our store') }}** has shipped and is on its way to you!
-            </p>
+{% block title %}Your Order Has Shipped - Banwee{% endblock %}
 
-            <div class="update-box">
-                <h3>Shipping Details:</h3>
-                <p><strong>Tracking Number:</strong> <span class="tracking-number">{{ tracking_number | default("N/A") }}</span></p>
-                <p><strong>Carrier:</strong> {{ carrier_name | default("N/A") }}</p>
-                <p><strong>Estimated Delivery:</strong> {{ estimated_delivery_date | default("N/A") }}</p>
-                <p><strong>Shipped To:</strong> {{ shipping_address.line1 }}, {{ shipping_address.city }}</p>
-            </div>
+{% block content %}
+<h1>🚚 Your Order Is On Its Way!</h1>
 
-            <div class="button-container">
-                <a href="{{ tracking_url | default('https://www.yourstoreurl.com/track') }}" class="button">Track Your Package</a>
-            </div>
+<p>Hi {{ customer_name | default("there") }},</p>
 
-            <p>
-                We hope you enjoy your purchase! If you have any questions, please contact us.
-            </p>
-        </div>
+<p>
+    Exciting news! Your authentic African products from order 
+    <strong style="color: #E67E22;">#{{ order_number }}</strong> have been shipped and are heading your way!
+</p>
 
-        <div class="footer">
-            <p>
-                &copy; {{ current_year | default("2025") }} {{ company_name | default("Your Company Name") }}. All rights reserved.<br>
-                <a href="{{ unsubscribe_url | default('#') }}">Unsubscribe</a> |
-                <a href="{{ privacy_policy_url | default('#') }}">Privacy Policy</a>
-            </p>
-            <p>Stay connected:
-                {% if social_links.facebook %}<a href="{{ social_links.facebook }}">Facebook</a>{% endif %}
-                {% if social_links.twitter %}| <a href="{{ social_links.twitter }}">Twitter</a>{% endif %}
-                {% if social_links.instagram %}| <a href="{{ social_links.instagram }}">Instagram</a>{% endif %}
-            </p>
-        </div>
-    </div>
-</body>
-</html>
+<div class="highlight-box">
+    <h3>📦 Shipping Information</h3>
+    <table style="width: 100%; margin-top: 10px;">
+        <tr>
+            <td style="padding: 8px 0; font-weight: 600; color: #2D5016;">Tracking Number:</td>
+            <td style="padding: 8px 0; color: #E67E22; font-weight: bold; word-break: break-all;">
+                {{ tracking_number | default("Processing") }}
+            </td>
+        </tr>
+        <tr>
+            <td style="padding: 8px 0; font-weight: 600; color: #2D5016;">Carrier:</td>
+            <td style="padding: 8px 0;">{{ carrier_name | default("Standard Shipping") }}</td>
+        </tr>
+        <tr>
+            <td style="padding: 8px 0; font-weight: 600; color: #2D5016;">Estimated Delivery:</td>
+            <td style="padding: 8px 0;">{{ estimated_delivery_date | default("3-5 business days") }}</td>
+        </tr>
+        <tr>
+            <td style="padding: 8px 0; font-weight: 600; color: #2D5016;">Shipping To:</td>
+            <td style="padding: 8px 0;">
+                {{ shipping_address.line1 }}<br>
+                {{ shipping_address.city }}, {{ shipping_address.state_zip }}
+            </td>
+        </tr>
+    </table>
+</div>
+
+<div class="cta-container">
+    <a href="{{ tracking_url | default('#') }}" class="cta-button">
+        Track Your Package
+    </a>
+</div>
+
+<div class="info-box">
+    <p><strong>📱 Stay Updated:</strong> You'll receive notifications as your package moves through each stage of delivery. 
+    Keep an eye on your email for updates!</p>
+</div>
+
+<h2>🌍 What's in Your Package?</h2>
+<p>Your order contains:</p>
+<ul style="list-style: none; padding: 0;">
+    {% for item in order_items %}
+    <li style="padding: 8px 0; border-bottom: 1px solid #ECF0F1;">
+        <strong>{{ item.name }}</strong> - Qty: {{ item.quantity }}
+    </li>
+    {% endfor %}
+</ul>
+
+<div class="highlight-box" style="margin-top: 30px;">
+    <h3>💚 Thank You for Supporting African Farmers</h3>
+    <ul>
+        <li>Your purchase directly supports local farmers and artisans</li>
+        <li>All products are sourced through fair trade practices</li>
+        <li>You're helping preserve traditional African agriculture</li>
+    </ul>
+</div>
+
+<p style="margin-top: 30px;">
+    We hope you enjoy your authentic African products! Once you receive your order, 
+    we'd love to hear your feedback.
+</p>
+
+<p>
+    <strong>Questions about your shipment?</strong><br>
+    Contact our support team at support@banwee.com
+</p>
+{% endblock %}

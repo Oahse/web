@@ -10,12 +10,33 @@
 
 ### Prerequisites
 
-- Python 3.11+
-- Node.js 18+
-- PostgreSQL 14+ (for production) or SQLite (for development)
-- Git
+- Docker & Docker Compose (recommended)
+- OR: Python 3.11+, Node.js 18+, PostgreSQL 14+, Redis
 
-### Installation
+### Docker Setup (Recommended)
+
+**The fastest way to get started:**
+
+```bash
+# 1. Launch all services
+./docker-start.sh
+
+# 2. Seed database with sample data
+./seed-database.sh
+
+# 3. Access the application
+# Frontend: http://localhost:5173
+# Backend: http://localhost:8000
+# API Docs: http://localhost:8000/docs
+```
+
+**Default credentials:**
+- Admin: `admin@banwee.com` / `adminpass`
+- Supplier: `supplier@banwee.com` / `supplierpass`
+
+📖 **See [DOCKER_SETUP_GUIDE.md](./DOCKER_SETUP_GUIDE.md) for complete Docker documentation**
+
+### Local Development Setup
 
 1. **Clone the repository**
    ```bash
@@ -36,13 +57,10 @@
    
    # Configure environment variables
    cp .env.example .env
-   # Edit .env file with your configuration:
-   # - DATABASE_URL=sqlite:///./db1.db (for development)
-   # - SECRET_KEY=your-secret-key
-   # - STRIPE_SECRET_KEY=your-stripe-key (if using payments)
+   # Edit .env file - change POSTGRES_SERVER to localhost
    
    # Initialize database
-   python init_db.py
+   python init_db.py --seed
    
    # Start the backend server
    uvicorn main:app --reload
@@ -57,9 +75,6 @@
    
    # Configure environment variables
    cp .env.example .env
-   # Edit .env file with your configuration:
-   # - VITE_API_URL=http://localhost:8000
-   # - VITE_STRIPE_PUBLIC_KEY=your-stripe-public-key (if using payments)
    
    # Start the development server
    npm run dev
@@ -112,8 +127,17 @@ pytest tests/test_final_integration.py -v
 
 ## 📚 Documentation
 
-- [API Documentation](./API_DOCUMENTATION.md) - Complete API endpoint reference
-- [Environment Variables](./backend/ENVIRONMENT_VARIABLES.md) - Configuration guide
+### Setup & Configuration
+- **[SETUP_COMPLETE.md](./SETUP_COMPLETE.md)** - ✅ Complete setup overview and checklist
+- **[DOCKER_SETUP_GUIDE.md](./DOCKER_SETUP_GUIDE.md)** - Docker setup, commands, and troubleshooting
+- **[API_DOCUMENTATION.md](./API_DOCUMENTATION.md)** - Complete API endpoint reference
+
+### Email System
+- **[EMAIL_BRANDING_GUIDE.md](./EMAIL_BRANDING_GUIDE.md)** - Email template branding and customization
+- **[EMAIL_TEMPLATE_CUSTOMIZATION_GUIDE.md](./EMAIL_TEMPLATE_CUSTOMIZATION_GUIDE.md)** - Template customization guide
+- **[EMAIL_USE_CASES_QUICK_REFERENCE.txt](./EMAIL_USE_CASES_QUICK_REFERENCE.txt)** - All 45 email use cases
+
+### Live Documentation
 - Backend API Docs: http://localhost:8000/docs (when running)
 
 ## 🔧 Development
