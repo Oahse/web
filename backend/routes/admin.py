@@ -259,6 +259,66 @@ async def delete_user(
         )
 
 
+@router.post("/users/{user_id}/reset-password")
+async def reset_user_password(
+    user_id: str,
+    current_user: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db)
+):
+    """Send password reset email to user (admin only)."""
+    try:
+        admin_service = AdminService(db)
+        result = await admin_service.reset_user_password(user_id)
+        return Response(success=True, data=result, message="Password reset email sent successfully")
+    except APIException:
+        raise
+    except Exception as e:
+        raise APIException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            message=f"Failed to send password reset email: {str(e)}"
+        )
+
+
+@router.post("/users/{user_id}/deactivate")
+async def deactivate_user_account(
+    user_id: str,
+    current_user: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db)
+):
+    """Deactivate user account (admin only)."""
+    try:
+        admin_service = AdminService(db)
+        result = await admin_service.deactivate_user(user_id)
+        return Response(success=True, data=result, message="User account deactivated successfully")
+    except APIException:
+        raise
+    except Exception as e:
+        raise APIException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            message=f"Failed to deactivate user: {str(e)}"
+        )
+
+
+@router.post("/users/{user_id}/activate")
+async def activate_user_account(
+    user_id: str,
+    current_user: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db)
+):
+    """Activate user account (admin only)."""
+    try:
+        admin_service = AdminService(db)
+        result = await admin_service.activate_user(user_id)
+        return Response(success=True, data=result, message="User account activated successfully")
+    except APIException:
+        raise
+    except Exception as e:
+        raise APIException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            message=f"Failed to activate user: {str(e)}"
+        )
+
+
 @router.get("/orders/{order_id}")
 async def get_order_by_id(
     order_id: UUID,

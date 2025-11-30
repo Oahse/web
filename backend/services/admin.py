@@ -742,3 +742,65 @@ class AdminService:
         await self.db.commit()
         await self.db.refresh(settings)
         return settings.to_dict()
+
+    async def reset_user_password(self, user_id: str) -> dict:
+        """Send password reset email to user."""
+        query = select(User).where(User.id == user_id)
+        result = await self.db.execute(query)
+        user = result.scalar_one_or_none()
+
+        if not user:
+            raise APIException(status_code=404, message="User not found")
+
+        # Generate password reset token using access token with short expiry
+        from datetime import timedelta
+        reset_token = self.auth_service.create_access_token(
+            data={"sub": user.email, "type": "password_reset"},
+            expires_delta=timedelta(hours=1)  # Reset token expires in 1 hour
+        )
+
+        # Send password reset email
+        from tasks.email_tasks import send_password_reset_email
+        send_password_reset_email.delay(user.email, reset_token)
+
+        return {
+            "message": "Password reset email sent successfully",
+            "user_id": str(user.id),
+            "email": user.email
+        }
+
+    async def deactivate_user(self, user_id: str) -> dict:
+        """Deactivate a user account."""
+        query = select(User).where(User.id == user_id)
+        result = await self.db.execute(query)
+        user = result.scalar_one_or_none()
+
+        if not user:
+            raise APIException(status_code=404, message="User not found")
+
+        user.active = False
+        await self.db.commit()
+
+        return {
+            "message": "User deactivated successfully",
+            "user_id": str(user.id),
+            "active": user.active
+        }
+
+    async def activate_user(self, user_id: str) -> dict:
+        """Activate a user account."""
+        query = select(User).where(User.id == user_id)
+        result = await self.db.execute(query)
+        user = result.scalar_one_or_none()
+
+        if not user:
+            raise APIException(status_code=404, message="User not found")
+
+        user.active = True
+        await self.db.commit()
+
+        return {
+            "message": "User activated successfully",
+            "user_id": str(user.id),
+            "active": user.active
+        }

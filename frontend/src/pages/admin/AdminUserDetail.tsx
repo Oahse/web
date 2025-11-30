@@ -1,21 +1,74 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { ArrowLeftIcon, EditIcon, TrashIcon, ShoppingBagIcon, CheckCircleIcon, XCircleIcon, MailIcon, PhoneIcon, CalendarIcon } from 'lucide-react';
 import { useApi } from '../../hooks/useApi';
 import { AdminAPI } from '../../apis';
 import ErrorMessage from '../../components/common/ErrorMessage';
+import toast from 'react-hot-toast';
 
 export const AdminUserDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
 
   const { data: apiResponse, loading, error, execute } = useApi();
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [confirmAction, setConfirmAction] = useState<'deactivate' | 'activate' | null>(null);
+  const [actionLoading, setActionLoading] = useState(false);
 
   useEffect(() => {
     if (id) {
       execute(AdminAPI.getUser, id);
     }
   }, [id, execute]);
+
+  const handleResetPassword = async () => {
+    if (!id) return;
+    
+    setActionLoading(true);
+    try {
+      await AdminAPI.resetUserPassword(id);
+      toast.success('Password reset email sent successfully');
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Failed to send password reset email');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleToggleStatus = async () => {
+    if (!id || !confirmAction) return;
+    
+    setActionLoading(true);
+    try {
+      if (confirmAction === 'deactivate') {
+        await AdminAPI.deactivateUser(id);
+        toast.success('User account deactivated successfully');
+      } else {
+        await AdminAPI.activateUser(id);
+        toast.success('User account activated successfully');
+      }
+      
+      // Refresh user data
+      execute(AdminAPI.getUser, id);
+      setShowConfirmModal(false);
+      setConfirmAction(null);
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Failed to update user status');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleSendEmail = () => {
+    if (user?.email) {
+      window.location.href = `mailto:${user.email}`;
+    }
+  };
+
+  const openConfirmModal = (action: 'deactivate' | 'activate') => {
+    setConfirmAction(action);
+    setShowConfirmModal(true);
+  };
 
   if (error) {
     return (
@@ -207,19 +260,73 @@ export const AdminUserDetail = () => {
           <div className="bg-surface rounded-lg p-6 border border-border-light">
             <h2 className="text-lg font-semibold text-main mb-4">Actions</h2>
             <div className="space-y-2">
-              <button className="w-full px-4 py-2 border border-border rounded-md hover:bg-surface-hover text-copy">
-                Reset Password
+              <button 
+                onClick={handleResetPassword}
+                disabled={actionLoading}
+                className="w-full px-4 py-2 border border-border rounded-md hover:bg-surface-hover text-copy disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {actionLoading ? 'Sending...' : 'Reset Password'}
               </button>
-              <button className="w-full px-4 py-2 border border-border rounded-md hover:bg-surface-hover text-copy">
+              <button 
+                onClick={() => openConfirmModal(user.active ? 'deactivate' : 'activate')}
+                disabled={actionLoading}
+                className={`w-full px-4 py-2 border rounded-md text-copy disabled:opacity-50 disabled:cursor-not-allowed ${
+                  user.active 
+                    ? 'border-error text-error hover:bg-error/10' 
+                    : 'border-success text-success hover:bg-success/10'
+                }`}
+              >
                 {user.active ? 'Deactivate Account' : 'Activate Account'}
               </button>
-              <button className="w-full px-4 py-2 border border-border rounded-md hover:bg-surface-hover text-copy">
+              <button 
+                onClick={handleSendEmail}
+                className="w-full px-4 py-2 border border-border rounded-md hover:bg-surface-hover text-copy"
+              >
                 Send Email
               </button>
             </div>
           </div>
         </div>
       </div>
+
+      {/* Confirmation Modal */}
+      {showConfirmModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-surface rounded-lg p-6 max-w-md w-full mx-4 border border-border-light">
+            <h3 className="text-lg font-semibold text-main mb-4">
+              Confirm {confirmAction === 'deactivate' ? 'Deactivation' : 'Activation'}
+            </h3>
+            <p className="text-copy mb-6">
+              Are you sure you want to {confirmAction} this user account? 
+              {confirmAction === 'deactivate' && ' The user will not be able to log in.'}
+              {confirmAction === 'activate' && ' The user will be able to log in again.'}
+            </p>
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => {
+                  setShowConfirmModal(false);
+                  setConfirmAction(null);
+                }}
+                disabled={actionLoading}
+                className="px-4 py-2 border border-border rounded-md hover:bg-surface-hover text-copy disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleToggleStatus}
+                disabled={actionLoading}
+                className={`px-4 py-2 rounded-md text-white disabled:opacity-50 ${
+                  confirmAction === 'deactivate' 
+                    ? 'bg-error hover:bg-error/90' 
+                    : 'bg-success hover:bg-success/90'
+                }`}
+              >
+                {actionLoading ? 'Processing...' : 'Confirm'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

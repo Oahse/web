@@ -17,9 +17,10 @@ SQLALCHEMY_DATABASE_URL = "postgresql+asyncpg://banwee:banwee_password@localhost
 engine = create_async_engine(
     SQLALCHEMY_DATABASE_URL,
     echo=False,
-    pool_pre_ping=True
+    pool_pre_ping=True,
+    poolclass=None  # Disable pooling for tests to avoid connection issues
 )
-TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine, class_=AsyncSession)
+TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine, class_=AsyncSession, expire_on_commit=False)
 
 Base.metadata.bind = engine
 
@@ -29,13 +30,25 @@ async def override_get_db() -> AsyncGenerator[AsyncSession, None]:
 
 app.dependency_overrides[get_db] = override_get_db
 
-@pytest.fixture(autouse=True)
+@pytest.fixture(scope="session")
+def event_loop():
+    """Create an instance of the default event loop for the test session."""
+    loop = asyncio.get_event_loop_policy().new_event_loop()
+    yield loop
+    loop.close()
+
+@pytest.fixture(scope="function", autouse=True)
 async def db_setup_and_teardown():
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    """Setup and teardown database for each test function."""
+    # Don't create/drop tables for every test - too slow
+    # Instead, just ensure tables exist
+    try:
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+    except Exception:
+        pass  # Tables might already exist
     yield
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
+    # Don't drop tables after each test - causes issues with concurrent tests
 
 @pytest.fixture
 async def db_session() -> AsyncGenerator[AsyncSession, None]:

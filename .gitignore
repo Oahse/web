@@ -272,3 +272,4 @@ fabric.properties
 # API Documentation
 api.md
 .vscode/
+backend/users.txt

@@ -293,6 +293,27 @@ export class AdminAPI {
   static async sendSystemNotification(notification) {
     return await apiClient.post('/admin/notifications/send', notification);
   }
+
+  /**
+   * Reset user password (admin action)
+   */
+  static async resetUserPassword(userId) {
+    return await apiClient.post(`/admin/users/${userId}/reset-password`);
+  }
+
+  /**
+   * Deactivate user account (admin action)
+   */
+  static async deactivateUser(userId) {
+    return await apiClient.post(`/admin/users/${userId}/deactivate`);
+  }
+
+  /**
+   * Activate user account (admin action)
+   */
+  static async activateUser(userId) {
+    return await apiClient.post(`/admin/users/${userId}/activate`);
+  }
 }
 
 export default AdminAPI;

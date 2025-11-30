@@ -13,7 +13,7 @@ from models.notification import Notification
 
 # Create SYNC engine for Celery tasks
 # Celery tasks run in separate worker processes and should use sync operations
-sync_database_url = str(settings.DATABASE_URL).replace('+asyncpg', '')
+sync_database_url = str(settings.SQLALCHEMY_DATABASE_URI).replace('+asyncpg', '')
 if 'postgresql' in sync_database_url and '+' not in sync_database_url:
     sync_database_url = sync_database_url.replace('postgresql://', 'postgresql+psycopg2://')
 
