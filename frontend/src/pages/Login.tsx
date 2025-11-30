@@ -189,10 +189,10 @@ export const Login = ({ isInitialLoading = false }) => {
         {/* Social Authentication Section */}
         <div className="relative flex items-center justify-center my-6">
           <div className="border-t border-border-light w-full"></div>
-          <span className="bg-surface px-3 text-sm text-copy-light absolute">Login with</span>
+          <span className="bg-surface px-3 text-sm text-copy-light absolute">Or continue with</span>
         </div>
 
-        <SocialAuth />
+        <SocialAuth mode="login" />
         {/* Register Link */}
         <p className="text-center mt-6 text-sm text-copy-light">
           Don&apos;t have an account? <Link to="/register" className="text-primary hover:underline">Register</Link>

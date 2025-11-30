@@ -261,9 +261,9 @@ export const Register = () => {
         </form>
         <div className="relative flex items-center justify-center my-6">
           <div className="border-t border-border-light w-full"></div>
-          <span className="bg-surface px-3 text-sm text-copy-light absolute">Sign up with</span>
+          <span className="bg-surface px-3 text-sm text-copy-light absolute">Or continue with</span>
         </div>
-        <SocialAuth />
+        <SocialAuth mode="register" />
         <p className="text-center mt-6 text-sm text-copy-light">
           Already have an account? <Link to="/login" className="text-primary hover:underline">Login</Link>
         </p>

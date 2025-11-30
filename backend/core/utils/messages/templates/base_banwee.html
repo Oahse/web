@@ -252,9 +252,11 @@
                 <div class="divider"></div>
                 
                 <div class="social-links">
-                    <a href="{{ social_facebook | default('#') }}">Facebook</a> •
-                    <a href="{{ social_twitter | default('#') }}">Twitter</a> •
-                    <a href="{{ social_instagram | default('#') }}">Instagram</a>
+                    <a href="{{ social_facebook | default('https://facebook.com/banwee') }}" title="Follow us on Facebook">📘 Facebook</a> •
+                    <a href="{{ social_instagram | default('https://instagram.com/banwee') }}" title="Follow us on Instagram">📷 Instagram</a> •
+                    <a href="{{ social_twitter | default('https://twitter.com/banwee') }}" title="Follow us on Twitter">🐦 Twitter</a> •
+                    <a href="{{ social_tiktok | default('https://tiktok.com/@banwee') }}" title="Follow us on TikTok">🎵 TikTok</a> •
+                    <a href="{{ social_youtube | default('https://youtube.com/@banwee') }}" title="Subscribe on YouTube">📺 YouTube</a>
                 </div>
 
                 <p style="margin-top: 20px;">

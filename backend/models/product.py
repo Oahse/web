@@ -31,19 +31,25 @@ class Category(BaseModel):
 class Product(BaseModel):
     __tablename__ = "products"
 
-    name = Column(String(CHAR_LENGTH), nullable=False)
+    name = Column(String(CHAR_LENGTH), nullable=False, index=True)
     description = Column(Text, nullable=True)
     category_id = Column(GUID(), ForeignKey(
-        "categories.id"), nullable=False)
+        "categories.id"), nullable=False, index=True)
     supplier_id = Column(GUID(),
-                         ForeignKey("users.id"), nullable=False)
-    featured = Column(Boolean, default=False)
-    rating = Column(Float, default=0.0)
+                         ForeignKey("users.id"), nullable=False, index=True)
+    featured = Column(Boolean, default=False, index=True)
+    rating = Column(Float, default=0.0, index=True)
     review_count = Column(Integer, default=0)
-    origin = Column(String(100), nullable=True)
+    origin = Column(String(100), nullable=True, index=True)
     # ["organic", "gluten-free", etc.]
     dietary_tags = Column(JSON, nullable=True)
-    is_active = Column(Boolean, default=True)
+    is_active = Column(Boolean, default=True, index=True)
+    
+    # SEO Fields
+    seo_title = Column(String(60), nullable=True)  # Optimal: 50-60 chars
+    seo_description = Column(String(160), nullable=True)  # Optimal: 150-160 chars
+    seo_keywords = Column(JSON, nullable=True)  # Array of keywords
+    slug = Column(String(CHAR_LENGTH), unique=True, nullable=True, index=True)
 
     # Relationships with lazy loading
     category = relationship("Category", back_populates="products")
@@ -78,7 +84,7 @@ class Product(BaseModel):
         """Check if any variant is in stock"""
         return any(v.stock > 0 for v in self.variants if v.is_active)
 
-    def to_dict(self, include_variants=False) -> dict:
+    def to_dict(self, include_variants=False, include_seo=False) -> dict:
         """Convert product to dictionary for API responses"""
         data = {
             "id": str(self.id),
@@ -97,6 +103,44 @@ class Product(BaseModel):
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }
+
+        if include_seo:
+            data["seo"] = {
+                "title": self.seo_title or f"{self.name} - Authentic African Products | Banwee",
+                "description": self.seo_description or (self.description[:157] + "..." if self.description and len(self.description) > 157 else self.description),
+                "keywords": self.seo_keywords or self.dietary_tags or [],
+                "slug": self.slug or str(self.id),
+                "canonical_url": f"https://banwee.com/products/{self.slug or self.id}",
+                "og_image": self.primary_variant.primary_image.url if self.primary_variant and self.primary_variant.primary_image else None,
+                "og_type": "product",
+                "product_schema": {
+                    "@context": "https://schema.org/",
+                    "@type": "Product",
+                    "name": self.name,
+                    "description": self.description,
+                    "image": self.primary_variant.primary_image.url if self.primary_variant and self.primary_variant.primary_image else None,
+                    "brand": {
+                        "@type": "Brand",
+                        "name": "Banwee"
+                    },
+                    "offers": {
+                        "@type": "Offer",
+                        "url": f"https://banwee.com/products/{self.slug or self.id}",
+                        "priceCurrency": "USD",
+                        "price": self.price_range["min"],
+                        "availability": "https://schema.org/InStock" if self.in_stock else "https://schema.org/OutOfStock",
+                        "seller": {
+                            "@type": "Organization",
+                            "name": "Banwee"
+                        }
+                    },
+                    "aggregateRating": {
+                        "@type": "AggregateRating",
+                        "ratingValue": self.rating,
+                        "reviewCount": self.review_count
+                    } if self.review_count > 0 else None
+                }
+            }
 
         if include_variants:
             data["variants"] = [v.to_dict() for v in self.variants]

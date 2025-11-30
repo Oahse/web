@@ -137,21 +137,19 @@ const SocialAuthButtons = ({
 
   return (
     <div className="space-y-3">
-      <div className="text-center text-sm text-gray-600 dark:text-gray-400 mb-4">
-        Or {mode} with
-      </div>
-
       {/* Show warning if social auth is not properly configured */}
-      {(!googleClientId || !facebookAppId) && (
-        <div className="text-xs text-yellow-600 dark:text-yellow-400 bg-yellow-50 dark:bg-yellow-900/20 p-2 rounded mb-2">
-          Social authentication requires configuration. Please add your OAuth credentials to .env file.
+      {(!googleClientId && !facebookAppId) && (
+        <div className="text-xs text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 p-3 rounded-lg mb-3 border border-amber-200 dark:border-amber-800">
+          <p className="font-medium mb-1">⚙️ Social Authentication Setup Required</p>
+          <p>Add your OAuth credentials to the .env file to enable social login.</p>
         </div>
       )}
 
-      {/* Show HTTPS warning for Facebook */}
+      {/* Show HTTPS warning for Facebook - More prominent */}
       {!isHttps && facebookAppId && (
-        <div className="text-xs text-yellow-600 dark:text-yellow-400 bg-yellow-50 dark:bg-yellow-900/20 p-2 rounded mb-2">
-          Facebook login requires HTTPS. Please use a secure connection.
+        <div className="text-xs text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-900/20 p-3 rounded-lg mb-3 border border-red-200 dark:border-red-800">
+          <p className="font-medium mb-1">🔒 HTTPS Required for Facebook Login</p>
+          <p>Facebook OAuth requires a secure HTTPS connection. Please access this site via HTTPS or use alternative login methods.</p>
         </div>
       )}
 
@@ -197,18 +195,6 @@ const SocialAuthButtons = ({
         <FaTiktok className="w-5 h-5 text-black dark:text-white mr-3" />
         {mode === 'login' ? 'Sign in' : 'Sign up'} with TikTok
       </button>
-
-      {/* Divider */}
-      <div className="relative my-6">
-        <div className="absolute inset-0 flex items-center">
-          <div className="w-full border-t border-gray-300 dark:border-gray-600" />
-        </div>
-        <div className="relative flex justify-center text-sm">
-          <span className="px-2 bg-white dark:bg-gray-900 text-gray-500 dark:text-gray-400">
-            Or continue with email
-          </span>
-        </div>
-      </div>
     </div>
   );
 };

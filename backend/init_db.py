@@ -414,19 +414,36 @@ async def seed_sample_data(
             is_featured = i <= max(5, products_count //
                                    4) or random.random() < 0.15
 
+            # Generate SEO-optimized slug
+            slug = f"{product_name.lower().replace(' ', '-')}-{i}"
+            
+            # Generate SEO metadata
+            origin_country = random.choice(
+                ["Ghana", "Nigeria", "Kenya", "Uganda", "Tanzania", "Ethiopia", "Mali"])
+            dietary_tags = random.sample(
+                ["organic", "gluten-free", "vegan", "non-GMO", "fair-trade", "kosher", "halal"], 
+                k=random.randint(1, 3))
+            
+            seo_title = f"{product_name} from {origin_country} | Banwee"
+            seo_description = f"Buy authentic {product_name.lower()} from {origin_country}. {', '.join(dietary_tags).title()}. Direct from African farmers. Free shipping on orders over $50."
+            seo_keywords = [keyword.lower(), origin_country.lower(), chosen_category.name.lower()] + dietary_tags
+
             product = Product(
                 name=product_name,
-                description=f"High-quality {keyword.lower()} sourced directly from trusted suppliers. Perfect for cooking, baking, and everyday use. Rich in nutrients and carefully processed to maintain freshness.",
+                description=f"High-quality {keyword.lower()} sourced directly from trusted suppliers in {origin_country}. Perfect for cooking, baking, and everyday use. Rich in nutrients and carefully processed to maintain freshness. Our {product_name.lower()} is {', '.join(dietary_tags)}, ensuring you get the best quality African products delivered fresh to your door.",
                 category_id=chosen_category.id,
                 supplier_id=chosen_supplier.id,
                 featured=is_featured,
                 rating=round(random.uniform(3.5, 5.0), 1),  # Higher ratings
                 review_count=random.randint(5, 150),  # Ensure some reviews
-                origin=random.choice(
-                    ["Ghana", "Nigeria", "Kenya", "Uganda", "Tanzania", "Ethiopia", "Mali"]),
-                dietary_tags=random.sample(
-                    ["organic", "gluten-free", "vegan", "non-GMO", "fair-trade", "kosher", "halal"], k=random.randint(1, 3)),
-                is_active=True  # Ensure all products are active
+                origin=origin_country,
+                dietary_tags=dietary_tags,
+                is_active=True,  # Ensure all products are active
+                # SEO fields
+                seo_title=seo_title[:60],  # Limit to 60 chars
+                seo_description=seo_description[:160],  # Limit to 160 chars
+                seo_keywords=seo_keywords,
+                slug=slug
             )
             session.add(product)
             await session.flush()  # Ensure product.id is populated
