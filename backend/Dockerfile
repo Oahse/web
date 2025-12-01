@@ -29,6 +29,7 @@ RUN chmod +x migrate.sh
 
 # Set Python path
 ENV PYTHONPATH=/app
+ENV POSTGRES_DB_URL=postgresql+asyncpg://banwee:banwee_password@postgres:5432/banwee_db
 
 # Expose port
 EXPOSE 8000

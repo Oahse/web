@@ -28,8 +28,10 @@ def parse_cors(value: str) -> List[str]:
     if isinstance(value, str):
         value = value.strip()
         if value.startswith("[") and value.endswith("]"):
-            return [i.strip().strip("'\"") for i in value[1:-1].split(",")]
-        return [i.strip() for i in value.split(",")]
+            parsed_list = [i.strip().strip("'\"") for i in value[1:-1].split(",")]
+            return parsed_list
+        parsed_list = [i.strip() for i in value.split(",")]
+        return parsed_list
     raise ValueError("Invalid CORS format")
 
 
@@ -57,6 +59,7 @@ class Settings:
     POSTGRES_DB: str = os.getenv('POSTGRES_DB', 'banwee_db')
     POSTGRES_DB_URL: str = os.getenv(
         'POSTGRES_DB_URL', "postgresql+asyncpg://postgres:0ZTftS7B0Bsf3tlzddQs@banwee-db.c2po20oyum9p.us-east-1.rds.amazonaws.com:5432/banwee_db")
+    DATABASE_URL: str = os.getenv('DATABASE_URL', '')
 
     # SQLite (fallback if needed)
     SQLITE_DB_PATH: str = os.getenv('SQLITE_DB_PATH', 'db1.db')

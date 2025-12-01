@@ -146,7 +146,7 @@ const SocialAuthButtons = ({
       )}
 
       {/* Show HTTPS warning for Facebook - More prominent */}
-      {!isHttps && facebookAppId && (
+      {facebookAppId && isHttps  && (
         <div className="text-xs text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-900/20 p-3 rounded-lg mb-3 border border-red-200 dark:border-red-800">
           <p className="font-medium mb-1">🔒 HTTPS Required for Facebook Login</p>
           <p>Facebook OAuth requires a secure HTTPS connection. Please access this site via HTTPS or use alternative login methods.</p>
@@ -166,7 +166,7 @@ const SocialAuthButtons = ({
       )}
 
       {/* Facebook OAuth */}
-      {facebookAppId && isHttps && (
+      {facebookAppId && (
         <FacebookLogin
           appId={facebookAppId}
           onSuccess={handleFacebookSuccess}
