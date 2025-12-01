@@ -12,7 +12,8 @@ RUN apk add --no-cache \
     libffi-dev \
     openssl-dev \
     cargo \
-    rust
+    rust \
+    curl
 
 # Copy requirements
 COPY requirements.txt .
@@ -23,6 +24,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy application code
 COPY . .
 
+# Make migration script executable
+RUN chmod +x migrate.sh
+
 # Set Python path
 ENV PYTHONPATH=/app
 
@@ -30,4 +34,4 @@ ENV PYTHONPATH=/app
 EXPOSE 8000
 
 # Run migrations and start server
-CMD ["sh", "-c", "python init_db.py && uvicorn main:app --host 0.0.0.0 --port 8000"]
+CMD ["sh", "-c", "./migrate.sh && uvicorn main:app --host 0.0.0.0 --port 8000"]

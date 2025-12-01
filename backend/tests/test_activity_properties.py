@@ -71,7 +71,11 @@ async def test_property_20_activity_fetching_on_dashboard_load(activity_data, db
 @pytest.mark.asyncio
 @given(
     action_type=activity_types,
-    description=st.text(min_size=1, max_size=200)
+    description=st.text(
+        alphabet=st.characters(blacklist_characters='\x00', blacklist_categories=('Cs',)),
+        min_size=1,
+        max_size=200
+    )
 )
 @settings(
     max_examples=100,

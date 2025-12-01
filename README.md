@@ -144,6 +144,104 @@ pytest tests/test_final_integration.py -v
 ### Live Documentation
 - Backend API Docs: http://localhost:8000/docs (when running)
 
+## ⚙️ Environment Variables
+
+### Backend Environment Variables
+
+All backend environment variables should be configured in `backend/.env`. See `backend/.env.example` for a complete template.
+
+#### Required Variables
+
+| Variable | Description | Example |
+|----------|-------------|---------|
+| `POSTGRES_USER` | PostgreSQL username | `banwee` |
+| `POSTGRES_PASSWORD` | PostgreSQL password | `banwee_password` |
+| `POSTGRES_SERVER` | PostgreSQL host (use `postgres` for Docker, `localhost` for local) | `postgres` or `localhost` |
+| `POSTGRES_PORT` | PostgreSQL port | `5432` |
+| `POSTGRES_DB` | PostgreSQL database name | `banwee_db` |
+| `SECRET_KEY` | JWT secret key (min 32 chars) | Generate with `openssl rand -hex 32` |
+| `REDIS_URL` | Redis connection URL (use `redis://redis:6379/0` for Docker) | `redis://redis:6379/0` |
+
+#### Optional Variables
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `DOMAIN` | Application domain | `localhost` |
+| `ENVIRONMENT` | Environment name | `local` |
+| `FRONTEND_URL` | Frontend URL for CORS | `http://localhost:5173` |
+| `BACKEND_CORS_ORIGINS` | Allowed CORS origins (comma-separated) | `http://localhost:5173` |
+| `ALGORITHM` | JWT algorithm | `HS256` |
+| `ACCESS_TOKEN_EXPIRE_MINUTES` | Access token expiration | `30` |
+| `REFRESH_TOKEN_EXPIRE_DAYS` | Refresh token expiration | `7` |
+
+#### Email Configuration (Mailgun)
+
+| Variable | Description | Required |
+|----------|-------------|----------|
+| `MAILGUN_API_KEY` | Mailgun API key | Yes for email features |
+| `MAILGUN_DOMAIN` | Mailgun domain | Yes for email features |
+| `MAILGUN_FROM_EMAIL` | From email address | Yes for email features |
+
+#### Payment Configuration (Stripe)
+
+| Variable | Description | Required |
+|----------|-------------|----------|
+| `STRIPE_SECRET_KEY` | Stripe secret key | Yes for payments |
+| `STRIPE_PUBLIC_KEY` | Stripe public key | Yes for payments |
+| `STRIPE_WEBHOOK_SECRET` | Stripe webhook secret | Yes for webhooks |
+
+#### Social Authentication (Optional)
+
+| Variable | Description |
+|----------|-------------|
+| `GOOGLE_CLIENT_ID` | Google OAuth client ID |
+| `GOOGLE_CLIENT_SECRET` | Google OAuth client secret |
+| `FACEBOOK_APP_ID` | Facebook app ID |
+| `FACEBOOK_APP_SECRET` | Facebook app secret |
+| `TIKTOK_CLIENT_KEY` | TikTok client key |
+| `TIKTOK_CLIENT_SECRET` | TikTok client secret |
+
+### Frontend Environment Variables
+
+All frontend environment variables should be configured in `frontend/.env`. See `frontend/.env.example` for a complete template.
+
+#### Required Variables
+
+| Variable | Description | Example |
+|----------|-------------|---------|
+| `VITE_API_BASE_URL` | Backend API URL | `http://localhost:8000/api/v1` |
+| `VITE_STRIPE_PUBLIC_KEY` | Stripe publishable key | `pk_test_...` |
+
+#### Optional Variables
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `VITE_APP_NAME` | Application name | `Banwee` |
+| `VITE_APP_URL` | Application URL | `http://localhost:5173` |
+| `VITE_GOOGLE_CLIENT_ID` | Google OAuth client ID | - |
+| `VITE_FACEBOOK_APP_ID` | Facebook app ID | - |
+| `VITE_TIKTOK_CLIENT_ID` | TikTok client ID | - |
+
+### Docker Environment Variables
+
+When using Docker, environment variables can be set in:
+1. `.env` file in the project root (for docker-compose)
+2. Individual service `.env` files (backend/.env, frontend/.env)
+
+Docker-specific considerations:
+- Use service names for hosts (e.g., `postgres` instead of `localhost`)
+- The `docker-compose.yml` file passes environment variables to containers
+- Sensitive variables should be stored in `.env` files (not committed to git)
+
+### Security Best Practices
+
+1. **Never commit `.env` files** - They contain sensitive credentials
+2. **Use strong SECRET_KEY** - Generate with `openssl rand -hex 32`
+3. **Rotate credentials regularly** - Especially in production
+4. **Use environment-specific values** - Different keys for dev/staging/prod
+5. **Limit CORS origins** - Only allow trusted domains in production
+6. **Use HTTPS in production** - Never send credentials over HTTP
+
 ## 🔧 Development
 
 ### Database Migrations

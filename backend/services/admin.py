@@ -511,7 +511,7 @@ class AdminService:
         return {
             "id": str(user.id),
             "active": user.active,
-            "message": (f"User {"activated" if active else "deactivated"} "
+            "message": (f"User {'activated' if active else 'deactivated'} "
                         "successfully")
         }
 

@@ -27,12 +27,14 @@ from routes.orders import router as orders_router
 from routes.admin import router as admin_router
 from routes.analytics import router as analytics_router
 from routes.social_auth import router as social_auth_router
-from routes.blog import router as blog_router
+# Blog feature disabled
+# from routes.blog import router as blog_router
 from routes.subscription import router as subscription_router
 from routes.review import router as review_router
 from routes.payment import payment_method_router, payment_router
 from routes.wishlist import router as wishlist_router
 from routes.notification import router as notification_router
+from routes.health import router as health_router
 
 
 from contextlib import asynccontextmanager
@@ -90,13 +92,15 @@ app.include_router(orders_router)
 app.include_router(admin_router)
 app.include_router(analytics_router)
 app.include_router(social_auth_router)
-app.include_router(blog_router)
+# Blog router disabled
+# app.include_router(blog_router)
 app.include_router(subscription_router)
 app.include_router(review_router)
 app.include_router(payment_method_router)
 app.include_router(payment_router)
 app.include_router(wishlist_router)
 app.include_router(notification_router)
+app.include_router(health_router)
 
 # Include WebSocket router
 app.include_router(ws_router)

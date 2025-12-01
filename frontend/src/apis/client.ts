@@ -184,6 +184,7 @@ class APIClient {
     const apiError = {
       message: 'An unexpected error occurred',
       code: error.response?.status?.toString(),
+      statusCode: error.response?.status,
     };
 
     if (error.response?.data) {
@@ -223,9 +224,43 @@ class APIClient {
       if (error.code === 'ECONNABORTED') { // Timeout error
         apiError.message = 'Request timed out. Please try again.';
         apiError.code = 'TIMEOUT_ERROR';
+      } else if (!navigator.onLine) {
+        // Network is offline
+        apiError.message = 'No internet connection. Please check your network and try again.';
+        apiError.code = 'OFFLINE_ERROR';
       } else {
         apiError.message = 'Failed to connect to the server. Please ensure the backend is running and accessible.';
         apiError.code = 'CONNECTION_ERROR';
+      }
+    }
+
+    // Map HTTP status codes to user-friendly messages
+    if (apiError.statusCode) {
+      switch (apiError.statusCode) {
+        case 401:
+          // Handled by auth interceptor, redirect to login
+          if (!suppressToasts) {
+            apiError.message = 'Your session has expired. Please log in again.';
+          }
+          break;
+        case 403:
+          apiError.message = 'You don\'t have permission to perform this action.';
+          break;
+        case 404:
+          apiError.message = 'The requested resource was not found.';
+          break;
+        case 422:
+          // Keep the specific validation message from backend
+          break;
+        case 429:
+          apiError.message = 'Too many requests. Please wait a moment and try again.';
+          break;
+        case 500:
+        case 502:
+        case 503:
+        case 504:
+          apiError.message = 'Server error. Please try again later.';
+          break;
       }
     }
 
@@ -261,36 +296,13 @@ class APIClient {
       isToastVisible = false;
     }, 30000); // Reset after 30 seconds
 
-    const statusCode = error.code ? parseInt(error.code) : null;
-    let message = error.message;
+    // Use the already mapped message from handleError
+    const message = error.message || 'An unexpected error occurred';
 
-    // Customize messages based on status codes
-    switch (statusCode) {
-      case 400:
-        message = 'Invalid request. Please check your input.';
-        break;
-      case 403:
-        message = 'You don\'t have permission to perform this action.';
-        break;
-      case 404:
-        message = 'The requested resource was not found.';
-        break;
-      case 422:
-        // For validation errors, use the specific message from backend
-        break;
-      case 429:
-        message = 'Too many requests. Please wait a moment and try again.';
-        break;
-      case 500:
-        message = 'Server error. Please try again later.';
-        break;
-      default:
-        if (statusCode && statusCode >= 500) {
-          message = 'Server error. Please try again later.';
-        }
-    }
-
-    toast.error(message);
+    toast.error(message, {
+      duration: error.code === 'OFFLINE_ERROR' ? 5000 : 4000,
+      icon: error.code === 'OFFLINE_ERROR' ? '📡' : '❌',
+    });
   }
 
   generateRequestId() {

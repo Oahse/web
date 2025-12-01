@@ -7,7 +7,7 @@ async def test_uuid_storage():
     async with AsyncSessionDB() as session:
         # Get raw data from database
         result = await session.execute(text("""
-            SELECT id, name FROM products WHERE featured = 1 LIMIT 2
+            SELECT id, name FROM products WHERE featured = TRUE LIMIT 2
         """))
         print("Products (raw):")
         for row in result:
@@ -25,7 +25,7 @@ async def test_uuid_storage():
             SELECT p.id, p.name, v.id, v.name
             FROM products p
             JOIN product_variants v ON p.id = v.product_id
-            WHERE p.featured = 1
+            WHERE p.featured = TRUE
             LIMIT 5
         """))
         print("\nJOIN results (raw SQL):")

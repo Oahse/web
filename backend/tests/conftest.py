@@ -71,24 +71,34 @@ async def auth_headers(db_session: AsyncSession) -> dict:
     from core.utils.auth.jwt_auth import JWTManager
     from uuid import uuid4
     import bcrypt
+    from sqlalchemy import select
+    import time
     
-    # Store email before creating user
-    test_email = "test@example.com"
+    # Use unique email for each test to avoid conflicts
+    test_email = f"test_{int(time.time() * 1000000)}@example.com"
     
-    # Create a test supplier user
-    test_user = User(
-        id=uuid4(),
-        email=test_email,
-        firstname="Test",
-        lastname="User",
-        role="Supplier",
-        active=True,
-        verified=True,
-        hashed_password=bcrypt.hashpw("testpassword123".encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
-    )
+    # Check if user already exists (shouldn't happen with unique email, but just in case)
+    result = await db_session.execute(select(User).where(User.email == test_email))
+    existing_user = result.scalar_one_or_none()
     
-    db_session.add(test_user)
-    await db_session.commit()
+    if existing_user:
+        test_user = existing_user
+    else:
+        # Create a test supplier user
+        test_user = User(
+            id=uuid4(),
+            email=test_email,
+            firstname="Test",
+            lastname="User",
+            role="Supplier",
+            active=True,
+            verified=True,
+            hashed_password=bcrypt.hashpw("testpassword123".encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+        )
+        
+        db_session.add(test_user)
+        await db_session.commit()
+        await db_session.refresh(test_user)
     
     # Create access token using stored email
     jwt_manager = JWTManager()

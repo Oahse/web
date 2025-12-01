@@ -15,9 +15,11 @@ import { GoogleOAuthProvider } from '@react-oauth/google';
 import { Elements } from '@stripe/react-stripe-js';
 import { loadStripe } from '@stripe/stripe-js';
 import { CategoryProvider } from './contexts/CategoryContext';
+import { LocaleProvider } from './contexts/LocaleContext';
 import { ProtectedRoute } from './components/routing/ProtectedRoute';
 // import { initPerformanceMonitoring } from './utils/performance';
 import ErrorBoundary from './components/common/ErrorBoundary';
+import { OfflineIndicator } from './components/common/OfflineIndicator';
 
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY);
 
@@ -40,8 +42,9 @@ const Register = lazy(() => import('./pages/Register').then((module) => ({ defau
 const About = lazy(() => import('./pages/About').then((module) => ({ default: module.About })));
 const Contact = lazy(() => import('./pages/Contact').then((module) => ({ default: module.Contact })));
 const FAQ = lazy(() => import('./pages/FAQ').then((module) => ({ default: module.FAQ })));
-const Blog = lazy(() => import('./pages/Blog').then((module) => ({ default: module.Blog })));
-const BlogPost = lazy(() => import('./pages/BlogPost').then((module) => ({ default: module.BlogPost })));
+// Blog feature disabled
+// const Blog = lazy(() => import('./pages/Blog').then((module) => ({ default: module.Blog })));
+// const BlogPost = lazy(() => import('./pages/BlogPost').then((module) => ({ default: module.BlogPost })));
 const Wishlist = lazy(() => import('./pages/Wishlist').then((module) => ({ default: module.Wishlist })));
 const Subscription = lazy(() =>
   import('./pages/Subscription').then((module) => ({ default: module.Subscription }))
@@ -130,12 +133,14 @@ export const App: React.FC = () => {
       <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID || ''}>
         <AuthProvider>
           <ThemeProvider>
-            <CartProvider>
-              <WishlistProvider>
-                <NotificationProvider>
-                  <WebSocketProvider autoConnect={false}>
-                    <CategoryProvider>
+            <LocaleProvider>
+              <CartProvider>
+                <WishlistProvider>
+                  <NotificationProvider>
+                    <WebSocketProvider autoConnect={false}>
+                      <CategoryProvider>
                       <FontLoader />
+                      <OfflineIndicator />
                       <Toaster
                         position="top-right"
                         toastOptions={{
@@ -346,8 +351,9 @@ export const App: React.FC = () => {
                               <Route path="/about" element={<Layout><About /></Layout>} />
                               <Route path="/contact" element={<Layout><Contact /></Layout>} />
                               <Route path="/faq" element={<Layout><FAQ /></Layout>} />
-                              <Route path="/blog" element={<Layout><Blog /></Layout>} />
-                              <Route path="/blog/:id" element={<Layout><BlogPost /></Layout>} />
+                              {/* Blog routes disabled */}
+                              {/* <Route path="/blog" element={<Layout><Blog /></Layout>} /> */}
+                              {/* <Route path="/blog/:id" element={<Layout><BlogPost /></Layout>} /> */}
                               <Route path="/account/wishlist" element={<ProtectedRoute><Layout><Wishlist /></Layout></ProtectedRoute>} />
                               <Route
                                 path="/subscription"
@@ -378,11 +384,13 @@ export const App: React.FC = () => {
                             </Routes>
                           </Suspense>
                         </Elements>
-                      </BrowserRouter>                    </CategoryProvider>
-                  </WebSocketProvider>
-                </NotificationProvider>
-              </WishlistProvider>
-            </CartProvider>
+                      </BrowserRouter>
+                      </CategoryProvider>
+                    </WebSocketProvider>
+                  </NotificationProvider>
+                </WishlistProvider>
+              </CartProvider>
+            </LocaleProvider>
           </ThemeProvider>
         </AuthProvider>
       </GoogleOAuthProvider>

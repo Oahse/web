@@ -130,9 +130,10 @@ export const Header = ({
               <Link to="/contact" className="hover:text-primary transition-colors">
                 Contact
               </Link>
-              <Link to="/blog" className="hover:text-primary transition-colors">
+              {/* Blog link disabled */}
+              {/* <Link to="/blog" className="hover:text-primary transition-colors">
                 Blog
-              </Link>
+              </Link> */}
               <Link to="/account/orders" className="hover:text-primary transition-colors">
                 Orders
               </Link>
@@ -347,11 +348,12 @@ export const Header = ({
                     FAQ
                   </Link>
                 </li>
-                <li>
+                {/* Blog link disabled */}
+                {/* <li>
                   <Link to="/blog" className="block py-3 font-medium hover:text-primary transition-colors">
                     Blog
                   </Link>
-                </li>
+                </li> */}
               </ul>
             </nav>
 

@@ -2,7 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNotifications } from '../../contexts/NotificationContext';
-import { LayoutDashboardIcon,
+import {
+  LayoutDashboardIcon,
   UsersIcon,
   PackageIcon,
   ShoppingCartIcon,
@@ -12,14 +13,14 @@ import { LayoutDashboardIcon,
   MenuIcon,
   LogOutIcon,
   TagIcon,
-
   GlobeIcon,
 } from 'lucide-react';
 
+interface AdminLayoutProps {
+  children: React.ReactNode;
+}
 
-
-
-export const AdminLayout = ({ children }) => {
+export const AdminLayout = ({ children }: AdminLayoutProps) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { notifications, markAllAsRead, markAsRead, unreadCount } = useNotifications();
 
@@ -29,7 +30,7 @@ export const AdminLayout = ({ children }) => {
 
   // Check if user is admin, if not redirect to home
   useEffect(() => {
-    if (!user || (user.email !== 'admin@example.com' && user.email !== 'admin@banwee.com')) {
+    if (!user || ((user as any).email !== 'admin@example.com' && (user as any).email !== 'admin@banwee.com')) {
       navigate('/');
     }
   }, [user, navigate]);
@@ -46,7 +47,7 @@ export const AdminLayout = ({ children }) => {
     { title: 'Website', path: '/', icon: <GlobeIcon size={20} /> },
   ];
 
-  const isActive = (path) => {
+  const isActive = (path: string) => {
     if (path === '/admin') {
       return location.pathname === '/admin';
     }
@@ -54,12 +55,12 @@ export const AdminLayout = ({ children }) => {
   };
 
   const handleLogout = () => {
-    logout();
+    (logout as any)();
     navigate('/');
   };
 
   const handleMarkAllAsRead = () => {
-    markAllAsRead();
+    (markAllAsRead as any)();
   };
 
   return (
@@ -76,7 +77,11 @@ export const AdminLayout = ({ children }) => {
         className={`fixed top-0 left-0 z-30 h-full w-64 bg-surface border-r border-border-light transition-transform duration-300 transform ${sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
           }`}>
         <div className="p-4 border-b border-border-light">
-          <Link to="/admin" className="flex items-center">
+          <Link 
+            to="/admin" 
+            className="flex items-center cursor-pointer hover:opacity-80 transition-opacity"
+            aria-label="Navigate to admin home page"
+          >
             <img src="/banwe_logo_green.png" alt="Banwee Logo" className="h-8 mr-2" />
             <span className="text-xl font-semibold text-main">Admin</span>
           </Link>
@@ -128,8 +133,7 @@ export const AdminLayout = ({ children }) => {
               {/* Notifications */}
               <div className="relative group">
                 <button
-                  className="p-1 text-copy-lighter hover:text-copy-light"
-                  onClick={() => setSearchOpen(false)}>
+                  className="p-1 text-copy-lighter hover:text-copy-light">
                   <BellIcon size={20} />
                   {unreadCount > 0 && (
                     <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center">
@@ -145,12 +149,12 @@ export const AdminLayout = ({ children }) => {
                     </button>
                   </div>
                   <div className="max-h-60 overflow-y-auto">
-                    {notifications.length === 0 ? (
+                    {(notifications as any[]).length === 0 ? (
                       <div className="p-4 text-center text-copy-light text-sm">
                         No notifications
                       </div>
                     ) : (
-                      notifications.map((notification) => (
+                      (notifications as any[]).map((notification: any) => (
                         <div
                           key={notification.id}
                           className={`p-3 border-b border-border-light last:border-0 ${!notification.read ? 'bg-primary/10' : ''
@@ -170,7 +174,7 @@ export const AdminLayout = ({ children }) => {
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  markAsRead(notification.id);
+                                  (markAsRead as any)(notification.id);
                                 }}
                                 className="ml-2 p-1 text-copy-light hover:text-primary"
                                 title="Mark as read"
@@ -195,10 +199,10 @@ export const AdminLayout = ({ children }) => {
               {/* User */}
               <div className="flex items-center">
                 <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold">
-                  {user?.full_name?.charAt(0) || user?.firstname?.charAt(0) || 'A'}
+                  {(user as any)?.full_name?.charAt(0) || (user as any)?.firstname?.charAt(0) || 'A'}
                 </div>
                 <span className="ml-2 text-sm font-medium hidden md:block">
-                  {user?.full_name || `${user?.firstname} ${user?.lastname}` || 'Admin'}
+                  {(user as any)?.full_name || `${(user as any)?.firstname} ${(user as any)?.lastname}` || 'Admin'}
                 </span>
               </div>
             </div>
