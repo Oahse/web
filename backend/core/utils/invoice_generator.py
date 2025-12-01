@@ -1,10 +1,8 @@
 """
 Invoice PDF Generator using Jinja2 and WeasyPrint
 """
-import os
 from datetime import datetime, timedelta
-from decimal import Decimal
-from typing import Dict, List, Optional
+from typing import Dict, Optional
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 from weasyprint import HTML
 from pathlib import Path

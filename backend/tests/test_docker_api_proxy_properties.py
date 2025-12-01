@@ -19,6 +19,7 @@ The tests will skip automatically if Docker is not running.
 import pytest
 import asyncio
 import aiohttp
+import socket
 from hypothesis import given, strategies as st, settings as hypothesis_settings, HealthCheck
 
 
@@ -27,30 +28,34 @@ BACKEND_URL = "http://localhost:8000"
 FRONTEND_URL = "http://localhost:5173"
 
 
-# Fixture to check if Docker containers are accessible
-@pytest.fixture(scope="function")
-async def docker_available():
+def check_docker_available():
     """
     Check if Docker containers are running and accessible.
-    Skip all tests in this module if Docker is not available.
+    Returns True if backend is accessible, False otherwise.
     """
-    async with aiohttp.ClientSession() as session:
-        try:
-            async with session.get(
-                f"{BACKEND_URL}/health/live",
-                timeout=aiohttp.ClientTimeout(total=5)
-            ) as response:
-                if response.status == 200:
-                    return True
-        except (aiohttp.ClientConnectorError, asyncio.TimeoutError):
-            pass
-    
+    try:
+        # Quick socket check first
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.settimeout(2)
+        result = sock.connect_ex(('localhost', 8000))
+        sock.close()
+        return result == 0
+    except Exception:
+        return False
+
+
+# Check Docker availability at module load time
+DOCKER_AVAILABLE = check_docker_available()
+
+# Skip entire module if Docker is not available
+if not DOCKER_AVAILABLE:
     pytest.skip(
         "Docker containers not running. To run these tests:\n"
         "1. Start Docker daemon\n"
         "2. Run: docker compose up -d\n"
         "3. Wait for containers to be healthy\n"
-        "4. Run: pytest tests/test_docker_api_proxy_properties.py"
+        "4. Run: pytest tests/test_docker_api_proxy_properties.py",
+        allow_module_level=True
     )
 
 
@@ -76,7 +81,7 @@ pytestmark = [
     deadline=None,
     suppress_health_check=[HealthCheck.function_scoped_fixture]
 )
-async def test_backend_endpoints_accessible(docker_available, endpoint):
+async def test_backend_endpoints_accessible(endpoint):
     """
     Property: For any backend endpoint, it should be accessible from outside
     the Docker network.
@@ -110,7 +115,7 @@ async def test_backend_endpoints_accessible(docker_available, endpoint):
     deadline=None,
     suppress_health_check=[HealthCheck.function_scoped_fixture]
 )
-async def test_backend_http_methods(docker_available, method):
+async def test_backend_http_methods(method):
     """
     Property: For any HTTP method, the backend should respond appropriately.
     
@@ -138,7 +143,7 @@ async def test_backend_http_methods(docker_available, method):
     deadline=None,
     suppress_health_check=[HealthCheck.function_scoped_fixture]
 )
-async def test_backend_concurrent_requests(docker_available, concurrent_requests):
+async def test_backend_concurrent_requests(concurrent_requests):
     """
     Property: For any number of concurrent requests, the backend should handle
     them all successfully.
@@ -166,7 +171,7 @@ async def test_backend_concurrent_requests(docker_available, concurrent_requests
             f"Only {len(successful)}/{concurrent_requests} requests succeeded"
 
 
-async def test_frontend_accessible(docker_available):
+async def test_frontend_accessible():
     """
     Property: The frontend container should be accessible from outside the
     Docker network.
@@ -211,7 +216,7 @@ async def test_frontend_accessible(docker_available):
     deadline=None,
     suppress_health_check=[HealthCheck.function_scoped_fixture]
 )
-async def test_backend_request_headers(docker_available, header_name, header_value):
+async def test_backend_request_headers(header_name, header_value):
     """
     Property: For any valid HTTP header, the backend should accept and process
     the request.
@@ -233,7 +238,7 @@ async def test_backend_request_headers(docker_available, header_name, header_val
                 f"Unexpected status {response.status} with header {header_name}"
 
 
-async def test_backend_cors_headers(docker_available):
+async def test_backend_cors_headers():
     """
     Property: The backend should include proper CORS headers in responses.
     
@@ -258,7 +263,7 @@ async def test_backend_cors_headers(docker_available):
                 "CORS headers not present in response"
 
 
-async def test_backend_response_time(docker_available):
+async def test_backend_response_time():
     """
     Property: The backend should respond within a reasonable time frame.
     
@@ -283,7 +288,7 @@ async def test_backend_response_time(docker_available):
                 f"Response time {response_time}ms exceeds 5 seconds"
 
 
-async def test_api_versioning(docker_available):
+async def test_api_versioning():
     """
     Property: The API should be accessible through the versioned endpoint.
     

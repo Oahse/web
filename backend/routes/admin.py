@@ -465,7 +465,6 @@ async def get_order_invoice_admin(
     except APIException:
         raise
     except Exception as e:
-        print(f"Error generating invoice: {e}")
         raise APIException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             message=f"Failed to generate invoice: {str(e)}"
@@ -578,7 +577,6 @@ async def export_orders(
     except APIException:
         raise
     except Exception as e:
-        print(f"Error exporting orders: {e}")
         import traceback
         traceback.print_exc()
         raise APIException(

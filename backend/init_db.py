@@ -11,7 +11,6 @@ import asyncio
 import argparse
 import random
 import uuid
-import os
 from typing import List
 
 from sqlalchemy.ext.asyncio import create_async_engine

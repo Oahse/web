@@ -295,8 +295,7 @@ class AdminService:
                     }
                     orders_data.append(product_dict)
                 except Exception as e:
-                    print(f"Error processing order {order.id}: {e}")
-                    # Optionally, append a placeholder or skip this order
+                    # Skip problematic orders
                     continue
 
             return {
@@ -308,8 +307,7 @@ class AdminService:
                     "pages": (total + limit - 1) // limit
                 }
             }
-        except Exception as e:  # Add except block
-            print(f"Error in get_all_orders: {e}")
+        except Exception as e:
             raise  # Re-raise the exception to be caught by the route handler
 
     async def get_all_users(self, page: int = 1, limit: int = 10, role: Optional[str] = None, search: Optional[str] = None, status: Optional[str] = None, verified: Optional[bool] = None) -> dict:

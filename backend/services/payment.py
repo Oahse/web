@@ -41,7 +41,6 @@ class PaymentService:
                 payload.expiry_year = card.exp_year
                 
             except stripe.StripeError as e:
-                print(f"Stripe Error: {e}")
                 raise Exception(f"Failed to retrieve card details from Stripe: {str(e)}")
         
         # Check if this is the first payment method for the user
@@ -182,11 +181,9 @@ class PaymentService:
             }
         except stripe.StripeError as e:
             # Handle Stripe API errors
-            print(f"Stripe Error: {e}")
             raise e
         except Exception as e:
             # Handle other errors
-            print(f"Error creating payment intent: {e}")
             raise e
 
     async def handle_stripe_webhook(self, event: dict):
@@ -221,8 +218,6 @@ class PaymentService:
             if transaction:
                 await self.send_payment_failed_email(transaction, failure_reason)
 
-        print(f"Unhandled event type: {event_type}")
-
     async def send_payment_receipt_email(self, transaction: Transaction):
         user_result = await self.db.execute(select(User).where(User.id == transaction.user_id))
         user = user_result.scalar_one_or_none()
@@ -244,10 +239,8 @@ class PaymentService:
                 mail_type='payment_receipt',
                 context=context
             )
-            print(f"Payment receipt email sent to {user.email} successfully.")
         except Exception as e:
-            print(
-                f"Failed to send payment receipt email to {user.email}. Error: {e}")
+            pass  # Email sending failure should not break the flow
 
     async def send_payment_failed_email(self, transaction: Transaction, failure_reason: str):
         user_result = await self.db.execute(select(User).where(User.id == transaction.user_id))
@@ -270,10 +263,8 @@ class PaymentService:
                 mail_type='payment_failed',
                 context=context
             )
-            print(f"Payment failed email sent to {user.email} successfully.")
         except Exception as e:
-            print(
-                f"Failed to send payment failed email to {user.email}. Error: {e}")
+            pass  # Email sending failure should not break the flow
 
     async def process_payment(self, user_id: UUID, amount: float, payment_method_id: UUID, order_id: UUID) -> dict:
         """
@@ -350,7 +341,6 @@ class PaymentService:
         except stripe.CardError as e:
             # Card was declined
             error_message = e.user_message or "Card was declined"
-            print(f"Card Error: {error_message}")
             return {
                 "status": "failed",
                 "error": error_message
@@ -358,7 +348,6 @@ class PaymentService:
         except stripe.StripeError as e:
             # Other Stripe errors
             error_message = str(e)
-            print(f"Stripe Error: {error_message}")
             return {
                 "status": "failed",
                 "error": error_message
@@ -366,7 +355,6 @@ class PaymentService:
         except Exception as e:
             # Handle other errors
             error_message = str(e)
-            print(f"Error processing payment: {error_message}")
             return {
                 "status": "failed",
                 "error": error_message

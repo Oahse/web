@@ -1,6 +1,6 @@
-import React from 'react';
 import { Link } from 'react-router-dom';
 import { MapPinIcon, MailIcon, PhoneIcon, ArrowRightIcon, FacebookIcon, TwitterIcon, InstagramIcon, YoutubeIcon, LinkedinIcon } from 'lucide-react';
+import { SOCIAL_MEDIA_LINKS } from '../../lib/social-media-config';
 
 export const Footer = () => {
   // Categories for quick links - matching backend API query parameters
@@ -145,23 +145,60 @@ export const Footer = () => {
             <div className="mb-4 md:mb-0">
               <p className="text-copy-light">© 2025 Banwee Store. All Rights Reserved.</p>
             </div>
-            <div className="flex space-x-6">
-              <a href="#" className="text-copy-lighter hover:text-primary" aria-label="Facebook">
+            <nav className="flex space-x-6" aria-label="Social media links">
+              <a 
+                href={SOCIAL_MEDIA_LINKS.facebook.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-copy-lighter hover:text-primary transition-colors duration-200 ease-in-out transform hover:scale-110"
+                aria-label={SOCIAL_MEDIA_LINKS.facebook.ariaLabel}
+                title={SOCIAL_MEDIA_LINKS.facebook.name}
+              >
                 <FacebookIcon size={20} />
               </a>
-              <a href="#" className="text-copy-lighter hover:text-primary" aria-label="Twitter">
+              <a 
+                href={SOCIAL_MEDIA_LINKS.twitter.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-copy-lighter hover:text-primary transition-colors duration-200 ease-in-out transform hover:scale-110"
+                aria-label={SOCIAL_MEDIA_LINKS.twitter.ariaLabel}
+                title={SOCIAL_MEDIA_LINKS.twitter.name}
+              >
                 <TwitterIcon size={20} />
               </a>
-              <a href="#" className="text-copy-lighter hover:text-primary" aria-label="Instagram">
+              <a 
+                href={SOCIAL_MEDIA_LINKS.instagram.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-copy-lighter hover:text-primary transition-colors duration-200 ease-in-out transform hover:scale-110"
+                aria-label={SOCIAL_MEDIA_LINKS.instagram.ariaLabel}
+                title={SOCIAL_MEDIA_LINKS.instagram.name}
+              >
                 <InstagramIcon size={20} />
               </a>
-              <a href="#" className="text-copy-lighter hover:text-primary" aria-label="Youtube">
-                <YoutubeIcon size={20} />
-              </a>
-              <a href="#" className="text-copy-lighter hover:text-primary" aria-label="LinkedIn">
+              {SOCIAL_MEDIA_LINKS.youtube && (
+                <a 
+                  href={SOCIAL_MEDIA_LINKS.youtube.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-copy-lighter hover:text-primary transition-colors duration-200 ease-in-out transform hover:scale-110"
+                  aria-label={SOCIAL_MEDIA_LINKS.youtube.ariaLabel}
+                  title={SOCIAL_MEDIA_LINKS.youtube.name}
+                >
+                  <YoutubeIcon size={20} />
+                </a>
+              )}
+              <a 
+                href={SOCIAL_MEDIA_LINKS.linkedin.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-copy-lighter hover:text-primary transition-colors duration-200 ease-in-out transform hover:scale-110"
+                aria-label={SOCIAL_MEDIA_LINKS.linkedin.ariaLabel}
+                title={SOCIAL_MEDIA_LINKS.linkedin.name}
+              >
                 <LinkedinIcon size={20} />
               </a>
-            </div>
+            </nav>
           </div>
         </div>
       </div>

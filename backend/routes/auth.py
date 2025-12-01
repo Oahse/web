@@ -6,7 +6,7 @@ from core.database import get_db
 from core.utils.response import Response
 from core.exceptions import APIException
 from core.config import settings
-from schemas.auth import UserCreate, UserLogin, UserResponse
+from schemas.auth import UserCreate, UserLogin
 from schemas.user import AddressCreate, AddressUpdate, AddressResponse
 from schemas.response import APIResponse
 from services.auth import AuthService

@@ -1,7 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from uuid import UUID
-from typing import List
 
 from core.database import get_db
 from services.wishlist import WishlistService
@@ -68,7 +67,6 @@ async def create_default_wishlist(
     except APIException:
         raise
     except Exception as e:
-        print(f"Error creating default wishlist: {e}")
         import traceback
         traceback.print_exc()
         raise APIException(
@@ -91,8 +89,6 @@ async def get_wishlists(
                 message="Access denied: Cannot access other user's wishlists"
             )
 
-        print(
-            f"Attempting to get wishlists for user_id: {user_id} (type: {type(user_id)})")
         service = WishlistService(db)
         wishlists = await service.get_wishlists(user_id)
 
@@ -116,8 +112,6 @@ async def get_wishlists(
                         }
                         items.append(item_data)
                     except Exception as e:
-                        print(
-                            f"Error serializing wishlist item {item.id}: {e}")
                         # Add minimal item data
                         items.append({
                             "id": item.id,
@@ -142,7 +136,6 @@ async def get_wishlists(
                 serialized_wishlists.append(
                     WishlistResponse.model_validate(wishlist_data))
             except Exception as e:
-                print(f"Error serializing wishlist {wishlist.id}: {e}")
                 # Add minimal wishlist data
                 try:
                     minimal_data = {
@@ -157,14 +150,12 @@ async def get_wishlists(
                     serialized_wishlists.append(
                         WishlistResponse.model_validate(minimal_data))
                 except Exception as e2:
-                    print(f"Error creating minimal wishlist data: {e2}")
                     continue
 
         return Response(success=True, data=serialized_wishlists)
     except APIException:
         raise
     except Exception as e:
-        print(f"Error in get_wishlists: {e}")
         import traceback
         traceback.print_exc()
         raise APIException(
@@ -188,8 +179,6 @@ async def create_wishlist(
                 message="Access denied: Cannot create wishlist for other users"
             )
 
-        print(
-            f"Attempting to create wishlist for user_id: {user_id} (type: {type(user_id)}), payload: {payload})")
         service = WishlistService(db)
         wishlist = await service.create_wishlist(user_id, payload)
 
@@ -208,7 +197,6 @@ async def create_wishlist(
     except APIException:
         raise
     except Exception as e:
-        print(f"Error creating wishlist: {e}")
         import traceback
         traceback.print_exc()
         raise APIException(
@@ -298,7 +286,6 @@ async def add_item_to_wishlist(
     except APIException:
         raise
     except Exception as e:
-        print(f"Error adding item to wishlist: {e}")
         import traceback
         traceback.print_exc()
         raise APIException(
@@ -330,13 +317,10 @@ async def remove_item_from_wishlist(
                 status_code=status.HTTP_404_NOT_FOUND,
                 message="Wishlist item not found"
             )
-        print(
-            f"Successfully removed item {item_id} from wishlist {wishlist_id}")
         return Response(success=True, data=None, message="Item removed successfully")
     except APIException:
         raise
     except Exception as e:
-        print(f"Error removing item from wishlist: {e}")
         raise APIException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             message=f"Failed to remove item from wishlist: {str(e)}"
@@ -381,7 +365,6 @@ async def set_default_wishlist(
     except APIException:
         raise
     except Exception as e:
-        print(f"Error setting default wishlist: {e}")
         raise APIException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             message=f"Failed to set default wishlist: {str(e)}"

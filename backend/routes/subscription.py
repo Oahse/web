@@ -1,6 +1,5 @@
 from fastapi import APIRouter, Depends, Query, status, BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession
-from typing import Optional, List
 from uuid import UUID
 from core.database import get_db
 from core.utils.response import Response

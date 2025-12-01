@@ -3,8 +3,153 @@
   
   # Banwee E-commerce Platform
 
-  A comprehensive, modern e-commerce platform built with FastAPI and React.
+  <p align="center">
+    <strong>A comprehensive, modern e-commerce platform built with FastAPI and React</strong>
+  </p>
+
+  <p align="center">
+    <a href="#features">Features</a> •
+    <a href="#tech-stack">Tech Stack</a> •
+    <a href="#quick-start">Quick Start</a> •
+    <a href="#documentation">Documentation</a> •
+    <a href="#contributing">Contributing</a> •
+    <a href="#license">License</a>
+  </p>
+
+  <p align="center">
+    <img src="https://img.shields.io/badge/python-3.11+-blue.svg" alt="Python Version" />
+    <img src="https://img.shields.io/badge/node-18+-green.svg" alt="Node Version" />
+    <img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License" />
+    <img src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg" alt="PRs Welcome" />
+  </p>
 </div>
+
+---
+
+## 📋 Table of Contents
+
+- [Overview](#overview)
+- [Features](#features)
+- [Tech Stack](#tech-stack)
+- [Prerequisites](#prerequisites)
+- [Quick Start](#quick-start)
+  - [Docker Setup (Recommended)](#docker-setup-recommended)
+  - [Local Development Setup](#local-development-setup)
+- [Usage](#usage)
+- [Testing](#testing)
+- [Documentation](#documentation)
+- [Architecture](#architecture)
+- [Environment Variables](#environment-variables)
+- [Development](#development)
+- [Deployment](#deployment)
+- [Contributing](#contributing)
+- [License](#license)
+- [Contact](#contact)
+
+---
+
+## 🌟 Overview
+
+Banwee is a full-featured, production-ready e-commerce platform designed for scalability, performance, and developer experience. Built with modern technologies and best practices, it provides a complete solution for online retail businesses with support for multiple user roles, payment processing, inventory management, and comprehensive analytics.
+
+The platform features a React-based frontend with TypeScript for type safety, a FastAPI backend for high-performance async operations, and includes advanced features like location-based internationalization, real-time notifications, and automated email workflows.
+
+## ✨ Features
+
+### Customer Features
+- 🛒 **Shopping Cart** - Add, update, and manage cart items with real-time updates
+- 💳 **Secure Checkout** - Stripe integration for secure payment processing
+- 📦 **Order Tracking** - Track orders from placement to delivery
+- ⭐ **Product Reviews** - Rate and review purchased products
+- ❤️ **Wishlist** - Save favorite products for later
+- 🔐 **User Authentication** - Secure registration and login with JWT tokens
+- 📧 **Email Notifications** - Automated order confirmations and updates
+- 🌍 **Internationalization** - Auto-detect location and set language/currency for 21+ countries
+- 📱 **Responsive Design** - Optimized for desktop, tablet, and mobile devices
+
+### Admin Features
+- 📊 **Analytics Dashboard** - Comprehensive sales, user, and product analytics
+- 👥 **User Management** - Manage customers, suppliers, and admin accounts
+- 📦 **Product Management** - Create, update, and organize products with variants
+- 🏷️ **Promo Codes** - Create and manage discount codes
+- 📈 **Sales Reports** - Export analytics data in CSV and Excel formats
+- 🔔 **Notification System** - Real-time notifications for important events
+- ⚙️ **System Settings** - Configure maintenance mode, file uploads, and notifications
+- 🎨 **Activity Logs** - Track all user actions and system events
+
+### Supplier Features
+- 📦 **Inventory Management** - Manage product stock and variants
+- 📊 **Sales Analytics** - View performance metrics for supplied products
+- 🔔 **Low Stock Alerts** - Automated notifications for inventory management
+
+### Technical Features
+- 🚀 **Async Operations** - FastAPI with async/await for high performance
+- 🔄 **Real-time Updates** - WebSocket support for live notifications
+- 📧 **Email System** - 45+ email templates with Mailgun integration
+- 🎨 **Modern UI** - Tailwind CSS with custom theming
+- 🔒 **Security** - JWT authentication, password hashing, CORS protection
+- 🐳 **Docker Support** - Complete containerized deployment
+- 🧪 **Property-Based Testing** - Comprehensive test coverage with Hypothesis
+- 📝 **API Documentation** - Auto-generated Swagger/ReDoc documentation
+- 🖼️ **CDN Image Delivery** - GitHub + jsDelivr for fast image loading
+
+---
+
+## 🛠️ Tech Stack
+
+### Frontend
+- **Framework**: React 18 with TypeScript
+- **Build Tool**: Vite
+- **Styling**: Tailwind CSS
+- **State Management**: React Context API
+- **Routing**: React Router v6
+- **HTTP Client**: Axios
+- **Forms**: React Hook Form + Zod validation
+- **Charts**: Recharts, Chart.js
+- **UI Components**: Lucide React icons, Framer Motion
+- **Payment**: Stripe React SDK
+- **Testing**: Vitest, React Testing Library, fast-check (PBT)
+
+### Backend
+- **Framework**: FastAPI (Python 3.11+)
+- **Database**: PostgreSQL 16 with SQLAlchemy 2.0 (async)
+- **Caching**: Redis 7
+- **Task Queue**: Celery with Redis broker
+- **Authentication**: JWT with python-jose
+- **Email**: Mailgun API
+- **Payment**: Stripe API
+- **Testing**: Pytest, Hypothesis (PBT)
+- **Migrations**: Alembic
+- **ASGI Server**: Uvicorn
+
+### Infrastructure
+- **Containerization**: Docker & Docker Compose
+- **Database**: PostgreSQL 16
+- **Cache/Queue**: Redis 7
+- **Image CDN**: GitHub + jsDelivr
+- **Monitoring**: Celery Flower
+
+---
+
+## 📦 Prerequisites
+
+### For Docker Setup (Recommended)
+- Docker 20.10+
+- Docker Compose 2.0+
+
+### For Local Development
+- Python 3.11 or higher
+- Node.js 18 or higher
+- PostgreSQL 14 or higher
+- Redis 6 or higher
+- Git
+
+### Optional Services
+- Stripe account (for payment processing)
+- Mailgun account (for email notifications)
+- GitHub account (for image storage)
+
+---
 
 ## 🚀 Quick Start
 
@@ -125,12 +270,62 @@ cd backend
 pytest tests/test_final_integration.py -v
 ```
 
+## 💻 Usage
+
+### Accessing the Application
+
+Once the application is running, you can access:
+
+- **Frontend**: http://localhost:5173
+- **Backend API**: http://localhost:8000
+- **API Documentation (Swagger)**: http://localhost:8000/docs
+- **API Documentation (ReDoc)**: http://localhost:8000/redoc
+- **Celery Flower (Task Monitor)**: http://localhost:5555
+
+### Default Credentials
+
+The seeded database includes the following test accounts:
+
+| Role | Email | Password |
+|------|-------|----------|
+| Admin | admin@banwee.com | adminpass |
+| Supplier | supplier@banwee.com | supplierpass |
+| Customer | customer@banwee.com | customerpass |
+
+### Key Workflows
+
+#### For Customers
+1. Browse products by category
+2. Add items to cart
+3. Create an account or login
+4. Add shipping address
+5. Complete checkout with Stripe
+6. Track order status
+7. Leave product reviews
+
+#### For Admins
+1. Login with admin credentials
+2. Access admin dashboard at `/admin`
+3. View analytics and reports
+4. Manage users, products, and orders
+5. Configure system settings
+6. Export data for analysis
+
+#### For Suppliers
+1. Login with supplier credentials
+2. Access supplier dashboard
+3. Manage product inventory
+4. View sales analytics
+5. Respond to low stock alerts
+
+---
+
 ## 📚 Documentation
 
 ### Setup & Configuration
-- **[SETUP_COMPLETE.md](./SETUP_COMPLETE.md)** - ✅ Complete setup overview and checklist
+- **[SETUP_COMPLETE.md](./SETUP_COMPLETE.md)** - Complete setup overview and checklist
 - **[DOCKER_SETUP_GUIDE.md](./DOCKER_SETUP_GUIDE.md)** - Docker setup, commands, and troubleshooting
-- **[LATEST_UPDATES_SUMMARY.md](./LATEST_UPDATES_SUMMARY.md)** - 🆕 Latest features and updates
+- **[LATEST_UPDATES_SUMMARY.md](./LATEST_UPDATES_SUMMARY.md)** - Latest features and updates
 - **[API_DOCUMENTATION.md](./API_DOCUMENTATION.md)** - Complete API endpoint reference
 
 ### Email System
@@ -139,10 +334,91 @@ pytest tests/test_final_integration.py -v
 - **[EMAIL_USE_CASES_QUICK_REFERENCE.txt](./EMAIL_USE_CASES_QUICK_REFERENCE.txt)** - All 45 email use cases
 
 ### SEO & Marketing
-- **[SEO_OPTIMIZATION_GUIDE.md](./SEO_OPTIMIZATION_GUIDE.md)** - 🆕 Comprehensive SEO optimization guide
+- **[SEO_OPTIMIZATION_GUIDE.md](./SEO_OPTIMIZATION_GUIDE.md)** - Comprehensive SEO optimization guide
 
 ### Live Documentation
-- Backend API Docs: http://localhost:8000/docs (when running)
+- **Backend API Docs**: http://localhost:8000/docs (Swagger UI)
+- **Backend API Docs**: http://localhost:8000/redoc (ReDoc)
+
+---
+
+## 🏗️ Architecture
+
+### System Architecture
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                         Frontend                             │
+│  ┌──────────────────────────────────────────────────────┐  │
+│  │  React + TypeScript + Vite                           │  │
+│  │  - Context API (State Management)                    │  │
+│  │  - React Router (Navigation)                         │  │
+│  │  - Axios (HTTP Client)                               │  │
+│  │  - Tailwind CSS (Styling)                            │  │
+│  └──────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────┘
+                            │
+                            │ HTTP/WebSocket
+                            ▼
+┌─────────────────────────────────────────────────────────────┐
+│                         Backend                              │
+│  ┌──────────────────────────────────────────────────────┐  │
+│  │  FastAPI + Python 3.11                               │  │
+│  │  - Async/Await Operations                            │  │
+│  │  - JWT Authentication                                │  │
+│  │  - SQLAlchemy 2.0 (Async)                            │  │
+│  │  - Pydantic Validation                               │  │
+│  └──────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────┘
+         │                    │                    │
+         │                    │                    │
+         ▼                    ▼                    ▼
+┌──────────────┐    ┌──────────────┐    ┌──────────────┐
+│  PostgreSQL  │    │    Redis     │    │    Celery    │
+│   Database   │    │    Cache     │    │   Workers    │
+│              │    │   + Broker   │    │              │
+└──────────────┘    └──────────────┘    └──────────────┘
+```
+
+### Key Components
+
+#### Frontend Architecture
+- **Pages**: Route-level components (Home, ProductList, Checkout, Admin Dashboard)
+- **Components**: Reusable UI components (ProductCard, CartItem, Header)
+- **Contexts**: Global state management (Auth, Cart, Wishlist, Theme, Locale)
+- **APIs**: Service layer for backend communication
+- **Hooks**: Custom React hooks for common functionality
+
+#### Backend Architecture
+- **Routes**: API endpoint definitions with FastAPI routers
+- **Services**: Business logic layer (OrderService, ProductService, etc.)
+- **Models**: SQLAlchemy ORM models for database tables
+- **Schemas**: Pydantic models for request/response validation
+- **Tasks**: Celery background tasks for async operations
+- **Core**: Shared utilities (database, auth, exceptions, logging)
+
+### Database Schema
+
+Key tables include:
+- **users**: User accounts with roles (customer, supplier, admin)
+- **products**: Product catalog with variants
+- **orders**: Order records with items and status tracking
+- **cart**: Shopping cart items
+- **wishlist**: Saved products
+- **reviews**: Product reviews and ratings
+- **notifications**: User notifications
+- **activity_logs**: System activity tracking
+- **system_settings**: Configurable application settings
+
+### Security Architecture
+- JWT-based authentication with access and refresh tokens
+- Password hashing with bcrypt
+- CORS protection with configurable origins
+- SQL injection prevention via SQLAlchemy ORM
+- XSS protection via React's built-in escaping
+- CSRF protection for state-changing operations
+- Rate limiting on sensitive endpoints
+- Secure environment variable management
 
 ## ⚙️ Environment Variables
 
@@ -273,22 +549,233 @@ npm run lint
 ### Production Considerations
 
 1. **Environment Variables**: Use secure environment variables for all sensitive data
-2. **Database**: Use PostgreSQL instead of SQLite
+2. **Database**: Use managed PostgreSQL service (AWS RDS, DigitalOcean, etc.)
 3. **CORS**: Configure allowed origins in backend settings
 4. **HTTPS**: Enable SSL/TLS for secure communication
-5. **Image Storage**: Consider using environment variables for GitHub token
-6. **Monitoring**: Set up logging and error tracking
+5. **Image Storage**: Use environment variables for GitHub token or migrate to S3/CDN
+6. **Monitoring**: Set up logging and error tracking (Sentry, LogRocket)
+7. **Scaling**: Use load balancers and multiple backend instances
+8. **Backups**: Implement automated database backups
+9. **CDN**: Use CDN for static assets (Cloudflare, AWS CloudFront)
+10. **Security**: Enable rate limiting, implement WAF rules
 
 ### Build for Production
 
+#### Frontend
 ```bash
-# Frontend build
 cd frontend
 npm run build
 # Output will be in frontend/dist
+# Deploy to: Vercel, Netlify, AWS S3 + CloudFront, or any static host
+```
 
-# Backend
+#### Backend
+```bash
 cd backend
 # Use a production ASGI server like gunicorn with uvicorn workers
-gunicorn main:app -w 4 -k uvicorn.workers.UvicornWorker
+gunicorn main:app -w 4 -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:8000
+# Deploy to: AWS EC2, DigitalOcean Droplet, Heroku, or any VPS
 ```
+
+#### Docker Production Deployment
+```bash
+# Build production images
+docker-compose -f docker-compose.prod.yml build
+
+# Deploy with orchestration
+# Use Kubernetes, Docker Swarm, or AWS ECS for production
+```
+
+### Recommended Hosting Platforms
+
+- **Frontend**: Vercel, Netlify, AWS Amplify, Cloudflare Pages
+- **Backend**: AWS EC2/ECS, DigitalOcean, Heroku, Railway
+- **Database**: AWS RDS, DigitalOcean Managed Database, Supabase
+- **Redis**: AWS ElastiCache, Redis Cloud, DigitalOcean Managed Redis
+- **Full Stack**: AWS, Google Cloud Platform, Azure, DigitalOcean
+
+---
+
+## 🤝 Contributing
+
+We welcome contributions from the community! Here's how you can help:
+
+### Getting Started
+
+1. **Fork the repository**
+   ```bash
+   git clone https://github.com/yourusername/banweemvp.git
+   cd banweemvp
+   ```
+
+2. **Create a feature branch**
+   ```bash
+   git checkout -b feature/your-feature-name
+   ```
+
+3. **Make your changes**
+   - Follow the existing code style
+   - Write tests for new features
+   - Update documentation as needed
+
+4. **Run tests**
+   ```bash
+   # Backend tests
+   cd backend
+   pytest
+
+   # Frontend tests
+   cd frontend
+   npm test -- --run
+   ```
+
+5. **Commit your changes**
+   ```bash
+   git add .
+   git commit -m "feat: add your feature description"
+   ```
+
+6. **Push to your fork**
+   ```bash
+   git push origin feature/your-feature-name
+   ```
+
+7. **Create a Pull Request**
+   - Go to the original repository
+   - Click "New Pull Request"
+   - Select your feature branch
+   - Describe your changes in detail
+
+### Contribution Guidelines
+
+- **Code Style**: Follow PEP 8 for Python, ESLint rules for TypeScript
+- **Commits**: Use conventional commit messages (feat, fix, docs, style, refactor, test, chore)
+- **Tests**: Maintain or improve test coverage
+- **Documentation**: Update README and relevant docs for new features
+- **Issues**: Check existing issues before creating new ones
+- **Pull Requests**: Keep PRs focused on a single feature or fix
+
+### Development Workflow
+
+1. Check the [Issues](https://github.com/Oahse/banweemvp/issues) page for open tasks
+2. Comment on an issue to claim it
+3. Follow the contribution steps above
+4. Wait for code review and address feedback
+5. Once approved, your PR will be merged
+
+### Code of Conduct
+
+- Be respectful and inclusive
+- Provide constructive feedback
+- Focus on the code, not the person
+- Help others learn and grow
+
+---
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+### MIT License Summary
+
+- ✅ Commercial use
+- ✅ Modification
+- ✅ Distribution
+- ✅ Private use
+- ❌ Liability
+- ❌ Warranty
+
+---
+
+## 📧 Contact
+
+### Project Maintainer
+
+- **GitHub**: [@Oahse](https://github.com/Oahse)
+- **Project Repository**: [banweemvp](https://github.com/Oahse/banweemvp)
+
+### Support
+
+- **Issues**: [GitHub Issues](https://github.com/Oahse/banweemvp/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/Oahse/banweemvp/discussions)
+- **Email**: support@banwee.com (if applicable)
+
+### Social Media
+
+- **LinkedIn**: [Banwee Platform](#)
+- **Twitter**: [@BanweePlatform](#)
+- **Facebook**: [Banwee](#)
+- **Instagram**: [@banwee](#)
+
+---
+
+## 🙏 Acknowledgments
+
+- FastAPI for the excellent async Python framework
+- React team for the powerful UI library
+- Stripe for secure payment processing
+- Mailgun for reliable email delivery
+- All contributors who have helped improve this project
+
+---
+
+## 📸 Screenshots
+
+### Customer Experience
+
+#### Homepage
+![Homepage](docs/screenshots/homepage.png)
+*Modern, responsive homepage with featured products and categories*
+
+#### Product Listing
+![Product Listing](docs/screenshots/product-listing.png)
+*Browse products with filtering and sorting options*
+
+#### Product Details
+![Product Details](docs/screenshots/product-details.png)
+*Detailed product view with reviews and variants*
+
+#### Shopping Cart
+![Shopping Cart](docs/screenshots/cart.png)
+*Intuitive cart management with real-time updates*
+
+#### Checkout
+![Checkout](docs/screenshots/checkout.png)
+*Secure checkout with Stripe integration*
+
+### Admin Dashboard
+
+#### Analytics Dashboard
+![Admin Dashboard](docs/screenshots/admin-dashboard.png)
+*Comprehensive analytics with charts and metrics*
+
+#### Product Management
+![Product Management](docs/screenshots/admin-products.png)
+*Easy product creation and management*
+
+#### Order Management
+![Order Management](docs/screenshots/admin-orders.png)
+*Track and manage all orders*
+
+#### User Management
+![User Management](docs/screenshots/admin-users.png)
+*Manage customers, suppliers, and admins*
+
+---
+
+## 🎬 Demo
+
+### Live Demo
+Visit our live demo: [https://banwee-demo.com](#) *(Coming Soon)*
+
+### Video Walkthrough
+Watch a complete walkthrough: [YouTube Demo](#) *(Coming Soon)*
+
+---
+
+<div align="center">
+  <p>Made with ❤️ by the Banwee Team</p>
+  <p>
+    <a href="#table-of-contents">Back to Top ↑</a>
+  </p>
+</div>
