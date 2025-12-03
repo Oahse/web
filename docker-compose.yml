@@ -2,6 +2,11 @@ version: '3.8'
 
 services:
   # PostgreSQL Database (Alpine)
+  # This service sets up the PostgreSQL database.
+  # The 'environment' section configures the database name, user, and password for initial setup.
+  # 'ports' maps the container's PostgreSQL port to the host machine.
+  # 'volumes' ensures data persistence across container restarts.
+  # 'healthcheck' verifies the database is ready for connections.
   postgres:
     image: postgres:16-alpine
     container_name: banwee_postgres
@@ -22,6 +27,10 @@ services:
       - banwee_network
 
   # Redis (Alpine)
+  # This service provides a Redis instance for caching, session management, and as a Celery broker.
+  # 'ports' maps the container's Redis port to the host.
+  # 'volumes' ensures Redis data persistence.
+  # 'healthcheck' verifies Redis is operational.
   redis:
     image: redis:7-alpine
     container_name: banwee_redis
@@ -39,6 +48,10 @@ services:
       - banwee_network
 
   # Celery Worker (Alpine Python)
+  # This service runs Celery workers to process asynchronous tasks (e.g., sending emails).
+  # It connects to the PostgreSQL database and Redis.
+  # 'environment' variables define the database connection string (POSTGRES_DB_URL) and Redis URL.
+  # 'depends_on' ensures postgres and redis are healthy before starting.
   celery_worker:
     build:
       context: ./backend
@@ -64,6 +77,10 @@ services:
     restart: unless-stopped
 
   # Celery Beat (Scheduler)
+  # This service runs the Celery Beat scheduler, which handles periodic tasks.
+  # It also requires database and Redis connections.
+  # 'environment' variables define database and Redis connection strings.
+  # 'depends_on' ensures postgres and redis are healthy before starting.
   celery_beat:
     build:
       context: ./backend
@@ -85,6 +102,11 @@ services:
     restart: unless-stopped
 
   # Backend API
+  # This service runs the FastAPI backend application.
+  # It exposes the API on port 8000 and connects to PostgreSQL and Redis.
+  # 'environment' variables configure database, Redis, Mailgun, Stripe, and CORS settings.
+  # 'BACKEND_CORS_ORIGINS' is critical for allowing frontend access during development.
+  # 'healthcheck' verifies the backend API is responsive.
   backend:
     build:
       context: ./backend
@@ -122,6 +144,10 @@ services:
       start_period: 40s
 
   # Frontend
+  # This service runs the Vite-based React frontend application.
+  # It exposes the frontend on port 5173 and connects to the backend API.
+  # 'environment' variables configure the API base URL and Stripe public key for frontend use.
+  # 'healthcheck' verifies the frontend is accessible.
   frontend:
     build:
       context: ./frontend
@@ -145,10 +171,12 @@ services:
       retries: 3
       start_period: 40s
 
+# Docker Volumes for data persistence
 volumes:
   postgres_data:
   redis_data:
 
+# Docker Networks for inter-service communication
 networks:
   banwee_network:
     driver: bridge
