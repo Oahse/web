@@ -49,5 +49,11 @@ def perform_negotiation_step(self, negotiation_id: str, buyer_new_target: float 
     updated_negotiation_data_json = json.dumps(engine.to_dict())
     redis_client.set(negotiation_key, updated_negotiation_data_json)
 
-    # Return the result of the step, which can be used by calling functions or for logging
-    return result
+    # If negotiation is finished, delete the state from Redis
+    if engine.finished:
+        redis_client.delete(negotiation_key)
+        self.update_state(state='SUCCESS', meta=result) # Update task state to SUCCESS
+        return result
+    else:
+        self.update_state(state='PENDING', meta=result) # Update task state to PENDING if not finished
+        return result

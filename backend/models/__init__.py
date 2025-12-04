@@ -13,7 +13,6 @@ from .transaction import Transaction
 from .wishlist import Wishlist, WishlistItem
 from .notification import Notification  # Added Notification model
 from .activity_log import ActivityLog
-from .negotiation import NegotiationSession # Import new NegotiationSession model
 
 __all__ = [
     # User models
@@ -57,7 +56,4 @@ __all__ = [
 
     # Activity models
     "ActivityLog",
-
-    # Negotiation models
-    "NegotiationSession", # Add NegotiationSession to __all__
 ]

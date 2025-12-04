@@ -27,8 +27,23 @@ RUN pip install --no-cache-dir \
     flower==2.0.1 \
     redis==4.6.0
 
-# Copy application code
-COPY . .
+# Selective Copy of application code needed for the negotiation Celery worker
+# Copy core configuration
+COPY backend/core/config.py backend/core/
+# Copy base Celery app definition
+COPY backend/celery_app.py backend/
+# Copy negotiation services and tasks
+COPY backend/services/negotiator.py backend/services/
+COPY backend/tasks/negotiation_tasks.py backend/tasks/
+# Copy models (if needed for serialization/deserialization within tasks)
+COPY backend/models/__init__.py backend/models/
+COPY backend/models/user.py backend/models/ # User model might be needed for current_user context
+# Ensure __init__.py files are present for module structure
+COPY backend/__init__.py backend/
+COPY backend/tasks/__init__.py backend/tasks/
+COPY backend/services/__init__.py backend/services/
+COPY backend/models/__init__.py backend/models/
+
 
 # Set Python path
 ENV PYTHONPATH=/app
