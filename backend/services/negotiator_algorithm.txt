@@ -1,0 +1,58 @@
+## Negotiation Algorithm (negotiator.py)
+
+This module implements a basic negotiation algorithm that simulates a series of offers and counter-offers between two parties: a Buyer and a Seller. The goal is to reach a mutually agreeable price within their respective limits.
+
+### Core Concepts:
+
+1.  **NegotiationAgent**: A base class that defines common properties and behaviors for both buyers and sellers.
+    *   `name`: A string identifier for the agent.
+    *   `target_price`: The agent's current desired price. This value changes as negotiation progresses.
+    *   `limit_price`: The agent's absolute minimum (for seller) or maximum (for buyer) acceptable price. The agent will not concede beyond this point.
+    *   `style`: A string ("aggressive", "patient", "friendly", "balanced") that influences the agent's `concession_rate`.
+    *   `concession_rate()`: A method that returns a float representing how much the agent is willing to adjust its offer in each round.
+        *   "aggressive": 0.02 (concedes very little)
+        *   "patient": 0.05
+        *   "balanced": 0.05 (default if style is not recognized)
+        *   "friendly": 0.10 (concedes more)
+    *   `update_target(new_price)`: Allows external logic (e.g., UI) to dynamically update the agent's current target offer.
+    *   `set_price(new_price)`: A direct way for external logic (e.g., UI) to set the agent's current offer for a round.
+
+2.  **Buyer (inherits from NegotiationAgent)**:
+    *   `make_offer(seller_offer)`: Calculates the buyer's next offer.
+        *   The buyer's offer is calculated to move closer to the `seller_offer`.
+        *   `move = (seller_offer - self.target) * self.concession_rate()`
+        *   `offer = self.target + move`
+        *   The offer is capped by the buyer's `limit_price` (`min(offer, self.limit)`), ensuring the buyer doesn't offer more than their maximum.
+
+3.  **Seller (inherits from NegotiationAgent)**:
+    *   `counter_offer(buyer_offer)`: Calculates the seller's next counter-offer.
+        *   The seller's counter-offer is calculated to move closer to the `buyer_offer`.
+        *   `move = (self.target - buyer_offer) * self.concession_rate()`
+        *   `offer = self.target - move`
+        *   The offer is floored by the seller's `limit_price` (`max(offer, self.limit)`), ensuring the seller doesn't sell below their minimum.
+
+4.  **NegotiationEngine**: The orchestrator of the negotiation process.
+    *   `buyer`: An instance of the `Buyer` agent.
+    *   `seller`: An instance of the `Seller` agent.
+    *   `round`: Tracks the current negotiation round number.
+    *   `finished`: A boolean flag indicating if a deal has been struck.
+    *   `final_price`: Stores the agreed-upon price once negotiation concludes.
+    *   `check_closure(buyer_offer, seller_offer)`: A utility method to determine if a deal has been reached. A deal is closed if the buyer's offer is greater than or equal to the seller's offer.
+
+### Algorithm Flow (`NegotiationEngine.step()` method):
+
+The `step()` method executes a single round of negotiation and returns the current state or the final deal.
+
+1.  **Check if already finished**: If `self.finished` is true, the negotiation has already concluded, and the method immediately returns the final result.
+2.  **Increment Round**: The `self.round` counter is increased.
+3.  **Buyer Makes Offer**: The `buyer` calculates their `buyer_offer` based on the `seller`'s current `target_price`.
+4.  **Check for Closure (Buyer's Offer)**: The engine checks if the `buyer_offer` is acceptable to the `seller` (i.e., `buyer_offer >= seller.target`).
+    *   If `True`, the negotiation `finished` flag is set, `final_price` is recorded, and the deal details are returned.
+5.  **Seller Makes Counter-Offer**: If no deal is closed by the buyer's offer, the `seller` calculates their `seller_offer` based on the `buyer_offer` from this round.
+6.  **Check for Closure (Seller's Counter-Offer)**: The engine checks if the `buyer_offer` (from this round) is acceptable to the `seller`'s new `seller_offer` (i.e., `buyer_offer >= seller_offer`).
+    *   If `True`, the negotiation `finished` flag is set, `final_price` is recorded, and the deal details are returned.
+7.  **Continue Negotiation**: If no closure is reached after both parties make their offers, the current state of the negotiation (including the `buyer_offer`, `seller_offer` from this round, and the current `round` number) is returned, with `finished` set to `False`. The negotiation will then proceed to the next round upon a subsequent call to `step()`.
+
+### Summary:
+
+The algorithm models a dynamic haggling process where both parties iteratively adjust their positions based on the other's last offer and their own negotiation style (concession rate) and hard limits. The negotiation terminates when an overlap in acceptable prices is found.
