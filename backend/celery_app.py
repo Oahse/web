@@ -14,7 +14,8 @@ celery_app = Celery(
     include=[
         'tasks.email_tasks',
         'tasks.notification_tasks',
-        'tasks.order_tasks'
+        'tasks.order_tasks',
+        'tasks.negotiation_tasks' # Added negotiation tasks
     ]
 )
 
@@ -48,6 +49,7 @@ celery_app.conf.update(
         'tasks.email_tasks.*': {'queue': 'emails'},
         'tasks.notification_tasks.*': {'queue': 'notifications'},
         'tasks.order_tasks.*': {'queue': 'orders'},
+        'tasks.negotiation_tasks.*': {'queue': 'negotiation'}, # Added negotiation task route
     },
     
     # Task queues
@@ -56,6 +58,7 @@ celery_app.conf.update(
         Queue('emails', routing_key='emails'),
         Queue('notifications', routing_key='notifications'),
         Queue('orders', routing_key='orders'),
+        Queue('negotiation', routing_key='negotiation'), # Added negotiation queue
     ),
     
     # Beat schedule (for periodic tasks)

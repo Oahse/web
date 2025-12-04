@@ -47,8 +47,8 @@ services:
     networks:
       - banwee_network
 
-  # Celery Worker (Alpine Python)
-  # This service runs Celery workers to process asynchronous tasks (e.g., sending emails).
+  # Celery Worker (Alpine Python) - for general tasks (e.g., emails, notifications)
+  # This service runs Celery workers to process asynchronous tasks.
   # It connects to the PostgreSQL database and Redis.
   # 'environment' variables define the database connection string (POSTGRES_DB_URL) and Redis URL.
   # 'depends_on' ensures postgres and redis are healthy before starting.
@@ -57,7 +57,7 @@ services:
       context: ./backend
       dockerfile: Dockerfile.celery
     container_name: banwee_celery_worker
-    command: celery -A celery_app worker --loglevel=info --pool=solo
+    command: celery -A celery_app worker -Q emails,notifications,orders --loglevel=info --pool=solo
     environment:
       - POSTGRES_DB_URL=postgresql+asyncpg://banwee:banwee_password@postgres:5432/banwee_db
       - REDIS_URL=redis://redis:6379/0
@@ -68,6 +68,26 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app
+    networks:
+      - banwee_network
+    restart: unless-stopped
+
+  # Celery Worker (Alpine Python) - dedicated for negotiation tasks
+  # This service runs a dedicated Celery worker for negotiation tasks.
+  # It connects to Redis for task brokering and state storage.
+  negotiation_celery_worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.negotiation_celery # Use dedicated Dockerfile for negotiation worker
+    container_name: banwee_negotiation_celery_worker
+    command: celery -A celery_app worker -Q negotiation --loglevel=info --pool=solo # Only process 'negotiation' queue
+    environment:
+      - REDIS_URL=redis://redis:6379/0 # Only Redis needed for this worker
+    depends_on:
       redis:
         condition: service_healthy
     volumes:

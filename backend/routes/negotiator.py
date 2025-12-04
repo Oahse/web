@@ -2,27 +2,28 @@ from fastapi import APIRouter, Depends, status, HTTPException
 from pydantic import BaseModel, Field
 from typing import Optional, Dict
 from uuid import UUID
+import uuid
+import json
+import redis
 
-from sqlalchemy.ext.asyncio import AsyncSession
-
-from core.database import get_db
+from core.config import settings
 from core.exceptions import APIException
 from core.utils.response import Response
 from core.dependencies import get_current_auth_user
-from models.user import User  # Assuming User model is needed for current_user dependency
+from models.user import User
 
 from services.negotiator import Buyer, Seller, NegotiationEngine
+from backend.tasks.negotiation_tasks import perform_negotiation_step # Import the Celery task
 
 router = APIRouter(
     prefix="/negotiate",
     tags=["Negotiator"],
 )
 
-# In-memory store for ongoing negotiations (NOT production-ready)
-# WARNING: This store is volatile and will be reset when the application restarts.
-# For production environments, negotiation sessions should be persisted in a database
-# (e.g., PostgreSQL, Redis) and retrieved using a unique session ID.
-negotiations_store: Dict[UUID, NegotiationEngine] = {}
+# Initialize Redis client for negotiation state persistence
+# This client will be used by both FastAPI routes and Celery tasks.
+redis_client = redis.Redis.from_url(settings.REDIS_URL, decode_responses=True)
+
 
 class NegotiationAgentConfig(BaseModel):
     """Configuration for a single negotiation agent."""
@@ -52,20 +53,25 @@ class NegotiationStepRequest(BaseModel):
     buyer_new_target: Optional[float] = Field(None, gt=0, description="Optional new target price for the buyer.")
     seller_new_target: Optional[float] = Field(None, gt=0, description="Optional new target price for the seller.")
 
-@router.post("/start", response_model=Response[NegotiationStateResponse], status_code=status.HTTP_201_CREATED)
+class NegotiationTaskResponse(BaseModel):
+    """Response model for when a negotiation task is dispatched asynchronously."""
+    negotiation_id: UUID
+    task_id: str
+    message: str
+
+@router.post("/start", response_model=Response[NegotiationTaskResponse], status_code=status.HTTP_202_ACCEPTED)
 async def start_negotiation(
     request: NegotiationStartRequest,
     current_user: User = Depends(get_current_auth_user), # Requires authentication
-    db: AsyncSession = Depends(get_db) # Database session dependency (for future persistence)
 ):
     """
-    Initializes a new negotiation session between a buyer and a seller.
-    Returns the initial state of the negotiation.
-    The negotiation session is stored in-memory. In production, this would be stored in a database
-    and linked to the `current_user`.
+    Initializes a new negotiation session and dispatches the first step as a Celery task.
+    The negotiation state is stored in Redis.
     """
-    # For future: Logic to store buyer/seller config in DB, linked to current_user
-    # For now, just create agent instances.
+    negotiation_id = uuid.uuid4() # Generate UUID for the session
+    negotiation_key = f"negotiation:{negotiation_id}"
+
+    # Initialize agents and engine
     buyer = Buyer(
         name=request.buyer_config.name,
         target_price=request.buyer_config.target_price,
@@ -78,129 +84,94 @@ async def start_negotiation(
         limit_price=request.seller_config.limit_price,
         style=request.seller_config.style
     )
-
     engine = NegotiationEngine(buyer, seller)
-    negotiation_id = uuid.uuid4() # Generate UUID for the session
-    negotiations_store[negotiation_id] = engine
 
-    # Run the first step to get initial offers and check for immediate closure
-    initial_state = engine.step()
+    # Save initial engine state to Redis
+    redis_client.set(negotiation_key, json.dumps(engine.to_dict()))
 
-    response_data = NegotiationStateResponse(
-        negotiation_id=negotiation_id,
-        round=initial_state["round"],
-        finished=initial_state["finished"],
-        message=initial_state["message"],
-        final_price=initial_state.get("final_price"),
-        buyer_current_offer=initial_state.get("buyer_offer"),
-        seller_current_offer=initial_state.get("seller_offer")
+    # Dispatch the first negotiation step asynchronously
+    task = perform_negotiation_step.delay(str(negotiation_id))
+
+    return Response.success(
+        NegotiationTaskResponse(negotiation_id=negotiation_id, task_id=task.id, message="Negotiation started and first step dispatched."),
+        message="Negotiation started successfully."
     )
-    return Response.success(response_data, message="Negotiation started successfully.")
 
 
-@router.post("/step", response_model=Response[NegotiationStateResponse])
+@router.post("/step", response_model=Response[NegotiationTaskResponse])
 async def step_negotiation(
     request: NegotiationStepRequest,
     current_user: User = Depends(get_current_auth_user), # Requires authentication
-    db: AsyncSession = Depends(get_db) # Database session dependency (for future persistence)
 ):
     """
-    Advances an ongoing negotiation by one step (round).
+    Dispatches a Celery task to advance an ongoing negotiation by one step (round).
     Optionally allows updating buyer's or seller's target prices before the step.
-    Returns the updated state of the negotiation.
-    In production, this would retrieve the NegotiationEngine state from the database,
-    update it, and then persist the new state.
+    Returns the ID of the dispatched Celery task.
     """
     negotiation_id = request.negotiation_id
-    engine = negotiations_store.get(negotiation_id)
+    negotiation_key = f"negotiation:{negotiation_id}"
 
-    if not engine:
+    if not redis_client.exists(negotiation_key):
         raise APIException(
             status_code=status.HTTP_404_NOT_FOUND,
             message=f"Negotiation with ID {negotiation_id} not found."
         )
-
-    if engine.finished:
-        raise APIException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            message=f"Negotiation with ID {negotiation_id} has already finished."
-        )
-
-    # Apply optional new target prices for the agents
-    if request.buyer_new_target is not None:
-        engine.buyer.set_price(request.buyer_new_target)
-    if request.seller_new_target is not None:
-        engine.seller.set_price(request.seller_new_target)
-
-    next_state = engine.step()
-
-    # For future: Persist the updated engine state back to the database
-    response_data = NegotiationStateResponse(
-        negotiation_id=negotiation_id,
-        round=next_state["round"],
-        finished=next_state["finished"],
-        message=next_state["message"],
-        final_price=next_state.get("final_price"),
-        buyer_current_offer=next_state.get("buyer_offer"),
-        seller_current_offer=next_state.get("seller_offer")
+    
+    # Dispatch the negotiation step asynchronously
+    task = perform_negotiation_step.delay(
+        str(negotiation_id),
+        buyer_new_target=request.buyer_new_target,
+        seller_new_target=request.seller_new_target
     )
-    return Response.success(response_data, message=next_state["message"])
+
+    return Response.success(
+        NegotiationTaskResponse(negotiation_id=negotiation_id, task_id=task.id, message="Negotiation step dispatched."),
+        message="Negotiation step initiated asynchronously."
+    )
 
 
 @router.get("/{negotiation_id}", response_model=Response[NegotiationStateResponse])
 async def get_negotiation_state(
     negotiation_id: UUID, # Use UUID type directly for path parameter
     current_user: User = Depends(get_current_auth_user), # Requires authentication
-    db: AsyncSession = Depends(get_db) # Database session dependency
 ):
     """
-    Retrieves the current state of a specific negotiation session.
-    In production, this would retrieve the NegotiationEngine state from the database.
+    Retrieves the current state of a specific negotiation session from Redis.
     """
-    engine = negotiations_store.get(negotiation_id)
-    if not engine:
+    negotiation_key = f"negotiation:{negotiation_id}"
+    negotiation_data_json = redis_client.get(negotiation_key)
+
+    if not negotiation_data_json:
         raise APIException(
             status_code=status.HTTP_404_NOT_FOUND,
             message=f"Negotiation with ID {negotiation_id} not found."
         )
     
-    # Reconstruct the state response from the engine's current properties
-    # Note: This approach might not reflect the *exact* last offers if the engine wasn't stepped
-    # right before this GET request, but rather the internal target prices of the agents.
-    current_state = {
-        "round": engine.round,
-        "finished": engine.finished,
-        "message": "Negotiation ongoing." if not engine.finished else f"Deal reached at ₦{engine.final_price:.2f}",
-        "final_price": engine.final_price,
-        "buyer_offer": getattr(engine.buyer, 'target', None),
-        "seller_offer": getattr(engine.seller, 'target', None)
-    }
+    negotiation_data = json.loads(negotiation_data_json)
+    engine = NegotiationEngine.from_dict(negotiation_data)
 
     response_data = NegotiationStateResponse(
         negotiation_id=negotiation_id,
-        round=current_state["round"],
-        finished=current_state["finished"],
-        message=current_state["message"],
-        final_price=current_state.get("final_price"),
-        buyer_current_offer=current_state.get("buyer_offer"),
-        seller_current_offer=current_state.get("seller_offer")
+        round=engine.round,
+        finished=engine.finished,
+        message="Negotiation ongoing." if not engine.finished else f"Deal reached at ₦{engine.final_price:.2f}",
+        final_price=engine.final_price,
+        buyer_current_offer=engine.buyer.target,
+        seller_current_offer=engine.seller.target
     )
     return Response.success(response_data, message="Negotiation state retrieved successfully.")
 
 
-@router.delete("/{negotiation_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/{negotiation_id}", status_code=status.HTTP_200_OK) # Changed to 200 OK as it returns a response
 async def delete_negotiation(
     negotiation_id: UUID, # Use UUID type directly for path parameter
     current_user: User = Depends(get_current_auth_user), # Requires authentication
-    db: AsyncSession = Depends(get_db) # Database session dependency (for future cleanup)
 ):
     """
-    Deletes an ongoing negotiation session from memory.
-    (Note: In a production system, this would involve deleting the session from the database).
+    Deletes an ongoing negotiation session from Redis.
     """
-    if negotiation_id in negotiations_store:
-        del negotiations_store[negotiation_id]
-        # For future: Delete negotiation session from the database
+    negotiation_key = f"negotiation:{negotiation_id}"
+    if redis_client.delete(negotiation_key):
         return Response.success(message="Negotiation session deleted successfully.")
     else:
         raise APIException(

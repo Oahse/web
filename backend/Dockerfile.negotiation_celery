@@ -1,0 +1,37 @@
+# Use Alpine Python for smaller image size
+FROM python:3.11-alpine
+
+# Set working directory
+WORKDIR /app
+
+# Install system dependencies
+RUN apk add --no-cache \
+    gcc \
+    musl-dev \
+    postgresql-dev \
+    libffi-dev \
+    openssl-dev \
+    cargo \
+    rust \
+    curl
+
+# Copy requirements
+COPY requirements.txt .
+
+# Install Python dependencies
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Install Celery and Redis-related packages
+RUN pip install --no-cache-dir \
+    celery[redis]==5.3.4 \
+    flower==2.0.1 \
+    redis==4.6.0
+
+# Copy application code
+COPY . .
+
+# Set Python path
+ENV PYTHONPATH=/app
+
+# Command to run Celery worker specifically for negotiation tasks
+CMD ["celery", "-A", "celery_app", "worker", "-Q", "negotiation", "--loglevel=info", "--pool=solo"]
