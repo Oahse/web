@@ -1,8 +1,67 @@
-## Negotiation Algorithm (negotiator.py) - Summary
+## **Negotiation Algorithm (English Pseudocode)**
 
-This document describes a simple iterative negotiation algorithm implemented in `negotiator.py`.
-The core idea involves two agents, a `Buyer` and a `Seller`, each with a `target_price`, a `limit_price`, and a `negotiation style` that dictates their `concession_rate`.
+1. **Define an Agent (Buyer or Seller)**
 
-The `NegotiationEngine` orchestrates the process in rounds, where both the buyer and seller make offers or counter-offers, gradually moving towards each other based on their defined styles and limits. The negotiation concludes when an offer from one party meets or exceeds the demand of the other, or vice-versa, indicating a mutually acceptable price has been found within their boundaries.
+   * Each agent has:
 
-This model simulates a dynamic haggling process aiming for deal closure.
+     * A name
+     * A target price (what they ideally want)
+     * A limit price (the minimum/maximum they are willing to accept)
+     * A negotiation style (friendly, aggressive, patient) that determines how much they concede each round
+
+2. **Define a Buyer Agent**
+
+   * To make an offer:
+
+     * Calculate a movement toward the seller’s price based on concession rate
+     * Add this movement to the buyer’s target price
+     * Ensure the offer does not exceed the buyer’s limit price
+
+3. **Define a Seller Agent**
+
+   * To make a counter-offer:
+
+     * Calculate a movement toward the buyer’s offer based on concession rate
+     * Subtract this movement from the seller’s target price
+     * Ensure the offer does not go below the seller’s limit price
+
+4. **Define the Negotiation Engine**
+
+   * Keep track of the buyer, seller, current round, whether the negotiation is finished, and the final price
+
+5. **Define a Check for Deal Closure**
+
+   * A deal is considered reached if:
+
+     * The buyer’s offer is equal to or higher than the seller’s offer
+     * And the buyer’s offer is not below the buyer’s limit price
+
+6. **Negotiation Step (One Round)**
+
+   * If the negotiation is already finished, do nothing
+   * Otherwise, increase the round count
+   * **Buyer makes an offer**
+
+     * Check if the deal can be closed with this offer
+
+       * If yes, mark negotiation finished and record final price
+   * **Seller makes a counter-offer**
+
+     * Check if the deal can be closed with this offer
+
+       * If yes, mark negotiation finished and record final price
+   * If no deal is reached, return the current buyer and seller offers along with the round number
+
+7. **Negotiation Loop**
+
+   * Initialize buyer and seller with their target prices, limits, and styles
+   * Initialize the negotiation engine with the buyer and seller
+   * Repeat steps:
+
+     * Optionally update buyer or seller prices (e.g., from UI)
+     * Perform a negotiation step
+     * Display current round results
+   * Stop when a deal is reached or a maximum number of rounds is reached
+
+
+If you want, I can also make a **very short one-page version with a flowchart style**, which is perfect for presentations. Do you want me to do that?

@@ -47,6 +47,25 @@ class NegotiationAgent:
         Allows an external interface (e.g., UI) to directly set a new round price for the agent.
         """
         self.target = new_price
+    
+    def to_dict(self) -> dict:
+        """Serializes the NegotiationAgent's state to a dictionary."""
+        return {
+            "name": self.name,
+            "target": self.target,
+            "limit": self.limit,
+            "style": self.style,
+            "agent_type": self.__class__.__name__ # To differentiate Buyer/Seller upon deserialization
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict):
+        """
+        Deserializes a dictionary back into a NegotiationAgent instance.
+        This method is meant to be overridden by subclasses (Buyer/Seller) to instantiate
+        the correct specific agent type.
+        """
+        return cls(data["name"], data["target"], data["limit"], data["style"])
 
 
 class Buyer(NegotiationAgent):
@@ -72,6 +91,11 @@ class Buyer(NegotiationAgent):
         # Ensure the buyer's offer does not exceed their limit price (max price they are willing to pay).
         return min(offer, self.limit)
 
+    @classmethod
+    def from_dict(cls, data: dict):
+        """Deserializes a dictionary back into a Buyer instance."""
+        return cls(data["name"], data["target"], data["limit"], data["style"])
+
 
 class Seller(NegotiationAgent):
     """
@@ -95,6 +119,11 @@ class Seller(NegotiationAgent):
         
         # Ensure the seller's offer does not go below their limit price (minimum price they are willing to accept).
         return max(offer, self.limit)
+
+    @classmethod
+    def from_dict(cls, data: dict):
+        """Deserializes a dictionary back into a Seller instance."""
+        return cls(data["name"], data["target"], data["limit"], data["style"])
 
 
 class NegotiationEngine:
@@ -122,7 +151,7 @@ class NegotiationEngine:
         :param seller_offer: The current offer from the seller.
         :return: True if a deal can be made, False otherwise.
         """
-        if buyer_offer < self.seller.limit:
+        if buyer_offer < self.seller.limit: # Buyer's offer must be at least seller's limit
             return False
         return buyer_offer >= seller_offer
 
@@ -182,22 +211,34 @@ class NegotiationEngine:
         # If no deal is reached in this round, return the current offers and state.
         return {
             "message": f"Round {self.round} complete.",
-            "final_price": self.seller.target,
+            "buyer_offer": round(buyer_offer, 2), # Corrected to return current offers for ongoing state
+            "seller_offer": round(seller_offer, 2), # Corrected to return current offers for ongoing state
             "round": self.round,
-            "finished": True
+            "finished": False
+        }
+    
+    def to_dict(self) -> dict:
+        """Serializes the NegotiationEngine's state to a dictionary for persistence."""
+        return {
+            "buyer": self.buyer.to_dict(),
+            "seller": self.seller.to_dict(),
+            "round": self.round,
+            "finished": self.finished,
+            "final_price": self.final_price,
         }
 
-# --- Example Usage (commented out for production) ---
-# This section demonstrates how to initialize and run the negotiation engine.
-# buyer  = Buyer("Oscar", 10000, 20000, "friendly")
-# seller = Seller("Market Woman", 30000, 18000, "friendly")
+    @classmethod
+    def from_dict(cls, data: dict):
+        """Deserializes a dictionary back into a NegotiationEngine instance."""
+        buyer_data = data["buyer"]
+        seller_data = data["seller"]
 
-# engine = NegotiationEngine(buyer, seller)
+        # Instantiate Buyer/Seller from their dict representations using their specific from_dict
+        buyer = Buyer.from_dict(buyer_data)
+        seller = Seller.from_dict(seller_data)
 
-# # In a real application, the UI would typically interact with these methods
-# # UI passes new values before stepping (e.g., if a user manually changes their offer)
-# # engine.buyer.set_price(new_buyer_price)
-# # engine.seller.set_price(new_seller_price)
-
-# # result = engine.step()
-# # print(result)
+        engine = cls(buyer, seller)
+        engine.round = data["round"]
+        engine.finished = data["finished"]
+        engine.final_price = data["final_price"]
+        return engine
