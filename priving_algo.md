@@ -1,10 +1,29 @@
-1. pricing:
-a btn where the customer can negotiate the price of the commodity provided the 
+Use a free email hosting provider + free domain forwarding.
+Best combination today:
 
-2. negotiate-> enter price-> if new price <minsalesprice the comp give second option for the price and option to negotiate again. got to neotiate
-negotiate(max-3)
+💡 Option A: Cloudflare Email Routing (FREE)
+
+100% free
+
+Works with any domain
+
+You can create unlimited emails like:
+
+info@
+
+support@
+
+billing@
+
+ceo@
+
+All emails will be forwarded to your personal Gmail/Outlook inbox
+
+You can also reply from your domain using Gmail SMTP workaround
+
+👉 This is the BEST free method for startups.
 
 email-, 
-payment-stripe, 
+payment-stripe and starling bank(uk), 
 domain-cloudflare(https://dash.cloudflare.com/59fda70066cea1ddbbbdbddaf5f18042/registrar/register), 
 hosting-

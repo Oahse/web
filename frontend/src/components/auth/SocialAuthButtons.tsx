@@ -7,9 +7,10 @@
 import React, { useEffect } from 'react';
 import { GoogleLogin } from '@react-oauth/google';
 import FacebookLogin from '@greatsumini/react-facebook-login';
-import { FaFacebook, FaTiktok } from 'react-icons/fa';
+import { FaFacebook, FaTiktok, FaGoogle } from 'react-icons/fa';
 import { toast } from 'react-hot-toast';
 import { apiClient } from '../../apis';
+import { tr } from 'date-fns/locale';
 
 const SocialAuthButtons = ({
   mode = 'login',
@@ -162,6 +163,7 @@ const SocialAuthButtons = ({
           theme="outline"
           size="large"
           text={mode === 'login' ? 'signin_with' : 'signup_with'}
+          cancel_on_tap_outside={true}
         />
       )}
 

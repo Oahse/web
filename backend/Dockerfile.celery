@@ -35,24 +35,24 @@ RUN pip install --no-cache-dir \
 # This avoids copying unnecessary files like API routes or frontend code.
 
 # Copy core configuration, essential for settings (like REDIS_URL, database credentials).
-COPY backend/core/config.py backend/core/
+COPY core/config.py core/
 # Copy the base Celery app definition.
-COPY backend/celery_app.py backend/
+COPY celery_app.py .
 # Copy all task modules for general purpose tasks (emails, notifications, orders).
-COPY backend/tasks/ backend/tasks/
+COPY tasks/ tasks/
 # Copy models and core database setup (for ORM access in tasks that interact with DB).
-COPY backend/models/ backend/models/
-COPY backend/core/database.py backend/core/
+COPY models/ models/
+COPY core/database.py core/
 # Copy services that might be used by tasks (e.g., notification service, email service).
-COPY backend/services/ backend/services/
+COPY services/ services/
 # Ensure __init__.py files are present for Python's module system to work correctly.
-COPY backend/__init__.py backend/
-COPY backend/tasks/__init__.py backend/tasks/
-COPY backend/services/__init__.py backend/services/
-COPY backend/models/__init__.py backend/models/
+COPY __init__.py .
+COPY tasks/__init__.py tasks/
+COPY services/__init__.py services/
+COPY models/__init__.py models/
 
 
-# Set Python path to ensure imported modules are discoverable within the container.
+# Set Python path
 ENV PYTHONPATH=/app
 
 # Default command to run the general Celery worker.

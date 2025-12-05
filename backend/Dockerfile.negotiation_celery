@@ -20,7 +20,7 @@ RUN apk add --no-cache \
     rust \
     curl
 
-# Copy Python dependency requirements file. This is copied early to leverage Docker cache.
+# Copy requirements
 COPY requirements.txt .
 
 # Install Python dependencies. Uses --no-cache-dir to keep the image slim.
@@ -37,23 +37,24 @@ RUN pip install --no-cache-dir \
 # adhering to the principle of least privilege and minimizing image size.
 
 # Copy core configuration, essential for settings (like REDIS_URL).
-COPY backend/core/config.py backend/core/
+COPY core/config.py core/
 # Copy the base Celery app definition.
-COPY backend/celery_app.py backend/
-# Copy negotiation services and tasks logic.
-COPY backend/services/negotiator.py backend/services/
-COPY backend/tasks/negotiation_tasks.py backend/tasks/
-# Copy models that are absolutely necessary for the tasks (e.g., User model for context, if needed).
-COPY backend/models/__init__.py backend/models/
-COPY backend/models/user.py backend/models/ # User model might be needed for current_user context or deserialization
-# Ensure __init__.py files are present for Python's module system to work correctly.
-COPY backend/__init__.py backend/
-COPY backend/tasks/__init__.py backend/tasks/
-COPY backend/services/__init__.py backend/services/
-COPY backend/models/__init__.py backend/models/
+COPY celery_app.py .
+# Copy negotiation services and tasks
+COPY services/negotiator.py services/
+COPY tasks/negotiation_tasks.py tasks/
+# Copy models (if needed for serialization/deserialization within tasks)
+COPY models/__init__.py models/
+# User model might be needed for current_user context or deserialization
+COPY models/user.py models/
+# Ensure __init__.py files are present for module structure
+COPY __init__.py .
+COPY tasks/__init__.py tasks/
+COPY services/__init__.py services/
+COPY models/__init__.py models/
 
 
-# Set Python path to ensure imported modules are discoverable within the container.
+# Set Python path
 ENV PYTHONPATH=/app
 
 # Command to run the Celery worker specifically for negotiation tasks.

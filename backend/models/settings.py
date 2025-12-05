@@ -1,27 +1,33 @@
-from sqlalchemy import Column, Boolean, Integer, Text
-from core.database import BaseModel
+from sqlalchemy import Column, String, Text, DateTime
+from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.sql import func
+import uuid # Import uuid explicitly
+
+from core.database import Base
 
 
-class SystemSettings(BaseModel):
+class SystemSettings(Base):
     __tablename__ = "system_settings"
 
-    maintenance_mode = Column(Boolean, default=False)
-    registration_enabled = Column(Boolean, default=True)
-    max_file_size = Column(Integer, default=10)  # Max file size in MB
-    allowed_file_types = Column(
-        Text, default="jpg,jpeg,png,pdf")  # Comma separated
-    email_notifications = Column(Boolean, default=True)
-    sms_notifications = Column(Boolean, default=False)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4) # Use UUID type for ID
+    key = Column(String, unique=True, nullable=False, index=True) # Unique key for the setting
+    value = Column(Text, nullable=False) # The value of the setting (stored as text)
+    value_type = Column(String, nullable=False, default="str") # Type of the value (e.g., "str", "int", "bool", "json")
+    description = Column(Text, nullable=True) # Description of the setting
+
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now(), server_default=func.now())
 
     def to_dict(self) -> dict:
         return {
-            "id": str(self.id),
-            "maintenance_mode": self.maintenance_mode,
-            "registration_enabled": self.registration_enabled,
-            "max_file_size": self.max_file_size,
-            "allowed_file_types": self.allowed_file_types,
-            "email_notifications": self.email_notifications,
-            "sms_notifications": self.sms_notifications,
+            "id": str(self.id), # Convert UUID to string for dict representation
+            "key": self.key,
+            "value": self.value,
+            "value_type": self.value_type,
+            "description": self.description,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }
+
+    def __repr__(self):
+        return f"<SystemSettings(key='{self.key}', value='{self.value}')>"
