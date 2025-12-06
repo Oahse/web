@@ -6,6 +6,7 @@ from core.database import BaseModel, CHAR_LENGTH, GUID
 
 class Category(BaseModel):
     __tablename__ = "categories"
+    __table_args__ = {'extend_existing': True}
 
     name = Column(String(CHAR_LENGTH), unique=True, nullable=False)
     description = Column(Text, nullable=True)
@@ -13,7 +14,7 @@ class Category(BaseModel):
     is_active = Column(Boolean, default=True)
 
     # Relationships
-    products = relationship("Product", back_populates="category")
+    products = relationship("models.product.Product", back_populates="category")
 
     def to_dict(self) -> dict:
         """Convert category to dictionary for API responses"""
@@ -30,6 +31,7 @@ class Category(BaseModel):
 
 class Product(BaseModel):
     __tablename__ = "products"
+    __table_args__ = {'extend_existing': True}
 
     name = Column(String(CHAR_LENGTH), nullable=False, index=True)
     description = Column(Text, nullable=True)
@@ -52,12 +54,12 @@ class Product(BaseModel):
     slug = Column(String(CHAR_LENGTH), unique=True, nullable=True, index=True)
 
     # Relationships with lazy loading
-    category = relationship("Category", back_populates="products")
-    supplier = relationship("User", back_populates="supplied_products")
-    variants = relationship("ProductVariant", back_populates="product",
+    category = relationship("models.product.Category", back_populates="products")
+    supplier = relationship("models.user.User", back_populates="supplied_products")
+    variants = relationship("models.product.ProductVariant", back_populates="product",
                             cascade="all, delete-orphan", lazy="selectin")
-    reviews = relationship("Review", back_populates="product")
-    wishlist_items = relationship("WishlistItem", back_populates="product")
+    reviews = relationship("models.review.Review", back_populates="product")
+    wishlist_items = relationship("models.wishlist.WishlistItem", back_populates="product")
 
     @property
     def primary_variant(self):
@@ -150,6 +152,7 @@ class Product(BaseModel):
 
 class ProductVariant(BaseModel):
     __tablename__ = "product_variants"
+    __table_args__ = {'extend_existing': True}
 
     product_id = Column(GUID(), ForeignKey(
         "products.id"), nullable=False)
@@ -164,12 +167,12 @@ class ProductVariant(BaseModel):
     is_active = Column(Boolean, default=True)
 
     # Relationships with lazy loading
-    product = relationship("Product", back_populates="variants")
-    images = relationship("ProductImage", back_populates="variant",
+    product = relationship("models.product.Product", back_populates="variants")
+    images = relationship("models.product.ProductImage", back_populates="variant",
                           cascade="all, delete-orphan", lazy="selectin")
-    cart_items = relationship("CartItem", back_populates="variant")
-    order_items = relationship("OrderItem", back_populates="variant")
-    inventory = relationship("Inventory", uselist=False, back_populates="variant", cascade="all, delete-orphan", lazy="selectin")
+    cart_items = relationship("models.cart.CartItem", back_populates="variant")
+    order_items = relationship("models.order.OrderItem", back_populates="variant")
+    inventory = relationship("models.inventory.Inventory", uselist=False, back_populates="variant", cascade="all, delete-orphan", lazy="selectin")
 
     @property
     def current_price(self) -> float:
@@ -221,6 +224,7 @@ class ProductVariant(BaseModel):
 
 class ProductImage(BaseModel):
     __tablename__ = "product_images"
+    __table_args__ = {'extend_existing': True}
 
     variant_id = Column(GUID(), ForeignKey(
         "product_variants.id"), nullable=False)
@@ -231,7 +235,7 @@ class ProductImage(BaseModel):
     format = Column(String(10), nullable=True)  # jpg, png, webp
 
     # Relationships
-    variant = relationship("ProductVariant", back_populates="images")
+    variant = relationship("models.product.ProductVariant", back_populates="images")
 
     def to_dict(self) -> dict:
         """Convert image to dictionary for API responses"""

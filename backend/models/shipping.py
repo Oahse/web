@@ -4,6 +4,7 @@ from core.database import BaseModel, CHAR_LENGTH
 
 class ShippingMethod(BaseModel):
     __tablename__ = "shipping_methods"
+    __table_args__ = {'extend_existing': True}
 
     name = Column(String(CHAR_LENGTH), nullable=False)
     description = Column(Text, nullable=True)

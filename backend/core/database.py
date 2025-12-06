@@ -65,47 +65,49 @@ class BaseModel(Base):
 engine_db = None
 AsyncSessionDB = None
 
-def initialize_db(database_uri: str, env_is_local: bool): # NEW FUNCTION
-    global engine_db, AsyncSessionDB
-    if engine_db and AsyncSessionDB: # Prevent re-initialization
-        return
-
-    # Enhanced engine configuration with connection pooling and resilience
-    # Always use async PostgreSQL
-    engine_db = create_async_engine(
-        database_uri,
-        echo=env_is_local,  # Only echo in local development
-        pool_pre_ping=True,  # Validate connections before use
-        pool_recycle=3600,   # Recycle connections every hour
-        pool_size=10,        # Connection pool size
-        max_overflow=20,     # Maximum overflow connections
-        pool_timeout=30      # Timeout for getting connection from pool
-    )
-
-    # Session factory for the database (Async)
-    # expire_on_commit=False prevents SQLAlchemy from expiring objects after commit
-    # This is crucial for async operations to avoid greenlet errors
-    AsyncSessionDB = sessionmaker(
-        bind=engine_db,
-        class_=AsyncSession,
-        expire_on_commit=False  # Critical for async operations
-    )
-
-
 class DatabaseManager:
     """Enhanced database manager with connection resilience and monitoring."""
 
     def __init__(self):
-        # engine and session_factory will be set after initialize_db is called
         self.engine = None
         self.session_factory = None
         self._connection_failures = 0
         self._last_health_check = 0
         self._health_check_interval = 60  # Check health every 60 seconds
     
-    def set_engine_and_session_factory(self, engine, session_factory): # NEW METHOD
+    def initialize(self, database_uri: str, env_is_local: bool):
+        """Initializes the database engine and session factory."""
+        global engine_db, AsyncSessionDB
+        if self.engine and self.session_factory: # Prevent re-initialization
+            return
+
+        engine_db = create_async_engine(
+            database_uri,
+            echo=env_is_local,
+            pool_pre_ping=True,
+            pool_recycle=3600,
+            pool_size=10,
+            max_overflow=20,
+            pool_timeout=30
+        )
+
+        AsyncSessionDB = sessionmaker(
+            bind=engine_db,
+            class_=AsyncSession,
+            expire_on_commit=False
+        )
+        self.set_engine_and_session_factory(engine_db, AsyncSessionDB)
+
+    def set_engine_and_session_factory(self, engine, session_factory):
         self.engine = engine
         self.session_factory = session_factory
+
+# Global database manager instance
+db_manager = DatabaseManager()
+
+def initialize_db(database_uri: str, env_is_local: bool):
+    """Initializes the database manager with engine and session factory."""
+    db_manager.initialize(database_uri, env_is_local)
 
     async def health_check(self) -> dict:
         """Perform database health check."""

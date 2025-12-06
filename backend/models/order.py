@@ -6,6 +6,7 @@ from core.database import BaseModel, GUID
 
 class Order(BaseModel):
     __tablename__ = "orders"
+    __table_args__ = {'extend_existing': True}
 
     user_id = Column(GUID(), ForeignKey(
         "users.id"), nullable=False)
@@ -25,16 +26,17 @@ class Order(BaseModel):
     notes = Column(Text, nullable=True)
 
     # Relationships with lazy loading
-    user = relationship("User", back_populates="orders")
-    items = relationship("OrderItem", back_populates="order",
+    user = relationship("models.user.User", back_populates="orders")
+    items = relationship("models.order.OrderItem", back_populates="order",
                          cascade="all, delete-orphan", lazy="selectin")
     tracking_events = relationship(
-        "TrackingEvent", back_populates="order", cascade="all, delete-orphan", lazy="selectin")
-    transactions = relationship("Transaction", back_populates="order")
+        "models.order.TrackingEvent", back_populates="order", cascade="all, delete-orphan", lazy="selectin")
+    transactions = relationship("models.transaction.Transaction", back_populates="order")
 
 
 class OrderItem(BaseModel):
     __tablename__ = "order_items"
+    __table_args__ = {'extend_existing': True}
 
     order_id = Column(GUID(), ForeignKey(
         "orders.id"), nullable=False)
@@ -45,12 +47,13 @@ class OrderItem(BaseModel):
     total_price = Column(Float, nullable=False)
 
     # Relationships
-    order = relationship("Order", back_populates="items")
-    variant = relationship("ProductVariant", back_populates="order_items")
+    order = relationship("models.order.Order", back_populates="items")
+    variant = relationship("models.product.ProductVariant", back_populates="order_items")
 
 
 class TrackingEvent(BaseModel):
     __tablename__ = "tracking_events"
+    __table_args__ = {'extend_existing': True}
 
     order_id = Column(GUID(), ForeignKey(
         "orders.id"), nullable=False)
@@ -59,4 +62,4 @@ class TrackingEvent(BaseModel):
     location = Column(String(255), nullable=True)
 
     # Relationships
-    order = relationship("Order", back_populates="tracking_events")
+    order = relationship("models.order.Order", back_populates="tracking_events")

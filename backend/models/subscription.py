@@ -6,6 +6,7 @@ from core.database import BaseModel, GUID
 
 class Subscription(BaseModel):
     __tablename__ = "subscriptions"
+    __table_args__ = {'extend_existing': True}
 
     user_id = Column(GUID(), ForeignKey(
         "users.id"), nullable=False)
@@ -21,4 +22,4 @@ class Subscription(BaseModel):
     cancelled_at = Column(DateTime(timezone=True), nullable=True)
 
     # Relationships
-    user = relationship("User", back_populates="subscriptions")
+    user = relationship("models.user.User", back_populates="subscriptions")

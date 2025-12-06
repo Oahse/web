@@ -5,6 +5,7 @@ from core.database import BaseModel, CHAR_LENGTH, GUID
 
 class ActivityLog(BaseModel):
     __tablename__ = "activity_logs"
+    __table_args__ = {'extend_existing': True}
 
     user_id = Column(GUID(), ForeignKey("users.id"), nullable=True)
     action_type = Column(String(100), nullable=False)  # order, registration, review, low_stock, payment

@@ -267,3 +267,8 @@ async def get_security_validator(db_session: AsyncSession) -> SecurityValidator:
 def get_security_monitor():
     """Placeholder for a security monitoring instance."""
     return None
+
+
+def get_security_config() -> SecurityConfig:
+    """Provides an instance of the SecurityConfig."""
+    return SecurityConfig()

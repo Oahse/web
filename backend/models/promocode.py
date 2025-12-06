@@ -4,6 +4,7 @@ from core.database import BaseModel
 
 class Promocode(BaseModel):
     __tablename__ = "promocodes"
+    __table_args__ = {'extend_existing': True}
 
     code = Column(String(50), unique=True, nullable=False)
     description = Column(Text, nullable=True)

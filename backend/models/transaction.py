@@ -6,6 +6,7 @@ from core.database import BaseModel, GUID
 
 class Transaction(BaseModel):
     __tablename__ = "transactions"
+    __table_args__ = {'extend_existing': True}
 
     user_id = Column(GUID(), ForeignKey(
         "users.id"), nullable=False)
@@ -22,5 +23,5 @@ class Transaction(BaseModel):
     meta_data = Column(Text, nullable=True)  # JSON string for additional data
 
     # Relationships
-    user = relationship("User", back_populates="transactions")
-    order = relationship("Order", back_populates="transactions")
+    user = relationship("models.user.User", back_populates="transactions")
+    order = relationship("models.order.Order", back_populates="transactions")

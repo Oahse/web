@@ -6,6 +6,7 @@ from core.database import BaseModel, GUID
 
 class Cart(BaseModel):
     __tablename__ = "carts"
+    __table_args__ = {'extend_existing': True}
 
     user_id = Column(GUID(), ForeignKey("users.id"), nullable=False)
     session_id = Column(String(255), nullable=True)  # For guest carts
@@ -14,9 +15,9 @@ class Cart(BaseModel):
     discount_amount = Column(Float, default=0.0)
 
     # Relationships
-    items = relationship("CartItem", back_populates="cart",
+    items = relationship("models.cart.CartItem", back_populates="cart",
                          cascade="all, delete-orphan", lazy="selectin")
-    promocode = relationship("Promocode", foreign_keys=[promocode_id])
+    promocode = relationship("models.promocode.Promocode", foreign_keys=[promocode_id])
 
     def get_item(self, variant_id):
         """Get cart item by variant ID"""
@@ -78,6 +79,7 @@ class Cart(BaseModel):
 
 class CartItem(BaseModel):
     __tablename__ = "cart_items"
+    __table_args__ = {'extend_existing': True}
 
     cart_id = Column(GUID(), ForeignKey(
         "carts.id"), nullable=False)
@@ -89,8 +91,8 @@ class CartItem(BaseModel):
     saved_for_later = Column(Boolean, default=False)
 
     # Relationships
-    cart = relationship("Cart", back_populates="items")
-    variant = relationship("ProductVariant", back_populates="cart_items")
+    cart = relationship("models.cart.Cart", back_populates="items")
+    variant = relationship("models.product.ProductVariant", back_populates="cart_items")
 
     def recalc_total(self):
         """Recalculate total price"""

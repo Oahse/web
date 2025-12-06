@@ -47,5 +47,4 @@ class WhatsappBotHandler:
 WHATSAPP_ACCESS_TOKEN = str(settings.WHATSAPP_ACCESS_TOKEN)
 PHONE_NUMBER_ID = str(settings.PHONE_NUMBER_ID)
 
-whatapp_bot = WhatsappBotHandler(
-    WHATSAPP_ACCESS_TOKEN, PHONE_NUMBER_ID, BackgroundTasks)
+whatapp_bot = WhatsappBotHandler(WHATSAPP_ACCESS_TOKEN, PHONE_NUMBER_ID, BackgroundTasks)

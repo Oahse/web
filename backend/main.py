@@ -36,7 +36,7 @@ from routes.wishlist import router as wishlist_router
 from routes.notification import router as notification_router
 from routes.health import router as health_router
 from routes.negotiator import router as negotiator_router
-from routes.files import router as files_router
+
 from routes.inventory import router as inventory_router
 
 
@@ -49,7 +49,6 @@ async def lifespan(app: FastAPI):
     # Initialize the database engine and session factory
     from core.config import settings # Import settings here to avoid circular dependency
     initialize_db(settings.SQLALCHEMY_DATABASE_URI, settings.ENVIRONMENT == "local")
-    db_manager.set_engine_and_session_factory(engine_db, AsyncSessionDB) # Set for db_manager
     
     asyncio.create_task(run_notification_cleanup())
     yield
@@ -115,16 +114,10 @@ app.include_router(wishlist_router)
 app.include_router(notification_router)
 app.include_router(health_router)
 app.include_router(negotiator_router)
-app.include_router(files_router)
 app.include_router(inventory_router)
 
 # Include WebSocket router
 app.include_router(ws_router)
-
-# Mount static files directory (NEW ADDITION)
-from fastapi.staticfiles import StaticFiles
-app.mount("/static", StaticFiles(directory="static"), name="static")
-
 
 async def run_notification_cleanup():
     while True:

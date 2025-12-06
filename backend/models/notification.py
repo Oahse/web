@@ -5,6 +5,7 @@ from core.database import BaseModel, CHAR_LENGTH, GUID
 
 class Notification(BaseModel):
     __tablename__ = "notifications"
+    __table_args__ = {'extend_existing': True}
 
     user_id = Column(GUID(), ForeignKey("users.id"), nullable=False)
     message = Column(Text, nullable=False)
@@ -14,7 +15,7 @@ class Notification(BaseModel):
     # e.g., order_id, product_id
     related_id = Column(String(CHAR_LENGTH), nullable=True)
 
-    user = relationship("User", back_populates="notifications")
+    user = relationship("models.user.User", back_populates="notifications")
 
     def to_dict(self) -> dict:
         return {

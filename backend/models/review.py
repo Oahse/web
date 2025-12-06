@@ -6,6 +6,7 @@ from core.database import BaseModel, GUID
 
 class Review(BaseModel):
     __tablename__ = "reviews"
+    __table_args__ = {'extend_existing': True}
 
     product_id = Column(GUID(), ForeignKey(
         "products.id"), nullable=False)
@@ -17,5 +18,5 @@ class Review(BaseModel):
     is_approved = Column(Boolean, default=True)
 
     # Relationships
-    product = relationship("Product", back_populates="reviews")
-    user = relationship("User", back_populates="reviews")
+    product = relationship("models.product.Product", back_populates="reviews")
+    user = relationship("models.user.User", back_populates="reviews")

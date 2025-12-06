@@ -6,6 +6,7 @@ from core.database import BaseModel, GUID
 
 class Wishlist(BaseModel):
     __tablename__ = "wishlists"
+    __table_args__ = {'extend_existing': True}
 
     user_id = Column(GUID(), ForeignKey(
         "users.id"), nullable=False)
@@ -14,13 +15,14 @@ class Wishlist(BaseModel):
     is_public = Column(Boolean, default=False)
 
     # Relationships
-    user = relationship("User", back_populates="wishlists")
-    items = relationship("WishlistItem", back_populates="wishlist",
+    user = relationship("models.user.User", back_populates="wishlists")
+    items = relationship("models.wishlist.WishlistItem", back_populates="wishlist",
                          cascade="all, delete-orphan", lazy="selectin")
 
 
 class WishlistItem(BaseModel):
     __tablename__ = "wishlist_items"
+    __table_args__ = {'extend_existing': True}
 
     wishlist_id = Column(GUID(), ForeignKey(
         "wishlists.id"), nullable=False)
@@ -31,9 +33,9 @@ class WishlistItem(BaseModel):
     quantity = Column(Integer, default=1)
 
     # Relationships
-    wishlist = relationship("Wishlist", back_populates="items")
-    product = relationship("Product", back_populates="wishlist_items")
-    variant = relationship("ProductVariant", foreign_keys=[variant_id])
+    wishlist = relationship("models.wishlist.Wishlist", back_populates="items")
+    product = relationship("models.product.Product", back_populates="wishlist_items")
+    variant = relationship("models.product.ProductVariant", foreign_keys=[variant_id])
 
     @property
     def added_at(self):

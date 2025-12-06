@@ -9,6 +9,7 @@ import redis
 from core.config import settings
 from core.exceptions import APIException
 from core.utils.response import Response
+from schemas.response import APIResponse
 from core.dependencies import get_current_auth_user
 from models.user import User
 
@@ -60,7 +61,7 @@ class NegotiationTaskResponse(BaseModel):
     task_id: str
     message: str
 
-@router.post("/start", response_model=Response[NegotiationTaskResponse], status_code=status.HTTP_202_ACCEPTED)
+@router.post("/start", response_model=APIResponse[NegotiationTaskResponse], status_code=status.HTTP_202_ACCEPTED)
 async def start_negotiation(
     request: NegotiationStartRequest,
     current_user: User = Depends(get_current_auth_user), # Requires authentication
@@ -99,7 +100,7 @@ async def start_negotiation(
     )
 
 
-@router.post("/step", response_model=Response[NegotiationTaskResponse])
+@router.post("/step", response_model=APIResponse[NegotiationTaskResponse])
 async def step_negotiation(
     request: NegotiationStepRequest,
     current_user: User = Depends(get_current_auth_user), # Requires authentication
@@ -133,7 +134,7 @@ async def step_negotiation(
     )
 
 
-@router.get("/{negotiation_id}", response_model=Response[NegotiationStateResponse])
+@router.get("/{negotiation_id}", response_model=APIResponse[NegotiationStateResponse])
 async def get_negotiation_state(
     negotiation_id: UUID, # Use UUID type directly for path parameter
     current_user: User = Depends(get_current_auth_user), # Requires authentication

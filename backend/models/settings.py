@@ -8,6 +8,7 @@ from core.database import Base
 
 class SystemSettings(Base):
     __tablename__ = "system_settings"
+    __table_args__ = {'extend_existing': True}
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4) # Use UUID type for ID
     key = Column(String, unique=True, nullable=False, index=True) # Unique key for the setting

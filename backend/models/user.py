@@ -6,6 +6,7 @@ from core.database import BaseModel, CHAR_LENGTH, GUID
 
 class User(BaseModel):
     __tablename__ = "users"
+    __table_args__ = {'extend_existing': True}
 
     email = Column(String(CHAR_LENGTH), unique=True,
                    index=True, nullable=False)
@@ -32,26 +33,26 @@ class User(BaseModel):
 
     # Relationships with lazy loading
     addresses = relationship(
-        "Address", back_populates="user", cascade="all, delete-orphan", lazy="selectin")
-    orders = relationship("Order", back_populates="user", lazy="selectin")
-    reviews = relationship("Review", back_populates="user", lazy="selectin")
+        "models.user.Address", back_populates="user", cascade="all, delete-orphan", lazy="selectin")
+    orders = relationship("models.order.Order", back_populates="user", lazy="selectin")
+    reviews = relationship("models.review.Review", back_populates="user", lazy="selectin")
     wishlists = relationship(
-        "Wishlist", back_populates="user", lazy="selectin")
+        "models.wishlist.Wishlist", back_populates="user", lazy="selectin")
     blog_posts = relationship(
-        "BlogPost", back_populates="author", lazy="selectin")
+        "models.blog.BlogPost", back_populates="author", lazy="selectin")
     subscriptions = relationship(
-        "Subscription", back_populates="user", lazy="selectin")
+        "models.subscription.Subscription", back_populates="user", lazy="selectin")
     payment_methods = relationship(
-        "PaymentMethod", back_populates="user", lazy="selectin")
+        "models.payment.PaymentMethod", back_populates="user", lazy="selectin")
     transactions = relationship(
-        "Transaction", back_populates="user", lazy="selectin")
+        "models.transaction.Transaction", back_populates="user", lazy="selectin")
     supplied_products = relationship(
-        "Product", back_populates="supplier", lazy="selectin")
+        "models.product.Product", back_populates="supplier", lazy="selectin")
     notifications = relationship(
-        "Notification", back_populates="user", lazy="selectin")
+        "models.notification.Notification", back_populates="user", lazy="selectin")
     activity_logs = relationship(
-        "ActivityLog", back_populates="user", lazy="selectin")
-    comments = relationship("Comment", back_populates="author", cascade="all, delete-orphan", lazy="selectin")
+        "models.activity_log.ActivityLog", back_populates="user", lazy="selectin")
+    comments = relationship("models.blog.Comment", back_populates="author", cascade="all, delete-orphan", lazy="selectin")
 
     @property
     def full_name(self) -> str:
@@ -83,6 +84,7 @@ class User(BaseModel):
 
 class Address(BaseModel):
     __tablename__ = "addresses"
+    __table_args__ = {'extend_existing': True}
 
     user_id = Column(GUID(), ForeignKey("users.id"), nullable=False)
     street = Column(String(CHAR_LENGTH), nullable=False)
@@ -94,7 +96,7 @@ class Address(BaseModel):
     is_default = Column(Boolean, default=False)
 
     # Relationships
-    user = relationship("User", back_populates="addresses")
+    user = relationship("models.user.User", back_populates="addresses")
 
     def to_dict(self) -> dict:
         """Convert address to dictionary for API responses"""

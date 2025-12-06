@@ -6,6 +6,7 @@ from core.database import BaseModel, GUID
 
 class PaymentMethod(BaseModel):
     __tablename__ = "payment_methods"
+    __table_args__ = {'extend_existing': True}
 
     user_id = Column(GUID(), ForeignKey(
         "users.id"), nullable=False)
@@ -21,4 +22,4 @@ class PaymentMethod(BaseModel):
     meta_data = Column(Text, nullable=True)  # JSON string for additional data
 
     # Relationships
-    user = relationship("User", back_populates="payment_methods")
+    user = relationship("models.user.User", back_populates="payment_methods")
