@@ -9,10 +9,13 @@ from models.product import ProductVariant
 from models.shipping import ShippingMethod
 from models.payment import PaymentMethod
 from schemas.order import OrderResponse, OrderItemResponse, CheckoutRequest, OrderCreate
+from schemas.inventory import StockAdjustmentCreate
 from services.cart import CartService
 from services.payment import PaymentService
 from services.notification import NotificationService
 from services.activity import ActivityService
+from services.inventory import InventoryService # NEW
+from models.inventory import Inventory # NEW
 from uuid import UUID
 from datetime import datetime, timedelta
 from typing import Optional, List, Dict, Any
@@ -21,6 +24,7 @@ from typing import Optional, List, Dict, Any
 class OrderService:
     def __init__(self, db: AsyncSession):
         self.db = db
+        self.inventory_service = InventoryService(db)
 
     async def place_order(self, user_id: UUID, request: CheckoutRequest, background_tasks: BackgroundTasks) -> OrderResponse:
         """Place an order from the user's cart"""
@@ -96,6 +100,25 @@ class OrderService:
                 total_price=cart_item.total_price
             )
             self.db.add(order_item)
+            
+            # Decrement stock for the ordered item (NEW)
+            inventory_item = await self.inventory_service.get_inventory_item_by_variant_id(cart_item.variant_id)
+
+            if not inventory_item:
+                # This scenario means a variant exists but has no inventory record.
+                # In a real system, this should probably error out or default to a main warehouse.
+                # For now, let's raise an error, as every variant should have an inventory item.
+                raise HTTPException(status_code=400, detail=f"No inventory record found for variant {cart_item.variant_id}")
+
+            await self.inventory_service.adjust_stock(
+                StockAdjustmentCreate(
+                    variant_id=cart_item.variant_id,
+                    location_id=inventory_item.location_id, # Use the actual location of the inventory item
+                    quantity_change=-cart_item.quantity,
+                    reason="order_placed"
+                ),
+                adjusted_by_user_id=user_id
+            )
 
         # Process payment
         payment_service = PaymentService(self.db)
@@ -261,6 +284,28 @@ class OrderService:
                 status_code=400, detail="Order cannot be cancelled")
 
         order.status = "cancelled"
+
+        # Increment stock for cancelled order items (NEW)
+        # Load order items with variant and inventory details
+        query_items = select(OrderItem).where(OrderItem.order_id == order.id).options(
+            selectinload(OrderItem.variant).selectinload(ProductVariant.inventory)
+        )
+        order_items_with_inventory = (await self.db.execute(query_items)).scalars().all()
+
+        for item in order_items_with_inventory:
+            if not item.variant or not item.variant.inventory:
+                print(f"Warning: No inventory found for variant {item.variant_id} during order cancellation.")
+                continue
+            
+            await self.inventory_service.adjust_stock(
+                StockAdjustmentCreate(
+                    variant_id=item.variant.id,
+                    location_id=item.variant.inventory.location_id, # Use the actual location of the inventory item
+                    quantity_change=item.quantity, # Positive change to return stock
+                    reason="order_cancelled"
+                ),
+                adjusted_by_user_id=user_id
+            )
 
         # Add tracking event
         tracking_event = TrackingEvent(
