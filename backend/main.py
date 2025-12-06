@@ -5,7 +5,7 @@ from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.sessions import SessionMiddleware
 from sqlalchemy.exc import SQLAlchemyError
-from core.database import AsyncSessionDB  # Add this import
+from core.database import AsyncSessionDB, initialize_db, db_manager  # Add this import
 from services.notification import NotificationService  # Add this import
 import asyncio  # Add this import
 from core.middleware import MaintenanceModeMiddleware, ActivityLoggingMiddleware  # Add this import
@@ -45,6 +45,11 @@ from contextlib import asynccontextmanager
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup event
+    # Initialize the database engine and session factory
+    from core.config import settings # Import settings here to avoid circular dependency
+    initialize_db(settings.SQLALCHEMY_DATABASE_URI, settings.ENVIRONMENT == "local")
+    db_manager.set_engine_and_session_factory(engine_db, AsyncSessionDB) # Set for db_manager
+    
     asyncio.create_task(run_notification_cleanup())
     yield
     # Shutdown event (if any)

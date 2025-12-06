@@ -4,9 +4,9 @@ from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
-from backend.models.settings import SystemSettings
-from backend.schemas.settings import SystemSettingCreate, SystemSettingUpdate
-from backend.core.exceptions import CustomException
+from models.settings import SystemSettings
+from schemas.settings import SystemSettingCreate, SystemSettingUpdate
+from core.exceptions import APIException
 
 
 class SettingsService:

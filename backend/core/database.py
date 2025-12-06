@@ -12,7 +12,7 @@ from fastapi import HTTPException
 from fastapi.exceptions import RequestValidationError
 from pydantic import ValidationError
 
-from core.config import settings
+# from core.config import settings # REMOVE THIS IMPORT
 from core.utils.logging import structured_logger
 from core.exceptions.api_exceptions import DatabaseException, APIException
 
@@ -61,43 +61,57 @@ class BaseModel(Base):
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
 
-# Database connection configuration
-SQLALCHEMY_DATABASE_URL = str(settings.SQLALCHEMY_DATABASE_URI)
+# Database connection configuration - NOW INITIALIZED LATER
+engine_db = None
+AsyncSessionDB = None
 
-# Enhanced engine configuration with connection pooling and resilience
-# Always use async PostgreSQL
-engine_db = create_async_engine(
-    SQLALCHEMY_DATABASE_URL,
-    echo=settings.ENVIRONMENT == "local",  # Only echo in local development
-    pool_pre_ping=True,  # Validate connections before use
-    pool_recycle=3600,   # Recycle connections every hour
-    pool_size=10,        # Connection pool size
-    max_overflow=20,     # Maximum overflow connections
-    pool_timeout=30      # Timeout for getting connection from pool
-)
+def initialize_db(database_uri: str, env_is_local: bool): # NEW FUNCTION
+    global engine_db, AsyncSessionDB
+    if engine_db and AsyncSessionDB: # Prevent re-initialization
+        return
 
-# Session factory for the database (Async)
-# expire_on_commit=False prevents SQLAlchemy from expiring objects after commit
-# This is crucial for async operations to avoid greenlet errors
-AsyncSessionDB = sessionmaker(
-    bind=engine_db,
-    class_=AsyncSession,
-    expire_on_commit=False  # Critical for async operations
-)
+    # Enhanced engine configuration with connection pooling and resilience
+    # Always use async PostgreSQL
+    engine_db = create_async_engine(
+        database_uri,
+        echo=env_is_local,  # Only echo in local development
+        pool_pre_ping=True,  # Validate connections before use
+        pool_recycle=3600,   # Recycle connections every hour
+        pool_size=10,        # Connection pool size
+        max_overflow=20,     # Maximum overflow connections
+        pool_timeout=30      # Timeout for getting connection from pool
+    )
+
+    # Session factory for the database (Async)
+    # expire_on_commit=False prevents SQLAlchemy from expiring objects after commit
+    # This is crucial for async operations to avoid greenlet errors
+    AsyncSessionDB = sessionmaker(
+        bind=engine_db,
+        class_=AsyncSession,
+        expire_on_commit=False  # Critical for async operations
+    )
 
 
 class DatabaseManager:
     """Enhanced database manager with connection resilience and monitoring."""
 
     def __init__(self):
-        self.engine = engine_db
-        self.session_factory = AsyncSessionDB
+        # engine and session_factory will be set after initialize_db is called
+        self.engine = None
+        self.session_factory = None
         self._connection_failures = 0
         self._last_health_check = 0
         self._health_check_interval = 60  # Check health every 60 seconds
+    
+    def set_engine_and_session_factory(self, engine, session_factory): # NEW METHOD
+        self.engine = engine
+        self.session_factory = session_factory
 
     async def health_check(self) -> dict:
         """Perform database health check."""
+        if not self.engine or not self.session_factory:
+            return {"status": "uninitialized", "message": "Database not initialized."}
+
         start_time = time.time()
 
         try:
@@ -151,6 +165,9 @@ class DatabaseManager:
 
     async def get_connection_pool_status(self) -> dict:
         """Get connection pool status information."""
+        if not self.engine:
+            return {"status": "uninitialized", "message": "Database not initialized."}
+        
         pool = self.engine.pool
 
         try:
@@ -181,6 +198,8 @@ class DatabaseManager:
         backoff_factor: float = 2.0,
     ) -> AsyncGenerator[AsyncSession, None]:
         """Get database session with retry logic and exponential backoff."""
+        if not self.session_factory:
+            raise DatabaseException(message="Database session factory not initialized.")
 
         for attempt in range(max_retries + 1):
             try:
@@ -239,6 +258,9 @@ db_manager = DatabaseManager()
 # Enhanced dependency to get the async session with retry logic
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
     """Get database session with enhanced error handling and retry logic."""
+    # Ensure database is initialized before getting a session
+    if not db_manager.session_factory:
+        raise DatabaseException(message="Database session factory not initialized.")
 
     try:
         async with db_manager.get_session_with_retry() as session:

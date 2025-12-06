@@ -82,7 +82,7 @@ class Product(BaseModel):
     @property
     def in_stock(self) -> bool:
         """Check if any variant is in stock"""
-        return any(v.stock > 0 for v in self.variants if v.is_active)
+        return any(v.inventory and v.inventory.quantity > 0 for v in self.variants if v.is_active)
 
     def to_dict(self, include_variants=False, include_seo=False) -> dict:
         """Convert product to dictionary for API responses"""
@@ -158,7 +158,7 @@ class ProductVariant(BaseModel):
     name = Column(String(CHAR_LENGTH), nullable=False)
     base_price = Column(Float, nullable=False)
     sale_price = Column(Float, nullable=True)
-    stock = Column(Integer, default=0)
+
     # {"size": "1kg", "color": "red", etc.}
     attributes = Column(JSON, nullable=True)
     is_active = Column(Boolean, default=True)
@@ -169,6 +169,7 @@ class ProductVariant(BaseModel):
                           cascade="all, delete-orphan", lazy="selectin")
     cart_items = relationship("CartItem", back_populates="variant")
     order_items = relationship("OrderItem", back_populates="variant")
+    inventory = relationship("Inventory", uselist=False, back_populates="variant", cascade="all, delete-orphan", lazy="selectin")
 
     @property
     def current_price(self) -> float:
@@ -199,7 +200,7 @@ class ProductVariant(BaseModel):
             "sale_price": self.sale_price,
             "current_price": self.current_price,
             "discount_percentage": self.discount_percentage,
-            "stock": self.stock,
+            "stock": self.inventory.quantity if self.inventory else 0, # GET STOCK FROM INVENTORY
             "attributes": self.attributes,
             "is_active": self.is_active,
             "created_at": self.created_at.isoformat() if self.created_at else None,

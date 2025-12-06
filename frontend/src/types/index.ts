@@ -383,3 +383,13 @@ export interface ModalProps {
 // Utility Types
 export type SortOrder = 'asc' | 'desc';
 export type LoadingState = 'idle' | 'loading' | 'success' | 'error';
+
+// Activity Log Types
+export interface ActivityLog {
+  id: string;
+  user_id?: string;
+  action_type: string;
+  description: string;
+  metadata?: Record<string, any>;
+  created_at: string;
+}

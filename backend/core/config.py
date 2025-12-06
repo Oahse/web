@@ -11,9 +11,9 @@ from sqlalchemy.orm import sessionmaker, Session
 
 # Imports for async DB session
 from sqlalchemy.ext.asyncio import AsyncSession
-from backend.models.settings import SystemSettings # NEW
-from backend.services.settings import SettingsService # NEW
-from backend.core.database import AsyncSessionDB # NEW: For async DB access in validator if needed
+from models.settings import SystemSettings # NEW
+from services.settings import SettingsService # NEW
+from core.database import AsyncSessionDB # NEW: For async DB access in validator if needed
 
 
 logging.basicConfig(level=logging.INFO)
