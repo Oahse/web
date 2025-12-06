@@ -8,7 +8,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from core.database import AsyncSessionDB  # Add this import
 from services.notification import NotificationService  # Add this import
 import asyncio  # Add this import
-from core.middleware import MaintenanceModeMiddleware  # Add this import
+from core.middleware import MaintenanceModeMiddleware, ActivityLoggingMiddleware  # Add this import
 # Import exceptions and handlers
 from core.exceptions import (
     APIException,
@@ -36,6 +36,7 @@ from routes.wishlist import router as wishlist_router
 from routes.notification import router as notification_router
 from routes.health import router as health_router
 from routes.negotiator import router as negotiator_router
+from routes.files import router as files_router
 
 
 from contextlib import asynccontextmanager
@@ -86,6 +87,9 @@ if hasattr(settings, 'ALLOWED_HOSTS'):
 # Maintenance Mode Middleware (NEW ADDITION)
 app.add_middleware(MaintenanceModeMiddleware)
 
+# Activity Logging Middleware (NEW ADDITION)
+app.add_middleware(ActivityLoggingMiddleware)
+
 
 # Include all routers with API versioning
 app.include_router(auth_router)
@@ -105,9 +109,14 @@ app.include_router(wishlist_router)
 app.include_router(notification_router)
 app.include_router(health_router)
 app.include_router(negotiator_router)
+app.include_router(files_router) # NEW: Include files_router
 
 # Include WebSocket router
 app.include_router(ws_router)
+
+# Mount static files directory (NEW ADDITION)
+from fastapi.staticfiles import StaticFiles
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 
 async def run_notification_cleanup():
