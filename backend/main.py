@@ -37,6 +37,7 @@ from routes.notification import router as notification_router
 from routes.health import router as health_router
 from routes.negotiator import router as negotiator_router
 from routes.files import router as files_router
+from routes.inventory import router as inventory_router
 
 
 from contextlib import asynccontextmanager
@@ -114,7 +115,8 @@ app.include_router(wishlist_router)
 app.include_router(notification_router)
 app.include_router(health_router)
 app.include_router(negotiator_router)
-app.include_router(files_router) # NEW: Include files_router
+app.include_router(files_router)
+app.include_router(inventory_router)
 
 # Include WebSocket router
 app.include_router(ws_router)
