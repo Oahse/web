@@ -14,19 +14,16 @@ from models.user import User
 from models.order import Order
 from services.auth import AuthService
 from schemas.auth import UserCreate  # Added UserCreate import
+from typing import List
+from schemas.settings import SystemSettingResponse, SystemSettingUpdate
+from services.settings import SettingsService
 
 from fastapi.security import OAuth2PasswordBearer
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 
-class UpdateSystemSettingsRequest(BaseModel):
-    maintenance_mode: Optional[bool] = None
-    registration_enabled: Optional[bool] = None
-    max_file_size: Optional[int] = None
-    allowed_file_types: Optional[str] = None
-    email_notifications: Optional[bool] = None
-    sms_notifications: Optional[bool] = None
+
 
 
 async def get_current_auth_user(token: str = Depends(oauth2_scheme), db: AsyncSession = Depends(get_db)) -> User:
@@ -471,15 +468,15 @@ async def get_order_invoice_admin(
         )
 
 
-@router.get("/system/settings")
+@router.get("/system/settings", response_model=List[SystemSettingResponse])
 async def get_system_settings(
     current_user: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db)
 ):
     """Get system settings (admin only)."""
     try:
-        admin_service = AdminService(db)
-        settings = await admin_service.get_system_settings()
+        settings_service = SettingsService(db)
+        settings = await settings_service.get_all_settings()
         return Response(success=True, data=settings)
     except Exception as e:
         raise APIException(
@@ -488,17 +485,39 @@ async def get_system_settings(
         )
 
 
-@router.put("/system/settings")
+@router.put("/system/settings", response_model=List[SystemSettingResponse])
 async def update_system_settings(
-    request: UpdateSystemSettingsRequest,
+    settings_updates: List[SystemSettingUpdate],
     current_user: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db)
 ):
     """Update system settings (admin only)."""
     try:
-        admin_service = AdminService(db)
-        settings = await admin_service.update_system_settings(request.dict(exclude_unset=True))
-        return Response(success=True, data=settings, message="System settings updated successfully")
+        settings_service = SettingsService(db)
+        updated_settings = []
+        for setting_update in settings_updates:
+            # Fetch the existing setting
+            existing_setting = await settings_service.get_setting(setting_update.key)
+            if not existing_setting:
+                raise APIException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    message=f"Setting with key {setting_update.key} not found."
+                )
+            
+            # Update the setting
+            updated_setting = await settings_service.update_setting(existing_setting, setting_update)
+            updated_settings.append(updated_setting)
+
+            # Special handling for maintenance mode to trigger set_maintenance_mode
+            if setting_update.key == "maintenance_mode" and setting_update.value_type == "boolean":
+                enable_maintenance = updated_setting.value == "true"
+                maintenance_message_setting = await settings_service.get_setting("maintenance_mode_message")
+                maintenance_message = maintenance_message_setting.value if maintenance_message_setting else None
+                await settings_service.set_maintenance_mode(enable_maintenance, maintenance_message)
+
+        return Response(success=True, data=updated_settings, message="System settings updated successfully")
+    except APIException:
+        raise
     except Exception as e:
         raise APIException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

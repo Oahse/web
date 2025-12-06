@@ -251,6 +251,24 @@ export interface DashboardStats {
   revenue_trend?: Array<{ date: string; amount: number }>;
 }
 
+// System Settings Types
+export interface SystemSetting {
+  id: string;
+  key: string;
+  value: string;
+  value_type: 'string' | 'integer' | 'float' | 'boolean' | 'uuid';
+  description?: string;
+  created_at: string;
+  updated_at?: string;
+}
+
+export interface SystemSettingUpdate {
+  value?: string;
+  value_type?: 'string' | 'integer' | 'float' | 'boolean' | 'uuid';
+  description?: string;
+}
+
+
 // Filter Types
 export interface ProductFilters {
   search?: string;

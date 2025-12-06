@@ -27,6 +27,13 @@ class SettingsService:
             return self._convert_value_from_db(setting.value, setting.value_type)
         return default
 
+    async def get_all_settings(self) -> list[SystemSettings]:
+        """Retrieve all system settings."""
+        result = await self.session.execute(
+            select(SystemSettings)
+        )
+        return result.scalars().all()
+
     async def create_setting(self, setting_in: SystemSettingCreate) -> SystemSettings:
         """Create a new system setting."""
         db_setting = SystemSettings(

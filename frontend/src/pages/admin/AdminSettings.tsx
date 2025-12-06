@@ -1,77 +1,135 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useApi } from '../../hooks/useApi';
 import { AdminAPI } from '../../apis';
 import ErrorMessage from '../../components/common/ErrorMessage';
 import { toast } from 'react-hot-toast';
+import { SystemSetting, SystemSettingUpdate } from '../../types';
+
+// Helper function to convert string values from DB to their actual types
+const convertValueFromDB = (value: string, type: SystemSetting['value_type']): any => {
+  switch (type) {
+    case 'boolean':
+      return value === 'true';
+    case 'integer':
+      return parseInt(value, 10);
+    case 'float':
+      return parseFloat(value);
+    case 'uuid':
+      return value; // UUIDs are handled as strings in forms
+    case 'string':
+    default:
+      return value;
+  }
+};
+
+// Helper function to convert actual types to string for DB storage
+const convertValueToDB = (value: any, type: SystemSetting['value_type']): string => {
+  switch (type) {
+    case 'boolean':
+      return value ? 'true' : 'false';
+    case 'integer':
+    case 'float':
+    case 'uuid':
+    case 'string':
+    default:
+      return String(value);
+  }
+};
 
 /**
  * AdminSettings component allows administrators to view and update system-wide settings.
- * It fetches current settings and provides a form to modify them.
+ * It fetches current settings and provides a dynamic form to modify them.
  */
 export const AdminSettings = () => {
-  // State to store the system settings fetched from the API
-  const [settings, setSettings] = useState(null);
+  // State to store system settings as a map for easy key-based access
+  const [settingsMap, setSettingsMap] = useState<Record<string, SystemSetting> | null>(null);
   // State to indicate if an update operation is in progress
   const [updating, setUpdating] = useState(false);
 
   // Custom hook to handle API fetching for system settings
-  const { data: fetchedSettings, loading, error, execute } = useApi();
+  const { data: fetchedSettings, loading, error, execute: fetchSettings } = useApi<SystemSetting[]>();
 
-  // Fetch settings on mount
+  // Fetch settings on component mount
   useEffect(() => {
-    execute(AdminAPI.getSystemSettings);
-  }, [execute]);
+    fetchSettings(AdminAPI.getSystemSettings);
+  }, [fetchSettings]);
 
   /**
-   * Effect hook to update the local settings state when new settings are fetched.
+   * Effect hook to process fetched settings and populate the settings map.
    */
   useEffect(() => {
-    if (fetchedSettings) {
-      // Extract data from API response
-      const data = fetchedSettings?.data || fetchedSettings;
-      setSettings(data);
+    if (fetchedSettings?.data) {
+      const initialSettingsMap: Record<string, SystemSetting> = {};
+      fetchedSettings.data.forEach(setting => {
+        initialSettingsMap[setting.key] = {
+          ...setting,
+          value: convertValueFromDB(setting.value, setting.value_type) // Convert value for UI
+        };
+      });
+      setSettingsMap(initialSettingsMap);
     }
   }, [fetchedSettings]);
 
   /**
    * Handles changes to form input fields.
-   * Updates the local settings state based on input name and value.
-   * @param {object} e - The event object from the input change.
+   * Updates the local settings map based on input name and converted value.
    */
-  const handleChange = (e) => {
-    const { name, value, type, checked } = e.target;
-    setSettings(prev => {
-      if (!prev) return null; // If no previous settings, return null
+  const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    const { name, value, type } = e.target;
+    const key = name;
+
+    setSettingsMap(prev => {
+      if (!prev) return null;
+
+      const currentSetting = prev[key];
+      if (!currentSetting) return prev;
+
+      let newValue: any;
+      if (type === 'checkbox') {
+        newValue = (e.target as HTMLInputElement).checked;
+      } else {
+        newValue = value;
+      }
+
       return {
         ...prev,
-        [name]: type === 'checkbox' ? checked : value, // Handle checkbox boolean values
+        [key]: {
+          ...currentSetting,
+          value: newValue,
+        },
       };
     });
-  };
+  }, []);
 
   /**
    * Handles the form submission to update system settings.
-   * Calls the AdminAPI to update settings and displays toast notifications.
-   * @param {object} e - The event object from the form submission.
+   * Converts the settings map back to an array of SystemSettingUpdate objects
+   * and calls the AdminAPI.
    */
-  const handleSubmit = async (e) => {
-    e.preventDefault(); // Prevent default form submission behavior
-    if (settings) {
-      setUpdating(true); // Show updating indicator
-      try {
-        // Call the API to update system settings
-        const response = await AdminAPI.updateSystemSettings(settings);
-        const data = response?.data || response;
-        setSettings(data); // Update local state with the response data
-        toast.success('Settings updated successfully!'); // Show success toast
-        execute(AdminAPI.getSystemSettings); // Re-fetch settings to ensure UI is up-to-date
-      } catch (err) {
-        toast.error(`Failed to update settings: ${err.message}`); // Show error toast
-      } finally {
-        setUpdating(false); // Hide updating indicator
-      }
+  const handleSubmit = useCallback(async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!settingsMap) return;
+
+    setUpdating(true);
+    try {
+      const updates: SystemSettingUpdate[] = Object.values(settingsMap).map(setting => ({
+        id: setting.id, // Include ID if the API expects it for PUT operations on individual settings
+        key: setting.key,
+        value: convertValueToDB(setting.value, setting.value_type), // Convert back to string for API
+        value_type: setting.value_type,
+        description: setting.description,
+      }));
+
+      // The backend API expects an array of settings to update
+      await AdminAPI.updateSystemSettings(updates);
+      toast.success('Settings updated successfully!');
+      fetchSettings(AdminAPI.getSystemSettings); // Re-fetch to ensure consistency and display latest values
+    } catch (err: any) {
+      toast.error(`Failed to update settings: ${err.message || 'Unknown error'}`);
+    } finally {
+      setUpdating(false);
     }
-  };
+  }, [settingsMap, fetchSettings]);
 
   // Display loading message while settings are being fetched
   if (loading) {
@@ -84,7 +142,7 @@ export const AdminSettings = () => {
       <div className="p-6">
         <ErrorMessage
           error={error}
-          onRetry={() => execute(AdminAPI.getSystemSettings)}
+          onRetry={() => fetchSettings(AdminAPI.getSystemSettings)}
           onDismiss={() => {}}
         />
       </div>
@@ -92,7 +150,7 @@ export const AdminSettings = () => {
   }
 
   // Display message if no settings are found after loading
-  if (!settings) {
+  if (!settingsMap || Object.keys(settingsMap).length === 0) {
     return <div className="p-6 text-center text-copy-light">No settings found.</div>;
   }
 
@@ -101,97 +159,44 @@ export const AdminSettings = () => {
       <h1 className="text-2xl font-bold text-main mb-6">System Settings</h1>
       <form onSubmit={handleSubmit} className="bg-surface rounded-lg shadow-sm p-6 border border-border-light">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-          {/* Maintenance Mode Setting */}
-          <div className="flex items-center justify-between bg-background p-4 rounded-md border border-border">
-            <div>
-              <label htmlFor="maintenance_mode" className="block text-lg font-medium text-main">Maintenance Mode</label>
-              <p className="text-sm text-copy-light">Temporarily disable site access for maintenance.</p>
+          {Object.values(settingsMap).map(setting => (
+            <div key={setting.id} className="bg-background p-4 rounded-md border border-border">
+              <div>
+                <label htmlFor={setting.key} className="block text-lg font-medium text-main">
+                  {setting.key.replace(/_/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase())} {/* Humanize key */}
+                </label>
+                <p className="text-sm text-copy-light">{setting.description}</p>
+              </div>
+              {setting.value_type === 'boolean' ? (
+                <input
+                  type="checkbox"
+                  id={setting.key}
+                  name={setting.key}
+                  checked={setting.value as boolean}
+                  onChange={handleChange}
+                  className="toggle toggle-primary"
+                />
+              ) : setting.value_type === 'integer' || setting.value_type === 'float' ? (
+                <input
+                  type="number"
+                  id={setting.key}
+                  name={setting.key}
+                  value={setting.value as number}
+                  onChange={handleChange}
+                  className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-1 focus:ring-primary bg-surface text-copy"
+                />
+              ) : ( // Default to text input for 'string' and 'uuid'
+                <input
+                  type="text"
+                  id={setting.key}
+                  name={setting.key}
+                  value={setting.value as string}
+                  onChange={handleChange}
+                  className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-1 focus:ring-primary bg-surface text-copy"
+                />
+              )}
             </div>
-            <input
-              type="checkbox"
-              id="maintenance_mode"
-              name="maintenance_mode"
-              checked={settings.maintenance_mode}
-              onChange={handleChange}
-              className="toggle toggle-primary"
-            />
-          </div>
-
-          {/* Registration Enabled Setting */}
-          <div className="flex items-center justify-between bg-background p-4 rounded-md border border-border">
-            <div>
-              <label htmlFor="registration_enabled" className="block text-lg font-medium text-main">User Registration</label>
-              <p className="text-sm text-copy-light">Allow new users to register accounts.</p>
-            </div>
-            <input
-              type="checkbox"
-              id="registration_enabled"
-              name="registration_enabled"
-              checked={settings.registration_enabled}
-              onChange={handleChange}
-              className="toggle toggle-primary"
-            />
-          </div>
-
-          {/* Max File Size Setting */}
-          <div className="bg-background p-4 rounded-md border border-border">
-            <label htmlFor="max_file_size" className="block text-lg font-medium text-main mb-2">Max File Upload Size (MB)</label>
-            <input
-              type="number"
-              id="max_file_size"
-              name="max_file_size"
-              value={settings.max_file_size}
-              onChange={handleChange}
-              className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-1 focus:ring-primary bg-surface text-copy"
-            />
-            <p className="text-sm text-copy-light mt-1">Maximum size for file uploads (e.g., product images).</p>
-          </div>
-
-          {/* Allowed File Types Setting */}
-          <div className="bg-background p-4 rounded-md border border-border">
-            <label htmlFor="allowed_file_types" className="block text-lg font-medium text-main mb-2">Allowed File Types</label>
-            <input
-              type="text"
-              id="allowed_file_types"
-              name="allowed_file_types"
-              value={settings.allowed_file_types}
-              onChange={handleChange}
-              className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-1 focus:ring-primary bg-surface text-copy"
-            />
-            <p className="text-sm text-copy-light mt-1">Comma-separated list of allowed file extensions (e.g., jpg,png,pdf).</p>
-          </div>
-
-          {/* Email Notifications Setting */}
-          <div className="flex items-center justify-between bg-background p-4 rounded-md border border-border">
-            <div>
-              <label htmlFor="email_notifications" className="block text-lg font-medium text-main">Email Notifications</label>
-              <p className="text-sm text-copy-light">Enable or disable system-wide email notifications.</p>
-            </div>
-            <input
-              type="checkbox"
-              id="email_notifications"
-              name="email_notifications"
-              checked={settings.email_notifications}
-              onChange={handleChange}
-              className="toggle toggle-primary"
-            />
-          </div>
-
-          {/* SMS Notifications Setting */}
-          <div className="flex items-center justify-between bg-background p-4 rounded-md border border-border">
-            <div>
-              <label htmlFor="sms_notifications" className="block text-lg font-medium text-main">SMS Notifications</label>
-              <p className="text-sm text-copy-light">Enable or disable system-wide SMS notifications.</p>
-            </div>
-            <input
-              type="checkbox"
-              id="sms_notifications"
-              name="sms_notifications"
-              checked={settings.sms_notifications}
-              onChange={handleChange}
-              className="toggle toggle-primary"
-            />
-          </div>
+          ))}
         </div>
 
         {/* Save Settings Button */}

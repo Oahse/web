@@ -3,6 +3,7 @@
  */
 
 import { apiClient } from './client';
+import { SystemSetting, SystemSettingUpdate } from '../types';
 
 
 export class AdminAPI {
@@ -253,15 +254,15 @@ export class AdminAPI {
   /**
    * Update system settings
    */
-  static async updateSystemSettings(settings) {
-    return await apiClient.put('/admin/system/settings', settings);
+  static async updateSystemSettings(settings: SystemSettingUpdate[]) {
+    return await apiClient.put<SystemSetting[]>('/admin/system/settings', settings);
   }
 
   /**
    * Get system settings
    */
   static async getSystemSettings() {
-    return await apiClient.get('/admin/system/settings');
+    return await apiClient.get<SystemSetting[]>('/admin/system/settings');
   }
 
   /**
