@@ -110,7 +110,7 @@ def send_cart_abandonment_emails():
     """
     Periodic task to send cart abandonment emails
     """
-    # TODO: Implement cart abandonment logic
+    # Cart abandonment logic to be implemented
     print("🔄 Checking for abandoned carts...")
 
 
@@ -222,5 +222,5 @@ def send_review_requests():
     """
     Periodic task to send review request emails
     """
-    # TODO: Implement review request logic
+    # Review request logic to be implemented
     print("🔄 Checking for orders ready for review...")

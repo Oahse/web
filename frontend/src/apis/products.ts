@@ -3,13 +3,6 @@
  */
 
 import { apiClient } from './client';
-// import {
-//   Product,
-//   ProductVariant, 
-//   ProductFilters,
-//   PaginatedResponse,
-//   ApiResponse,
-//   Review
 
 export class ProductsAPI {
   /**

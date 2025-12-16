@@ -36,7 +36,7 @@ from routes.wishlist import router as wishlist_router
 from routes.notification import router as notification_router
 from routes.health import router as health_router
 from routes.negotiator import router as negotiator_router
-
+from routes.search import router as search_router
 from routes.inventory import router as inventory_router
 
 
@@ -114,16 +114,24 @@ app.include_router(wishlist_router)
 app.include_router(notification_router)
 app.include_router(health_router)
 app.include_router(negotiator_router)
+app.include_router(search_router)
 app.include_router(inventory_router)
 
 # Include WebSocket router
 app.include_router(ws_router)
 
 async def run_notification_cleanup():
+    # Wait a bit for database initialization to complete
+    await asyncio.sleep(5)
     while True:
-        async with AsyncSessionDB() as db:
-            notification_service = NotificationService(db)
-            await notification_service.delete_old_notifications(days_old=settings.NOTIFICATION_CLEANUP_DAYS)
+        try:
+            if AsyncSessionDB is not None:
+                async with AsyncSessionDB() as db:
+                    notification_service = NotificationService(db)
+                    await notification_service.delete_old_notifications(days_old=settings.NOTIFICATION_CLEANUP_DAYS)
+        except Exception as e:
+            print(f"Notification cleanup error: {e}")
+            # Continue the loop even if there's an error
         # Run every X seconds
         await asyncio.sleep(settings.NOTIFICATION_CLEANUP_INTERVAL_SECONDS)
 

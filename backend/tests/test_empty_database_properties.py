@@ -92,9 +92,30 @@ async def test_property_33_migration_with_empty_database():
         # Create engine and run migrations
         engine = create_async_engine(test_db_url, echo=False, pool_pre_ping=True, poolclass=None)
         
-        # Run migrations (create all tables) - use checkfirst=True to avoid duplicate errors
+        # Clear metadata state to avoid conflicts between test runs
+        Base.metadata.clear()
+        
+        # Re-import models to rebuild metadata
+        from models.user import User, Address
+        from models.product import Product, ProductVariant, ProductImage, Category
+        from models.cart import Cart, CartItem
+        from models.order import Order, OrderItem, TrackingEvent
+        from models.payment import PaymentMethod
+        from models.transaction import Transaction
+        from models.review import Review
+        from models.notification import Notification
+        from models.wishlist import Wishlist, WishlistItem
+        from models.blog import BlogPost, BlogCategory, BlogTag, Comment, BlogPostTag
+        from models.subscription import Subscription
+        from models.inventory import Inventory, StockAdjustment, WarehouseLocation
+        from models.activity_log import ActivityLog
+        from models.settings import SystemSettings
+        from models.promocode import Promocode
+        from models.shipping import ShippingMethod
+        
+        # Run migrations (create all tables)
         async with engine.begin() as conn_async:
-            await conn_async.run_sync(lambda sync_conn: Base.metadata.create_all(sync_conn, checkfirst=True))
+            await conn_async.run_sync(Base.metadata.create_all)
         
         # Verify no errors occurred - if we got here, migrations succeeded
         assert True, "Migrations completed successfully on empty database"
@@ -139,9 +160,30 @@ async def test_property_34_schema_creation():
         # Create engine and run migrations
         engine = create_async_engine(test_db_url, echo=False, pool_pre_ping=True, poolclass=None)
         
-        # Run migrations (create all tables) - use checkfirst=True to avoid duplicate errors
+        # Clear metadata state to avoid conflicts between test runs
+        Base.metadata.clear()
+        
+        # Re-import models to rebuild metadata
+        from models.user import User, Address
+        from models.product import Product, ProductVariant, ProductImage, Category
+        from models.cart import Cart, CartItem
+        from models.order import Order, OrderItem, TrackingEvent
+        from models.payment import PaymentMethod
+        from models.transaction import Transaction
+        from models.review import Review
+        from models.notification import Notification
+        from models.wishlist import Wishlist, WishlistItem
+        from models.blog import BlogPost, BlogCategory, BlogTag, Comment, BlogPostTag
+        from models.subscription import Subscription
+        from models.inventory import Inventory, StockAdjustment, WarehouseLocation
+        from models.activity_log import ActivityLog
+        from models.settings import SystemSettings
+        from models.promocode import Promocode
+        from models.shipping import ShippingMethod
+        
+        # Run migrations (create all tables)
         async with engine.begin() as conn_async:
-            await conn_async.run_sync(lambda sync_conn: Base.metadata.create_all(sync_conn, checkfirst=True))
+            await conn_async.run_sync(Base.metadata.create_all)
         
         # Verify tables were created
         async with engine.connect() as conn_async:

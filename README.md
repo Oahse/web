@@ -63,6 +63,8 @@ The platform features a React-based frontend with TypeScript for type safety, a 
 - 📧 **Email Notifications** - Automated order confirmations and updates
 - 🌍 **Internationalization** - Auto-detect location and set language/currency for 21+ countries
 - 📱 **Responsive Design** - Optimized for desktop, tablet, and mobile devices
+- 💰 **Price Negotiation** - Interactive price negotiation system with AI-powered agents
+- 🔍 **Advanced Search** - Intelligent search with autocomplete, fuzzy matching, and relevance ranking
 
 ### Admin Features
 - 📊 **Analytics Dashboard** - Comprehensive sales, user, and product analytics
@@ -89,6 +91,8 @@ The platform features a React-based frontend with TypeScript for type safety, a 
 - 🧪 **Property-Based Testing** - Comprehensive test coverage with Hypothesis
 - 📝 **API Documentation** - Auto-generated Swagger/ReDoc documentation
 - 🖼️ **CDN Image Delivery** - GitHub + jsDelivr for fast image loading
+- 🤖 **AI Negotiation Engine** - Intelligent price negotiation with buyer/seller agents
+- 🔍 **PostgreSQL Full-Text Search** - Advanced search with trigram matching and fuzzy search
 
 ---
 
@@ -156,24 +160,154 @@ The platform features a React-based frontend with TypeScript for type safety, a 
 
 ### Docker Setup (Recommended)
 
-**The fastest way to get started:**
+**The fastest way to get started with Docker:**
+
+#### Prerequisites
+- Docker 20.10+ and Docker Compose 2.0+
+- 4GB+ RAM available for containers
+- 10GB+ free disk space
+
+#### Step-by-Step Setup
+
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/Oahse/banweemvp.git
+   cd banweemvp
+   ```
+
+2. **Configure environment variables**
+   ```bash
+   # Backend configuration (already configured for Docker)
+   cp backend/.env.example backend/.env
+   
+   # Frontend configuration (already configured for Docker)
+   cp frontend/.env.example frontend/.env
+   
+   # Optional: Update with your API keys for full functionality
+   # - Stripe keys for payment processing
+   # - Mailgun keys for email notifications
+   # - Social auth keys for OAuth login
+   ```
+
+3. **Start all services**
+   ```bash
+   # Start all services in the background
+   docker-compose up -d
+   
+   # Or use the convenience script
+   ./docker-start.sh
+   ```
+
+4. **Verify services are running**
+   ```bash
+   # Check service status
+   docker-compose ps
+   
+   # All services should show "healthy" or "running" status:
+   # - PostgreSQL (healthy)
+   # - Redis (healthy)  
+   # - Backend (healthy)
+   # - Frontend (healthy)
+   # - Celery Worker (running)
+   # - Celery Beat (running)
+   ```
+
+5. **Access the application**
+   - **Frontend**: http://localhost:5173
+   - **Backend API**: http://localhost:8000
+   - **API Documentation**: http://localhost:8000/docs
+   - **Health Check**: http://localhost:8000/health/live
+
+6. **Optional: Seed with sample data**
+   ```bash
+   # Add sample products, users, and orders
+   ./seed-database.sh
+   ```
+
+#### Docker Services Overview
+
+| Service | Port | Description |
+|---------|------|-------------|
+| Frontend | 5173 | React/Vite development server |
+| Backend | 8000 | FastAPI application server |
+| PostgreSQL | 5432 | Database server |
+| Redis | 6379 | Cache and message broker |
+| Celery Worker | - | Background task processor |
+| Celery Beat | - | Periodic task scheduler |
+
+#### Default Credentials (After Seeding)
+- **Admin**: `admin@banwee.com` / `adminpass`
+- **Supplier**: `supplier@banwee.com` / `supplierpass`
+- **Customer**: `customer@banwee.com` / `customerpass`
+
+#### Docker Commands
 
 ```bash
-# 1. Launch all services
-./docker-start.sh
+# Start services
+docker-compose up -d
 
-# 2. Seed database with sample data
-./seed-database.sh
+# View logs
+docker-compose logs -f [service_name]
 
-# 3. Access the application
-# Frontend: http://localhost:5173
-# Backend: http://localhost:8000
-# API Docs: http://localhost:8000/docs
+# Stop services
+docker-compose down
+
+# Rebuild services (after code changes)
+docker-compose build
+docker-compose up -d
+
+# Clean restart (removes volumes - WARNING: deletes data)
+docker-compose down -v
+docker-compose up -d
+
+# Access service shell
+docker-compose exec backend bash
+docker-compose exec frontend sh
 ```
 
-**Default credentials:**
-- Admin: `admin@banwee.com` / `adminpass`
-- Supplier: `supplier@banwee.com` / `supplierpass`
+#### Troubleshooting Docker Setup
+
+**Services not starting:**
+```bash
+# Check Docker daemon is running
+docker info
+
+# Check service logs
+docker-compose logs backend
+docker-compose logs frontend
+
+# Restart specific service
+docker-compose restart backend
+```
+
+**Database connection issues:**
+```bash
+# Check PostgreSQL is healthy
+docker-compose ps postgres
+
+# Test database connection
+docker-compose exec backend python -c "from core.database import db_manager; print('DB OK')"
+```
+
+**Port conflicts:**
+```bash
+# Check if ports are in use
+lsof -i :5173  # Frontend
+lsof -i :8000  # Backend
+lsof -i :5432  # PostgreSQL
+lsof -i :6379  # Redis
+
+# Stop conflicting services or change ports in docker-compose.yml
+```
+
+**Performance issues:**
+```bash
+# Check Docker resource usage
+docker stats
+
+# Increase Docker memory limit in Docker Desktop settings
+# Recommended: 4GB+ RAM, 2+ CPU cores
+```
 
 ### Local Development Setup
 
@@ -287,13 +421,23 @@ The seeded database includes the following test accounts:
 ### Key Workflows
 
 #### For Customers
-1. Browse products by category
-2. Add items to cart
-3. Create an account or login
-4. Add shipping address
-5. Complete checkout with Stripe
-6. Track order status
-7. Leave product reviews
+1. Browse products by category or use advanced search
+2. Use price negotiation feature on product pages
+3. Add items to cart
+4. Create an account or login
+5. Add shipping address
+6. Complete checkout with Stripe
+7. Track order status
+8. Leave product reviews
+
+#### Price Negotiation Feature
+The platform includes an innovative price negotiation system:
+- Click "Negotiate Price" on any product page
+- Set your target price and maximum limit
+- Choose negotiation style (aggressive, balanced, friendly)
+- AI agents simulate realistic buyer-seller negotiations
+- Real-time negotiation rounds with WebSocket updates
+- Accept or reject final negotiated prices
 
 #### For Admins
 1. Login with admin credentials
@@ -492,14 +636,63 @@ All frontend environment variables should be configured in `frontend/.env`. See 
 
 ### Docker Environment Variables
 
-When using Docker, environment variables can be set in:
-1. `.env` file in the project root (for docker-compose)
-2. Individual service `.env` files (backend/.env, frontend/.env)
+When using Docker, environment variables are automatically configured for container networking:
 
-Docker-specific considerations:
-- Use service names for hosts (e.g., `postgres` instead of `localhost`)
-- The `docker-compose.yml` file passes environment variables to containers
-- Sensitive variables should be stored in `.env` files (not committed to git)
+#### Pre-configured for Docker
+The included `.env` files are already configured for Docker deployment:
+
+**Backend (`backend/.env`):**
+```bash
+# Database (configured for Docker service names)
+POSTGRES_SERVER=postgres
+POSTGRES_DB_URL=postgresql+asyncpg://banwee:banwee_password@postgres:5432/banwee_db
+REDIS_URL=redis://redis:6379/0
+
+# CORS (configured for Docker networking)
+BACKEND_CORS_ORIGINS=http://localhost:5173,http://0.0.0.0:5173,http://127.0.0.1:5173
+```
+
+**Frontend (`frontend/.env`):**
+```bash
+# API endpoint (configured for Docker host networking)
+VITE_API_BASE_URL=http://localhost:8000/api/v1
+```
+
+#### Optional Service Configuration
+To enable full functionality, add your API keys to `backend/.env`:
+
+```bash
+# Stripe (for payment processing)
+STRIPE_SECRET_KEY=sk_test_your_stripe_secret_key
+STRIPE_PUBLIC_KEY=pk_test_your_stripe_public_key
+
+# Mailgun (for email notifications)
+MAILGUN_API_KEY=your_mailgun_api_key
+MAILGUN_DOMAIN=mg.yourdomain.com
+MAILGUN_FROM_EMAIL=Banwee <noreply@yourdomain.com>
+
+# Social Authentication (optional)
+GOOGLE_CLIENT_ID=your_google_client_id
+FACEBOOK_APP_ID=your_facebook_app_id
+TIKTOK_CLIENT_KEY=your_tiktok_client_key
+```
+
+And to `frontend/.env`:
+```bash
+# Stripe (for payment processing)
+VITE_STRIPE_PUBLIC_KEY=pk_test_your_stripe_public_key
+
+# Social Authentication (optional)
+VITE_GOOGLE_CLIENT_ID=your_google_client_id
+VITE_FACEBOOK_APP_ID=your_facebook_app_id
+VITE_TIKTOK_CLIENT_ID=your_tiktok_client_id
+```
+
+#### Docker-specific considerations:
+- Service names are used for inter-container communication (`postgres`, `redis`)
+- Host networking is used for browser-to-backend communication (`localhost:8000`)
+- Environment variables are passed through `docker-compose.yml`
+- Sensitive variables should never be committed to git
 
 ### Security Best Practices
 

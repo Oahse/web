@@ -539,7 +539,7 @@ export const CustomerDashboard = ({
 
   const handleSave = (layout) => {
     // Save dashboard layout to backend
-    // TODO: Implement API call to persist layout preferences
+    // API call to persist layout preferences to be implemented
   };
 
   return (

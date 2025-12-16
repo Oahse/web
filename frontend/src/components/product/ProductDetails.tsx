@@ -1,6 +1,6 @@
 import React, { useState, Suspense, lazy, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ShoppingCartIcon, HeartIcon, ShareIcon, MinusIcon, PlusIcon, CheckIcon, TruckIcon, RefreshCwIcon, ChevronLeftIcon, Facebook, Twitter, Linkedin, ChevronRightIcon } from 'lucide-react';
+import { ShoppingCartIcon, HeartIcon, ShareIcon, MinusIcon, PlusIcon, CheckIcon, TruckIcon, RefreshCwIcon, ChevronLeftIcon, Facebook, Twitter, Linkedin, ChevronRightIcon, MessageCircle } from 'lucide-react';
 import Breadcrumbs from '../ui/Breadcrumbs';
 import { useCart } from '../../contexts/CartContext';
 import { useWishlist } from '../../contexts/WishlistContext';
@@ -11,6 +11,7 @@ import { ProductsAPI } from '../../apis';
 
 import ErrorMessage from '../common/ErrorMessage';
 import ReviewForm from './ReviewForm';
+import { NegotiationModal } from './NegotiationModal';
 
 const ProductCard = lazy(() => import('../product/ProductCard').then(module => ({
   default: module.ProductCard
@@ -46,6 +47,7 @@ export const ProductDetails = () => {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [activeTab, setActiveTab] = useState('description');
   const [shareMenuOpen, setShareMenuOpen] = useState(false);
+  const [isNegotiationModalOpen, setIsNegotiationModalOpen] = useState(false);
 
   // API calls
   const {
@@ -332,6 +334,15 @@ export const ProductDetails = () => {
             >
               <ShoppingCartIcon size={18} className="mr-2" />
               Add to Cart
+            </motion.button>
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => setIsNegotiationModalOpen(true)}
+              className="ml-3 bg-secondary hover:bg-secondary-dark text-white py-3 px-6 rounded-md transition-colors flex items-center justify-center"
+            >
+              <MessageCircle size={18} className="mr-2" />
+              Negotiate Price
             </motion.button>
             <motion.button
               whileHover={{ scale: 1.1 }}
@@ -673,6 +684,23 @@ export const ProductDetails = () => {
           </div>
         )}
       </div>
+
+      {/* Negotiation Modal */}
+      <NegotiationModal
+        isOpen={isNegotiationModalOpen}
+        onClose={() => setIsNegotiationModalOpen(false)}
+        product={{
+          id: product.id,
+          name: product.name,
+          price: selectedVariant?.sale_price || selectedVariant?.base_price || 0,
+        }}
+        onDealAccepted={(finalPrice) => {
+          toast.success(`Deal accepted at $${finalPrice.toFixed(2)}! Adding to cart...`);
+          // Add the negotiated item to cart with the final price
+          handleAddToCart();
+          setIsNegotiationModalOpen(false);
+        }}
+      />
     </div>
   );
 };

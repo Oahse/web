@@ -5,7 +5,6 @@ import { useAuth } from '../contexts/AuthContext';
 import { toast } from 'react-hot-toast';
 import { Input } from '../components/forms/Input';
 import { Checkbox } from '../components/forms/Checkbox';
-// import { Radio } from '../components/forms/Radio';
 import SocialAuth from '../components/auth/SocialAuth';
 
 /**

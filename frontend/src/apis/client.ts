@@ -618,6 +618,30 @@ class APIClient {
   async getFeaturedBlogPosts(limit = 5) {
     return this.get(`/blog/posts/featured?limit=${limit}`);
   }
+
+  // Negotiation methods
+  async startNegotiation(buyerConfig, sellerConfig) {
+    return this.post('/negotiate/start', {
+      buyer_config: buyerConfig,
+      seller_config: sellerConfig,
+    });
+  }
+
+  async stepNegotiation(negotiationId, buyerNewTarget = null, sellerNewTarget = null) {
+    return this.post('/negotiate/step', {
+      negotiation_id: negotiationId,
+      buyer_new_target: buyerNewTarget,
+      seller_new_target: sellerNewTarget,
+    });
+  }
+
+  async getNegotiationState(negotiationId) {
+    return this.get(`/negotiate/${negotiationId}`);
+  }
+
+  async deleteNegotiation(negotiationId) {
+    return this.delete(`/negotiate/${negotiationId}`);
+  }
 }
 
 // Export singleton instance

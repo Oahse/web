@@ -18,8 +18,9 @@ async def wait_for_db():
     
     while retry_count < max_retries:
         try:
+            from sqlalchemy import text
             async with engine.connect() as conn:
-                await conn.execute('SELECT 1')
+                await conn.execute(text('SELECT 1'))
             print('✅ Database is ready!')
             await engine.dispose()
             return True

@@ -52,28 +52,4 @@ class TelegramBotHandler:
             "/help - show help"
         )
 
-# BOT_TOKEN = str(settings.TELEGRAM_BOT_TOKEN)
 
-# try:
-#     if not BOT_TOKEN or BOT_TOKEN.strip() == "":
-#         raise InvalidToken("Telegram bot token is missing or empty!")
-
-#     telegram_bot = TelegramBotHandler(BOT_TOKEN)
-#     telegram_app = ApplicationBuilder().token(BOT_TOKEN).build()
-
-#     telegram_app.add_handler(CommandHandler("start", telegram_bot.start))
-#     telegram_app.add_handler(CommandHandler("help", telegram_bot.help))
-
-# except InvalidToken as e:
-#     logger.error(f"Failed to initialize Telegram bot: {e}")
-#     telegram_bot = None
-#     telegram_app = None
-
-# async def run_telegram_bot():
-#     if telegram_app is None:
-#         logger.error("Telegram bot application is not initialized. Aborting run.")
-#         return
-#     try:
-#         await telegram_app.run_polling()
-#     except Exception as e:
-#         logger.error(f"Exception occurred during Telegram bot polling: {e}")

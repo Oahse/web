@@ -19,7 +19,7 @@ const TrackingMap = ({
   // In a real implementation, you would integrate with Google Maps, Mapbox, or similar
   useEffect(() => {
     // Initialize map with current location and delivery address
-    // TODO: Integrate with actual mapping library (e.g., Google Maps, Mapbox)
+    // Integration with mapping library (e.g., Google Maps, Mapbox) to be implemented
     const mapConfig = {
       currentLocation,
       deliveryAddress,

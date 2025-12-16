@@ -185,12 +185,11 @@ class OrderService:
         return OrderResponse.from_orm(new_order)
 
     def send_order_confirmation_email(self, order: Order):
-        """Sends an order confirmation email to the user (synchronous for background task)."""
-        # Note: This is called as a background task, so we can't use async db operations
-        # For now, we'll just log. TODO: Implement proper async background task handling
+        """Sends an order confirmation email to the user using Celery."""
         try:
+            from tasks.order_tasks import process_order_confirmation
+            process_order_confirmation.delay(str(order.id))
             print(f"Order confirmation email queued for order: {order.id}")
-            # TODO: Use Celery or similar for proper async email sending with database access
         except Exception as e:
             print(f"Failed to queue order confirmation email: {e}")
         except Exception as e:
@@ -221,12 +220,11 @@ class OrderService:
         return order
 
     def send_shipping_update_email(self, order: Order, carrier_name: str):
-        """Sends a shipping update email to the user (synchronous for background task)."""
-        # Note: This is called as a background task, so we can't use async db operations
-        # For now, we'll just log. TODO: Implement proper async background task handling
+        """Sends a shipping update email to the user using Celery."""
         try:
+            from tasks.order_tasks import process_shipping_update
+            process_shipping_update.delay(str(order.id))
             print(f"Shipping update email queued for order: {order.id}, carrier: {carrier_name}")
-            # TODO: Use Celery or similar for proper async email sending with database access
         except Exception as e:
             print(f"Failed to queue shipping update email: {e}")
 

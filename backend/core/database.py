@@ -102,13 +102,6 @@ class DatabaseManager:
         self.engine = engine
         self.session_factory = session_factory
 
-# Global database manager instance
-db_manager = DatabaseManager()
-
-def initialize_db(database_uri: str, env_is_local: bool):
-    """Initializes the database manager with engine and session factory."""
-    db_manager.initialize(database_uri, env_is_local)
-
     async def health_check(self) -> dict:
         """Perform database health check."""
         if not self.engine or not self.session_factory:
@@ -255,6 +248,10 @@ def initialize_db(database_uri: str, env_is_local: bool):
 
 # Global database manager instance
 db_manager = DatabaseManager()
+
+def initialize_db(database_uri: str, env_is_local: bool):
+    """Initializes the database manager with engine and session factory."""
+    db_manager.initialize(database_uri, env_is_local)
 
 
 # Enhanced dependency to get the async session with retry logic

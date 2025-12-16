@@ -9,7 +9,7 @@ from fastapi import status
 
 from services.settings import SettingsService
 from services.activity import ActivityService # NEW: Import ActivityService
-from core.database import AsyncSessionDB
+# AsyncSessionDB will be imported inside functions to avoid import order issues
 from core.constants import UserRole
 
 
@@ -33,6 +33,7 @@ class MaintenanceModeMiddleware(BaseHTTPMiddleware):
             return await call_next(request)
 
         # Create a new async session for this request
+        from core.database import AsyncSessionDB
         async with AsyncSessionDB() as session:
             settings_service = SettingsService(session)
             maintenance_enabled = await settings_service.is_maintenance_mode_enabled()
@@ -90,6 +91,7 @@ class ActivityLoggingMiddleware(BaseHTTPMiddleware): # NEW: Activity Logging Mid
         process_time = time.time() - start_time
         
         # Log activity after response is generated
+        from core.database import AsyncSessionDB
         async with AsyncSessionDB() as session:
             activity_service = ActivityService(session)
             await activity_service.log_activity(

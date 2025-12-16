@@ -5,7 +5,7 @@ import uuid
 
 from core.config import settings
 from services.negotiator import NegotiationEngine, Buyer, Seller
-from celery_app import celery_app # Assuming celery_app is defined here
+from celery_negotiation_app import celery_app # Use negotiation-specific celery app
 
 # Initialize Redis client for accessing negotiation states
 # This client is shared between FastAPI (routes) and Celery (tasks) to

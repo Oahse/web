@@ -24,16 +24,14 @@ COPY core/ ./core/
 # Models (needed for database operations)
 COPY models/ ./models/
 
+# Schemas (needed by services)
+COPY schemas/ ./schemas/
+
+# Routes (needed by some services)
+COPY routes/ ./routes/
+
 # Services (needed by tasks)
-COPY services/email.py ./services/email.py
-COPY services/notification.py ./services/notification.py
-COPY services/order.py ./services/order.py
-COPY services/orders.py ./services/orders.py
-COPY services/user.py ./services/user.py
-COPY services/payment.py ./services/payment.py
-COPY services/shipping.py ./services/shipping.py
-COPY services/websockets.py ./services/websockets.py
-COPY services/__init__.py ./services/__init__.py
+COPY services/ ./services/
 
 # Celery app configuration
 COPY celery_app.py .

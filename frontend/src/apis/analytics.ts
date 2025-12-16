@@ -3,11 +3,6 @@
  */
 
 import { apiClient } from './client';
-// import { 
-//   DashboardData, 
-//   AnalyticsFilters,
-//   APIResponse 
-// } from './types/analytics';
 
 export class AnalyticsAPI {
   /**

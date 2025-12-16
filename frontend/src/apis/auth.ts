@@ -3,13 +3,6 @@
  */
 
 import { apiClient, TokenManager } from './client';
-// import { 
-//   User, 
-//   LoginRequest, 
-//   RegisterRequest, 
-//   AuthResponse,
-//   APIResponse, 
-//   Address
 
 
 export class AuthAPI {

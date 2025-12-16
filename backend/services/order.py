@@ -767,30 +767,30 @@ class OrderService:
         return []
 
     def _send_order_confirmation(self, order_id: UUID):
-        """Send order confirmation email (background task)"""
+        """Send order confirmation email using Celery"""
         try:
-            # Background tasks run in a different context, so we just log for now
-            # TODO: Implement proper async background task handling or use Celery
+            from tasks.order_tasks import process_order_confirmation
+            process_order_confirmation.delay(str(order_id))
             print(f"Order confirmation email queued for order: {order_id}")
         except Exception as e:
             # Log error but don't fail the order
             print(f"Failed to send order confirmation email: {e}")
 
     def _notify_order_created(self, order_id: str, user_id: str):
-        """Send WebSocket notification for order creation (background task)"""
+        """Send WebSocket notification for order creation using Celery"""
         try:
-            # Background tasks run in a different context, so we just log for now
-            # TODO: Implement proper async background task handling or use Celery
+            from tasks.notification_tasks import send_order_notification
+            send_order_notification.delay(order_id, user_id, "created")
             print(f"Order created notification queued for order: {order_id}, user: {user_id}")
         except Exception as e:
             # Log error but don't fail the order
             print(f"Failed to send order created notification: {e}")
 
     def _notify_order_updated(self, order_id: str, user_id: str, status: str):
-        """Send WebSocket notification for order update (background task)"""
+        """Send WebSocket notification for order update using Celery"""
         try:
-            # Background tasks run in a different context, so we just log for now
-            # TODO: Implement proper async background task handling or use Celery
+            from tasks.notification_tasks import send_order_notification
+            send_order_notification.delay(order_id, user_id, status)
             print(f"Order updated notification queued for order: {order_id}, user: {user_id}, status: {status}")
         except Exception as e:
             # Log error but don't fail the order

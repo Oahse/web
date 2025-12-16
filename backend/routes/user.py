@@ -6,6 +6,7 @@ from core.utils.response import Response
 from core.exceptions import APIException
 from core.database import get_db
 from services.user import UserService, AddressService
+from services.search import SearchService
 # Import AddressResponse
 from schemas.user import UserCreate, UserUpdate, AddressResponse
 from schemas.user import AddressCreate, AddressUpdate
@@ -31,11 +32,44 @@ async def list_users(
     page: int = Query(1, ge=1),
     limit: int = Query(10, ge=1, le=100),
     role: Optional[str] = Query(None, description="Filter by user role"),
+    q: Optional[str] = Query(None, description="Search query for user name or email"),
+    search_mode: Optional[str] = Query("basic", regex="^(basic|advanced)$", description="Search mode: basic or advanced"),
     db: AsyncSession = Depends(get_db)
 ):
-    service = UserService(db)
-    users = await service.get_users(page=page, limit=limit, role=role)
-    return Response.success(data=users)
+    """List users with optional search functionality."""
+    try:
+        # If there's a search query and advanced search is requested, use the search service
+        if q and len(q.strip()) >= 2 and search_mode == "advanced":
+            search_service = SearchService(db)
+            
+            # Use advanced search
+            search_results = await search_service.search_users(
+                query=q.strip(),
+                limit=limit,
+                role_filter=role
+            )
+            
+            # Convert search results to match the expected format
+            return Response.success(data={
+                "data": search_results,
+                "total": len(search_results),
+                "page": page,
+                "per_page": limit,
+                "total_pages": 1,
+                "search_mode": "advanced"
+            })
+        else:
+            # Use basic user service for regular queries
+            service = UserService(db)
+            users = await service.get_users(page=page, limit=limit, role=role)
+            if isinstance(users, dict):
+                users["search_mode"] = "basic"
+            return Response.success(data=users)
+    except Exception as e:
+        raise APIException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            message=f"Failed to fetch users: {str(e)}"
+        )
 
 
 @router.get("/{user_id}")

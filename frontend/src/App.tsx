@@ -17,7 +17,6 @@ import { loadStripe } from '@stripe/stripe-js';
 import { CategoryProvider } from './contexts/CategoryContext';
 import { LocaleProvider } from './contexts/LocaleContext';
 import { ProtectedRoute } from './components/routing/ProtectedRoute';
-// import { initPerformanceMonitoring } from './utils/performance';
 import ErrorBoundary from './components/common/ErrorBoundary';
 import { OfflineIndicator } from './components/common/OfflineIndicator';
 

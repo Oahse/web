@@ -16,23 +16,29 @@ RUN apk add --no-cache \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy only core configuration (needed for Redis URL and settings)
-COPY core/__init__.py ./core/__init__.py
-COPY core/config.py ./core/config.py
+# Copy core configuration (needed for Redis URL and settings)
+COPY core/ ./core/
 
-# Copy negotiation service (the algorithm implementation)
-COPY services/negotiator.py ./services/negotiator.py
-COPY services/__init__.py ./services/__init__.py
+# Copy models (needed by config)
+COPY models/ ./models/
 
-# Copy Celery app configuration
-COPY celery_app.py .
+# Copy schemas (needed by services)
+COPY schemas/ ./schemas/
+
+# Copy services (needed for dependencies)
+COPY services/ ./services/
+
+# Copy Celery app configuration for negotiation
+COPY celery_negotiation_app.py .
 
 # Copy only negotiation tasks
-COPY tasks/__init__.py ./tasks/__init__.py
 COPY tasks/negotiation_tasks.py ./tasks/negotiation_tasks.py
+
+# Create minimal __init__.py for negotiation worker
+RUN echo '"""Negotiation tasks package"""' > ./tasks/__init__.py
 
 # Set Python path
 ENV PYTHONPATH=/app
 
 # Default command (overridden in docker-compose.yml)
-CMD ["celery", "-A", "celery_app", "worker", "-Q", "negotiation", "--loglevel=info"]
+CMD ["celery", "-A", "celery_negotiation_app", "worker", "-Q", "negotiation", "--loglevel=info"]

@@ -202,5 +202,3 @@ class EmailService:
         }
         send_low_stock_alert_email.delay(recipient_email, context)
         print(f"📧 Celery task dispatched to send low stock alert email to {recipient_email}.")
-
-    # TODO: Implement other email types like cart abandonment, password reset success, etc.

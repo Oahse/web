@@ -65,7 +65,7 @@ class NegotiationAgent:
         This method is meant to be overridden by subclasses (Buyer/Seller) to instantiate
         the correct specific agent type.
         """
-        return cls(data["name"], data["target"], data["limit"], data["style"])
+        return cls(data["name"], float(data["target"]), float(data["limit"]), data["style"])
 
 
 class Buyer(NegotiationAgent):
@@ -83,18 +83,21 @@ class Buyer(NegotiationAgent):
         # Calculate how much the buyer should move their offer
         # The move is proportional to the difference between seller's offer and buyer's target,
         # scaled by the buyer's concession rate.
-        move = (seller_offer - self.target) * self.concession_rate()
+        # Ensure both values are floats to handle any serialization issues
+        seller_offer = float(seller_offer)
+        target = float(self.target)
+        move = (seller_offer - target) * self.concession_rate()
         
         # The new offer is the current target plus the calculated move.
-        offer = self.target + move
+        offer = target + move
         
         # Ensure the buyer's offer does not exceed their limit price (max price they are willing to pay).
-        return min(offer, self.limit)
+        return min(offer, float(self.limit))
 
     @classmethod
     def from_dict(cls, data: dict):
         """Deserializes a dictionary back into a Buyer instance."""
-        return cls(data["name"], data["target"], data["limit"], data["style"])
+        return cls(data["name"], float(data["target"]), float(data["limit"]), data["style"])
 
 
 class Seller(NegotiationAgent):
@@ -112,18 +115,22 @@ class Seller(NegotiationAgent):
         # Calculate how much the seller should move their counter-offer
         # The move is proportional to the difference between seller's target and buyer's offer,
         # scaled by the seller's concession rate.
-        move = (self.target - buyer_offer) * self.concession_rate()
+        # Ensure both values are floats to handle any serialization issues
+        buyer_offer = float(buyer_offer)
+        target = float(self.target)
+        limit = float(self.limit)
+        move = (target - buyer_offer) * self.concession_rate()
         
         # The new counter-offer is the current target minus the calculated move.
-        offer = self.target - move
+        offer = target - move
         
         # Ensure the seller's offer does not go below their limit price (minimum price they are willing to accept).
-        return max(offer, self.limit)
+        return max(offer, limit)
 
     @classmethod
     def from_dict(cls, data: dict):
         """Deserializes a dictionary back into a Seller instance."""
-        return cls(data["name"], data["target"], data["limit"], data["style"])
+        return cls(data["name"], float(data["target"]), float(data["limit"]), data["style"])
 
 
 class NegotiationEngine:

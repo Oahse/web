@@ -38,7 +38,10 @@ async def async_engine():
         SQLALCHEMY_DATABASE_URL,
         echo=False,
         pool_pre_ping=True,
-        poolclass=None  # Disable pooling for tests to avoid connection issues
+        pool_size=5,
+        max_overflow=10,
+        pool_recycle=3600,
+        pool_timeout=30
     )
     yield engine
     await engine.dispose()
@@ -62,6 +65,7 @@ async def setup_test_database(async_engine):
 
     # 1. Synchronously connect to the base database (e.g., 'postgres') to create/drop the unique test database
     sync_conn = None
+    sync_cursor = None
     try:
         sync_conn = psycopg2.connect(BASE_DB_URL_SYNC)
         sync_conn.autocommit = True
@@ -84,7 +88,13 @@ async def setup_test_database(async_engine):
             sync_conn.close()
 
     # Now proceed with the unique test database (asynchronously)
-    TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=async_engine, class_=AsyncSession, expire_on_commit=False)
+    TestingSessionLocal = sessionmaker(
+        autocommit=False, 
+        autoflush=False, 
+        bind=async_engine, 
+        class_=AsyncSession, 
+        expire_on_commit=False
+    )
     
     # Initialize the global database objects for the application
     initialize_db(settings.SQLALCHEMY_DATABASE_URI, env_is_local=True)
@@ -93,12 +103,37 @@ async def setup_test_database(async_engine):
     async with async_engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all) # Drop existing tables in the unique DB (should be empty anyway)
         await conn.run_sync(Base.metadata.create_all)
+        
+        # Install PostgreSQL extensions for search functionality
+        await conn.execute(text("CREATE EXTENSION IF NOT EXISTS pg_trgm"))
+        await conn.execute(text("CREATE EXTENSION IF NOT EXISTS fuzzystrmatch"))
+        
+        # Create search indexes
+        await conn.execute(text("""
+            CREATE INDEX IF NOT EXISTS idx_products_name_gin ON products USING gin(name gin_trgm_ops);
+        """))
+        await conn.execute(text("""
+            CREATE INDEX IF NOT EXISTS idx_products_description_gin ON products USING gin(description gin_trgm_ops);
+        """))
+        await conn.execute(text("""
+            CREATE INDEX IF NOT EXISTS idx_users_firstname_gin ON users USING gin(firstname gin_trgm_ops);
+        """))
+        await conn.execute(text("""
+            CREATE INDEX IF NOT EXISTS idx_users_lastname_gin ON users USING gin(lastname gin_trgm_ops);
+        """))
+        await conn.execute(text("""
+            CREATE INDEX IF NOT EXISTS idx_users_email_gin ON users USING gin(email gin_trgm_ops);
+        """))
+        await conn.execute(text("""
+            CREATE INDEX IF NOT EXISTS idx_categories_name_gin ON categories USING gin(name gin_trgm_ops);
+        """))
     yield
     async with async_engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all) # Drop tables after tests
 
     # 3. Synchronously connect to the base database again to drop the unique test database
     sync_conn = None
+    sync_cursor = None
     try:
         sync_conn = psycopg2.connect(BASE_DB_URL_SYNC)
         sync_conn.autocommit = True
@@ -122,93 +157,56 @@ async def override_get_db() -> AsyncGenerator[AsyncSession, None]:
 
 app.dependency_overrides[get_db] = override_get_db
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="function")
 def event_loop():
-    """Custom event loop for pytest-asyncio with session scope."""
-    loop = asyncio.get_event_loop_policy().new_event_loop()
+    """Custom event loop for pytest-asyncio with function scope for Hypothesis compatibility."""
+    policy = asyncio.get_event_loop_policy()
+    loop = policy.new_event_loop()
+    asyncio.set_event_loop(loop)
     yield loop
     loop.close()
 
-# @pytest.fixture(scope="function", autouse=True)
-# async def db_setup_and_teardown(request):
-#     """Setup and teardown database for each test function."""
-#     # Don't create/drop tables for every test - too slow
-#     # Instead, just ensure tables exist
-#     try:
-#         async with engine.begin() as conn:
-#             await conn.run_sync(Base.metadata.create_all)
-#     except Exception:
-#         pass  # Tables might already exist
-#     
-#     # Clean up test data BEFORE each test to ensure clean state
-#     try:
-#         async with TestingSessionLocal() as session:
-#             from sqlalchemy import text
-#             
-#             # Use TRUNCATE CASCADE for faster and more reliable cleanup
-#             # This will delete all data and reset sequences
-#             tables_to_truncate = [
-#                 "activity_logs", "notifications", "reviews", "tracking_events",
-#                 "transactions", "order_items", "orders", "product_images",
-#                 "product_variants", "products", "payment_methods", "addresses",
-#                 "cart_items", "carts", "wishlist_items", "wishlists", "users", "categories"
-#             ]
-#             
-#             for table in tables_to_truncate:
-#                 try:
-#                     await session.execute(text(f"TRUNCATE TABLE {table} CASCADE"))
-#                 except Exception:
-#                     pass  # Table might not exist or might be empty
-#             
-#             # Delete test categories (don't delete users as they have many dependencies)
-#             # await session.execute(text("DELETE FROM categories WHERE name LIKE 'Test Category%'"))
-#             await session.commit()
-#     except Exception as e:
-#         print(f"Warning: Pre-test cleanup failed: {e}")
-#     
-#     yield
-#     
-#     # Clean up test data after each test to avoid conflicts
-#     # Only clean up if the test didn't explicitly skip cleanup
-#     if not hasattr(request, 'param') or request.param != 'skip_cleanup':
-#         try:
-#             async with TestingSessionLocal() as session:
-#                 # Import models with correct paths
-#                 import sys
-#                 import os
-#                 # Add backend directory to path if not already there
-#                 backend_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-#                 if backend_dir not in sys.path:
-#                     sys.path.insert(0, backend_dir)
-#                 
-#                 from sqlalchemy import delete, text
-#                 
-#                 # Use TRUNCATE CASCADE for faster and more reliable cleanup
-#                 tables_to_truncate = [
-#                     "activity_logs", "notifications", "reviews", "tracking_events",
-#                     "transactions", "order_items", "orders", "product_images",
-#                     "product_variants", "products", "payment_methods", "addresses",
-#                     "cart_items", "carts", "wishlist_items", "wishlists", "users", "categories"
-#                 ]
-#                 
-#                 for table in tables_to_truncate:
-#                     try:
-#                         await session.execute(text(f"TRUNCATE TABLE {table} CASCADE"))
-#                     except Exception:
-#                         pass  # Table might not exist or might be empty
-#                 
-#                 # Delete test categories
-#                 # await session.execute(text("DELETE FROM categories WHERE name LIKE 'Test Category%'"))
-#                 await session.commit()
-#         except Exception as e:
-#             # If cleanup fails, log but don't fail the test
-#             print(f"Warning: Test cleanup failed: {e}")
+
 
 @pytest.fixture
 async def db_session() -> AsyncGenerator[AsyncSession, None]:
-    async with TestingSessionLocal() as session:
+    """Create a fresh database session for each test."""
+    # For property-based tests, we need to create a new engine and session
+    # to avoid event loop conflicts
+    engine = create_async_engine(
+        SQLALCHEMY_DATABASE_URL,
+        echo=False,
+        pool_pre_ping=True,
+        pool_size=1,
+        max_overflow=0,
+        pool_recycle=3600,
+        pool_timeout=30
+    )
+    
+    SessionLocal = sessionmaker(
+        autocommit=False, 
+        autoflush=False, 
+        bind=engine, 
+        class_=AsyncSession, 
+        expire_on_commit=False
+    )
+    
+    session = None
+    try:
+        session = SessionLocal()
         yield session
-    await session.close()
+    finally:
+        # Clean up session first
+        if session:
+            try:
+                await session.close()
+            except Exception:
+                pass
+        # Then dispose of engine
+        try:
+            await engine.dispose()
+        except Exception:
+            pass
 
 @pytest.fixture
 def client() -> TestClient:
