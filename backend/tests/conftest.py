@@ -228,7 +228,7 @@ def get_unique_name(base_name: str) -> str:
 @pytest.fixture
 async def test_category(db_session: AsyncSession):
     """Create a unique test category for each test."""
-    from models.category import Category
+    from models.product import Category
     from uuid import uuid4
     
     # Create unique category name
@@ -246,6 +246,100 @@ async def test_category(db_session: AsyncSession):
     await db_session.refresh(category)
     
     return category
+
+@pytest.fixture
+async def test_user(db_session: AsyncSession):
+    """Creates a test user (buyer) for negotiation tests."""
+    from models.user import User
+    from uuid import uuid4
+    import bcrypt
+    import time
+
+    test_email = f"buyer_{int(time.time() * 1000000)}@example.com"
+    test_user = User(
+        id=uuid4(),
+        email=test_email,
+        firstname="Buyer",
+        lastname="Test",
+        role="Customer",
+        active=True,
+        verified=True,
+        hashed_password=bcrypt.hashpw("password123".encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+    )
+    db_session.add(test_user)
+    await db_session.commit()
+    await db_session.refresh(test_user)
+    return test_user
+
+@pytest.fixture
+async def admin_user(db_session: AsyncSession):
+    """Creates a test admin user (seller) for negotiation tests."""
+    from models.user import User
+    from uuid import uuid4
+    import bcrypt
+    import time
+
+    admin_email = f"seller_{int(time.time() * 1000000)}@example.com"
+    admin_user = User(
+        id=uuid4(),
+        email=admin_email,
+        firstname="Seller",
+        lastname="Test",
+        role="Admin", # Admin can also be a seller
+        active=True,
+        verified=True,
+        hashed_password=bcrypt.hashpw("adminpass".encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+    )
+    db_session.add(admin_user)
+    await db_session.commit()
+    await db_session.refresh(admin_user)
+    return admin_user
+
+@pytest.fixture
+async def test_product(db_session: AsyncSession, test_category, admin_user): # Add admin_user as a dependency
+    """Creates a test product for negotiation tests."""
+    from models.product import Product
+    from uuid import uuid4
+    import time
+
+    product_name = get_unique_name("Negotiation Product")
+    test_product = Product(
+        id=uuid4(),
+        name=product_name,
+        description="Description for negotiation product",
+        category_id=test_category.id,
+        supplier_id=admin_user.id, # Pass the admin_user's ID as supplier_id
+        # status="active" # Removed as status might be handled differently or implicitly
+    )
+    db_session.add(test_product)
+    await db_session.commit()
+    await db_session.refresh(test_product)
+    return test_product
+
+@pytest.fixture
+async def test_product_variant(db_session: AsyncSession, test_product):
+    """Creates a test product variant for negotiation tests."""
+    from models.product import ProductVariant
+    from uuid import uuid4
+    import time
+
+    variant_name = get_unique_name("Negotiation Variant")
+    test_variant = ProductVariant(
+        id=uuid4(),
+        product_id=test_product.id,
+        name=variant_name,
+        sku=f"NEG-SKU-{int(time.time())}",
+        base_price=50.0, # Explicitly set base_price
+        sale_price=45.0, # Explicitly set sale_price
+        # price_override=None, # Removed
+        # stock=100, # Removed
+        # weight=1.0,
+        # weight_unit="kg"
+    )
+    db_session.add(test_variant)
+    await db_session.commit()
+    await db_session.refresh(test_variant)
+    return test_variant
 
 @pytest.fixture
 async def auth_headers(db_session: AsyncSession) -> dict:
@@ -318,7 +412,7 @@ async def admin_auth_headers(db_session: AsyncSession) -> dict:
             role="Admin", # Set role to Admin
             active=True,
             verified=True,
-            hashed_password=bcrypt.hashpw("adminpassword123".encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+            hashed_password=bcrypt.hashpw("adminpass".encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
         )
 
         db_session.add(test_admin)

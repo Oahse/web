@@ -11,8 +11,9 @@ from .promocode import Promocode
 from .shipping import ShippingMethod
 from .transaction import Transaction
 from .wishlist import Wishlist, WishlistItem
-from .notification import Notification  # Added Notification model
+from .notification import Notification
 from .activity_log import ActivityLog
+from .negotiation import Negotiation # NEW
 
 __all__ = [
     # User models
@@ -56,4 +57,7 @@ __all__ = [
 
     # Activity models
     "ActivityLog",
+
+    # Negotiation models
+    "Negotiation",
 ]

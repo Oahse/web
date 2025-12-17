@@ -491,3 +491,5 @@ class ConnectionManager:
             await self.disconnect(connection_id, "server_shutdown")
 
         logger.info("WebSocket manager shutdown complete")
+
+manager = ConnectionManager()

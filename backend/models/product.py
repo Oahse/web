@@ -55,6 +55,7 @@ class Product(BaseModel):
                             cascade="all, delete-orphan", lazy="selectin")
     reviews = relationship("models.review.Review", back_populates="product")
     wishlist_items = relationship("models.wishlist.WishlistItem", back_populates="product")
+    negotiations = relationship("Negotiation", back_populates="product") # NEW
 
     @property
     def primary_variant(self):

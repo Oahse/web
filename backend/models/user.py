@@ -53,6 +53,12 @@ class User(BaseModel):
     activity_logs = relationship(
         "models.activity_log.ActivityLog", back_populates="user", lazy="selectin")
     comments = relationship("models.blog.Comment", back_populates="author", cascade="all, delete-orphan", lazy="selectin")
+    negotiations_as_buyer = relationship(
+        "Negotiation", foreign_keys="Negotiation.buyer_id", back_populates="buyer"
+    )
+    negotiations_as_seller = relationship(
+        "Negotiation", foreign_keys="Negotiation.seller_id", back_populates="seller"
+    )
 
     @property
     def full_name(self) -> str:

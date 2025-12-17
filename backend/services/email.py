@@ -21,7 +21,7 @@ from tasks.email_tasks import (
     send_low_stock_alert_email, # NEW
 )
 from core.config import settings
-from core.exceptions import CustomException # Assuming CustomException is suitable for service layer errors
+from core.exceptions import APIException # Assuming CustomException is suitable for service layer errors
 
 
 class EmailService:

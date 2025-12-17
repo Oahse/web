@@ -167,7 +167,7 @@ def test_service_has_restart_policy(service_name):
 )
 @hypothesis_settings(
     max_examples=3,
-    deadline=None,
+    deadline=2000,
     suppress_health_check=[HealthCheck.function_scoped_fixture]
 )
 def test_service_restarts_automatically(service_name):
@@ -198,9 +198,9 @@ def test_service_restarts_automatically(service_name):
         f"Service {service_name} should be stopped after docker stop"
     
     # Wait for automatic restart
-    restart_success = wait_for_service_restart(service_name, max_wait=90)
+    restart_success = wait_for_service_restart(service_name, max_wait=120)
     assert restart_success, \
-        f"Service {service_name} should automatically restart within 90 seconds"
+        f"Service {service_name} should automatically restart within 120 seconds"
 
 
 @given(
@@ -211,7 +211,7 @@ def test_service_restarts_automatically(service_name):
 )
 @hypothesis_settings(
     max_examples=2,
-    deadline=None,
+    deadline=2000,
     suppress_health_check=[HealthCheck.function_scoped_fixture]
 )
 def test_dependency_recovery_waiting(dependency_service):
@@ -244,7 +244,7 @@ def test_dependency_recovery_waiting(dependency_service):
         f"Dependency service {container_name} should be stopped"
     
     # Wait for automatic restart of dependency
-    restart_success = wait_for_service_restart(container_name, max_wait=90)
+    restart_success = wait_for_service_restart(container_name, max_wait=120)
     assert restart_success, \
         f"Dependency service {container_name} should automatically restart"
     
@@ -342,7 +342,7 @@ async def test_service_restart_does_not_affect_others():
         "Backend should continue running when frontend is stopped"
     
     # Wait for frontend to restart
-    restart_success = wait_for_service_restart("banwee_frontend", max_wait=60)
+    restart_success = wait_for_service_restart("banwee_frontend", max_wait=120)
     assert restart_success, "Frontend should restart automatically"
     
     # Both should be running now

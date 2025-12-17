@@ -5,10 +5,12 @@ from sqlalchemy import select, func
 from sqlalchemy.orm import selectinload
 from datetime import datetime, timedelta, UTC
 from sqlalchemy import delete
+from uuid import UUID # Import UUID
 
 from models.notification import Notification
 from core.exceptions import APIException
 from routes.websockets import manager as websocket_manager
+from core.config import settings
 
 
 class NotificationService:
@@ -231,7 +233,7 @@ class NotificationService:
         # 2. Trigger email notification for admin
         # This part will call a method in EmailService
         from services.email import EmailService # Import here to avoid circular dependency
-        email_service = EmailService() # EmailService might not need db, but depends on its constructor
+        email_service = EmailService(self.db) # Pass self.db to EmailService constructor
         
         # Fetch admin user details to get their email
         from models.user import User
