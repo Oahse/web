@@ -12,7 +12,7 @@ from backend.models.product import Product, ProductVariant # Needed for user/pro
 from backend.core.exceptions import APIException
 from backend.services.websockets import manager as websocket_manager # Import the manager instance
 from negotiator.core import NegotiationEngine, Buyer, Seller
-from backend.services.kafka_producer import get_kafka_producer_service
+from backend.core.kafka import get_kafka_producer_service
 from backend.core.config import settings
 
 logger = logging.getLogger(__name__)

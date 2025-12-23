@@ -20,7 +20,7 @@ from services.payment import PaymentService
 from services.notification import NotificationService
 from core.utils.messages.email import send_email
 from core.config import settings
-from services.kafka_producer import get_kafka_producer_service # ADD THIS LINE
+from core.kafka import get_kafka_producer_service # ADD THIS LINE
 
 
 class OrderService:

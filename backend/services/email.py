@@ -21,9 +21,9 @@ from tasks.email_tasks import (
     send_low_stock_alert_email, # NEW
 )
 from core.config import settings
-from services.kafka_producer import get_kafka_producer_service # ADD THIS LINE
+from core.kafka import get_kafka_producer_service # ADD THIS LINE
 from core.exceptions import APIException # Assuming CustomException is suitable for service layer errors
-from services.kafka_producer import get_kafka_producer_service # ADD THIS LINE
+from core.kafka import get_kafka_producer_service # ADD THIS LINE
 
 
 class EmailService:

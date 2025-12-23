@@ -51,42 +51,22 @@ services:
     ports:
       - "9092:9092"
     environment:
-      KAFKA_CLUSTER_ID: B73288C1-8A2C-4290-9349-ADE46A4B0E1E # Generated UUID
+      CLUSTER_ID: LuOvOlIgRyanHYvDTWx6uQ # Generated UUID
       KAFKA_NODE_ID: 1
       KAFKA_PROCESS_ROLES: broker,controller
-      KAFKA_LISTENERS: PLAINTEXT://kafka:29092,BROKER://kafka:9092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_LISTENERS: PLAINTEXT://kafka:29092,BROKER://kafka:9093,PLAINTEXT_HOST://localhost:9092
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
-      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,BROKER:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: BROKER
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-    command: "sh -c 'kafka-storage format --ignore-formatted -t B73288C1-8A2C-4290-9349-ADE46A4B0E1E -c /etc/kafka/kafka.properties && /etc/confluent/docker/run'"
+    command: "sh -c '/etc/confluent/docker/run'"
     healthcheck:
       test: ["CMD-SHELL", "kafka-broker-api-versions --bootstrap-server localhost:9092 > /dev/null 2>&1"]
       interval: 10s
       timeout: 5s
       retries: 5
       start_period: 30s # Give Kafka time to start up
-    networks:
-      - banwee_network
-    restart: unless-stopped
-
-  # Kafka Consumer Worker
-  kafka_consumer_worker:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    container_name: banwee_kafka_consumer_worker
-    command: python kafka_consumer_worker.py
-    env_file:
-      - ./backend/.env
-    volumes:
-      - ./backend:/app
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy # Keep redis dependency for services that might use it (e.g., NotificationService for websocket connections)
-      kafka:
-        condition: service_healthy
     networks:
       - banwee_network
     restart: unless-stopped

@@ -20,7 +20,7 @@ from uuid import UUID
 from datetime import datetime, timedelta
 from typing import Optional, List, Dict, Any
 from core.config import settings # ADDED for Kafka topics
-from services.kafka_producer import get_kafka_producer_service # ADD THIS LINE
+from core.kafka import get_kafka_producer_service # ADD THIS LINE
 from negotiator.service import NegotiatorService # ADDED
 
 

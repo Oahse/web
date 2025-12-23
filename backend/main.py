@@ -19,7 +19,7 @@ from core.exceptions import (
     general_exception_handler
 )
 from core.config import settings
-from services.kafka_producer import kafka_producer_service # ADD THIS LINE
+from core.kafka import consume_messages,kafka_producer_service 
 from routes.websockets import ws_router
 from routes.auth import router as auth_router
 from routes.user import router as user_router
@@ -43,14 +43,15 @@ from routes.inventory import router as inventory_router
 
 from contextlib import asynccontextmanager
 
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup event
     # Initialize the database engine and session factory
     from core.config import settings # Import settings here to avoid circular dependency
     initialize_db(settings.SQLALCHEMY_DATABASE_URI, settings.ENVIRONMENT == "local")
-    
+    #  start kafka consumer worker
+    asyncio.run(consume_messages())
+
     # Start Kafka Producer
     await kafka_producer_service.start() # ADD THIS LINE
 

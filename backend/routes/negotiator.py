@@ -16,7 +16,7 @@ from models.product import Product, ProductVariant # ADDED for product lookup
 
 from negotiator.core import Buyer, Seller, NegotiationEngine
 from negotiator.service import NegotiatorService # ADDED NegotiatorService
-from backend.services.kafka_producer import get_kafka_producer_service # ADD THIS LINE
+from backend.core.kafka import get_kafka_producer_service # ADD THIS LINE
 # from tasks.negotiation_tasks import perform_negotiation_step # Celery task for async processing - REMOVED
 
 router = APIRouter(

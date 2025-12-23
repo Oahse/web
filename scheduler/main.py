@@ -5,7 +5,7 @@ from apscheduler.triggers.interval import IntervalTrigger
 from datetime import datetime, timedelta
 
 from backend.core.config import settings
-from backend.services.kafka_producer import KafkaProducerService, get_kafka_producer_service # Import both
+from backend.core.kafka import KafkaProducer, get_kafka_producer_service # Import both
 
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -14,11 +14,11 @@ logger = logging.getLogger(__name__)
 # Initialize Kafka Producer Service globally
 # In a real app, manage this lifecycle carefully, e.g., using FastAPI's lifespan
 # For a standalone scheduler, we'll start/stop it within main()
-producer_service: Optional[KafkaProducerService] = None
+producer_service: Optional[KafkaProducer] = None
 
 async def setup_scheduler():
     global producer_service
-    producer_service = KafkaProducerService()
+    producer_service = KafkaProducer()
     await producer_service.start()
 
     scheduler = AsyncIOScheduler()

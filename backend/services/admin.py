@@ -16,7 +16,7 @@ from services.auth import AuthService  # Added AuthService import
 # Added NotificationService import
 from services.notification import NotificationService
 from fastapi import BackgroundTasks  # Added BackgroundTasks import
-from services.kafka_producer import get_kafka_producer_service # ADD THIS LINE
+from core.kafka import get_kafka_producer_service # ADD THIS LINE
 
 
 class AdminService:
