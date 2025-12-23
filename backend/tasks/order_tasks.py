@@ -1,120 +1,142 @@
 """
-Celery tasks for order processing
+Kafka consumer tasks for order processing
 """
-from celery_app import celery_app
-from tasks.email_tasks import SyncSessionLocal
+import asyncio # ADDED for async operations within tasks
 from sqlalchemy import select
 from uuid import UUID
 
 from models.order import Order
+from core.config import settings # ADDED for Kafka topics
+from services.kafka_producer import KafkaProducerService, get_kafka_producer_service # ADDED for Kafka dispatch
+from services.email import EmailService # Import EmailService to encapsulate logic
+from services.notification import NotificationService # Import NotificationService to encapsulate logic
+from sqlalchemy.ext.asyncio import AsyncSession # Directly use AsyncSession from consumer
 
 
-@celery_app.task(name='tasks.order_tasks.process_order_confirmation')
-def process_order_confirmation(order_id: str):
+async def process_order_confirmation(db: AsyncSession, order_id: str):
     """
-    Process order confirmation - send email and create notification (SYNC - no await)
+    Process order confirmation - send email and create notification via Kafka
     """
-    with SyncSessionLocal() as db:
-        try:
-            # Verify order exists (SYNC)
-            result = db.execute(
-                select(Order).where(Order.id == UUID(order_id))
-            )
-            order = result.scalar_one_or_none()
-            
-            if not order:
-                print(f"Order {order_id} not found")
-                return
-            
-            # Send confirmation email
-            from tasks.email_tasks import send_order_confirmation_email
-            send_order_confirmation_email.delay(order_id)
-            
-            # Create notification
-            from tasks.notification_tasks import create_notification
-            create_notification.delay(
-                str(order.user_id),
-                f"Your order #{order_id[:8]}... has been confirmed!",
-                "success",
-                order_id
-            )
-            
-            print(f"✅ Order confirmation processed for {order_id}")
-            
-        except Exception as e:
-            print(f"❌ Failed to process order confirmation: {e}")
-            raise
+    try:
+        # Verify order exists
+        result = await db.execute(
+            select(Order).where(Order.id == UUID(order_id))
+        )
+        order = result.scalar_one_or_none()
+        
+        if not order:
+            print(f"Order {order_id} not found")
+            return
+
+        # Dispatch email confirmation via Kafka
+        producer_service = await get_kafka_producer_service()
+        await producer_service.send_message(settings.KAFKA_TOPIC_EMAIL, {
+            "service": "EmailService",
+            "method": "send_order_confirmation",
+            "args": [str(order.id)]
+        })
+        
+        # Dispatch notification via Kafka
+        await producer_service.send_message(settings.KAFKA_TOPIC_NOTIFICATION, {
+            "service": "NotificationService",
+            "method": "create_notification",
+            "args": [],
+            "kwargs": {
+                "user_id": str(order.user_id),
+                "message": f"Your order #{order_id[:8]}... has been confirmed!",
+                "type": "success",
+                "related_id": order_id
+            }
+        })
+        
+        print(f"✅ Order confirmation processed via Kafka for {order_id}")
+        
+    except Exception as e:
+        print(f"❌ Failed to process order confirmation via Kafka: {e}")
+        raise
 
 
-@celery_app.task(name='tasks.order_tasks.process_shipping_update')
-def process_shipping_update(order_id: str, carrier_name: str):
+async def process_shipping_update(db: AsyncSession, order_id: str, carrier_name: str):
     """
-    Process shipping update - send email and create notification (SYNC - no await)
+    Process shipping update - send email and create notification via Kafka
     """
-    with SyncSessionLocal() as db:
-        try:
-            # Verify order exists (SYNC)
-            result = db.execute(
-                select(Order).where(Order.id == UUID(order_id))
-            )
-            order = result.scalar_one_or_none()
-            
-            if not order:
-                print(f"Order {order_id} not found")
-                return
-            
-            # Send shipping update email
-            from tasks.email_tasks import send_shipping_update_email
-            send_shipping_update_email.delay(order_id, carrier_name)
-            
-            # Create notification
-            from tasks.notification_tasks import create_notification
-            create_notification.delay(
-                str(order.user_id),
-                f"Your order #{order_id[:8]}... has been shipped via {carrier_name}!",
-                "info",
-                order_id
-            )
-            
-            print(f"✅ Shipping update processed for {order_id}")
-            
-        except Exception as e:
-            print(f"❌ Failed to process shipping update: {e}")
-            raise
+    try:
+        # Verify order exists
+        result = await db.execute(
+            select(Order).where(Order.id == UUID(order_id))
+        )
+        order = result.scalar_one_or_none()
+        
+        if not order:
+            print(f"Order {order_id} not found")
+            return
+        
+        # Dispatch shipping update email via Kafka
+        producer_service = await get_kafka_producer_service()
+        await producer_service.send_message(settings.KAFKA_TOPIC_EMAIL, {
+            "service": "EmailService",
+            "method": "send_shipping_update",
+            "args": [str(order.id), carrier_name, order.tracking_number] # Need order.tracking_number
+        })
+        
+        # Dispatch notification via Kafka
+        await producer_service.send_message(settings.KAFKA_TOPIC_NOTIFICATION, {
+            "service": "NotificationService",
+            "method": "create_notification",
+            "args": [],
+            "kwargs": {
+                "user_id": str(order.user_id),
+                "message": f"Your order #{order_id[:8]}... has been shipped via {carrier_name}!",
+                "type": "info",
+                "related_id": order_id
+            }
+        })
+        
+        print(f"✅ Shipping update processed via Kafka for {order_id}")
+        
+    except Exception as e:
+        print(f"❌ Failed to process shipping update via Kafka: {e}")
+        raise
 
 
-@celery_app.task(name='tasks.order_tasks.process_order_delivered')
-def process_order_delivered(order_id: str):
+async def process_order_delivered(db: AsyncSession, order_id: str):
     """
-    Process order delivered - send email and create notification (SYNC - no await)
+    Process order delivered - send email and create notification via Kafka
     """
-    with SyncSessionLocal() as db:
-        try:
-            # Verify order exists (SYNC)
-            result = db.execute(
-                select(Order).where(Order.id == UUID(order_id))
-            )
-            order = result.scalar_one_or_none()
-            
-            if not order:
-                print(f"Order {order_id} not found")
-                return
-            
-            # Send delivered email
-            from tasks.email_tasks import send_order_delivered_email
-            send_order_delivered_email.delay(order_id)
-            
-            # Create notification
-            from tasks.notification_tasks import create_notification
-            create_notification.delay(
-                str(order.user_id),
-                f"Your order #{order_id[:8]}... has been delivered!",
-                "success",
-                order_id
-            )
-            
-            print(f"✅ Order delivered processed for {order_id}")
-            
-        except Exception as e:
-            print(f"❌ Failed to process order delivered: {e}")
-            raise
+    try:
+        # Verify order exists
+        result = await db.execute(
+            select(Order).where(Order.id == UUID(order_id))
+        )
+        order = result.scalar_one_or_none()
+        
+        if not order:
+            print(f"Order {order_id} not found")
+            return
+        
+        # Dispatch delivered email via Kafka
+        producer_service = await get_kafka_producer_service()
+        await producer_service.send_message(settings.KAFKA_TOPIC_EMAIL, {
+            "service": "EmailService",
+            "method": "send_order_delivered",
+            "args": [str(order.id)]
+        })
+        
+        # Dispatch notification via Kafka
+        await producer_service.send_message(settings.KAFKA_TOPIC_NOTIFICATION, {
+            "service": "NotificationService",
+            "method": "create_notification",
+            "args": [],
+            "kwargs": {
+                "user_id": str(order.user_id),
+                "message": f"Your order #{order_id[:8]}... has been delivered!",
+                "type": "success",
+                "related_id": order_id
+                }
+            })
+        
+        print(f"✅ Order delivered processed via Kafka for {order_id}")
+        
+    except Exception as e:
+        print(f"❌ Failed to process order delivered via Kafka: {e}")
+        raise

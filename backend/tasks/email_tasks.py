@@ -1,226 +1,184 @@
 """
-Celery tasks for sending emails using Mailgun
+Kafka consumer tasks for sending emails using Mailgun
 """
-import asyncio
-from celery_app import celery_app
-from sqlalchemy import create_engine, select
-from sqlalchemy.orm import sessionmaker, Session
+import logging
 from uuid import UUID
-from datetime import datetime, timedelta
 from typing import Dict, Any
+
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 
 from core.config import settings
 from models.order import Order
-from models.user import User, Address
+from models.user import User
 from models.product import ProductVariant
 from core.utils.messages.email import send_email_mailgun # Import async version
+from services.email import EmailService # Import EmailService to encapsulate logic
+
+logger = logging.getLogger(__name__)
 
 
-# Create SYNC engine for Celery tasks - Not strictly needed if tasks are fully async,
-# but keeping for other potential sync needs or if a task needs direct DB access.
-sync_database_url = str(settings.SQLALCHEMY_DATABASE_URI).replace('+asyncpg', '')
-if 'postgresql' in sync_database_url and '+' not in sync_database_url:
-    sync_database_url = sync_database_url.replace('postgresql://', 'postgresql+psycopg2://')
-
-sync_engine = create_engine(
-    sync_database_url,
-    echo=False,
-    pool_pre_ping=True,
-    pool_size=10,
-    max_overflow=20
-)
-
-SyncSessionLocal = sessionmaker(
-    bind=sync_engine,
-    class_=Session,
-    expire_on_commit=False
-)
-
-
-@celery_app.task(name='tasks.email_tasks.send_order_confirmation_email')
-def send_order_confirmation_email(user_email: str, context: Dict[str, Any]):
+async def send_order_confirmation_email(db: AsyncSession, order_id: str):
     """
-    Send order confirmation email.
+    Send order confirmation email based on order_id.
     """
     try:
-        asyncio.run(send_email_mailgun(
-            to_email=user_email,
-            mail_type='order_confirmation',
-            context=context
-        ))
-        print(f"✅ Order confirmation email sent to {user_email}")
+        email_service = EmailService(db)
+        await email_service.send_order_confirmation(UUID(order_id)) # Use existing EmailService method
+        logger.info(f"✅ Order confirmation email dispatched for order {order_id}")
     except Exception as e:
-        print(f"❌ Failed to send order confirmation email: {e}")
+        logger.error(f"❌ Failed to send order confirmation email for order {order_id}: {e}")
         raise
 
 
-@celery_app.task(name='tasks.email_tasks.send_shipping_update_email')
-def send_shipping_update_email(user_email: str, context: Dict[str, Any]):
+async def send_shipping_update_email(db: AsyncSession, order_id: str, carrier_name: str, tracking_number: str):
     """
     Send shipping update email.
     """
     try:
-        asyncio.run(send_email_mailgun(
-            to_email=user_email,
-            mail_type='shipping_update',
-            context=context
-        ))
-        print(f"✅ Shipping update email sent to {user_email}")
+        email_service = EmailService(db)
+        await email_service.send_shipping_update(UUID(order_id), carrier_name, tracking_number)
+        logger.info(f"✅ Shipping update email dispatched for order {order_id}")
     except Exception as e:
-        print(f"❌ Failed to send shipping update email: {e}")
+        logger.error(f"❌ Failed to send shipping update email for order {order_id}: {e}")
         raise
 
 
-@celery_app.task(name='tasks.email_tasks.send_welcome_email')
-def send_welcome_email(user_email: str, context: Dict[str, Any]):
+async def send_welcome_email(db: AsyncSession, user_id: str):
     """
     Send welcome email to new user.
     """
     try:
-        asyncio.run(send_email_mailgun(
-            to_email=user_email,
-            mail_type='welcome',
-            context=context
-        ))
-        print(f"✅ Welcome email sent to {user_email}")
+        email_service = EmailService(db)
+        await email_service.send_welcome(UUID(user_id))
+        logger.info(f"✅ Welcome email dispatched for user {user_id}")
     except Exception as e:
-        print(f"❌ Failed to send welcome email: {e}")
+        logger.error(f"❌ Failed to send welcome email for user {user_id}: {e}")
         raise
 
 
-@celery_app.task(name='tasks.email_tasks.send_password_reset_email')
-def send_password_reset_email(user_email: str, context: Dict[str, Any]):
+async def send_password_reset_email(db: AsyncSession, user_id: str, reset_token: str):
     """
     Send password reset email.
     """
     try:
-        asyncio.run(send_email_mailgun(
-            to_email=user_email,
-            mail_type='password_reset',
-            context=context
-        ))
-        print(f"✅ Password reset email sent to {user_email}")
+        # Email service already constructs the context
+        email_service = EmailService(db)
+        await email_service.send_password_reset(UUID(user_id), reset_token)
+        logger.info(f"✅ Password reset email dispatched for user {user_id}")
     except Exception as e:
-        print(f"❌ Failed to send password reset email: {e}")
+        logger.error(f"❌ Failed to send password reset email for user {user_id}: {e}")
         raise
 
 
-@celery_app.task(name='tasks.email_tasks.send_cart_abandonment_emails')
-def send_cart_abandonment_emails():
+async def send_cart_abandonment_emails(db: AsyncSession):
     """
     Periodic task to send cart abandonment emails
     """
-    # Cart abandonment logic to be implemented
-    print("🔄 Checking for abandoned carts...")
+    logger.info("🔄 Checking for abandoned carts...")
+    # Logic to identify abandoned carts and dispatch individual emails
+    # This would involve querying the DB for old carts and then using EmailService
+    # Example placeholder:
+    # from services.cart import CartService
+    # cart_service = CartService(db)
+    # abandoned_carts = await cart_service.get_abandoned_carts() # This method would need to exist
+    # for cart in abandoned_carts:
+    #     await email_service.send_abandoned_cart_reminder(cart.user_id, cart.id)
+    pass # Actual implementation needed here
 
 
-@celery_app.task(name='tasks.email_tasks.send_email_verification')
-def send_email_verification(user_email: str, context: Dict[str, Any]):
+async def send_email_verification(db: AsyncSession, user_id: str, verification_token: str):
     """
     Send email verification link.
     """
     try:
-        asyncio.run(send_email_mailgun(
-            to_email=user_email,
-            mail_type='activation',
-            context=context
-        ))
-        print(f"✅ Email verification sent to {user_email}")
+        email_service = EmailService(db)
+        await email_service.send_email_verification_link(UUID(user_id), verification_token)
+        logger.info(f"✅ Email verification dispatched for user {user_id}")
     except Exception as e:
-        print(f"❌ Failed to send email verification: {e}")
+        logger.error(f"❌ Failed to send email verification for user {user_id}: {e}")
         raise
 
 
-@celery_app.task(name='tasks.email_tasks.send_email_change_confirmation')
-def send_email_change_confirmation(user_email: str, context: Dict[str, Any]):
+async def send_email_change_confirmation(db: AsyncSession, user_id: str, new_email: str, old_email: str, confirmation_token: str):
     """
     Send email change confirmation.
     """
     try:
-        asyncio.run(send_email_mailgun(
-            to_email=user_email,
-            mail_type='email_change',
-            context=context
-        ))
-        print(f"✅ Email change confirmation sent to {user_email}")
+        email_service = EmailService(db)
+        await email_service.send_email_change_confirmation_link(UUID(user_id), new_email, old_email, confirmation_token)
+        logger.info(f"✅ Email change confirmation dispatched for user {user_id}")
     except Exception as e:
-        print(f"❌ Failed to send email change confirmation: {e}")
+        logger.error(f"❌ Failed to send email change confirmation for user {user_id}: {e}")
         raise
 
 
-@celery_app.task(name='tasks.email_tasks.send_order_delivered_email')
-def send_order_delivered_email(user_email: str, context: Dict[str, Any]):
+async def send_order_delivered_email(db: AsyncSession, order_id: str):
     """
     Send order delivered email.
     """
     try:
-        asyncio.run(send_email_mailgun(
-            to_email=user_email,
-            mail_type='order_delivered',
-            context=context
-        ))
-        print(f"✅ Order delivered email sent to {user_email}")
+        email_service = EmailService(db)
+        await email_service.send_order_delivered(UUID(order_id))
+        logger.info(f"✅ Order delivered email dispatched for order {order_id}")
     except Exception as e:
-        print(f"❌ Failed to send order delivered email: {e}")
+        logger.error(f"❌ Failed to send order delivered email for order {order_id}: {e}")
         raise
 
 
-@celery_app.task(name='tasks.email_tasks.send_return_process_email')
-def send_return_process_email(user_email: str, context: Dict[str, Any]):
+async def send_return_process_email(db: AsyncSession, order_id: str, return_instructions: str):
     """
     Send return process instructions email.
     """
     try:
-        asyncio.run(send_email_mailgun(
-            to_email=user_email,
-            mail_type='return_process',
-            context=context
-        ))
-        print(f"✅ Return process email sent to {user_email}")
+        email_service = EmailService(db)
+        await email_service.send_return_process_instructions(UUID(order_id), return_instructions)
+        logger.info(f"✅ Return process email dispatched for order {order_id}")
     except Exception as e:
-        print(f"❌ Failed to send return process email: {e}")
+        logger.error(f"❌ Failed to send return process email for order {order_id}: {e}")
         raise
 
 
-@celery_app.task(name='tasks.email_tasks.send_referral_request_email')
-def send_referral_request_email(user_email: str, context: Dict[str, Any]):
+async def send_referral_request_email(db: AsyncSession, user_id: str, referral_code: str):
     """
     Send referral request email after positive review or repeat purchase.
     """
     try:
-        asyncio.run(send_email_mailgun(
-            to_email=user_email,
-            mail_type='referral_request',
-            context=context
-        ))
-        print(f"✅ Referral request email sent to {user_email}")
+        email_service = EmailService(db)
+        await email_service.send_referral_request(UUID(user_id), referral_code)
+        logger.info(f"✅ Referral request email dispatched for user {user_id}")
     except Exception as e:
-        print(f"❌ Failed to send referral request email: {e}")
+        logger.error(f"❌ Failed to send referral request email for user {user_id}: {e}")
         raise
 
 
-@celery_app.task(name='tasks.email_tasks.send_low_stock_alert_email')
-def send_low_stock_alert_email(recipient_email: str, context: Dict[str, Any]):
+async def send_low_stock_alert_email(db: AsyncSession, recipient_email: str, context: Dict[str, Any]):
     """
     Send low stock alert email to admin/supplier.
     """
     try:
-        asyncio.run(send_email_mailgun(
-            to_email=recipient_email,
-            mail_type='low_stock_alert', # This email template needs to be created
-            context=context
-        ))
-        print(f"✅ Low stock alert email sent to {recipient_email}")
+        email_service = EmailService(db)
+        # Assuming EmailService has a method to handle the context
+        # If not, you'd integrate mailgun directly here as before
+        await email_service.send_low_stock_alert(recipient_email, context)
+        logger.info(f"✅ Low stock alert email dispatched to {recipient_email}")
     except Exception as e:
-        print(f"❌ Failed to send low stock alert email: {e}")
+        logger.error(f"❌ Failed to send low stock alert email to {recipient_email}: {e}")
         raise
 
 
-
-@celery_app.task(name='tasks.email_tasks.send_review_requests')
-def send_review_requests():
+async def send_review_requests(db: AsyncSession):
     """
     Periodic task to send review request emails
     """
-    # Review request logic to be implemented
-    print("🔄 Checking for orders ready for review...")
+    logger.info("🔄 Checking for orders ready for review...")
+    # Logic to identify orders ready for review and dispatch individual emails
+    # Example placeholder:
+    # from services.order import OrderService
+    # order_service = OrderService(db)
+    # orders_for_review = await order_service.get_orders_for_review() # This method would need to exist
+    # for order in orders_for_review:
+    #     user = await db.execute(select(User).where(User.id == order.user_id)).scalar_one_or_none()
+    #     if user:
+    #         await email_service.send_review_request(user.id, order.id)
+    pass # Actual implementation needed here

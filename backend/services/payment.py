@@ -16,10 +16,31 @@ from services.activity import ActivityService
 stripe.api_key = settings.STRIPE_SECRET_KEY
 
 
-
 class PaymentService:
     def __init__(self, db: AsyncSession):
         self.db = db
+
+    async def _get_stripe_customer(self, user_id: UUID, user_email: str, user_full_name: str) -> str:
+        """
+        Retrieves or creates a Stripe Customer ID for the given user.
+        """
+        user_obj = await self.db.get(User, user_id)
+        if not user_obj:
+            raise Exception("User not found for Stripe customer operation.")
+
+        if user_obj.stripe_customer_id:
+            return user_obj.stripe_customer_id
+        
+        # Create new Stripe customer
+        customer = stripe.Customer.create(
+            email=user_email,
+            name=user_full_name,
+            metadata={"user_id": str(user_id)}
+        )
+        user_obj.stripe_customer_id = customer.id
+        await self.db.commit()
+        await self.db.refresh(user_obj)
+        return customer.id
 
     async def get_payment_methods(self, user_id: UUID) -> List[PaymentMethod]:
         query = select(PaymentMethod).where(PaymentMethod.user_id == user_id)
@@ -27,21 +48,40 @@ class PaymentService:
         return result.scalars().all()
 
     async def add_payment_method(self, user_id: UUID, payload: PaymentMethodCreate) -> PaymentMethod:
-        # If stripe_token is provided, retrieve card details from Stripe
+        # Fetch user for email and full name
+        user = await self.db.get(User, user_id)
+        if not user:
+            raise Exception("User not found for adding payment method.")
+            
+        stripe_customer_id = await self._get_stripe_customer(user_id, user.email, user.full_name)
+
         if payload.stripe_token:
             try:
-                # Retrieve token details from Stripe
-                token = stripe.Token.retrieve(payload.stripe_token)
+                # Create Stripe PaymentMethod from token
+                stripe_pm = stripe.PaymentMethod.create(
+                    type="card",
+                    card={"token": payload.stripe_token}
+                )
                 
-                # Extract card details from token
-                card = token.card
-                payload.provider = card.brand.lower()
-                payload.last_four = card.last4
-                payload.expiry_month = card.exp_month
-                payload.expiry_year = card.exp_year
+                # Attach PaymentMethod to customer
+                stripe.PaymentMethod.attach(
+                    stripe_pm.id,
+                    customer=stripe_customer_id
+                )
+                
+                # Extract card details from the created PaymentMethod
+                card_details = stripe_pm.card
+                payload.provider = card_details.brand.lower()
+                payload.last_four = card_details.last4
+                payload.expiry_month = card_details.exp_month
+                payload.expiry_year = card_details.exp_year
+                payload.stripe_payment_method_id = stripe_pm.id
+                payload.brand = card_details.brand # Store card brand
                 
             except stripe.StripeError as e:
-                raise Exception(f"Failed to retrieve card details from Stripe: {str(e)}")
+                raise Exception(f"Failed to process card details with Stripe: {str(e)}")
+        else:
+            raise Exception("Stripe token is required to add a new payment method.")
         
         # Check if this is the first payment method for the user
         existing_methods = await self.get_payment_methods(user_id)
@@ -59,7 +99,9 @@ class PaymentService:
             last_four=payload.last_four,
             expiry_month=payload.expiry_month,
             expiry_year=payload.expiry_year,
-            is_default=payload.is_default
+            is_default=payload.is_default,
+            stripe_payment_method_id=payload.stripe_payment_method_id,
+            brand=payload.brand # Assign brand
         )
         self.db.add(new_method)
         await self.db.commit()
@@ -97,6 +139,14 @@ class PaymentService:
 
         if not method:
             return False
+            
+        # Detach PaymentMethod from Stripe Customer if it exists
+        if method.stripe_payment_method_id and method.user.stripe_customer_id:
+            try:
+                stripe.PaymentMethod.detach(method.stripe_payment_method_id)
+            except stripe.StripeError as e:
+                # Log the error, but don't prevent deletion from local DB if Stripe fails
+                print(f"Warning: Failed to detach Stripe PaymentMethod {method.stripe_payment_method_id}: {e}")
 
         await self.db.delete(method)
         await self.db.commit()
@@ -147,12 +197,22 @@ class PaymentService:
         return result.scalars().first()
 
     async def create_payment_intent(self, user_id: UUID, order_id: UUID, amount: float, currency: str) -> dict:
+        """
+        Creates a Stripe PaymentIntent.
+        This method is typically called to set up a payment, usually from the frontend
+        where the client secret is needed to confirm the payment.
+        """
         try:
-            # Create a Stripe PaymentIntent
+            # Fetch user to get Stripe customer ID
+            user = await self.db.get(User, user_id)
+            if not user or not user.stripe_customer_id:
+                raise Exception("Stripe Customer ID not found for user.")
+
             payment_intent = stripe.PaymentIntent.create(
                 amount=int(amount * 100),  # Stripe expects amount in cents
                 currency=currency,
-                automatic_payment_methods={"enabled": True},
+                customer=user.stripe_customer_id, # Link to customer
+                automatic_payment_methods={"enabled": True}, # Still useful for displaying options
                 metadata={
                     "user_id": str(user_id),
                     "order_id": str(order_id)
@@ -281,26 +341,48 @@ class PaymentService:
         Returns payment result with status.
         """
         try:
-            # Get payment method details
-            payment_method = await self.db.execute(
+            # Fetch user and payment method from our DB
+            user = await self.db.get(User, user_id)
+            if not user:
+                return {
+                    "status": "failed",
+                    "error": "User not found"
+                }
+
+            payment_method_db = await self.db.execute(
                 select(PaymentMethod).where(
                     PaymentMethod.id == payment_method_id,
                     PaymentMethod.user_id == user_id
                 )
             )
-            payment_method = payment_method.scalar_one_or_none()
+            payment_method_db = payment_method_db.scalar_one_or_none()
             
-            if not payment_method:
+            if not payment_method_db:
                 return {
                     "status": "failed",
-                    "error": "Payment method not found"
+                    "error": "Payment method not found in database"
+                }
+
+            if not user.stripe_customer_id:
+                return {
+                    "status": "failed",
+                    "error": "Stripe Customer ID not found for user."
+                }
+            if not payment_method_db.stripe_payment_method_id:
+                return {
+                    "status": "failed",
+                    "error": "Stripe Payment Method ID not found for saved payment method."
                 }
 
             # Create a Stripe PaymentIntent
+            # Use the saved Stripe Customer and Payment Method
             payment_intent = stripe.PaymentIntent.create(
                 amount=int(amount * 100),  # Stripe expects amount in cents
                 currency="usd",
-                automatic_payment_methods={"enabled": True},
+                customer=user.stripe_customer_id,
+                payment_method=payment_method_db.stripe_payment_method_id,
+                confirm=True, # Attempt to confirm the payment immediately
+                off_session=True, # Required for confirming payment with saved methods without user interaction
                 metadata={
                     "user_id": str(user_id),
                     "order_id": str(order_id),
@@ -338,33 +420,28 @@ class PaymentService:
                 }
             )
 
-            # For demo purposes, we'll consider the payment successful if intent is created
-            # In production, you'd wait for webhook confirmation
             return {
-                "status": "success",
+                "status": payment_intent.status, # Return actual status from Stripe
                 "payment_intent_id": payment_intent.id,
                 "client_secret": payment_intent.client_secret,
                 "transaction_id": str(new_transaction.id)
             }
 
-        except stripe.CardError as e:
-            # Card was declined
-            error_message = e.user_message or "Card was declined"
+        except stripe.error.CardError as e:
+            # Card was declined or other card-related error
             return {
                 "status": "failed",
-                "error": error_message
+                "error": e.user_message or str(e)
             }
         except stripe.StripeError as e:
-            # Other Stripe errors
-            error_message = str(e)
+            # Other Stripe errors (e.g., network, authentication)
             return {
                 "status": "failed",
-                "error": error_message
+                "error": str(e)
             }
         except Exception as e:
             # Handle other errors
-            error_message = str(e)
             return {
                 "status": "failed",
-                "error": error_message
+                "error": str(e)
             }

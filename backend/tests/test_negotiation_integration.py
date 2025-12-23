@@ -21,14 +21,14 @@ import unittest
 import redis
 import time
 
-from services.negotiator_service import NegotiatorService
+from negotiator.service import NegotiatorService
 from models.negotiation import Negotiation, NegotiationStatus
 from tasks.negotiation_tasks import perform_negotiation_step
 from models.user import User
 from models.product import Product, ProductVariant
 from core.database import Base
 from core.config import settings
-from services.negotiator import NegotiationEngine, Buyer, Seller
+from negotiator.core import NegotiationEngine, Buyer, Seller
 
 
 class TestNegotiationIntegrationEndToEnd:

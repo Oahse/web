@@ -23,7 +23,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Import Celery components
 from celery_app import celery_app
-from services.negotiator import NegotiationEngine, Buyer, Seller
+from negotiator.core import NegotiationEngine, Buyer, Seller
 from core.config import settings
 
 # Override the database setup fixture to prevent it from running

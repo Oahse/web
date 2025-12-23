@@ -4,17 +4,20 @@ from typing import Optional, Dict
 from uuid import UUID
 import uuid
 import json
-import redis
+# import redis # REMOVED
 
 from core.config import settings
 from core.exceptions import APIException
 from core.utils.response import Response
 from schemas.response import APIResponse
-from core.dependencies import get_current_auth_user
+from core.dependencies import get_current_auth_user, get_db # get_db for AsyncSession
 from models.user import User
+from models.product import Product, ProductVariant # ADDED for product lookup
 
-from services.negotiator import Buyer, Seller, NegotiationEngine
-from tasks.negotiation_tasks import perform_negotiation_step # Import the Celery task for async processing
+from negotiator.core import Buyer, Seller, NegotiationEngine
+from negotiator.service import NegotiatorService # ADDED NegotiatorService
+from backend.services.kafka_producer import get_kafka_producer_service # ADD THIS LINE
+# from tasks.negotiation_tasks import perform_negotiation_step # Celery task for async processing - REMOVED
 
 router = APIRouter(
     prefix="/negotiate",
@@ -23,8 +26,8 @@ router = APIRouter(
 
 # Initialize Redis client for negotiation state persistence.
 # This client is used by the FastAPI routes to store and retrieve the serialized
-# state of NegotiationEngine instances, which are then processed by Celery tasks.
-redis_client = redis.Redis.from_url(settings.REDIS_URL, decode_responses=True)
+# state of NegotiationEngine instances, which are then processed by Kafka.
+# redis_client = redis.Redis.from_url(settings.REDIS_URL, decode_responses=True) # REMOVED
 
 
 class NegotiationAgentConfig(BaseModel):
@@ -38,6 +41,10 @@ class NegotiationStartRequest(BaseModel):
     """Request model for starting a new negotiation."""
     buyer_config: NegotiationAgentConfig
     seller_config: NegotiationAgentConfig
+    product_id: UUID
+    product_variant_id: UUID
+    quantity: int = Field(..., gt=0)
+    initial_offer: float = Field(..., gt=0)
 
 class NegotiationStateResponse(BaseModel):
     """Response model for the current state of a negotiation."""
@@ -48,12 +55,19 @@ class NegotiationStateResponse(BaseModel):
     final_price: Optional[float] = None
     buyer_current_offer: Optional[float] = None
     seller_current_offer: Optional[float] = None
+    # Add metadata
+    buyer_id: Optional[str] = None
+    seller_id: Optional[str] = None
+    product_id: Optional[str] = None
+    product_variant_id: Optional[str] = None
+    quantity: Optional[int] = None
 
 class NegotiationStepRequest(BaseModel):
     """Request model for advancing a negotiation by one step."""
     negotiation_id: UUID = Field(..., description="ID of the ongoing negotiation.")
-    buyer_new_target: Optional[float] = Field(None, gt=0, description="Optional new target price for the buyer.")
-    seller_new_target: Optional[float] = Field(None, gt=0, description="Optional new target price for the seller.")
+    offer_price: float = Field(..., gt=0, description="The new offer price from the current user.")
+    # buyer_new_target: Optional[float] = Field(None, gt=0, description="Optional new target price for the buyer.") # REMOVED
+    # seller_new_target: Optional[float] = Field(None, gt=0, description="Optional new target price for the seller.") # REMOVED
 
 class NegotiationTaskResponse(BaseModel):
     """Response model for when a negotiation task is dispatched asynchronously."""
@@ -65,37 +79,34 @@ class NegotiationTaskResponse(BaseModel):
 async def start_negotiation(
     request: NegotiationStartRequest,
     current_user: User = Depends(get_current_auth_user), # Requires authentication
+    db: AsyncSession = Depends(get_db), # Inject DB session
 ):
     """
-    Initializes a new negotiation session and dispatches the first step as a Celery task.
+    Initializes a new negotiation session and dispatches the first step as a Kafka message.
     The negotiation state is stored in Redis for persistence.
     """
-    negotiation_id = uuid.uuid4() # Generate a unique UUID for the new negotiation session
-    negotiation_key = f"negotiation:{negotiation_id}"
-
-    # Initialize Buyer, Seller agents and the NegotiationEngine
-    buyer = Buyer(
-        name=request.buyer_config.name,
-        target_price=request.buyer_config.target_price,
-        limit_price=request.buyer_config.limit_price,
-        style=request.buyer_config.style
+    # Fetch product variant to get seller_id
+    product_variant = await db.get(ProductVariant, request.product_variant_id)
+    if not product_variant:
+        raise HTTPException(status_code=404, detail="Product variant not found.")
+    
+    product = await db.get(Product, product_variant.product_id)
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found.")
+    
+    negotiator_service = NegotiatorService(db) # Initialize service
+    
+    negotiation_data = await negotiator_service.create_negotiation(
+        buyer_id=current_user.id,
+        seller_id=product.supplier_id, # Assuming supplier is the seller
+        product_id=request.product_id,
+        product_variant_id=request.product_variant_id,
+        quantity=request.quantity,
+        initial_offer=request.initial_offer
     )
-    seller = Seller(
-        name=request.seller_config.name,
-        target_price=request.seller_config.target_price,
-        limit_price=request.seller_config.limit_price,
-        style=request.seller_config.style
-    )
-    engine = NegotiationEngine(buyer, seller)
-
-    # Serialize the initial engine state and save it to Redis
-    redis_client.set(negotiation_key, json.dumps(engine.to_dict()))
-
-    # Dispatch the first negotiation step as an asynchronous Celery task
-    task = perform_negotiation_step.delay(str(negotiation_id))
 
     return Response.success(
-        NegotiationTaskResponse(negotiation_id=negotiation_id, task_id=task.id, message="Negotiation started and first step dispatched."),
+        NegotiationTaskResponse(negotiation_id=UUID(negotiation_data["negotiation_id"]), task_id="N/A", message=negotiation_data["message"]), # task_id will not be available from Kafka
         message="Negotiation started successfully."
     )
 
@@ -104,32 +115,21 @@ async def start_negotiation(
 async def step_negotiation(
     request: NegotiationStepRequest,
     current_user: User = Depends(get_current_auth_user), # Requires authentication
+    db: AsyncSession = Depends(get_db), # Inject DB session
 ):
     """
-    Dispatches a Celery task to advance an ongoing negotiation by one step (round).
-    Optionally allows updating buyer's or seller's target prices before the step.
-    Returns the ID of the dispatched Celery task for tracking.
+    Dispatches a Kafka message to advance an ongoing negotiation by one step (round).
+    Returns the ID of the dispatched Kafka task for tracking.
     """
-    negotiation_id = request.negotiation_id
-    negotiation_key = f"negotiation:{negotiation_id}"
-
-    # Check if the negotiation exists in Redis
-    if not redis_client.exists(negotiation_key):
-        raise APIException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            message=f"Negotiation with ID {negotiation_id} not found."
-        )
-    
-    # Dispatch the negotiation step as an asynchronous Celery task.
-    # The task will retrieve the state from Redis, perform the step, and save the updated state back.
-    task = perform_negotiation_step.delay(
-        str(negotiation_id),
-        buyer_new_target=request.buyer_new_target,
-        seller_new_target=request.seller_new_target
+    negotiator_service = NegotiatorService(db)
+    negotiation_state = await negotiator_service.record_offer(
+        negotiation_id=request.negotiation_id,
+        user_id=current_user.id,
+        offer_price=request.offer_price
     )
 
     return Response.success(
-        NegotiationTaskResponse(negotiation_id=negotiation_id, task_id=task.id, message="Negotiation step dispatched."),
+        NegotiationTaskResponse(negotiation_id=negotiation_state["negotiation_id"], task_id="N/A", message="Negotiation step dispatched."),
         message="Negotiation step initiated asynchronously."
     )
 
@@ -138,32 +138,27 @@ async def step_negotiation(
 async def get_negotiation_state(
     negotiation_id: UUID, # Use UUID type directly for path parameter
     current_user: User = Depends(get_current_auth_user), # Requires authentication
+    db: AsyncSession = Depends(get_db), # Inject DB session
 ):
     """
     Retrieves the current state of a specific negotiation session from Redis.
     """
-    negotiation_key = f"negotiation:{negotiation_id}"
-    negotiation_data_json = redis_client.get(negotiation_key)
-
-    if not negotiation_data_json:
-        raise APIException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            message=f"Negotiation with ID {negotiation_id} not found."
-        )
+    negotiator_service = NegotiatorService(db)
+    negotiation_state = await negotiator_service.get_negotiation_state(negotiation_id)
     
-    # Deserialize the negotiation state from JSON stored in Redis
-    negotiation_data = json.loads(negotiation_data_json)
-    # Reconstruct the NegotiationEngine from the deserialized data
-    engine = NegotiationEngine.from_dict(negotiation_data)
-
     response_data = NegotiationStateResponse(
-        negotiation_id=negotiation_id,
-        round=engine.round,
-        finished=engine.finished,
-        message="Negotiation ongoing." if not engine.finished else f"Deal reached at ₦{engine.final_price:.2f}",
-        final_price=engine.final_price,
-        buyer_current_offer=engine.buyer.target,
-        seller_current_offer=engine.seller.target
+        negotiation_id=UUID(negotiation_state["negotiation_id"]),
+        round=negotiation_state["round"],
+        finished=negotiation_state["finished"],
+        message=negotiation_state["message"],
+        final_price=negotiation_state["final_price"],
+        buyer_current_offer=negotiation_state["buyer_current_offer"],
+        seller_current_offer=negotiation_state["seller_current_offer"],
+        buyer_id=negotiation_state.get("buyer_id"),
+        seller_id=negotiation_state.get("seller_id"),
+        product_id=negotiation_state.get("product_id"),
+        product_variant_id=negotiation_state.get("product_variant_id"),
+        quantity=negotiation_state.get("quantity")
     )
     return Response.success(response_data, message="Negotiation state retrieved successfully.")
 
@@ -172,17 +167,12 @@ async def get_negotiation_state(
 async def delete_negotiation(
     negotiation_id: UUID, # Use UUID type directly for path parameter
     current_user: User = Depends(get_current_auth_user), # Requires authentication
+    db: AsyncSession = Depends(get_db), # Inject DB session
 ):
     """
     Deletes an ongoing negotiation session from Redis.
     This endpoint is used to clean up completed or abandoned negotiation sessions.
     """
-    negotiation_key = f"negotiation:{negotiation_id}"
-    if redis_client.delete(negotiation_key):
-        # Redis delete command returns the number of keys removed (1 if successful, 0 if not found)
-        return Response.success(message="Negotiation session deleted successfully.")
-    else:
-        raise APIException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            message=f"Negotiation with ID {negotiation_id} not found."
-        )
+    negotiator_service = NegotiatorService(db)
+    await negotiator_service.clear_negotiation(negotiation_id)
+    return Response.success(message="Negotiation session deleted successfully.")

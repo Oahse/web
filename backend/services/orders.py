@@ -17,10 +17,10 @@ from services.cart import CartService
 from services.user import AddressService
 from services.shipping import ShippingService
 from services.payment import PaymentService
-# Added NotificationService import
 from services.notification import NotificationService
 from core.utils.messages.email import send_email
 from core.config import settings
+from services.kafka_producer import get_kafka_producer_service # ADD THIS LINE
 
 
 class OrderService:
@@ -135,9 +135,13 @@ class OrderService:
         await self.db.commit()
         await self.db.refresh(new_order)
 
-        # Send order confirmation email via Celery
-        from tasks.email_tasks import send_order_confirmation_email
-        send_order_confirmation_email.delay(str(new_order.id))
+        # Send order confirmation email via Kafka
+        producer_service = await get_kafka_producer_service()
+        await producer_service.send_message(settings.KAFKA_TOPIC_EMAIL, {
+            "service": "EmailService",
+            "method": "send_order_confirmation",
+            "args": [str(new_order.id)]
+        })
 
         # --- Send Notifications for New Order ---
         # 1. Get Admin User ID
@@ -184,17 +188,18 @@ class OrderService:
 
         return OrderResponse.from_orm(new_order)
 
-    def send_order_confirmation_email(self, order: Order):
-        """Sends an order confirmation email to the user using Celery."""
+    async def send_order_confirmation_email(self, order: Order): # Changed to async
+        """Sends an order confirmation email to the user using Kafka."""
         try:
-            from tasks.order_tasks import process_order_confirmation
-            process_order_confirmation.delay(str(order.id))
+            producer_service = await get_kafka_producer_service()
+            await producer_service.send_message(settings.KAFKA_TOPIC_ORDER, {
+                "service": "OrderService", # Assuming a dedicated order processing service method
+                "method": "process_order_confirmation",
+                "args": [str(order.id)]
+            })
             print(f"Order confirmation email queued for order: {order.id}")
         except Exception as e:
             print(f"Failed to queue order confirmation email: {e}")
-        except Exception as e:
-            print(
-                f"Failed to send order confirmation email to {user.email}. Error: {e}")
 
     async def update_order_shipping_info(self, order_id: str, tracking_number: str, carrier_name: str, background_tasks: BackgroundTasks) -> Order:
         """Updates an order with shipping information and sends a notification."""
@@ -213,17 +218,25 @@ class OrderService:
         await self.db.commit()
         await self.db.refresh(order)
 
-        # Send shipping update email via Celery
-        from tasks.email_tasks import send_shipping_update_email
-        send_shipping_update_email.delay(str(order.id), carrier_name)
+        # Send shipping update email via Kafka
+        producer_service = await get_kafka_producer_service()
+        await producer_service.send_message(settings.KAFKA_TOPIC_EMAIL, {
+            "service": "EmailService",
+            "method": "send_shipping_update",
+            "args": [str(order.id), carrier_name, order.tracking_number]
+        })
 
         return order
 
-    def send_shipping_update_email(self, order: Order, carrier_name: str):
-        """Sends a shipping update email to the user using Celery."""
+    async def send_shipping_update_email(self, order: Order, carrier_name: str): # Changed to async
+        """Sends a shipping update email to the user using Kafka."""
         try:
-            from tasks.order_tasks import process_shipping_update
-            process_shipping_update.delay(str(order.id))
+            producer_service = await get_kafka_producer_service()
+            await producer_service.send_message(settings.KAFKA_TOPIC_ORDER, {
+                "service": "OrderService", # Assuming a dedicated order processing service method
+                "method": "process_shipping_update",
+                "args": [str(order.id)]
+            })
             print(f"Shipping update email queued for order: {order.id}, carrier: {carrier_name}")
         except Exception as e:
             print(f"Failed to queue shipping update email: {e}")
@@ -481,14 +494,18 @@ class OrderService:
 
         # Send notification to customer
         if order.user:
-            # Create notification via Celery
-            from tasks.notification_tasks import create_notification
-            create_notification.delay(
-                user_id=str(order.user_id),
-                message=f"Your order #{order.id} status has been updated to {new_status}",
-                type="info",
-                related_id=str(order.id)
-            )
+            producer_service = await get_kafka_producer_service()
+            await producer_service.send_message(settings.KAFKA_TOPIC_NOTIFICATION, {
+                "service": "NotificationService",
+                "method": "create_notification",
+                "args": [],
+                "kwargs": {
+                    "user_id": str(order.user_id),
+                    "message": f"Your order #{order.id} status has been updated to {new_status}",
+                    "type": "info",
+                    "related_id": str(order.id)
+                }
+            })
 
         return {
             "id": str(order.id),

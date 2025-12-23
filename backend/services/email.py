@@ -21,7 +21,9 @@ from tasks.email_tasks import (
     send_low_stock_alert_email, # NEW
 )
 from core.config import settings
+from services.kafka_producer import get_kafka_producer_service # ADD THIS LINE
 from core.exceptions import APIException # Assuming CustomException is suitable for service layer errors
+from services.kafka_producer import get_kafka_producer_service # ADD THIS LINE
 
 
 class EmailService:
@@ -79,7 +81,8 @@ class EmailService:
             "order_tracking_url": f"{settings.FRONTEND_URL}/account/orders/{order.id}",
             "company_name": "Banwee",
         }
-        send_order_confirmation_email.delay(str(order_id), context)
+        producer_service = await get_kafka_producer_service()
+        await producer_service.send_message(settings.KAFKA_TOPIC_EMAIL, {"task": "send_order_confirmation_email", "args": [str(order_id), context]})
 
     async def send_shipping_update(self, order_id: UUID, carrier_name: str, tracking_number: str):
         order = await self._get_order_by_id(order_id)
@@ -98,7 +101,8 @@ class EmailService:
             "tracking_url": f"https://www.google.com/search?q={carrier_name}+{tracking_number}",
             "company_name": "Banwee",
         }
-        send_shipping_update_email.delay(str(order_id), carrier_name, context)
+        producer_service = await get_kafka_producer_service()
+        await producer_service.send_message(settings.KAFKA_TOPIC_EMAIL, {"task": "send_shipping_update_email", "args": [str(order_id), carrier_name, context]})
 
     async def send_welcome(self, user_id: UUID):
         user = await self._get_user_by_id(user_id)
@@ -108,7 +112,8 @@ class EmailService:
             "store_url": settings.FRONTEND_URL,
             "company_name": "Banwee",
         }
-        send_welcome_email.delay(str(user_id), context)
+        producer_service = await get_kafka_producer_service()
+        await producer_service.send_message(settings.KAFKA_TOPIC_EMAIL, {"task": "send_welcome_email", "args": [str(user_id), context]})
 
     async def send_password_reset(self, user_id: UUID, reset_token: str):
         user = await self._get_user_by_id(user_id)
@@ -118,7 +123,8 @@ class EmailService:
             "expiry_time": "1 hour",
             "company_name": "Banwee",
         }
-        send_password_reset_email.delay(str(user_id), reset_token, context)
+        producer_service = await get_kafka_producer_service()
+        await producer_service.send_message(settings.KAFKA_TOPIC_EMAIL, {"task": "send_password_reset_email", "args": [str(user_id), reset_token, context]})
 
     async def send_email_verification_link(self, user_id: UUID, verification_token: str):
         user = await self._get_user_by_id(user_id)
@@ -127,7 +133,8 @@ class EmailService:
             "activation_link": f"{settings.FRONTEND_URL}/verify-email?token={verification_token}",
             "company_name": "Banwee",
         }
-        send_email_verification.delay(str(user_id), verification_token, context)
+        producer_service = await get_kafka_producer_service()
+        await producer_service.send_message(settings.KAFKA_TOPIC_EMAIL, {"task": "send_email_verification", "args": [str(user_id), verification_token, context]})
 
     async def send_email_change_confirmation_link(self, user_id: UUID, new_email: str, old_email: str, confirmation_token: str):
         user = await self._get_user_by_id(user_id)
@@ -138,7 +145,8 @@ class EmailService:
             "confirmation_link": f"{settings.FRONTEND_URL}/confirm-email?token={confirmation_token}",
             "company_name": "Banwee",
         }
-        send_email_change_confirmation.delay(str(user_id), new_email, old_email, confirmation_token, context)
+        producer_service = await get_kafka_producer_service()
+        await producer_service.send_message(settings.KAFKA_TOPIC_EMAIL, {"task": "send_email_change_confirmation", "args": [str(user_id), new_email, old_email, confirmation_token, context]})
 
     async def send_order_delivered(self, order_id: UUID):
         order = await self._get_order_by_id(order_id)
@@ -160,7 +168,8 @@ class EmailService:
             "review_link": f"{settings.FRONTEND_URL}/account/orders/{order.id}/review",
             "company_name": "Banwee",
         }
-        send_order_delivered_email.delay(str(order_id), context)
+        producer_service = await get_kafka_producer_service()
+        await producer_service.send_message(settings.KAFKA_TOPIC_EMAIL, {"task": "send_order_delivered_email", "args": [str(order_id), context]})
 
     async def send_return_process_instructions(self, order_id: UUID, return_instructions: str):
         order = await self._get_order_by_id(order_id)
@@ -173,7 +182,8 @@ class EmailService:
             "return_label_url": f"{settings.FRONTEND_URL}/returns/{order.id}/label",
             "company_name": "Banwee",
         }
-        send_return_process_email.delay(str(order_id), return_instructions, context)
+        producer_service = await get_kafka_producer_service()
+        await producer_service.send_message(settings.KAFKA_TOPIC_EMAIL, {"task": "send_return_process_email", "args": [str(order_id), return_instructions, context]})
 
     async def send_referral_request(self, user_id: UUID, referral_code: str):
         user = await self._get_user_by_id(user_id)
@@ -184,7 +194,8 @@ class EmailService:
             "reward_amount": "$10",  # Configure as needed
             "company_name": "Banwee",
         }
-        send_referral_request_email.delay(str(user_id), referral_code, context)
+        producer_service = await get_kafka_producer_service()
+        await producer_service.send_message(settings.KAFKA_TOPIC_EMAIL, {"task": "send_referral_request_email", "args": [str(user_id), referral_code, context]})
 
     async def send_low_stock_alert(self, recipient_email: str, product_name: str, variant_name: str, location_name: str, current_stock: int, threshold: int):
         """
@@ -200,5 +211,6 @@ class EmailService:
             "admin_inventory_link": f"{settings.FRONTEND_URL}/admin/inventory", # Link to admin inventory page
             "company_name": "Banwee",
         }
-        send_low_stock_alert_email.delay(recipient_email, context)
-        print(f"📧 Celery task dispatched to send low stock alert email to {recipient_email}.")
+        producer_service = await get_kafka_producer_service()
+        await producer_service.send_message(settings.KAFKA_TOPIC_EMAIL, {"task": "send_low_stock_alert_email", "args": [recipient_email, context]})
+        print(f"📧 Kafka message dispatched to send low stock alert email to {recipient_email}.")

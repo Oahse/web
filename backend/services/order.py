@@ -19,6 +19,9 @@ from models.inventory import Inventory # NEW
 from uuid import UUID
 from datetime import datetime, timedelta
 from typing import Optional, List, Dict, Any
+from core.config import settings # ADDED for Kafka topics
+from services.kafka_producer import get_kafka_producer_service # ADD THIS LINE
+from negotiator.service import NegotiatorService # ADDED
 
 
 class OrderService:
@@ -86,12 +89,13 @@ class OrderService:
             notes=request.notes
         )
         self.db.add(order)
-        await self.db.flush()  # Get the order ID
+        await self.db.flush()  # Flush to get the new_order.id
 
         # Create order items from cart items
         active_cart_items = [
             item for item in cart.items if not item.saved_for_later]
         for cart_item in active_cart_items:
+            # cart_item.price_per_unit should already reflect negotiated price from CartService
             order_item = OrderItem(
                 order_id=order.id,
                 variant_id=cart_item.variant_id,
@@ -132,7 +136,7 @@ class OrderService:
                 order_id=order.id
             )
 
-            if payment_result.get("status") == "success":
+            if payment_result.get("status") == "succeeded": # Check for 'succeeded' status from Stripe
                 order.status = "confirmed"
 
                 # Create initial tracking event
@@ -144,7 +148,7 @@ class OrderService:
                 )
                 self.db.add(tracking_event)
 
-                # Commit order and tracking event BEFORE triggering Celery tasks
+                # Commit order and tracking event BEFORE triggering Kafka tasks
                 await self.db.commit()
                 await self.db.refresh(order)
 
@@ -164,19 +168,24 @@ class OrderService:
                 # Clear cart after successful order and commit
                 await cart_service.clear_cart(user_id)
                 
-                # IMPORTANT: Trigger Celery tasks AFTER commit to avoid greenlet errors
-                # Celery tasks run in separate sync context and should not be in transaction
-                from tasks.email_tasks import send_order_confirmation_email
-                from tasks.notification_tasks import create_notification
-                
-                # Use .delay() for non-blocking execution
-                send_order_confirmation_email.delay(str(order.id))
-                create_notification.delay(
-                    str(user_id),
-                    f"Your order #{order.id} has been confirmed!",
-                    "success",
-                    str(order.id)
-                )
+                # IMPORTANT: Trigger Kafka tasks AFTER commit
+                producer_service = await get_kafka_producer_service()
+                await producer_service.send_message(settings.KAFKA_TOPIC_EMAIL, {
+                    "service": "EmailService",
+                    "method": "send_order_confirmation",
+                    "args": [str(order.id)] # Task will fetch user_email and context
+                })
+                await producer_service.send_message(settings.KAFKA_TOPIC_NOTIFICATION, {
+                    "service": "NotificationService",
+                    "method": "create_notification",
+                    "args": [],
+                    "kwargs": {
+                        "user_id": str(user_id),
+                        "message": f"Your order #{order.id} has been confirmed!",
+                        "type": "success",
+                        "related_id": str(order.id)
+                    }
+                })
 
             else:
                 # Payment failed
@@ -209,12 +218,10 @@ class OrderService:
 
     async def get_user_orders(self, user_id: UUID, page: int = 1, limit: int = 10, status_filter: Optional[str] = None) -> Dict[str, Any]:
         """Get paginated list of user's orders"""
-        from models.product import ProductVariant, Product
         
         query = select(Order).where(Order.user_id == user_id).options(
             selectinload(Order.items).selectinload(OrderItem.variant).selectinload(ProductVariant.images),
-            selectinload(Order.items).selectinload(OrderItem.variant).selectinload(ProductVariant.product),
-            selectinload(Order.tracking_events)
+            selectinload(Order.items).selectinload(OrderItem.variant).selectinload(ProductVariant.product)
         )
 
         if status_filter:
@@ -253,12 +260,10 @@ class OrderService:
 
     async def get_order_by_id(self, order_id: UUID, user_id: UUID) -> Optional[OrderResponse]:
         """Get a specific order by ID"""
-        from models.product import ProductVariant, Product
         
         query = select(Order).where(and_(Order.id == order_id, Order.user_id == user_id)).options(
             selectinload(Order.items).selectinload(OrderItem.variant).selectinload(ProductVariant.images),
-            selectinload(Order.items).selectinload(OrderItem.variant).selectinload(ProductVariant.product),
-            selectinload(Order.tracking_events)
+            selectinload(Order.items).selectinload(OrderItem.variant).selectinload(ProductVariant.product)
         )
 
         result = await self.db.execute(query)
@@ -508,7 +513,7 @@ class OrderService:
             
             items.append(OrderItemResponse(
                 id=str(item.id),
-                variant_id=str(item.variant_id),
+                variant_id=str(item.variant.id),
                 quantity=item.quantity,
                 price_per_unit=item.price_per_unit,
                 total_price=item.total_price,
@@ -554,14 +559,21 @@ class OrderService:
                 raise HTTPException(
                     status_code=400, detail=f"Insufficient stock for {variant.name}")
 
-            price = variant.sale_price or variant.base_price
+            # --- Check for negotiated price ---
+            negotiator_service = NegotiatorService(self.db) # Initialize service
+            negotiated_price = await negotiator_service.get_negotiated_price_for_user_product(user_id, UUID(item_data.variant_id))
+            
+            # Use negotiated price if available, otherwise fall back to variant's price
+            price = negotiated_price if negotiated_price is not None else (variant.sale_price or variant.base_price)
+            # --- End negotiated price check ---
+
             item_total = price * item_data.quantity
             total_amount += item_total
 
             order_items.append({
                 "variant_id": variant.id,
                 "quantity": item_data.quantity,
-                "price_per_unit": price,
+                "price_per_unit": price, # Use effective price
                 "total_price": item_total
             })
 
@@ -766,32 +778,41 @@ class OrderService:
         # Return empty list for now (would need proper notes model)
         return []
 
-    def _send_order_confirmation(self, order_id: UUID):
-        """Send order confirmation email using Celery"""
+    async def _send_order_confirmation(self, order_id: UUID):
+        """Send order confirmation email using Kafka"""
         try:
-            from tasks.order_tasks import process_order_confirmation
-            process_order_confirmation.delay(str(order_id))
+            producer_service = await get_kafka_producer_service()
+            await producer_service.send_message(settings.KAFKA_TOPIC_ORDER, {
+                "service": "OrderService",
+                "method": "process_order_confirmation",
+                "args": [str(order_id)]
+            })
             print(f"Order confirmation email queued for order: {order_id}")
         except Exception as e:
-            # Log error but don't fail the order
             print(f"Failed to send order confirmation email: {e}")
 
-    def _notify_order_created(self, order_id: str, user_id: str):
-        """Send WebSocket notification for order creation using Celery"""
+    async def _notify_order_created(self, order_id: str, user_id: str):
+        """Send WebSocket notification for order creation using Kafka"""
         try:
-            from tasks.notification_tasks import send_order_notification
-            send_order_notification.delay(order_id, user_id, "created")
+            producer_service = await get_kafka_producer_service()
+            await producer_service.send_message(settings.KAFKA_TOPIC_NOTIFICATION, {
+                "service": "NotificationService",
+                "method": "send_order_notification",
+                "args": [order_id, user_id, "created"]
+            })
             print(f"Order created notification queued for order: {order_id}, user: {user_id}")
         except Exception as e:
-            # Log error but don't fail the order
             print(f"Failed to send order created notification: {e}")
 
-    def _notify_order_updated(self, order_id: str, user_id: str, status: str):
-        """Send WebSocket notification for order update using Celery"""
+    async def _notify_order_updated(self, order_id: str, user_id: str, status: str):
+        """Send WebSocket notification for order update using Kafka"""
         try:
-            from tasks.notification_tasks import send_order_notification
-            send_order_notification.delay(order_id, user_id, status)
+            producer_service = await get_kafka_producer_service()
+            await producer_service.send_message(settings.KAFKA_TOPIC_NOTIFICATION, {
+                "service": "NotificationService",
+                "method": "send_order_notification",
+                "args": [order_id, user_id, status]
+            })
             print(f"Order updated notification queued for order: {order_id}, user: {user_id}, status: {status}")
         except Exception as e:
-            # Log error but don't fail the order
             print(f"Failed to send order updated notification: {e}")

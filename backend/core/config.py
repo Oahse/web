@@ -1,18 +1,16 @@
 import os
-import re # NEW: For regex matching of file types
-from typing import List, Literal, Dict, Any, Optional # NEW: Import Dict, Any, Optional
+import re # For regex matching of file types
+from typing import List, Literal, Dict, Any, Optional # Import Dict, Any, Optional
 from dotenv import load_dotenv
 import logging
 from enum import Enum
 
-# NEW: Imports for synchronous DB session
+# Imports for synchronous DB session
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
 
 # Imports for async DB session
 from sqlalchemy.ext.asyncio import AsyncSession
-from models.settings import SystemSettings # NEW
-from services.settings import SettingsService # NEW
 
 
 logging.basicConfig(level=logging.INFO)
@@ -116,6 +114,13 @@ class Settings:
     # Defaults to 'redis://localhost:6379/0' for local development or Docker Compose.
     REDIS_URL: str = os.getenv('REDIS_URL', 'redis://redis:6379/0') # Corrected default to 'redis' service name
     
+    # --- Kafka Configuration ---
+    KAFKA_BOOTSTRAP_SERVERS: str = os.getenv('KAFKA_BOOTSTRAP_SERVERS', 'kafka:29092')
+    KAFKA_TOPIC_EMAIL: str = os.getenv('KAFKA_TOPIC_EMAIL', 'emails')
+    KAFKA_TOPIC_NOTIFICATION: str = os.getenv('KAFKA_TOPIC_NOTIFICATION', 'notifications')
+    KAFKA_TOPIC_ORDER: str = os.getenv('KAFKA_TOPIC_ORDER', 'orders')
+    KAFKA_TOPIC_NEGOTIATION: str = os.getenv('KAFKA_TOPIC_NEGOTIATION', 'negotiation')
+    
     # --- Frontend URL ---
     # FRONTEND_URL is the base URL of the frontend application, used for redirects, etc.
     FRONTEND_URL: str = os.getenv('FRONTEND_URL', 'http://localhost:5173')
@@ -189,85 +194,3 @@ class Settings:
 
 # Instantiate the settings object to be used throughout the application
 settings = Settings()
-
-
-class SecurityLevel(Enum):
-    LOW = "low"
-    MEDIUM = "medium"
-    HIGH = "high"
-    CRITICAL = "critical"
-
-
-class SecurityConfig:
-    """
-    Defines application-wide security configurations.
-    These can be adjusted based on the deployment environment and security requirements.
-    """
-    def __init__(self):
-        self.security_level = SecurityLevel.MEDIUM
-        self.cors_allow_credentials = True
-        self.cors_max_age_seconds = 600
-        self.cors_strict_origins = False
-        self.enable_input_sanitization = True
-        self.enable_rate_limiting = True
-        # File Upload Settings (will be overridden by SystemSettings from DB)
-        self.max_file_size_mb = 10
-        self.allowed_file_types = ["jpg", "jpeg", "png", "pdf"]
-
-
-class SecurityValidator:
-    """
-    Performs various security validations.
-    """
-    def __init__(self, db_session: AsyncSession): # Accept AsyncSession via DI
-        self._settings_service = SettingsService(db_session)
-
-    async def validate_file_upload(self, filename: str, file_size: int) -> Dict[str, Any]:
-        """
-        Validates a file upload against configured max size and allowed types.
-        file_size is expected in bytes. Max file size setting is in MB.
-        """
-        results = {"is_valid": True, "errors": [], "warnings": []}
-
-        max_size_mb = await self._settings_service.get_setting_value("max_file_size", default=10) # Default to 10MB
-        allowed_types_str = await self._settings_service.get_setting_value("allowed_file_types", default="jpg,jpeg,png,pdf")
-        
-        # Convert max_size_mb to bytes
-        max_size_bytes = max_size_mb * 1024 * 1024
-
-        # Validate file size
-        if file_size > max_size_bytes:
-            results["is_valid"] = False
-            results["errors"].append(f"File size exceeds maximum limit of {max_size_mb} MB.")
-
-        # Validate file type
-        allowed_types = [ext.strip().lower() for ext in allowed_types_str.split(',') if ext.strip()]
-        if not allowed_types:
-            results["warnings"].append("No allowed file types configured. All types will be accepted.")
-        else:
-            file_extension = os.path.splitext(filename)[1].lstrip('.').lower()
-            if file_extension not in allowed_types:
-                results["is_valid"] = False
-                results["errors"].append(f"File type '{file_extension}' is not allowed. Allowed types are: {allowed_types_str}.")
-
-        return results
-
-
-# Global instance of SecurityValidator is not ideal with async DB session.
-# Will modify get_security_validator to be a dependency.
-# _security_validator_instance: Optional[SecurityValidator] = None
-
-# Modify get_security_validator to be an async dependency
-async def get_security_validator(db_session: AsyncSession) -> SecurityValidator:
-    """Provides an instance of the SecurityValidator with an AsyncSession."""
-    return SecurityValidator(db_session)
-
-
-def get_security_monitor():
-    """Placeholder for a security monitoring instance."""
-    return None
-
-
-def get_security_config() -> SecurityConfig:
-    """Provides an instance of the SecurityConfig."""
-    return SecurityConfig()

@@ -16,6 +16,7 @@ from services.auth import AuthService  # Added AuthService import
 # Added NotificationService import
 from services.notification import NotificationService
 from fastapi import BackgroundTasks  # Added BackgroundTasks import
+from services.kafka_producer import get_kafka_producer_service # ADD THIS LINE
 
 
 class AdminService:
@@ -758,8 +759,11 @@ class AdminService:
         )
 
         # Send password reset email
-        from tasks.email_tasks import send_password_reset_email
-        send_password_reset_email.delay(user.email, reset_token)
+        producer_service = await get_kafka_producer_service()
+        await producer_service.send_message(settings.KAFKA_TOPIC_EMAIL, {
+            "task": "send_password_reset_email",
+            "args": [user.email, reset_token]
+        })
 
         return {
             "message": "Password reset email sent successfully",

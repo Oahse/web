@@ -3,7 +3,7 @@ from sqlalchemy import select, and_
 from sqlalchemy.orm import selectinload
 from fastapi import HTTPException
 from models.cart import Cart, CartItem
-from models.product import ProductVariant
+from models.product import ProductVariant, Product # Added Product for related product info
 from schemas.cart import CartResponse, CartItemResponse
 from schemas.product import ProductVariantResponse
 from services.promocode import PromocodeService
@@ -11,7 +11,7 @@ from services.shipping import ShippingService
 from services.payment import PaymentService
 from uuid import UUID  # Import UUID
 from datetime import datetime
-
+from negotiator.service import NegotiatorService # ADDED
 
 class CartService:
     def __init__(self, db: AsyncSession):
@@ -53,21 +53,29 @@ class CartService:
                 status_code=400, detail=f"Insufficient stock for {variant.name}. Available: {variant.stock}")
 
         item = cart.get_item(variant.id)
+        
+        # --- Check for negotiated price ---
+        negotiator_service = NegotiatorService(self.db) # Initialize service
+        negotiated_price = await negotiator_service.get_negotiated_price_for_user_product(user_id, variant_id)
+        
+        effective_price = negotiated_price if negotiated_price is not None else (variant.sale_price or variant.base_price)
+        # --- End negotiated price check ---
+
         if item:
             new_quantity = item.quantity + quantity
             if new_quantity > variant.stock:
                 raise HTTPException(
                     status_code=400, detail=f"Cannot add {quantity} more of {variant.name}. Only {variant.stock - item.quantity} available.")
             item.quantity = new_quantity
+            item.price_per_unit = effective_price # Update price per unit with negotiated price
             item.recalc_total()
         else:
-            price = variant.sale_price or variant.base_price
             self.db.add(CartItem(
                 cart_id=cart.id,
                 variant_id=variant.id,
                 quantity=quantity,
-                price_per_unit=price,
-                total_price=price * quantity
+                price_per_unit=effective_price, # Use effective price
+                total_price=effective_price * quantity
             ))
 
         await self.db.commit()
@@ -126,10 +134,30 @@ class CartService:
         if not item:
             raise HTTPException(status_code=404, detail="Cart item not found")
 
+        # --- Check for negotiated price (if quantity is updated, price might need re-evaluation) ---
+        negotiator_service = NegotiatorService(self.db)
+        negotiated_price = await negotiator_service.get_negotiated_price_for_user_product(user_id, item.variant_id)
+        
+        # If there's a negotiated price, it should apply regardless of original variant price
+        if negotiated_price is not None:
+            effective_price = negotiated_price
+        else:
+            # Otherwise, fetch current variant price (from DB)
+            variant = (await self.db.execute(
+                select(ProductVariant).where(ProductVariant.id == item.variant_id)
+            )).scalar_one_or_none()
+            effective_price = variant.sale_price or variant.base_price if variant else item.price_per_unit
+        # --- End negotiated price check ---
+
         if quantity <= 0:
             await self.db.delete(item)
         else:
+            if item.variant.stock < quantity: # Ensure sufficient stock for new quantity
+                raise HTTPException(
+                    status_code=400, detail=f"Insufficient stock for {item.variant.name}. Available: {item.variant.stock}")
+
             item.quantity = quantity
+            item.price_per_unit = effective_price # Update price per unit
             item.recalc_total()
 
         await self.db.commit()

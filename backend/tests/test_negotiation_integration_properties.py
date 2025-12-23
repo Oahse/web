@@ -20,7 +20,7 @@ import redis
 
 # Import Celery components
 from celery_app import celery_app
-from services.negotiator import NegotiationEngine, Buyer, Seller
+from negotiator.core import NegotiationEngine, Buyer, Seller
 from tasks.negotiation_tasks import perform_negotiation_step
 from core.config import settings
 

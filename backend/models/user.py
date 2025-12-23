@@ -19,6 +19,7 @@ class User(BaseModel):
     phone = Column(String(20), nullable=True)
     avatar_url = Column(String(500), nullable=True)
     last_login = Column(DateTime(timezone=True), nullable=True)
+    stripe_customer_id = Column(String(CHAR_LENGTH), nullable=True, unique=True) # NEW: Store Stripe Customer ID
     
     # Profile fields
     age = Column(String(10), nullable=True)

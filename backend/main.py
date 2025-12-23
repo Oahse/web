@@ -19,6 +19,7 @@ from core.exceptions import (
     general_exception_handler
 )
 from core.config import settings
+from services.kafka_producer import kafka_producer_service # ADD THIS LINE
 from routes.websockets import ws_router
 from routes.auth import router as auth_router
 from routes.user import router as user_router
@@ -50,10 +51,16 @@ async def lifespan(app: FastAPI):
     from core.config import settings # Import settings here to avoid circular dependency
     initialize_db(settings.SQLALCHEMY_DATABASE_URI, settings.ENVIRONMENT == "local")
     
+    # Start Kafka Producer
+    await kafka_producer_service.start() # ADD THIS LINE
+
     asyncio.create_task(run_notification_cleanup())
     yield
     # Shutdown event (if any)
     # For example, gracefully stop background tasks here
+    
+    # Stop Kafka Producer
+    await kafka_producer_service.stop() # ADD THIS LINE
 
 
 app = FastAPI(
