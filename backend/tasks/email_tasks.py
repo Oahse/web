@@ -182,3 +182,20 @@ async def send_review_requests(db: AsyncSession):
     #     if user:
     #         await email_service.send_review_request(user.id, order.id)
     pass # Actual implementation needed here
+
+
+async def send_payment_method_expiration_email(recipient_email: str, context: Dict[str, Any]):
+    """
+    Send payment method expiration email.
+    """
+    try:
+        await send_email_mailgun(
+            to_email=recipient_email,
+            subject="Your Payment Method is Expiring Soon",
+            template_name="payment_method_expiring",
+            context=context
+        )
+        logger.info(f"✅ Payment method expiration email sent to {recipient_email}")
+    except Exception as e:
+        logger.error(f"❌ Failed to send payment method expiration email to {recipient_email}: {e}")
+        raise

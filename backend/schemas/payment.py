@@ -7,7 +7,7 @@ from datetime import datetime
 class PaymentMethodBase(BaseModel):
     type: str = Field(...,
                       description="Type of payment method (e.g., credit_card, paypal)")
-    provider: str = Field(...,
+    provider: Optional[str] = Field(None,
                           description="Payment provider (e.g., Visa, PayPal)")
     last_four: Optional[str] = Field(
         None, max_length=4, description="Last four digits of the card number")
@@ -19,14 +19,16 @@ class PaymentMethodBase(BaseModel):
         False, description="Whether this is the default payment method")
 
 
-class PaymentMethodCreate(PaymentMethodBase):
-    stripe_token: Optional[str] = Field(
-        None, description="Stripe token for card tokenization")
+class PaymentMethodCreate(BaseModel):
+    stripe_token: str = Field(..., description="Stripe token for card tokenization")
+    is_default: bool = Field(False, description="Whether to set this as the default payment method")
 
 
-class PaymentMethodUpdate(PaymentMethodBase):
-    type: Optional[str] = None
-    provider: Optional[str] = None
+class PaymentMethodUpdate(BaseModel):
+    is_default: Optional[bool] = None
+    meta_data: Optional[dict] = None
+
+
 
 
 class PaymentMethodResponse(PaymentMethodBase):

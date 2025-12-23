@@ -40,40 +40,58 @@ async def consume_messages():
             
             service_name = task_data.get("service")
             method_name = task_data.get("method")
+            task_name = task_data.get("task")
             args = task_data.get("args", [])
             kwargs = task_data.get("kwargs", {})
 
-            if not service_name or not method_name:
-                logger.error(f"Invalid task data: {task_data}. Missing 'service' or 'method'.")
-                continue
-
-            try:
-                service_module = importlib.import_module(SERVICE_MODULE_MAP.get(service_name))
-                ServiceClass = getattr(service_module, service_name)
-                
-                async with AsyncSessionDB() as db:
-                    service_instance = ServiceClass(db)
-                    method = getattr(service_instance, method_name)
+            if service_name and method_name:
+                try:
+                    service_module = importlib.import_module(SERVICE_MODULE_MAP.get(service_name))
+                    ServiceClass = getattr(service_module, service_name)
                     
-                    if asyncio.iscoroutinefunction(method):
-                        await method(*args, **kwargs)
-                    else:
-                        method(*args, **kwargs) # For synchronous methods if any
+                    async with AsyncSessionDB() as db:
+                        service_instance = ServiceClass(db)
+                        method = getattr(service_instance, method_name)
+                        
+                        if asyncio.iscoroutinefunction(method):
+                            await method(*args, **kwargs)
+                        else:
+                            method(*args, **kwargs)
 
-                logger.info(f"Successfully executed {service_name}.{method_name}")
+                    logger.info(f"Successfully executed {service_name}.{method_name}")
 
-            except ImportError:
-                logger.error(f"Service module for '{service_name}' not found or incorrectly mapped.")
-            except AttributeError:
-                logger.error(f"Method '{method_name}' not found in '{service_name}'.")
-            except Exception as e:
-                logger.error(f"Error processing task {service_name}.{method_name}: {e}", exc_info=True)
-            finally:
-                # In a real-world scenario, you might want more sophisticated error handling
-                # and dead-letter queueing before committing the offset.
-                # For now, we commit after processing, regardless of success or failure.
-                pass # AIOKafkaConsumer auto-commits by default
-                # await consumer.commit() # Manual commit if auto_commit_enable is False
+                except ImportError:
+                    logger.error(f"Service module for '{service_name}' not found or incorrectly mapped.")
+                except AttributeError:
+                    logger.error(f"Method '{method_name}' not found in '{service_name}'.")
+                except Exception as e:
+                    logger.error(f"Error processing service task {service_name}.{method_name}: {e}", exc_info=True)
+
+            elif task_name:
+                try:
+                    # Assuming email tasks are in `tasks.email_tasks`
+                    task_module = importlib.import_module("tasks.email_tasks")
+                    task_func = getattr(task_module, task_name)
+                    
+                    async with AsyncSessionDB() as db:
+                        import inspect
+                        sig = inspect.signature(task_func)
+                        if 'db' in sig.parameters:
+                            await task_func(db, *args, **kwargs)
+                        else:
+                            await task_func(*args, **kwargs)
+
+                    logger.info(f"Successfully executed task {task_name}")
+
+                except ImportError:
+                    logger.error(f"Task module for '{task_name}' not found.")
+                except AttributeError:
+                    logger.error(f"Task '{task_name}' not found in module.")
+                except Exception as e:
+                    logger.error(f"Error processing task {task_name}: {e}", exc_info=True)
+            
+            else:
+                logger.error(f"Invalid task data: {task_data}. Missing 'service'/'method' or 'task'.")
 
     finally:
         logger.info("Stopping Kafka consumer...")

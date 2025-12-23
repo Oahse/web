@@ -6,6 +6,10 @@ from datetime import datetime, timedelta
 
 from backend.core.config import settings
 from backend.core.kafka import KafkaProducer, get_kafka_producer_service # Import both
+from backend.core.database import AsyncSessionDB
+from backend.services.payment import PaymentService
+from backend.services.email import EmailService
+from uuid import UUID
 
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -16,12 +20,51 @@ logger = logging.getLogger(__name__)
 # For a standalone scheduler, we'll start/stop it within main()
 producer_service: Optional[KafkaProducer] = None
 
+async def check_and_notify_expiring_cards():
+    """Scheduled job to check for expiring payment methods and send notifications."""
+    logger.info("Scheduler: Running job to check for expiring payment methods...")
+    try:
+        async with AsyncSessionDB() as db:
+            payment_service = PaymentService(db)
+            email_service = EmailService(db)
+            
+            expiring_cards = await payment_service.find_expiring_payment_methods(days_ahead=30)
+            
+            if not expiring_cards:
+                logger.info("Scheduler: No expiring payment methods found.")
+                return
+
+            logger.info(f"Scheduler: Found {len(expiring_cards)} expiring payment methods. Dispatching notifications...")
+            for card in expiring_cards:
+                try:
+                    await email_service.send_payment_method_expiration_notice(
+                        user_id=card.user_id,
+                        payment_method_id=card.id
+                    )
+                except Exception as e:
+                    logger.error(f"Scheduler: Failed to dispatch expiration notice for card {card.id}: {e}")
+            
+            logger.info("Scheduler: Finished dispatching expiration notices.")
+
+    except Exception as e:
+        logger.error(f"Scheduler: Error in check_and_notify_expiring_cards job: {e}", exc_info=True)
+
+
 async def setup_scheduler():
     global producer_service
     producer_service = KafkaProducer()
     await producer_service.start()
 
     scheduler = AsyncIOScheduler()
+
+    # 'check-expiring-payment-methods' - NEW JOB
+    scheduler.add_job(
+        func=check_and_notify_expiring_cards,
+        trigger=IntervalTrigger(days=1), # Every day
+        id='check-expiring-payment-methods',
+        name='Check for and notify about expiring payment methods',
+        misfire_grace_time=3600 # 1 hour grace time
+    )
 
     # Define periodic jobs, mapping Celery beat tasks to Kafka messages
     # 'send-cart-abandonment-emails'

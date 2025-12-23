@@ -56,58 +56,50 @@ class PaymentService:
             
         stripe_customer_id = await self._get_stripe_customer(user_id, user.email, user.full_name)
 
-        if payload.stripe_token:
-            try:
-                # Create Stripe PaymentMethod from token
-                stripe_pm = stripe.PaymentMethod.create(
-                    type="card",
-                    card={"token": payload.stripe_token}
-                )
-                
-                # Attach PaymentMethod to customer
-                stripe.PaymentMethod.attach(
-                    stripe_pm.id,
-                    customer=stripe_customer_id
-                )
-                
-                # Extract card details from the created PaymentMethod
-                card_details = stripe_pm.card
-                payload.provider = card_details.brand.lower()
-                payload.last_four = card_details.last4
-                payload.expiry_month = card_details.exp_month
-                payload.expiry_year = card_details.exp_year
-                payload.stripe_payment_method_id = stripe_pm.id
-                payload.brand = card_details.brand # Store card brand
-                
-            except stripe.StripeError as e:
-                raise Exception(f"Failed to process card details with Stripe: {str(e)}")
-        else:
+        if not payload.stripe_token:
             raise Exception("Stripe token is required to add a new payment method.")
-        
-        # Check if this is the first payment method for the user
-        existing_methods = await self.get_payment_methods(user_id)
-        is_first_method = len(existing_methods) == 0
-        
-        # Set as default if it's the first payment method or explicitly requested
-        if is_first_method or payload.is_default:
-            await self._clear_default_payment_method(user_id)
-            payload.is_default = True
 
-        new_method = PaymentMethod(
-            user_id=user_id,
-            type=payload.type,
-            provider=payload.provider,
-            last_four=payload.last_four,
-            expiry_month=payload.expiry_month,
-            expiry_year=payload.expiry_year,
-            is_default=payload.is_default,
-            stripe_payment_method_id=payload.stripe_payment_method_id,
-            brand=payload.brand # Assign brand
-        )
-        self.db.add(new_method)
-        await self.db.commit()
-        await self.db.refresh(new_method)
-        return new_method
+        try:
+            # Create Stripe PaymentMethod from token
+            stripe_pm = stripe.PaymentMethod.create(
+                type="card",
+                card={"token": payload.stripe_token}
+            )
+            
+            # Attach PaymentMethod to customer
+            stripe.PaymentMethod.attach(
+                stripe_pm.id,
+                customer=stripe_customer_id
+            )
+            
+            card_details = stripe_pm.card
+            
+            # Check if this is the first payment method for the user
+            existing_methods = await self.get_payment_methods(user_id)
+            is_first_method = len(existing_methods) == 0
+            
+            is_default = is_first_method or payload.is_default
+            if is_default:
+                await self._clear_default_payment_method(user_id)
+
+            new_method = PaymentMethod(
+                user_id=user_id,
+                type='card',
+                provider=card_details.brand.lower(),
+                last_four=card_details.last4,
+                expiry_month=card_details.exp_month,
+                expiry_year=card_details.exp_year,
+                is_default=is_default,
+                stripe_payment_method_id=stripe_pm.id,
+                brand=card_details.brand
+            )
+            self.db.add(new_method)
+            await self.db.commit()
+            await self.db.refresh(new_method)
+            return new_method
+
+        except stripe.StripeError as e:
+            raise Exception(f"Failed to process card details with Stripe: {str(e)}")
 
     async def update_payment_method(self, user_id: UUID, method_id: UUID, payload: PaymentMethodUpdate) -> Optional[PaymentMethod]:
         query = select(PaymentMethod).where(PaymentMethod.id ==
@@ -125,8 +117,13 @@ class PaymentService:
             # Prevent unsetting default if it's the only one, or handle logic to set another as default
             pass  # More complex logic might be needed here
 
-        for field, value in payload.dict(exclude_unset=True).items():
-            setattr(method, field, value)
+        update_data = payload.dict(exclude_unset=True)
+        for field, value in update_data.items():
+            if field == 'meta_data' and value is not None:
+                import json
+                setattr(method, field, json.dumps(value))
+            else:
+                setattr(method, field, value)
 
         await self.db.commit()
         await self.db.refresh(method)
@@ -1128,6 +1125,34 @@ class PaymentService:
         }
         
         return error_messages.get(error_code, error_message or "Payment failed. Please try again or contact support.")
+
+    async def find_expiring_payment_methods(self, days_ahead: int = 30) -> List[PaymentMethod]:
+        """
+        Finds payment methods that will expire within the next `days_ahead` days.
+        Also returns cards that have already expired in the current month.
+        """
+        from datetime import datetime, timedelta
+        from sqlalchemy import and_
+
+        current_year = datetime.utcnow().year
+        current_month = datetime.utcnow().month
+        
+        target_date = datetime.utcnow() + timedelta(days=days_ahead)
+        target_year = target_date.year
+        target_month = target_date.month
+
+        current_yyyymm = current_year * 100 + current_month
+        target_yyyymm = target_year * 100 + target_month
+
+        expiring_cards_query = select(PaymentMethod).where(
+            and_(
+                (PaymentMethod.expiry_year * 100 + PaymentMethod.expiry_month) >= current_yyyymm,
+                (PaymentMethod.expiry_year * 100 + PaymentMethod.expiry_month) <= target_yyyymm
+            )
+        )
+
+        result = await self.db.execute(expiring_cards_query)
+        return result.scalars().all()
 
     async def create_refund(
         self,

@@ -213,4 +213,35 @@ class EmailService:
         }
         producer_service = await get_kafka_producer_service()
         await producer_service.send_message(settings.KAFKA_TOPIC_EMAIL, {"task": "send_low_stock_alert_email", "args": [recipient_email, context]})
-        print(f"📧 Kafka message dispatched to send low stock alert email to {recipient_email}.")
+                print(f"📧 Kafka message dispatched to send low stock alert email to {recipient_email}.")
+        
+            async def send_payment_method_expiration_notice(self, user_id: UUID, payment_method_id: UUID):
+                """
+                Sends an email notification to a user about their expiring payment method.
+                """
+                from models.payment import PaymentMethod
+        
+                user = await self._get_user_by_id(user_id)
+                payment_method = await self.db_session.get(PaymentMethod, payment_method_id)
+                
+                if not user or not payment_method:
+                    return
+        
+                context = {
+                    "user_name": user.firstname,
+                    "payment_method_provider": payment_method.provider.title(),
+                    "payment_method_last_four": payment_method.last_four,
+                    "expiry_date": f"{payment_method.expiry_month:02d}/{payment_method.expiry_year}",
+                    "update_payment_url": f"{settings.FRONTEND_URL}/account/payment-methods",
+                    "company_name": "Banwee",
+                }
+                producer_service = await get_kafka_producer_service()
+                await producer_service.send_message(
+                    settings.KAFKA_TOPIC_EMAIL,
+                    {
+                        "task": "send_payment_method_expiration_email",
+                        "args": [user.email, context]
+                    }
+                )
+                print(f"📧 Kafka message dispatched for payment method expiration notice to {user.email}.")
+        
