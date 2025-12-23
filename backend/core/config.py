@@ -51,6 +51,11 @@ def parse_cors(value: str) -> List[str]:
 
 
 class Settings:
+    def __init__(self):
+        self.validate_required_settings()
+        self.validate_kafka_configuration()
+        self.validate_stripe_configuration()
+
     # --- General Environment Settings ---
     # DOMAIN for API endpoint generation and general application context. Defaults to 'localhost' for local dev.
     DOMAIN: str = os.getenv('DOMAIN', 'localhost')
