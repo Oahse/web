@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Request, BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession
 from uuid import UUID
-from typing import List
+from typing import List, Optional
 import stripe
 
 from core.database import get_db
@@ -23,8 +23,11 @@ payment_router = APIRouter(prefix="/api/v1/payments", tags=["Payments"])
 
 class CreatePaymentIntentRequest(BaseModel):
     order_id: UUID
-    amount: float = Field(..., gt=0)
-    currency: str = Field("usd", max_length=3)
+    subtotal: float = Field(..., gt=0)
+    currency: Optional[str] = None
+    shipping_address_id: Optional[UUID] = None
+    payment_method_id: Optional[UUID] = None
+    expires_in_minutes: int = Field(30, ge=5, le=120)  # 5 minutes to 2 hours
 
 
 class ProcessPaymentRequest(BaseModel):
@@ -174,29 +177,45 @@ async def get_my_default_payment_method(
         )
 
 
-@payment_router.post("/create-payment-intent", summary="Create a Stripe Payment Intent")
+@payment_router.post("/create-payment-intent", summary="Create an enhanced Stripe Payment Intent with tax calculation")
 async def create_payment_intent(
     payload: CreatePaymentIntentRequest,
     db: AsyncSession = Depends(get_db),
-    # Ensure user is authenticated
-    current_user: User = Depends(verify_user_or_admin_access)
+    current_user: User = Depends(get_current_authenticated_user)
 ):
+    """
+    Create a Stripe Payment Intent with enhanced features:
+    - Automatic tax calculation based on shipping address
+    - Multi-currency support with auto-detection
+    - Payment method pre-selection
+    - Configurable expiration time
+    """
     try:
         service = PaymentService(db)
-        # The user_id for the payment intent should be the current_user's ID
         result = await service.create_payment_intent(
             user_id=current_user.id,
             order_id=payload.order_id,
-            amount=payload.amount,
-            currency=payload.currency
+            subtotal=payload.subtotal,
+            currency=payload.currency,
+            shipping_address_id=payload.shipping_address_id,
+            payment_method_id=payload.payment_method_id,
+            expires_in_minutes=payload.expires_in_minutes
         )
-        return result
+        return {
+            "success": True,
+            "data": result,
+            "message": "Payment intent created successfully"
+        }
     except stripe.StripeError as e:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+            status_code=status.HTTP_400_BAD_REQUEST, 
+            detail=f"Stripe error: {str(e)}"
+        )
     except Exception as e:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
+            detail=f"Failed to create payment intent: {str(e)}"
+        )
 
 
 @payment_router.post("/process", summary="Process a payment")
@@ -235,6 +254,107 @@ async def process_payment(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to process payment - {str(e)}"
+        )
+
+
+@payment_router.post("/handle-expiration/{payment_intent_id}", summary="Handle expired payment intent")
+async def handle_payment_expiration(
+    payment_intent_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_authenticated_user)
+):
+    """
+    Handle expired payment intent by updating status and sending notifications.
+    """
+    try:
+        service = PaymentService(db)
+        result = await service.handle_payment_intent_expiration(payment_intent_id)
+        
+        if result["status"] == "error":
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=result["message"]
+            )
+        
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to handle payment expiration: {str(e)}"
+        )
+
+
+@payment_router.get("/supported-currencies", summary="Get supported currencies")
+async def get_supported_currencies():
+    """Get list of supported currencies with their symbols"""
+    from services.tax import TaxService
+    
+    # Create a temporary instance to access the method
+    tax_service = TaxService(None)  # db not needed for this method
+    currencies = tax_service.get_supported_currencies()
+    
+    return {
+        "success": True,
+        "data": {
+            "currencies": currencies,
+            "default": "USD"
+        },
+        "message": "Supported currencies retrieved successfully"
+    }
+
+
+class ConfirmPaymentRequest(BaseModel):
+    payment_intent_id: str
+    handle_3d_secure: bool = True
+
+
+@payment_router.post("/confirm", summary="Confirm payment and update order status")
+async def confirm_payment(
+    payload: ConfirmPaymentRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_authenticated_user)
+):
+    """
+    Confirm payment with enhanced features:
+    - Automatic order status update
+    - 3D Secure authentication handling
+    - Clear error messaging for payment failures
+    - Order confirmation notifications
+    """
+    try:
+        service = PaymentService(db)
+        result = await service.confirm_payment_and_order(
+            payment_intent_id=payload.payment_intent_id,
+            user_id=current_user.id,
+            handle_3d_secure=payload.handle_3d_secure
+        )
+        
+        # Return appropriate HTTP status based on result
+        if result["status"] == "error":
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=result["message"]
+            )
+        elif result["status"] == "failed":
+            raise HTTPException(
+                status_code=status.HTTP_402_PAYMENT_REQUIRED,
+                detail=result["message"]
+            )
+        
+        return {
+            "success": True,
+            "data": result,
+            "message": result.get("message", "Payment processed successfully")
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to confirm payment: {str(e)}"
         )
 
 

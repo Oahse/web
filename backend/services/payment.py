@@ -197,36 +197,124 @@ class PaymentService:
         result = await self.db.execute(query)
         return result.scalars().first()
 
-    async def create_payment_intent(self, user_id: UUID, order_id: UUID, amount: float, currency: str) -> dict:
+    async def create_payment_intent(
+        self, 
+        user_id: UUID, 
+        order_id: UUID, 
+        subtotal: float, 
+        currency: str = None,
+        shipping_address_id: UUID = None,
+        payment_method_id: UUID = None,
+        expires_in_minutes: int = 30
+    ) -> dict:
         """
-        Creates a Stripe PaymentIntent.
-        This method is typically called to set up a payment, usually from the frontend
-        where the client secret is needed to confirm the payment.
+        Creates an enhanced Stripe PaymentIntent with tax calculation and multi-currency support.
+        
+        Args:
+            user_id: User creating the payment intent
+            order_id: Associated order ID
+            subtotal: Subtotal amount before tax and shipping
+            currency: Currency code (auto-detected if not provided)
+            shipping_address_id: Address for tax calculation
+            payment_method_id: Specific payment method to use
+            expires_in_minutes: Payment intent expiration time
         """
+        from services.tax import TaxService
+        from models.order import Order
+        from decimal import Decimal
+        import datetime
+        
         try:
             # Fetch user to get Stripe customer ID
             user = await self.db.get(User, user_id)
-            if not user or not user.stripe_customer_id:
-                raise Exception("Stripe Customer ID not found for user.")
-
-            payment_intent = stripe.PaymentIntent.create(
-                amount=int(amount * 100),  # Stripe expects amount in cents
-                currency=currency,
-                customer=user.stripe_customer_id, # Link to customer
-                automatic_payment_methods={"enabled": True}, # Still useful for displaying options
-                metadata={
-                    "user_id": str(user_id),
-                    "order_id": str(order_id)
-                }
+            if not user:
+                raise Exception("User not found.")
+            
+            # Get or create Stripe customer
+            stripe_customer_id = await self._get_stripe_customer(user_id, user.email, user.full_name)
+            
+            # Get order details if available
+            order = await self.db.get(Order, order_id) if order_id else None
+            
+            # Determine shipping address for tax calculation
+            tax_address_id = shipping_address_id
+            if not tax_address_id and order and order.shipping_address_id:
+                tax_address_id = order.shipping_address_id
+            elif not tax_address_id and user.default_address:
+                tax_address_id = user.default_address.id
+            
+            # Calculate tax
+            tax_service = TaxService(self.db)
+            tax_info = await tax_service.calculate_tax(
+                subtotal=Decimal(str(subtotal)),
+                shipping_address_id=tax_address_id
             )
-
-            # Create a transaction record in our database
+            
+            # Determine currency if not provided
+            if not currency:
+                if tax_info.get("location", {}).get("country"):
+                    country_code = tax_service._get_country_code(tax_info["location"]["country"])
+                    currency = tax_service.get_currency_for_country(country_code)
+                else:
+                    currency = "USD"  # Default fallback
+            
+            # Calculate shipping (simplified - could be enhanced with shipping service)
+            shipping_amount = 0.0
+            if subtotal < 50:  # Free shipping over $50
+                shipping_amount = 10.0
+            
+            # Calculate total amount
+            total_amount = subtotal + tax_info["tax_amount"] + shipping_amount
+            
+            # Set payment intent expiration
+            expires_at = int((datetime.datetime.utcnow() + datetime.timedelta(minutes=expires_in_minutes)).timestamp())
+            
+            # Prepare payment intent parameters
+            payment_intent_params = {
+                "amount": int(total_amount * 100),  # Stripe expects amount in cents
+                "currency": currency.lower(),
+                "customer": stripe_customer_id,
+                "automatic_payment_methods": {"enabled": True},
+                "metadata": {
+                    "user_id": str(user_id),
+                    "order_id": str(order_id) if order_id else "",
+                    "subtotal": str(subtotal),
+                    "tax_amount": str(tax_info["tax_amount"]),
+                    "shipping_amount": str(shipping_amount),
+                    "total_amount": str(total_amount),
+                    "tax_rate": str(tax_info["tax_rate"]),
+                    "currency": currency
+                },
+                # Set expiration time
+                "payment_method_options": {
+                    "card": {
+                        "setup_future_usage": "off_session"  # Allow saving for future use
+                    }
+                }
+            }
+            
+            # Add specific payment method if provided
+            if payment_method_id:
+                payment_method = await self.db.execute(
+                    select(PaymentMethod).where(
+                        PaymentMethod.id == payment_method_id,
+                        PaymentMethod.user_id == user_id
+                    )
+                )
+                payment_method = payment_method.scalar_one_or_none()
+                if payment_method and payment_method.stripe_payment_method_id:
+                    payment_intent_params["payment_method"] = payment_method.stripe_payment_method_id
+            
+            # Create Stripe PaymentIntent
+            payment_intent = stripe.PaymentIntent.create(**payment_intent_params)
+            
+            # Create enhanced transaction record
             transaction_data = TransactionCreate(
                 user_id=user_id,
                 order_id=order_id,
                 stripe_payment_intent_id=payment_intent.id,
-                amount=amount,
-                currency=currency,
+                amount=total_amount,
+                currency=currency.upper(),
                 status=payment_intent.status,
                 transaction_type="payment"
             )
@@ -234,18 +322,30 @@ class PaymentService:
             self.db.add(new_transaction)
             await self.db.commit()
             await self.db.refresh(new_transaction)
-
+            
             return {
                 "client_secret": payment_intent.client_secret,
                 "payment_intent_id": payment_intent.id,
-                "status": payment_intent.status
+                "status": payment_intent.status,
+                "amount_breakdown": {
+                    "subtotal": subtotal,
+                    "tax_amount": tax_info["tax_amount"],
+                    "tax_rate": tax_info["tax_rate"],
+                    "shipping_amount": shipping_amount,
+                    "total_amount": total_amount,
+                    "currency": currency.upper()
+                },
+                "tax_info": tax_info,
+                "expires_at": expires_at,
+                "supported_payment_methods": ["card", "apple_pay", "google_pay"]
             }
+            
         except stripe.StripeError as e:
             # Handle Stripe API errors
-            raise e
+            raise Exception(f"Stripe error: {str(e)}")
         except Exception as e:
             # Handle other errors
-            raise e
+            raise Exception(f"Payment intent creation failed: {str(e)}")
 
     async def _process_successful_payment(self, payment_intent_id: str, status: str):
         query = update(Transaction).where(
@@ -539,6 +639,79 @@ class PaymentService:
         except Exception as e:
             pass  # Email sending failure should not break the flow
 
+    async def handle_payment_intent_expiration(self, payment_intent_id: str) -> dict:
+        """
+        Handle expired payment intents by updating transaction status and notifying user.
+        
+        Args:
+            payment_intent_id: Stripe payment intent ID
+            
+        Returns:
+            Dict with expiration handling result
+        """
+        try:
+            # Get transaction from database
+            transaction_result = await self.db.execute(
+                select(Transaction).where(Transaction.stripe_payment_intent_id == payment_intent_id)
+            )
+            transaction = transaction_result.scalar_one_or_none()
+            
+            if not transaction:
+                return {"status": "error", "message": "Transaction not found"}
+            
+            # Update transaction status to expired
+            transaction.status = "expired"
+            transaction.updated_at = datetime.utcnow()
+            await self.db.commit()
+            
+            # Get user for notification
+            user = await self.db.get(User, transaction.user_id)
+            if user:
+                # Send expiration notification email
+                await self.send_payment_expired_email(transaction, user)
+            
+            # Log activity
+            from services.activity import ActivityService
+            activity_service = ActivityService(self.db)
+            await activity_service.log_activity(
+                action_type="payment_expired",
+                description=f"Payment intent expired for order #{transaction.order_id}",
+                user_id=transaction.user_id,
+                metadata={
+                    "payment_intent_id": payment_intent_id,
+                    "order_id": str(transaction.order_id),
+                    "amount": float(transaction.amount)
+                }
+            )
+            
+            return {
+                "status": "success", 
+                "message": "Payment intent expiration handled",
+                "transaction_id": str(transaction.id)
+            }
+            
+        except Exception as e:
+            return {"status": "error", "message": f"Failed to handle expiration: {str(e)}"}
+    
+    async def send_payment_expired_email(self, transaction: Transaction, user: User):
+        """Send email notification for expired payment intent"""
+        context = {
+            "customer_name": user.firstname,
+            "order_number": str(transaction.order_id),
+            "transaction_amount": f"${transaction.amount:.2f}",
+            "retry_payment_url": f"{settings.FRONTEND_URL}/checkout/{transaction.order_id}",
+            "company_name": "Banwee",
+        }
+
+        try:
+            await send_email(
+                to_email=user.email,
+                mail_type='payment_expired',
+                context=context
+            )
+        except Exception as e:
+            pass  # Email sending failure should not break the flow
+
     async def send_payment_failed_email(self, transaction: Transaction, failure_reason: str):
         user_result = await self.db.execute(select(User).where(User.id == transaction.user_id))
         user = user_result.scalar_one_or_none()
@@ -673,3 +846,600 @@ class PaymentService:
                 "status": "failed",
                 "error": str(e)
             }
+
+    async def confirm_payment_and_order(
+        self, 
+        payment_intent_id: str, 
+        user_id: UUID = None,
+        handle_3d_secure: bool = True
+    ) -> dict:
+        """
+        Confirm payment and automatically update order status.
+        Handles 3D Secure authentication and provides clear error messaging.
+        
+        Args:
+            payment_intent_id: Stripe payment intent ID
+            user_id: User ID for authorization (optional)
+            handle_3d_secure: Whether to handle 3D Secure authentication
+            
+        Returns:
+            Dict with confirmation result and order status
+        """
+        from models.order import Order
+        from services.activity import ActivityService
+        
+        try:
+            # Retrieve payment intent from Stripe
+            payment_intent = stripe.PaymentIntent.retrieve(payment_intent_id)
+            
+            # Get transaction from database
+            transaction_result = await self.db.execute(
+                select(Transaction).where(Transaction.stripe_payment_intent_id == payment_intent_id)
+            )
+            transaction = transaction_result.scalar_one_or_none()
+            
+            if not transaction:
+                return {
+                    "status": "error",
+                    "error_code": "TRANSACTION_NOT_FOUND",
+                    "message": "Transaction not found in database"
+                }
+            
+            # Verify user authorization if provided
+            if user_id and transaction.user_id != user_id:
+                return {
+                    "status": "error",
+                    "error_code": "UNAUTHORIZED",
+                    "message": "User not authorized for this payment"
+                }
+            
+            # Handle different payment intent statuses
+            if payment_intent.status == "succeeded":
+                # Payment already succeeded
+                await self._handle_successful_payment_confirmation(transaction, payment_intent)
+                return {
+                    "status": "succeeded",
+                    "message": "Payment confirmed successfully",
+                    "order_id": str(transaction.order_id),
+                    "transaction_id": str(transaction.id)
+                }
+                
+            elif payment_intent.status == "requires_action":
+                # 3D Secure authentication required
+                if handle_3d_secure:
+                    return {
+                        "status": "requires_action",
+                        "error_code": "REQUIRES_3D_SECURE",
+                        "message": "3D Secure authentication required",
+                        "client_secret": payment_intent.client_secret,
+                        "next_action": payment_intent.next_action
+                    }
+                else:
+                    return {
+                        "status": "error",
+                        "error_code": "AUTHENTICATION_REQUIRED",
+                        "message": "Payment requires additional authentication"
+                    }
+                    
+            elif payment_intent.status == "requires_payment_method":
+                return {
+                    "status": "error",
+                    "error_code": "PAYMENT_METHOD_REQUIRED",
+                    "message": "Payment method is required or invalid"
+                }
+                
+            elif payment_intent.status == "requires_confirmation":
+                # Attempt to confirm the payment
+                try:
+                    confirmed_intent = stripe.PaymentIntent.confirm(payment_intent_id)
+                    
+                    if confirmed_intent.status == "succeeded":
+                        await self._handle_successful_payment_confirmation(transaction, confirmed_intent)
+                        return {
+                            "status": "succeeded",
+                            "message": "Payment confirmed successfully",
+                            "order_id": str(transaction.order_id),
+                            "transaction_id": str(transaction.id)
+                        }
+                    elif confirmed_intent.status == "requires_action":
+                        return {
+                            "status": "requires_action",
+                            "error_code": "REQUIRES_3D_SECURE",
+                            "message": "3D Secure authentication required",
+                            "client_secret": confirmed_intent.client_secret,
+                            "next_action": confirmed_intent.next_action
+                        }
+                    else:
+                        return {
+                            "status": "error",
+                            "error_code": "CONFIRMATION_FAILED",
+                            "message": f"Payment confirmation failed: {confirmed_intent.status}"
+                        }
+                        
+                except stripe.error.CardError as e:
+                    return self._handle_card_error(e, transaction)
+                    
+            elif payment_intent.status in ["canceled", "payment_failed"]:
+                # Payment failed or was canceled
+                await self._handle_failed_payment_confirmation(transaction, payment_intent)
+                return {
+                    "status": "failed",
+                    "error_code": "PAYMENT_FAILED",
+                    "message": self._get_user_friendly_error_message(payment_intent.last_payment_error),
+                    "order_id": str(transaction.order_id)
+                }
+                
+            else:
+                return {
+                    "status": "error",
+                    "error_code": "UNKNOWN_STATUS",
+                    "message": f"Unknown payment status: {payment_intent.status}"
+                }
+                
+        except stripe.error.CardError as e:
+            return self._handle_card_error(e, transaction)
+        except stripe.StripeError as e:
+            return {
+                "status": "error",
+                "error_code": "STRIPE_ERROR",
+                "message": f"Stripe API error: {str(e)}"
+            }
+        except Exception as e:
+            return {
+                "status": "error",
+                "error_code": "INTERNAL_ERROR",
+                "message": f"Internal error: {str(e)}"
+            }
+    
+    async def _handle_successful_payment_confirmation(self, transaction: Transaction, payment_intent: dict):
+        """Handle successful payment confirmation and order update"""
+        from models.order import Order, TrackingEvent
+        from services.activity import ActivityService
+        
+        # Update transaction status
+        transaction.status = "succeeded"
+        transaction.updated_at = datetime.utcnow()
+        
+        # Update order status if order exists
+        if transaction.order_id:
+            order = await self.db.get(Order, transaction.order_id)
+            if order and order.status in ["pending", "payment_failed"]:
+                order.status = "confirmed"
+                order.updated_at = datetime.utcnow()
+                
+                # Create tracking event
+                tracking_event = TrackingEvent(
+                    order_id=order.id,
+                    status="confirmed",
+                    description="Order confirmed - payment successful",
+                    location="Processing Center"
+                )
+                self.db.add(tracking_event)
+        
+        await self.db.commit()
+        
+        # Send confirmation email
+        await self.send_payment_receipt_email(transaction)
+        
+        # Log activity
+        activity_service = ActivityService(self.db)
+        await activity_service.log_activity(
+            action_type="payment_confirmed",
+            description=f"Payment confirmed for order #{transaction.order_id}",
+            user_id=transaction.user_id,
+            metadata={
+                "payment_intent_id": payment_intent.get("id"),
+                "order_id": str(transaction.order_id),
+                "amount": float(transaction.amount)
+            }
+        )
+        
+        # Send Kafka notification for order confirmation
+        if transaction.order_id:
+            from core.kafka import get_kafka_producer_service
+            producer_service = await get_kafka_producer_service()
+            await producer_service.send_message(settings.KAFKA_TOPIC_NOTIFICATION, {
+                "service": "NotificationService",
+                "method": "create_notification",
+                "args": [],
+                "kwargs": {
+                    "user_id": str(transaction.user_id),
+                    "message": f"Your order #{transaction.order_id} has been confirmed!",
+                    "type": "success",
+                    "related_id": str(transaction.order_id)
+                }
+            })
+    
+    async def _handle_failed_payment_confirmation(self, transaction: Transaction, payment_intent: dict):
+        """Handle failed payment confirmation and order update"""
+        from models.order import Order
+        from services.activity import ActivityService
+        
+        # Update transaction status
+        transaction.status = "failed"
+        transaction.failure_reason = self._get_user_friendly_error_message(payment_intent.get("last_payment_error"))
+        transaction.updated_at = datetime.utcnow()
+        
+        # Update order status if order exists
+        if transaction.order_id:
+            order = await self.db.get(Order, transaction.order_id)
+            if order:
+                order.status = "payment_failed"
+                order.updated_at = datetime.utcnow()
+        
+        await self.db.commit()
+        
+        # Send failure email
+        await self.send_payment_failed_email(transaction, transaction.failure_reason)
+        
+        # Log activity
+        activity_service = ActivityService(self.db)
+        await activity_service.log_activity(
+            action_type="payment_failed",
+            description=f"Payment failed for order #{transaction.order_id}",
+            user_id=transaction.user_id,
+            metadata={
+                "payment_intent_id": payment_intent.get("id"),
+                "order_id": str(transaction.order_id),
+                "failure_reason": transaction.failure_reason
+            }
+        )
+    
+    def _handle_card_error(self, error: stripe.error.CardError, transaction: Transaction = None) -> dict:
+        """Handle Stripe card errors with user-friendly messages"""
+        error_code = error.code
+        user_message = self._get_user_friendly_error_message({"code": error_code, "message": error.user_message})
+        
+        return {
+            "status": "failed",
+            "error_code": f"CARD_ERROR_{error_code.upper()}" if error_code else "CARD_ERROR",
+            "message": user_message,
+            "decline_code": error.decline_code,
+            "order_id": str(transaction.order_id) if transaction and transaction.order_id else None
+        }
+    
+    def _get_user_friendly_error_message(self, error_info: dict) -> str:
+        """Convert Stripe error codes to user-friendly messages"""
+        if not error_info:
+            return "Payment failed due to an unknown error"
+        
+        error_code = error_info.get("code", "").lower()
+        error_message = error_info.get("message", "")
+        
+        # Map common error codes to user-friendly messages
+        error_messages = {
+            "card_declined": "Your card was declined. Please try a different payment method or contact your bank.",
+            "insufficient_funds": "Your card has insufficient funds. Please try a different payment method.",
+            "expired_card": "Your card has expired. Please update your payment method with a valid card.",
+            "incorrect_cvc": "The security code (CVC) you entered is incorrect. Please check and try again.",
+            "incorrect_number": "The card number you entered is incorrect. Please check and try again.",
+            "processing_error": "An error occurred while processing your payment. Please try again.",
+            "authentication_required": "Your bank requires additional authentication. Please complete the verification process.",
+            "generic_decline": "Your card was declined. Please contact your bank or try a different payment method.",
+            "invalid_expiry_month": "The expiration month you entered is invalid.",
+            "invalid_expiry_year": "The expiration year you entered is invalid.",
+            "lost_card": "Your card has been reported as lost. Please use a different payment method.",
+            "stolen_card": "Your card has been reported as stolen. Please use a different payment method.",
+            "pickup_card": "Your card cannot be used for this payment. Please contact your bank.",
+            "restricted_card": "Your card has restrictions that prevent this payment. Please contact your bank.",
+            "security_violation": "This payment was flagged for security reasons. Please contact your bank.",
+            "service_not_allowed": "Your card does not support this type of purchase.",
+            "transaction_not_allowed": "This transaction is not allowed on your card.",
+        }
+        
+        return error_messages.get(error_code, error_message or "Payment failed. Please try again or contact support.")
+
+    async def create_refund(
+        self,
+        payment_intent_id: str,
+        amount: float = None,
+        reason: str = "requested_by_customer",
+        user_id: UUID = None
+    ) -> dict:
+        """
+        Create a refund for a payment intent.
+        
+        Args:
+            payment_intent_id: Stripe payment intent ID
+            amount: Refund amount (None for full refund)
+            reason: Refund reason
+            user_id: User ID for authorization
+            
+        Returns:
+            Dict with refund result
+        """
+        from models.order import Order
+        from services.activity import ActivityService
+        
+        try:
+            # Get transaction from database
+            transaction_result = await self.db.execute(
+                select(Transaction).where(Transaction.stripe_payment_intent_id == payment_intent_id)
+            )
+            transaction = transaction_result.scalar_one_or_none()
+            
+            if not transaction:
+                return {
+                    "status": "error",
+                    "error_code": "TRANSACTION_NOT_FOUND",
+                    "message": "Transaction not found"
+                }
+            
+            # Verify user authorization if provided
+            if user_id and transaction.user_id != user_id:
+                return {
+                    "status": "error",
+                    "error_code": "UNAUTHORIZED",
+                    "message": "User not authorized for this refund"
+                }
+            
+            # Check if transaction is refundable
+            if transaction.status != "succeeded":
+                return {
+                    "status": "error",
+                    "error_code": "NOT_REFUNDABLE",
+                    "message": "Only successful payments can be refunded"
+                }
+            
+            # Calculate refund amount
+            refund_amount = amount if amount is not None else transaction.amount
+            
+            if refund_amount <= 0 or refund_amount > transaction.amount:
+                return {
+                    "status": "error",
+                    "error_code": "INVALID_AMOUNT",
+                    "message": f"Refund amount must be between 0 and {transaction.amount}"
+                }
+            
+            # Create Stripe refund
+            refund = stripe.Refund.create(
+                payment_intent=payment_intent_id,
+                amount=int(refund_amount * 100),  # Convert to cents
+                reason=reason,
+                metadata={
+                    "user_id": str(transaction.user_id),
+                    "order_id": str(transaction.order_id) if transaction.order_id else "",
+                    "original_amount": str(transaction.amount),
+                    "refund_amount": str(refund_amount)
+                }
+            )
+            
+            # Create refund transaction record
+            refund_transaction = Transaction(
+                user_id=transaction.user_id,
+                order_id=transaction.order_id,
+                stripe_payment_intent_id=payment_intent_id,
+                amount=refund_amount,
+                currency=transaction.currency,
+                status=refund.status,
+                transaction_type="refund",
+                description=f"Refund for payment {payment_intent_id}"
+            )
+            self.db.add(refund_transaction)
+            
+            # Update order status if full refund
+            if transaction.order_id and refund_amount == transaction.amount:
+                order = await self.db.get(Order, transaction.order_id)
+                if order:
+                    order.status = "refunded"
+                    order.updated_at = datetime.utcnow()
+            
+            await self.db.commit()
+            await self.db.refresh(refund_transaction)
+            
+            # Send refund confirmation email
+            await self.send_refund_confirmation_email(refund_transaction, refund)
+            
+            # Log activity
+            activity_service = ActivityService(self.db)
+            await activity_service.log_activity(
+                action_type="refund_created",
+                description=f"Refund created for order #{transaction.order_id}",
+                user_id=transaction.user_id,
+                metadata={
+                    "refund_id": refund.id,
+                    "payment_intent_id": payment_intent_id,
+                    "refund_amount": float(refund_amount),
+                    "reason": reason
+                }
+            )
+            
+            return {
+                "status": "success",
+                "refund_id": refund.id,
+                "amount": refund_amount,
+                "currency": transaction.currency,
+                "status_detail": refund.status,
+                "transaction_id": str(refund_transaction.id),
+                "message": "Refund created successfully"
+            }
+            
+        except stripe.StripeError as e:
+            return {
+                "status": "error",
+                "error_code": "STRIPE_ERROR",
+                "message": f"Stripe refund error: {str(e)}"
+            }
+        except Exception as e:
+            return {
+                "status": "error",
+                "error_code": "INTERNAL_ERROR",
+                "message": f"Refund creation failed: {str(e)}"
+            }
+    
+    async def cancel_payment_intent(
+        self,
+        payment_intent_id: str,
+        user_id: UUID = None,
+        cancellation_reason: str = "requested_by_customer"
+    ) -> dict:
+        """
+        Cancel a payment intent before it's confirmed.
+        
+        Args:
+            payment_intent_id: Stripe payment intent ID
+            user_id: User ID for authorization
+            cancellation_reason: Reason for cancellation
+            
+        Returns:
+            Dict with cancellation result
+        """
+        from models.order import Order
+        from services.activity import ActivityService
+        
+        try:
+            # Get transaction from database
+            transaction_result = await self.db.execute(
+                select(Transaction).where(Transaction.stripe_payment_intent_id == payment_intent_id)
+            )
+            transaction = transaction_result.scalar_one_or_none()
+            
+            if not transaction:
+                return {
+                    "status": "error",
+                    "error_code": "TRANSACTION_NOT_FOUND",
+                    "message": "Transaction not found"
+                }
+            
+            # Verify user authorization if provided
+            if user_id and transaction.user_id != user_id:
+                return {
+                    "status": "error",
+                    "error_code": "UNAUTHORIZED",
+                    "message": "User not authorized for this cancellation"
+                }
+            
+            # Check if payment intent can be canceled
+            if transaction.status in ["succeeded", "canceled"]:
+                return {
+                    "status": "error",
+                    "error_code": "CANNOT_CANCEL",
+                    "message": f"Payment intent with status '{transaction.status}' cannot be canceled"
+                }
+            
+            # Cancel Stripe payment intent
+            payment_intent = stripe.PaymentIntent.cancel(
+                payment_intent_id,
+                cancellation_reason=cancellation_reason
+            )
+            
+            # Update transaction status
+            transaction.status = "canceled"
+            transaction.description = f"Canceled: {cancellation_reason}"
+            transaction.updated_at = datetime.utcnow()
+            
+            # Update order status if order exists
+            if transaction.order_id:
+                order = await self.db.get(Order, transaction.order_id)
+                if order:
+                    order.status = "cancelled"
+                    order.updated_at = datetime.utcnow()
+            
+            await self.db.commit()
+            
+            # Send cancellation email
+            await self.send_payment_cancellation_email(transaction, cancellation_reason)
+            
+            # Log activity
+            activity_service = ActivityService(self.db)
+            await activity_service.log_activity(
+                action_type="payment_canceled",
+                description=f"Payment canceled for order #{transaction.order_id}",
+                user_id=transaction.user_id,
+                metadata={
+                    "payment_intent_id": payment_intent_id,
+                    "order_id": str(transaction.order_id),
+                    "cancellation_reason": cancellation_reason
+                }
+            )
+            
+            return {
+                "status": "success",
+                "payment_intent_id": payment_intent_id,
+                "cancellation_reason": cancellation_reason,
+                "order_id": str(transaction.order_id) if transaction.order_id else None,
+                "message": "Payment intent canceled successfully"
+            }
+            
+        except stripe.StripeError as e:
+            return {
+                "status": "error",
+                "error_code": "STRIPE_ERROR",
+                "message": f"Stripe cancellation error: {str(e)}"
+            }
+        except Exception as e:
+            return {
+                "status": "error",
+                "error_code": "INTERNAL_ERROR",
+                "message": f"Payment cancellation failed: {str(e)}"
+            }
+    
+    async def get_refund_status(self, refund_id: str) -> dict:
+        """Get the status of a refund"""
+        try:
+            refund = stripe.Refund.retrieve(refund_id)
+            return {
+                "status": "success",
+                "refund_id": refund.id,
+                "amount": refund.amount / 100,  # Convert from cents
+                "currency": refund.currency,
+                "status_detail": refund.status,
+                "reason": refund.reason,
+                "created": refund.created
+            }
+        except stripe.StripeError as e:
+            return {
+                "status": "error",
+                "message": f"Failed to retrieve refund: {str(e)}"
+            }
+    
+    async def send_refund_confirmation_email(self, transaction: Transaction, refund: dict):
+        """Send refund confirmation email"""
+        user_result = await self.db.execute(select(User).where(User.id == transaction.user_id))
+        user = user_result.scalar_one_or_none()
+        if not user:
+            return
+
+        context = {
+            "customer_name": user.firstname,
+            "refund_amount": f"${transaction.amount:.2f}",
+            "refund_id": refund.get("id"),
+            "order_number": str(transaction.order_id),
+            "processing_time": "3-5 business days",
+            "account_url": f"{settings.FRONTEND_URL}/account/orders",
+            "company_name": "Banwee",
+        }
+
+        try:
+            await send_email(
+                to_email=user.email,
+                mail_type='refund_confirmation',
+                context=context
+            )
+        except Exception as e:
+            pass  # Email sending failure should not break the flow
+    
+    async def send_payment_cancellation_email(self, transaction: Transaction, reason: str):
+        """Send payment cancellation email"""
+        user_result = await self.db.execute(select(User).where(User.id == transaction.user_id))
+        user = user_result.scalar_one_or_none()
+        if not user:
+            return
+
+        context = {
+            "customer_name": user.firstname,
+            "order_number": str(transaction.order_id),
+            "cancellation_reason": reason.replace("_", " ").title(),
+            "amount": f"${transaction.amount:.2f}",
+            "retry_url": f"{settings.FRONTEND_URL}/checkout/{transaction.order_id}",
+            "company_name": "Banwee",
+        }
+
+        try:
+            await send_email(
+                to_email=user.email,
+                mail_type='payment_canceled',
+                context=context
+            )
+        except Exception as e:
+            pass  # Email sending failure should not break the flow

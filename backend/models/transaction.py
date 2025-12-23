@@ -20,6 +20,7 @@ class Transaction(BaseModel):
     # payment, refund, payout
     transaction_type = Column(String(50), nullable=False)
     description = Column(Text, nullable=True)
+    failure_reason = Column(Text, nullable=True)  # Store failure reason for failed payments
     meta_data = Column(Text, nullable=True)  # JSON string for additional data
 
     # Relationships
