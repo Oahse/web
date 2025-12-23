@@ -13,7 +13,7 @@ from .transaction import Transaction
 from .wishlist import Wishlist, WishlistItem
 from .notification import Notification
 from .activity_log import ActivityLog
-from .negotiation import Negotiation # NEW
+from .webhook_event import WebhookEvent
 
 __all__ = [
     # User models
@@ -57,7 +57,7 @@ __all__ = [
 
     # Activity models
     "ActivityLog",
-
-    # Negotiation models
-    "Negotiation",
+    
+    # Webhook models
+    "WebhookEvent",
 ]

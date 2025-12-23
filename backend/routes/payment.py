@@ -240,38 +240,93 @@ async def process_payment(
 
 @payment_router.post("/stripe-webhook", summary="Handle Stripe webhook events")
 async def stripe_webhook(request: Request, background_tasks: BackgroundTasks, db: AsyncSession = Depends(get_db)):
+    import logging
+    logger = logging.getLogger(__name__)
+    
     try:
         # Retrieve the event by verifying the signature using the raw body and secret
         webhook_secret = settings.STRIPE_WEBHOOK_SECRET
         if not webhook_secret:
-            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                                detail="Stripe webhook secret not configured.")
+            logger.error("Stripe webhook secret not configured")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Stripe webhook secret not configured."
+            )
 
-        event = None
         payload = await request.body()
         sig_header = request.headers.get('stripe-signature')
+        
+        # Enhanced signature verification with detailed error handling
+        if not sig_header:
+            logger.warning("Missing Stripe signature header in webhook request")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Missing Stripe signature header"
+            )
+        
+        if not payload:
+            logger.warning("Empty payload received in webhook request")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Empty webhook payload"
+            )
 
+        event = None
         try:
+            # Verify webhook signature and construct event
             event = stripe.Webhook.construct_event(
                 payload, sig_header, webhook_secret
             )
+            logger.info(f"Successfully verified webhook signature for event: {event.get('id', 'unknown')}")
+            
         except ValueError as e:
-            # Invalid payload
+            # Invalid payload format
+            logger.error(f"Invalid webhook payload format: {str(e)}")
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Invalid payload format: {str(e)}"
+            )
         except stripe.SignatureVerificationError as e:
-            # Invalid signature
+            # Invalid signature - potential security issue
+            logger.error(f"Webhook signature verification failed: {str(e)}")
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid webhook signature"
+            )
+        except Exception as e:
+            # Unexpected error during signature verification
+            logger.error(f"Unexpected error during webhook signature verification: {str(e)}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Webhook signature verification failed"
+            )
+
+        # Additional validation of event structure
+        if not event or not isinstance(event, dict):
+            logger.error("Invalid event structure after signature verification")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid event structure"
+            )
+        
+        if not event.get('type'):
+            logger.error("Missing event type in webhook payload")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Missing event type"
+            )
 
         # Process the event in the background
         service = PaymentService(db)
         background_tasks.add_task(service.handle_stripe_webhook, event)
-
-        return {"status": "success"}
+        
+        logger.info(f"Webhook event {event.get('id')} queued for processing")
+        return {"status": "success", "event_id": event.get('id')}
+        
     except HTTPException:
         raise
     except Exception as e:
+        logger.error(f"Unexpected error processing Stripe webhook: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to process Stripe webhook - {str(e)}"

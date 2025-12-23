@@ -4,6 +4,7 @@ sqlalchemy[asyncio]==2.0.29
 asyncpg==0.29.0
 aiohttp==3.9.5
 aiokafka==0.8.1
+kafka-python==1.4.7
 APScheduler==3.10.1
 alembic==1.13.1
 

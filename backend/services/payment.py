@@ -4,6 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, delete
 from uuid import UUID
 from typing import List, Optional
+from datetime import datetime
 import stripe
 
 from core.config import settings
@@ -259,33 +260,260 @@ class PaymentService:
             await self.send_payment_receipt_email(transaction)
 
     async def handle_stripe_webhook(self, event: dict):
+        import logging
+        import asyncio
+        from datetime import datetime, timedelta
+        from models.webhook_event import WebhookEvent
+        
+        logger = logging.getLogger(__name__)
+        event_id = event.get("id", "unknown")
         event_type = event["type"]
         data = event["data"]["object"]
-
-        if event_type == "payment_intent.succeeded":
-            payment_intent_id = data["id"]
-            status = data["status"]
-            await self._process_successful_payment(payment_intent_id, status)
-
-        elif event_type == "charge.succeeded":
-            payment_intent_id = data.get("payment_intent")
-            if payment_intent_id:
-                await self._process_successful_payment(payment_intent_id, "succeeded")
-
-        elif event_type == "payment_intent.payment_failed":
-            payment_intent_id = data["id"]
-            status = data["status"]
-            failure_reason = data.get("last_payment_error", {}).get(
-                "message", "Unknown error")
-            query = update(Transaction).where(
-                Transaction.stripe_payment_intent_id == payment_intent_id).values(status=status)
-            await self.db.execute(query)
-            await self.db.commit()
-
-            transaction_result = await self.db.execute(select(Transaction).where(Transaction.stripe_payment_intent_id == payment_intent_id))
-            transaction = transaction_result.scalar_one_or_none()
-            if transaction:
-                await self.send_payment_failed_email(transaction, failure_reason)
+        
+        logger.info(f"Processing webhook event {event_id} of type {event_type}")
+        
+        # Check for idempotency - prevent duplicate processing
+        webhook_record = await self._get_or_create_webhook_record(event_id, event_type, event)
+        
+        if webhook_record.processed:
+            logger.info(f"Webhook event {event_id} already processed successfully, skipping")
+            return
+        
+        # Update processing attempt
+        webhook_record.processing_attempts += 1
+        webhook_record.last_processing_attempt = datetime.utcnow()
+        await self.db.commit()
+        
+        max_retries = 3
+        base_delay = 1  # Base delay in seconds
+        
+        while webhook_record.processing_attempts <= max_retries:
+            try:
+                if event_type == "payment_intent.succeeded":
+                    await self._handle_payment_intent_succeeded(data, event_id)
+                    
+                elif event_type == "payment_intent.payment_failed":
+                    await self._handle_payment_intent_failed(data, event_id)
+                    
+                elif event_type == "charge.succeeded":
+                    await self._handle_charge_succeeded(data, event_id)
+                    
+                elif event_type == "payment_method.attached":
+                    await self._handle_payment_method_attached(data, event_id)
+                    
+                elif event_type == "customer.updated":
+                    await self._handle_customer_updated(data, event_id)
+                    
+                else:
+                    logger.info(f"Unhandled webhook event type: {event_type}")
+                
+                # Mark as successfully processed
+                webhook_record.processed = True
+                webhook_record.completed_at = datetime.utcnow()
+                webhook_record.error_message = None
+                await self.db.commit()
+                
+                logger.info(f"Successfully processed webhook event {event_id}")
+                break
+                
+            except Exception as e:
+                error_message = str(e)
+                logger.error(f"Error processing webhook event {event_id} (attempt {webhook_record.processing_attempts}/{max_retries}): {error_message}")
+                
+                if webhook_record.processing_attempts < max_retries:
+                    # Exponential backoff: 1s, 2s, 4s
+                    delay = base_delay * (2 ** (webhook_record.processing_attempts - 1))
+                    logger.info(f"Retrying webhook event {event_id} in {delay} seconds")
+                    
+                    # Update attempt count for next retry
+                    webhook_record.processing_attempts += 1
+                    webhook_record.last_processing_attempt = datetime.utcnow()
+                    await self.db.commit()
+                    
+                    await asyncio.sleep(delay)
+                else:
+                    # Mark as failed after all retries exhausted
+                    webhook_record.error_message = error_message
+                    await self.db.commit()
+                    
+                    logger.error(f"Failed to process webhook event {event_id} after {max_retries} attempts")
+                    
+                    # Log final failure to activity log for monitoring
+                    from services.activity import ActivityService
+                    activity_service = ActivityService(self.db)
+                    await activity_service.log_activity(
+                        action_type="webhook_failed",
+                        description=f"Failed to process webhook after {max_retries} attempts: {error_message}",
+                        metadata={
+                            "webhook_event_id": event_id,
+                            "event_type": event_type,
+                            "status": "failed",
+                            "error": error_message,
+                            "attempts": max_retries
+                        }
+                    )
+                    raise
+    
+    async def _get_or_create_webhook_record(self, event_id: str, event_type: str, event_data: dict) -> 'WebhookEvent':
+        """Get existing webhook record or create new one for idempotency tracking"""
+        from models.webhook_event import WebhookEvent
+        
+        # Try to get existing record
+        query = select(WebhookEvent).where(WebhookEvent.stripe_event_id == event_id)
+        result = await self.db.execute(query)
+        webhook_record = result.scalar_one_or_none()
+        
+        if webhook_record:
+            return webhook_record
+        
+        # Create new record
+        webhook_record = WebhookEvent(
+            stripe_event_id=event_id,
+            event_type=event_type,
+            event_data=event_data,
+            processed=False,
+            processing_attempts=0
+        )
+        self.db.add(webhook_record)
+        await self.db.commit()
+        await self.db.refresh(webhook_record)
+        
+        return webhook_record
+    
+    async def _handle_payment_intent_succeeded(self, data: dict, event_id: str):
+        """Handle successful payment intent events"""
+        payment_intent_id = data["id"]
+        status = data["status"]
+        amount_received = data.get("amount_received", 0) / 100  # Convert from cents
+        
+        logger = logging.getLogger(__name__)
+        logger.info(f"Processing payment_intent.succeeded for {payment_intent_id}")
+        
+        # Update transaction status
+        query = update(Transaction).where(
+            Transaction.stripe_payment_intent_id == payment_intent_id
+        ).values(
+            status=status,
+            updated_at=datetime.utcnow()
+        )
+        result = await self.db.execute(query)
+        
+        if result.rowcount == 0:
+            logger.warning(f"No transaction found for payment_intent_id: {payment_intent_id}")
+            return
+        
+        await self.db.commit()
+        
+        # Get the updated transaction for further processing
+        transaction_result = await self.db.execute(
+            select(Transaction).where(Transaction.stripe_payment_intent_id == payment_intent_id)
+        )
+        transaction = transaction_result.scalar_one_or_none()
+        
+        if transaction:
+            # Send payment receipt email
+            await self.send_payment_receipt_email(transaction)
+            
+            # Log activity
+            from services.activity import ActivityService
+            activity_service = ActivityService(self.db)
+            await activity_service.log_activity(
+                action_type="payment_success",
+                description=f"Payment succeeded for order #{transaction.order_id}",
+                user_id=transaction.user_id,
+                metadata={
+                    "payment_intent_id": payment_intent_id,
+                    "amount": float(amount_received),
+                    "webhook_event_id": event_id
+                }
+            )
+    
+    async def _handle_payment_intent_failed(self, data: dict, event_id: str):
+        """Handle failed payment intent events"""
+        payment_intent_id = data["id"]
+        status = data["status"]
+        last_payment_error = data.get("last_payment_error", {})
+        failure_reason = last_payment_error.get("message", "Unknown payment failure")
+        failure_code = last_payment_error.get("code", "unknown")
+        
+        logger = logging.getLogger(__name__)
+        logger.info(f"Processing payment_intent.payment_failed for {payment_intent_id}")
+        
+        # Update transaction status with failure details
+        query = update(Transaction).where(
+            Transaction.stripe_payment_intent_id == payment_intent_id
+        ).values(
+            status=status,
+            failure_reason=failure_reason,
+            updated_at=datetime.utcnow()
+        )
+        result = await self.db.execute(query)
+        
+        if result.rowcount == 0:
+            logger.warning(f"No transaction found for payment_intent_id: {payment_intent_id}")
+            return
+        
+        await self.db.commit()
+        
+        # Get the updated transaction for further processing
+        transaction_result = await self.db.execute(
+            select(Transaction).where(Transaction.stripe_payment_intent_id == payment_intent_id)
+        )
+        transaction = transaction_result.scalar_one_or_none()
+        
+        if transaction:
+            # Send payment failure email
+            await self.send_payment_failed_email(transaction, failure_reason)
+            
+            # Log activity
+            from services.activity import ActivityService
+            activity_service = ActivityService(self.db)
+            await activity_service.log_activity(
+                action_type="payment_failure",
+                description=f"Payment failed for order #{transaction.order_id}: {failure_reason}",
+                user_id=transaction.user_id,
+                metadata={
+                    "payment_intent_id": payment_intent_id,
+                    "failure_reason": failure_reason,
+                    "failure_code": failure_code,
+                    "webhook_event_id": event_id
+                }
+            )
+    
+    async def _handle_charge_succeeded(self, data: dict, event_id: str):
+        """Handle successful charge events (backup for payment_intent.succeeded)"""
+        payment_intent_id = data.get("payment_intent")
+        if not payment_intent_id:
+            return
+        
+        logger = logging.getLogger(__name__)
+        logger.info(f"Processing charge.succeeded for payment_intent {payment_intent_id}")
+        
+        # Check if we already processed the payment_intent.succeeded event
+        transaction_result = await self.db.execute(
+            select(Transaction).where(Transaction.stripe_payment_intent_id == payment_intent_id)
+        )
+        transaction = transaction_result.scalar_one_or_none()
+        
+        if transaction and transaction.status != "succeeded":
+            await self._handle_payment_intent_succeeded(
+                {"id": payment_intent_id, "status": "succeeded", "amount_received": data.get("amount", 0)},
+                event_id
+            )
+    
+    async def _handle_payment_method_attached(self, data: dict, event_id: str):
+        """Handle payment method attachment events"""
+        logger = logging.getLogger(__name__)
+        logger.info(f"Processing payment_method.attached event {event_id}")
+        # This is mainly for logging/monitoring purposes
+        # The actual payment method creation is handled in our add_payment_method method
+    
+    async def _handle_customer_updated(self, data: dict, event_id: str):
+        """Handle customer update events"""
+        logger = logging.getLogger(__name__)
+        logger.info(f"Processing customer.updated event {event_id}")
+        # This could be used to sync customer data changes from Stripe
+        # For now, we'll just log it
 
     async def send_payment_receipt_email(self, transaction: Transaction):
         user_result = await self.db.execute(select(User).where(User.id == transaction.user_id))

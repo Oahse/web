@@ -17,7 +17,7 @@ class PaymentMethod(BaseModel):
     expiry_month = Column(Integer, nullable=True)
     expiry_year = Column(Integer, nullable=True)
     brand = Column(String(50), nullable=True)  # visa, mastercard, etc.
-    stripe_payment_method_id = Column(String(CHAR_LENGTH), nullable=True, unique=True) # NEW: Store Stripe Payment Method ID
+    stripe_payment_method_id = Column(String(255), nullable=True, unique=True) # NEW: Store Stripe Payment Method ID
     is_default = Column(Boolean, default=False)
     is_active = Column(Boolean, default=True)
     meta_data = Column(Text, nullable=True)  # JSON string for additional data

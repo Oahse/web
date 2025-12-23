@@ -110,16 +110,37 @@ class Settings:
     MAILGUN_FROM_EMAIL: str = os.getenv('MAILGUN_FROM_EMAIL', 'Banwee <noreply@banwee.com>')
     
     # --- Redis Configuration ---
-    # REDIS_URL for connecting to the Redis service (used for caching, Celery broker, etc.).
+    # REDIS_URL for connecting to the Redis service (used for caching and session management).
     # Defaults to 'redis://localhost:6379/0' for local development or Docker Compose.
     REDIS_URL: str = os.getenv('REDIS_URL', 'redis://redis:6379/0') # Corrected default to 'redis' service name
     
     # --- Kafka Configuration ---
+    # Kafka bootstrap servers for connecting to the Kafka cluster
     KAFKA_BOOTSTRAP_SERVERS: str = os.getenv('KAFKA_BOOTSTRAP_SERVERS', 'kafka:29092')
-    KAFKA_TOPIC_EMAIL: str = os.getenv('KAFKA_TOPIC_EMAIL', 'emails')
-    KAFKA_TOPIC_NOTIFICATION: str = os.getenv('KAFKA_TOPIC_NOTIFICATION', 'notifications')
-    KAFKA_TOPIC_ORDER: str = os.getenv('KAFKA_TOPIC_ORDER', 'orders')
-    KAFKA_TOPIC_NEGOTIATION: str = os.getenv('KAFKA_TOPIC_NEGOTIATION', 'negotiation')
+    
+    # Kafka topic names for different message types
+    KAFKA_TOPIC_EMAIL: str = os.getenv('KAFKA_TOPIC_EMAIL', 'banwee-emails')
+    KAFKA_TOPIC_NOTIFICATION: str = os.getenv('KAFKA_TOPIC_NOTIFICATION', 'banwee-notifications')
+    KAFKA_TOPIC_ORDER: str = os.getenv('KAFKA_TOPIC_ORDER', 'banwee-orders')
+    KAFKA_TOPIC_NEGOTIATION: str = os.getenv('KAFKA_TOPIC_NEGOTIATION', 'banwee-negotiations')
+    KAFKA_TOPIC_PAYMENT: str = os.getenv('KAFKA_TOPIC_PAYMENT', 'banwee-payments')
+    
+    # Kafka consumer group IDs
+    KAFKA_CONSUMER_GROUP_BACKEND: str = os.getenv('KAFKA_CONSUMER_GROUP_BACKEND', 'banwee-backend-consumers')
+    KAFKA_CONSUMER_GROUP_SCHEDULER: str = os.getenv('KAFKA_CONSUMER_GROUP_SCHEDULER', 'banwee-scheduler-consumers')
+    KAFKA_CONSUMER_GROUP_NEGOTIATOR: str = os.getenv('KAFKA_CONSUMER_GROUP_NEGOTIATOR', 'banwee-negotiator-consumers')
+    
+    # Kafka configuration settings
+    KAFKA_AUTO_OFFSET_RESET: str = os.getenv('KAFKA_AUTO_OFFSET_RESET', 'earliest')
+    KAFKA_ENABLE_AUTO_COMMIT: bool = os.getenv('KAFKA_ENABLE_AUTO_COMMIT', 'true').lower() == 'true'
+    KAFKA_MAX_POLL_RECORDS: int = int(os.getenv('KAFKA_MAX_POLL_RECORDS', '500'))
+    KAFKA_SESSION_TIMEOUT_MS: int = int(os.getenv('KAFKA_SESSION_TIMEOUT_MS', '30000'))
+    KAFKA_HEARTBEAT_INTERVAL_MS: int = int(os.getenv('KAFKA_HEARTBEAT_INTERVAL_MS', '10000'))
+    
+    # Kafka retry and error handling
+    KAFKA_RETRY_BACKOFF_MS: int = int(os.getenv('KAFKA_RETRY_BACKOFF_MS', '1000'))
+    KAFKA_MAX_RETRIES: int = int(os.getenv('KAFKA_MAX_RETRIES', '3'))
+    KAFKA_REQUEST_TIMEOUT_MS: int = int(os.getenv('KAFKA_REQUEST_TIMEOUT_MS', '30000'))
     
     # --- Frontend URL ---
     # FRONTEND_URL is the base URL of the frontend application, used for redirects, etc.
@@ -185,11 +206,82 @@ class Settings:
     def SQLALCHEMY_DATABASE_URI_SYNC(self) -> str:
         """
         Constructs the SQLAlchemy database URI for synchronous access.
-        Used by Celery tasks and potentially by SecurityValidator for sync operations.
+        Used by services that require synchronous database operations.
         """
         uri = self.SQLALCHEMY_DATABASE_URI
         # Replace asyncpg with psycopg2 for synchronous access
         return uri.replace('+asyncpg', '+psycopg2')
+
+    def validate_required_settings(self) -> None:
+        """
+        Validates that all required configuration settings are present.
+        Raises ValueError with clear error messages for missing settings.
+        """
+        missing_settings = []
+        
+        # Check required security settings
+        if not self.SECRET_KEY:
+            missing_settings.append("SECRET_KEY is required for session management and token signing")
+        
+        # Check required Stripe settings
+        if not self.STRIPE_SECRET_KEY:
+            missing_settings.append("STRIPE_SECRET_KEY is required for Stripe API authentication")
+        
+        if not self.STRIPE_WEBHOOK_SECRET:
+            missing_settings.append("STRIPE_WEBHOOK_SECRET is required for webhook signature verification")
+        
+        # Check Kafka settings
+        if not self.KAFKA_BOOTSTRAP_SERVERS:
+            missing_settings.append("KAFKA_BOOTSTRAP_SERVERS is required for Kafka connection")
+        
+        # Check database settings
+        if not self.POSTGRES_DB_URL and not all([
+            self.POSTGRES_USER, self.POSTGRES_PASSWORD, 
+            self.POSTGRES_SERVER, self.POSTGRES_DB
+        ]):
+            missing_settings.append("Database configuration is incomplete. Either set POSTGRES_DB_URL or all individual PostgreSQL settings")
+        
+        if missing_settings:
+            error_message = "Missing required configuration settings:\n" + "\n".join(f"- {setting}" for setting in missing_settings)
+            raise ValueError(error_message)
+
+    def validate_kafka_configuration(self) -> None:
+        """
+        Validates Kafka-specific configuration settings.
+        """
+        # Validate topic names are not empty
+        topics = [
+            self.KAFKA_TOPIC_EMAIL,
+            self.KAFKA_TOPIC_NOTIFICATION,
+            self.KAFKA_TOPIC_ORDER,
+            self.KAFKA_TOPIC_NEGOTIATION,
+            self.KAFKA_TOPIC_PAYMENT
+        ]
+        
+        for topic in topics:
+            if not topic or not topic.strip():
+                raise ValueError(f"Kafka topic name cannot be empty")
+        
+        # Validate consumer group IDs
+        consumer_groups = [
+            self.KAFKA_CONSUMER_GROUP_BACKEND,
+            self.KAFKA_CONSUMER_GROUP_SCHEDULER,
+            self.KAFKA_CONSUMER_GROUP_NEGOTIATOR
+        ]
+        
+        for group in consumer_groups:
+            if not group or not group.strip():
+                raise ValueError(f"Kafka consumer group ID cannot be empty")
+
+    def validate_stripe_configuration(self) -> None:
+        """
+        Validates Stripe-specific configuration settings.
+        """
+        if self.STRIPE_SECRET_KEY and not self.STRIPE_SECRET_KEY.startswith(('sk_test_', 'sk_live_')):
+            raise ValueError("STRIPE_SECRET_KEY must start with 'sk_test_' or 'sk_live_'")
+        
+        if self.STRIPE_WEBHOOK_SECRET and not self.STRIPE_WEBHOOK_SECRET.startswith('whsec_'):
+            raise ValueError("STRIPE_WEBHOOK_SECRET must start with 'whsec_'")
 
 
 # Instantiate the settings object to be used throughout the application
