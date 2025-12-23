@@ -79,25 +79,7 @@ services:
       - banwee_network
     restart: unless-stopped
 
-  # Scheduler (replaces Celery Beat)
-  scheduler:
-    build:
-      context: ./scheduler
-      dockerfile: Dockerfile
-    container_name: banwee_scheduler
-    command: python main.py
-    volumes:
-      - ./scheduler:/app
-    environment:
-      - PYTHONPATH=/app
-    depends_on:
-      kafka:
-        condition: service_healthy
-      redis:
-        condition: service_healthy # For services like NotificationService if they use Redis
-    networks:
-      - banwee_network
-    restart: unless-stopped
+
 
 
 
