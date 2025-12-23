@@ -49,6 +49,32 @@ from contextlib import asynccontextmanager
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup event
+    # Validate environment variables first
+    from core.environment_validator import validate_startup_environment
+    import logging
+    
+    logger = logging.getLogger(__name__)
+    logger.info("Validating environment configuration...")
+    
+    validation_result = validate_startup_environment()
+    if not validation_result.is_valid:
+        logger.error("Environment validation failed!")
+        if validation_result.error_message:
+            logger.error(validation_result.error_message)
+        
+        # Print setup instructions
+        from core.environment_validator import get_setup_instructions
+        instructions = get_setup_instructions()
+        logger.error("Setup Instructions:")
+        logger.error(instructions)
+        
+        raise RuntimeError("Invalid environment configuration. Please check your .env file.")
+    
+    logger.info("Environment validation passed ✅")
+    if validation_result.warnings:
+        for warning in validation_result.warnings:
+            logger.warning(warning)
+    
     # Initialize the database engine and session factory
     from core.config import settings # Import settings here to avoid circular dependency
     initialize_db(settings.SQLALCHEMY_DATABASE_URI, settings.ENVIRONMENT == "local")

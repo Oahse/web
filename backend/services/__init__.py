@@ -10,6 +10,7 @@ from .export import ExportService
 from .enhanced_export import EnhancedExportService
 from .inventory import InventoryService
 from .inventory_integration import InventoryIntegrationService
+from .enhanced_inventory_integration import EnhancedInventoryIntegrationService
 from .loyalty import LoyaltyService
 from .negotiator_service import NegotiatorService # NEW
 from .notification import NotificationService
