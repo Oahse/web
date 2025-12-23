@@ -8,7 +8,7 @@ from core.database import get_db
 from services.payment import PaymentService
 from schemas.payment import PaymentMethodCreate, PaymentMethodUpdate, PaymentMethodResponse
 from models.user import User
-from core.dependencies import verify_user_or_admin_access
+from core.dependencies import verify_user_or_admin_access, get_current_admin_user
 from pydantic import BaseModel, Field
 from core.config import settings
 from routes.user import get_current_authenticated_user  # Import the dependency
@@ -35,6 +35,13 @@ class ProcessPaymentRequest(BaseModel):
     payment_method_id: UUID
     order_id: UUID
     currency: str = Field("USD", max_length=3)
+
+
+class RefundRequest(BaseModel):
+    payment_intent_id: str
+    amount: Optional[float] = Field(None, gt=0)
+    reason: Optional[str] = "requested_by_customer"
+
 
 
 @payment_method_router.get("/me/payment-methods", response_model=List[PaymentMethodResponse], summary="Get all payment methods for the current user")
@@ -451,3 +458,36 @@ async def stripe_webhook(request: Request, background_tasks: BackgroundTasks, db
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to process Stripe webhook - {str(e)}"
         )
+
+
+@payment_router.post("/refunds", summary="Create a refund for a payment")
+async def create_refund(
+    payload: RefundRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_admin_user)
+):
+    """
+    Create a full or partial refund for a payment.
+    - **payment_intent_id**: The ID of the Stripe Payment Intent to refund.
+    - **amount**: The amount to refund. If not provided, a full refund will be issued.
+    - **reason**: The reason for the refund.
+    """
+    service = PaymentService(db)
+    refund_result = await service.create_refund(
+        payment_intent_id=payload.payment_intent_id,
+        amount=payload.amount,
+        reason=payload.reason,
+        user_id=current_user.id  # For logging/auditing
+    )
+
+    if refund_result["status"] == "error":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=refund_result["message"]
+        )
+
+    return {
+        "success": True,
+        "data": refund_result,
+        "message": "Refund processed successfully"
+    }
