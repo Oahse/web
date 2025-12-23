@@ -1,4 +1,3 @@
 sqlalchemy[asyncio]==2.0.29
-aiokafka==0.8.1
-kafka-python==1.4.7
+aiokafka==0.9.0
 python-dotenv==1.0.1
