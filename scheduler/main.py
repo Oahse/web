@@ -1,57 +1,74 @@
 import asyncio
 import logging
+import json # Added for KafkaProducer
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.interval import IntervalTrigger
 from datetime import datetime, timedelta
+from typing import Optional # Added Optional
 
-from backend.core.config import settings
-from backend.core.kafka import KafkaProducer, get_kafka_producer_service # Import both
-from backend.core.database import AsyncSessionDB
-from backend.services.payment import PaymentService
-from backend.services.email import EmailService
-from uuid import UUID
+from aiokafka import AIOKafkaProducer # Added for KafkaProducer
 
+from core.config import settings
+from core.database import AsyncSessionDB, initialize_db # Updated import
+# Removed backend.services imports
+# from uuid import UUID # Not used, can be removed if not needed elsewhere
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-# Initialize Kafka Producer Service globally
-# In a real app, manage this lifecycle carefully, e.g., using FastAPI's lifespan
-# For a standalone scheduler, we'll start/stop it within main()
+# Local Kafka Producer class
+class KafkaProducer:
+    def __init__(self):
+        self.producer = AIOKafkaProducer(bootstrap_servers=settings.KAFKA_BOOTSTRAP_SERVERS)
+
+    async def start(self):
+        logger.info("Starting Kafka Producer...")
+        await self.producer.start()
+        logger.info("Kafka Producer started.")
+
+    async def stop(self):
+        logger.info("Stopping Kafka Producer...")
+        await self.producer.stop()
+        logger.info("Kafka Producer stopped.")
+
+    async def send_message(self, topic: str, value: dict, key: str = None):
+        try:
+            value_bytes = json.dumps(value).encode('utf-8')
+            key_bytes = key.encode('utf-8') if key else None
+            await self.producer.send_and_wait(topic, value_bytes, key=key_bytes)
+            logger.info(f"Message sent to topic '{topic}': {value}")
+        except Exception as e:
+            logger.error(f"Failed to send message to topic '{topic}': {e}")
+            raise
+
 producer_service: Optional[KafkaProducer] = None
 
 async def check_and_notify_expiring_cards():
-    """Scheduled job to check for expiring payment methods and send notifications."""
+    """Scheduled job to check for expiring payment methods and send notifications via Kafka."""
     logger.info("Scheduler: Running job to check for expiring payment methods...")
     try:
-        async with AsyncSessionDB() as db:
-            payment_service = PaymentService(db)
-            email_service = EmailService(db)
-            
-            expiring_cards = await payment_service.find_expiring_payment_methods(days_ahead=30)
-            
-            if not expiring_cards:
-                logger.info("Scheduler: No expiring payment methods found.")
-                return
-
-            logger.info(f"Scheduler: Found {len(expiring_cards)} expiring payment methods. Dispatching notifications...")
-            for card in expiring_cards:
-                try:
-                    await email_service.send_payment_method_expiration_notice(
-                        user_id=card.user_id,
-                        payment_method_id=card.id
-                    )
-                except Exception as e:
-                    logger.error(f"Scheduler: Failed to dispatch expiration notice for card {card.id}: {e}")
-            
-            logger.info("Scheduler: Finished dispatching expiration notices.")
+        # This task will be handled by the backend service.
+        # The scheduler just needs to trigger it via Kafka.
+        await _publish_task_to_kafka(
+            settings.KAFKA_TOPIC_PAYMENT,
+            {
+                "service": "PaymentService",
+                "method": "find_and_notify_expiring_payment_methods", # A new method to be implemented in backend
+                "args": [30], # days_ahead
+                "kwargs": {}
+            }
+        )
+        logger.info("Scheduler: Dispatched 'find_and_notify_expiring_payment_methods' task to Kafka.")
 
     except Exception as e:
-        logger.error(f"Scheduler: Error in check_and_notify_expiring_cards job: {e}", exc_info=True)
+        logger.error(f"Scheduler: Error dispatching check_and_notify_expiring_cards task: {e}", exc_info=True)
 
 
 async def setup_scheduler():
     global producer_service
+    # Initialize the database here
+    initialize_db(settings.SQLALCHEMY_DATABASE_URI, settings.ENVIRONMENT == "local")
+
     producer_service = KafkaProducer()
     await producer_service.start()
 

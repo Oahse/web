@@ -3,16 +3,15 @@ import json
 import logging
 import importlib
 
+from core.config import settings # Note: Using negotiator.core.config
+from core.database import AsyncSessionDB, initialize_db # Note: Using core.database
 from aiokafka import AIOKafkaConsumer
-from backend.core.config import settings # Note: Using backend.core.config
-from backend.core.database import AsyncSessionDB # Note: Using backend.core.database
-
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Mapping of service names to their classes for negotiation tasks
 SERVICE_MODULE_MAP = {
-    "NegotiatorService": "negotiator.service", # Map to the new negotiator service
+    "NegotiatorService": "service", # Map to the new negotiator service
 }
 
 async def consume_messages():
@@ -74,8 +73,6 @@ async def consume_messages():
 
 if __name__ == "__main__":
     # Initialize DB (needed for services)
-    from backend.core.database import initialize_db
-    from backend.core.config import settings as backend_settings # Use alias to avoid conflict
-    initialize_db(backend_settings.SQLALCHEMY_DATABASE_URI, backend_settings.ENVIRONMENT == "local")
+    initialize_db(settings.SQLALCHEMY_DATABASE_URI, settings.ENVIRONMENT == "local")
     
     asyncio.run(consume_messages())

@@ -1154,6 +1154,33 @@ class PaymentService:
         result = await self.db.execute(expiring_cards_query)
         return result.scalars().all()
 
+    async def find_and_notify_expiring_payment_methods(self, days_ahead: int = 30):
+        """
+        Finds expiring payment methods and dispatches email notifications.
+        This method is designed to be called by a scheduled task (e.g., via Kafka).
+        """
+        from services.email import EmailService # Import locally to avoid circular dependency if EmailService also imports PaymentService
+        email_service = EmailService(self.db)
+        
+        expiring_cards = await self.find_expiring_payment_methods(days_ahead=days_ahead)
+        
+        if not expiring_cards:
+            logger.info("No expiring payment methods found to notify.")
+            return
+
+        logger.info(f"Found {len(expiring_cards)} expiring payment methods. Dispatching notifications...")
+        for card in expiring_cards:
+            try:
+                # Assuming EmailService has a method to send this specific notification
+                await email_service.send_payment_method_expiration_notice(
+                    user_id=card.user_id,
+                    payment_method_id=card.id
+                )
+            except Exception as e:
+                logger.error(f"Failed to dispatch expiration notice for card {card.id}: {e}")
+        
+        logger.info("Finished dispatching expiration notices for payment methods.")
+
     async def create_refund(
         self,
         payment_intent_id: str,

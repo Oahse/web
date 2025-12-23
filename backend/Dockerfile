@@ -16,7 +16,8 @@ RUN apk add --no-cache \
     rust \
     curl \
     python3-dev \
-    linux-headers
+    linux-headers \
+    librdkafka-dev
 
 # Copy Python dependency requirements file
 COPY requirements.txt .

@@ -85,13 +85,11 @@ services:
       context: ./scheduler
       dockerfile: Dockerfile
     container_name: banwee_scheduler
-    command: python app/main.py
-    working_dir: /
+    command: python main.py
     volumes:
       - ./scheduler:/app
-      - ./backend:/backend
     environment:
-      - PYTHONPATH=/
+      - PYTHONPATH=/app
     depends_on:
       kafka:
         condition: service_healthy
@@ -108,13 +106,10 @@ services:
       dockerfile: Dockerfile
     container_name: banwee_negotiator
     command: python consumer_worker.py
-    env_file:
-      - ./backend/.env # Using backend's .env for shared config like DB and Kafka
     volumes:
       - ./negotiator:/app
-      - ./backend:/backend # Mount backend for backend.core and backend.services imports
     environment:
-      - PYTHONPATH=/
+      - PYTHONPATH=/app
     depends_on:
       postgres:
         condition: service_healthy
