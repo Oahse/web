@@ -42,14 +42,14 @@ class TestMigrationIntegrityProperty:
             yield temp_dir
 
     @pytest.fixture
-    def mock_database_url(self):
+    def mock_postgres_db_url(self):
         """Mock database URL for testing"""
         return "postgresql://test_user:test_pass@localhost:5432/test_db"
 
     @pytest.fixture
-    def migration_service(self, mock_database_url, temp_backup_dir):
+    def migration_service(self, mock_postgres_db_url, temp_backup_dir):
         """Migration service instance with mocked dependencies"""
-        return MigrationService(mock_database_url, temp_backup_dir)
+        return MigrationService(mock_postgres_db_url, temp_backup_dir)
 
     # Strategy for generating database schema information
     @st.composite

@@ -41,15 +41,15 @@ logger = logging.getLogger(__name__)
 class MigrationManager:
     """Enhanced migration manager with backup and rollback capabilities"""
     
-    def __init__(self, database_url: str, backup_dir: str = "backups"):
-        self.database_url = database_url
+    def __init__(self, postgres_db_url: str, backup_dir: str = "backups"):
+        self.postgres_db_url = postgres_db_url
         self.backup_dir = Path(backup_dir)
         self.backup_dir.mkdir(exist_ok=True)
         
         # Parse database URL for pg_dump
-        self.db_config = self._parse_database_url(database_url)
+        self.db_config = self._parse_postgres_db_url(postgres_db_url)
         
-    def _parse_database_url(self, url: str) -> Dict[str, str]:
+    def _parse_postgres_db_url(self, url: str) -> Dict[str, str]:
         """Parse database URL into components for pg_dump"""
         # Example: postgresql://user:password@host:port/database
         if url.startswith('postgresql://'):
@@ -224,7 +224,7 @@ class MigrationManager:
         }
         
         try:
-            conn = await asyncpg.connect(self.database_url)
+            conn = await asyncpg.connect(self.postgres_db_url)
             
             # Check foreign key constraints
             fk_violations = await conn.fetch("""
@@ -416,7 +416,7 @@ def main():
         parser.print_help()
         return
         
-    manager = MigrationManager(args.database_url, args.backup_dir)
+    manager = MigrationManager(args.postgres_db_url, args.backup_dir)
     
     if args.command == 'backup':
         try:

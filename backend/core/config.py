@@ -203,7 +203,7 @@ class Settings:
     def SQLALCHEMY_DATABASE_URI(self) -> str:
         """
         Constructs the SQLAlchemy database URI.
-        Prioritizes a full URL (POSTGRES_DB_URL or DATABASE_URL) over individual components.
+        Prioritizes a full URL (POSTGRES_DB_URL) over individual components.
         Ensures async PostgreSQL driver is specified.
         """
         # Always use PostgreSQL with async support

@@ -44,19 +44,19 @@ logger = logging.getLogger(__name__)
 class MigrationService:
     """Enhanced migration service with comprehensive validation and rollback"""
     
-    def __init__(self, database_url: str, backup_dir: str = "migration_backups"):
-        self.database_url = database_url
+    def __init__(self, postgres_db_url: str, backup_dir: str = "migration_backups"):
+        self.postgres_db_url = postgres_db_url
         self.backup_dir = Path(backup_dir)
         self.backup_dir.mkdir(exist_ok=True)
         
         # Parse database URL for pg_dump
-        self.db_config = self._parse_database_url(database_url)
+        self.db_config = self._parse_postgres_db_url(postgres_db_url)
         
         # Migration tracking
         self.migration_log = []
         self.current_migration = None
         
-    def _parse_database_url(self, url: str) -> Dict[str, str]:
+    def _parse_postgres_db_url(self, url: str) -> Dict[str, str]:
         """Parse database URL into components for pg_dump"""
         # Handle both postgresql:// and postgres:// schemes
         if url.startswith('postgresql://'):
@@ -182,7 +182,7 @@ class MigrationService:
     async def _get_schema_info(self) -> Dict[str, Any]:
         """Get comprehensive schema information for backup metadata"""
         try:
-            conn = await asyncpg.connect(self.database_url)
+            conn = await asyncpg.connect(self.postgres_db_url)
             
             # Get table information
             tables = await conn.fetch("""
@@ -316,7 +316,7 @@ class MigrationService:
         }
         
         try:
-            conn = await asyncpg.connect(self.database_url)
+            conn = await asyncpg.connect(self.postgres_db_url)
             
             # 1. Check foreign key constraints
             logger.info("Checking foreign key constraints...")
@@ -740,7 +740,7 @@ sys.path.insert(0, '{Path(__file__).parent.parent}')
 from services.migration_service import MigrationService
 import asyncio
 
-service = MigrationService('{self.database_url}')
+service = MigrationService('{self.postgres_db_url}')
 results = asyncio.run(service.validate_data_integrity())
 if all(results.values()):
     print('✓ Post-rollback validation passed')
@@ -803,7 +803,7 @@ def main():
         parser.print_help()
         return
         
-    service = MigrationService(args.database_url, args.backup_dir)
+    service = MigrationService(args.postgres_db_url, args.backup_dir)
     
     if args.command == 'backup':
         try:

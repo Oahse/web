@@ -151,7 +151,7 @@ services:
       redis:
         condition: service_healthy
     environment:
-      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      - POSTGRES_DB_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       - REDIS_URL=redis://redis:6379
       - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
     ports:
@@ -324,7 +324,7 @@ services:
       redis:
         condition: service_healthy
     environment:
-      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      - POSTGRES_DB_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       - REDIS_URL=redis://redis:6379
       - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
       - ENVIRONMENT=production
@@ -570,7 +570,7 @@ EMAIL_PASSWORD=your-app-password
 ### Backend Environment File (`backend/.env`)
 ```bash
 # Database
-DATABASE_URL=postgresql://myuser:mypassword@postgres:5432/myapp
+POSTGRES_DB_URL=postgresql://myuser:mypassword@postgres:5432/myapp
 
 # Redis
 REDIS_URL=redis://redis:6379

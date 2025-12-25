@@ -26,7 +26,7 @@ Ensure your environment variables are configured:
 cp backend/.env.example backend/.env
 
 # Edit with your database credentials
-DATABASE_URL=postgresql://username:password@localhost:5432/dbname
+POSTGRES_DB_URL=postgresql://username:password@localhost:5432/dbname
 ```
 
 ## Initial Database Setup

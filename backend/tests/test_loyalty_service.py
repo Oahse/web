@@ -15,13 +15,13 @@ from services.loyalty import LoyaltyService
 
 
 # Test database setup
-TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
+TEST_POSTGRES_DB_URL = "sqlite+aiosqlite:///:memory:"
 
 @pytest.fixture
 async def db_session():
     """Create a test database session"""
     engine = create_async_engine(
-        TEST_DATABASE_URL,
+        TEST_POSTGRES_DB_URL,
         poolclass=StaticPool,
         connect_args={"check_same_thread": False}
     )

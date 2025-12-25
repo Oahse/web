@@ -69,10 +69,10 @@ def main():
     args = parser.parse_args()
     
     # Initialize enhanced migration service
-    service = MigrationService(args.database_url, args.backup_dir)
+    service = MigrationService(args.postgres_db_url, args.backup_dir)
     
     logger.info("Starting enhanced subscription payment migration...")
-    logger.info(f"Database URL: {args.database_url}")
+    logger.info(f"Database URL: {args.postgres_db_url}")
     logger.info(f"Backup directory: {args.backup_dir}")
     
     try:

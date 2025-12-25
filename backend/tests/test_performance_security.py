@@ -393,7 +393,7 @@ class TestPerformanceAndSecurity:
         """Test environment variable validation and error handling"""
         # Test required variable validation
         required_vars = [
-            "DATABASE_URL",
+            "POSTGRES_DB_URL",
             "STRIPE_PUBLISHABLE_KEY",
             "STRIPE_SECRET_KEY",
             "JWT_SECRET"
@@ -401,7 +401,7 @@ class TestPerformanceAndSecurity:
         
         # Test with missing variables
         test_env = {
-            "DATABASE_URL": "postgresql://test",
+            "POSTGRES_DB_URL": "postgresql://test",
             "STRIPE_PUBLISHABLE_KEY": "pk_test_123"
             # Missing STRIPE_SECRET_KEY and JWT_SECRET
         }
@@ -508,7 +508,7 @@ class TestPerformanceAndSecurity:
         # Test secure container configuration
         container_config = {
             "environment_variables": {
-                "DATABASE_URL": "postgresql://secure_host:5432/db",
+                "POSTGRES_DB_URL": "postgresql://secure_host:5432/db",
                 "STRIPE_SECRET_KEY": "sk_test_secure_key",
                 "DEBUG": "false",
                 "ALLOWED_HOSTS": "api.banwee.com,localhost"

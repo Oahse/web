@@ -371,7 +371,7 @@ class TestFinalIntegration:
         # Sample container environment configuration
         container_config = {
             "environment_variables": {
-                "DATABASE_URL": "postgresql://user:pass@localhost:5432/banwee",
+                "POSTGRES_DB_URL": "postgresql://user:pass@localhost:5432/banwee",
                 "STRIPE_PUBLISHABLE_KEY": "pk_test_...",
                 "STRIPE_SECRET_KEY": "sk_test_...",
                 "JWT_SECRET": "your-jwt-secret",
@@ -399,7 +399,7 @@ class TestFinalIntegration:
         
         # Verify required environment variables
         required_vars = [
-            "DATABASE_URL", "STRIPE_PUBLISHABLE_KEY", "STRIPE_SECRET_KEY", "JWT_SECRET"
+            "POSTGRES_DB_URL", "STRIPE_PUBLISHABLE_KEY", "STRIPE_SECRET_KEY", "JWT_SECRET"
         ]
         
         for var in required_vars:
