@@ -50,7 +50,7 @@ else
 fi
 
 echo ""
-echo "⚙️ Database migrations are handled automatically by the backend container on startup (via alembic upgrade head in docker-compose.yml)."
+echo "⚙️  Database migrations are handled automatically during backend container startup."
 echo ""
 
 if [ "$ENV" = "dev" ]; then
