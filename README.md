@@ -115,18 +115,20 @@ The platform features a React-based frontend with TypeScript for type safety, a 
 - **Framework**: FastAPI (Python 3.11+)
 - **Database**: PostgreSQL 16 with SQLAlchemy 2.0 (async)
 - **Caching**: Redis 7
-- **Task Queue**: Redis for background tasks
+- **Message Queue**: Apache Kafka for async messaging
+- **Background Tasks**: FastAPI Background Tasks with async/await
 - **Authentication**: JWT with python-jose
 - **Email**: Mailgun API
 - **Payment**: Stripe API
 - **Testing**: Pytest, Hypothesis (PBT)
-- **Migrations**: Alembic
+- **Migrations**: Alembic (runs automatically on Docker startup)
 - **ASGI Server**: Uvicorn
 
 ### Infrastructure
 - **Containerization**: Docker & Docker Compose
 - **Database**: PostgreSQL 16
-- **Cache/Queue**: Redis 7
+- **Cache**: Redis 7
+- **Message Broker**: Apache Kafka
 - **Image CDN**: GitHub + jsDelivr
 
 ---
@@ -513,7 +515,7 @@ All project documentation is now located in the `docs/` directory.
 - **Services**: Business logic layer (OrderService, ProductService, etc.)
 - **Models**: SQLAlchemy ORM models for database tables
 - **Schemas**: Pydantic models for request/response validation
-- **Tasks**: Background tasks for async operations (using Redis queues)
+- **Tasks**: FastAPI Background Tasks for async operations
 - **Core**: Shared utilities (database, auth, exceptions, logging)
 
 ### Database Schema
@@ -690,15 +692,23 @@ VITE_TIKTOK_CLIENT_ID=your_tiktok_client_id
 
 ### Database Migrations
 
-When you make changes to models:
+Migrations are handled automatically when the Docker container starts. For manual migration operations:
 
 ```bash
-cd backend
-# Create migration
+# Enter the backend container
+docker-compose exec backend sh
+
+# Create new migration (after model changes)
 alembic revision --autogenerate -m "Description of changes"
-# Apply migration
-alembic upgrade head
+
+# Check migration status
+alembic current
+
+# View migration history
+alembic history
 ```
+
+For more details, see [MIGRATION.md](./docs/MIGRATION.md).
 
 ### Code Quality
 
@@ -840,18 +850,7 @@ We welcome contributions from the community! Here's how you can help:
 
 ---
 
-## 📄 License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-### MIT License Summary
-
-- ✅ Commercial use
-- ✅ Modification
-- ✅ Distribution
-- ✅ Private use
-- ❌ Liability
-- ❌ Warranty
 
 ---
 
@@ -870,10 +869,12 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ### Social Media
 
-- **LinkedIn**: [Banwee Platform](#)
-- **Twitter**: [@BanweePlatform](#)
-- **Facebook**: [Banwee](#)
-- **Instagram**: [@banwee](#)
+- **LinkedIn**: [Banwee Platform](https://linkedin.com/company/banwee)
+- **Twitter**: [@BanweePlatform](https://twitter.com/banweeplatform)
+- **Facebook**: [Banwee](https://facebook.com/banwee)
+- **Instagram**: [@banwee](https://instagram.com/banwee)
+
+
 
 ---
 
@@ -883,61 +884,10 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - React team for the powerful UI library
 - Stripe for secure payment processing
 - Mailgun for reliable email delivery
+- Apache Kafka for robust message streaming
 - All contributors who have helped improve this project
 
----
 
-## 📸 Screenshots
-
-### Customer Experience
-
-#### Homepage
-![Homepage](docs/screenshots/homepage.png)
-*Modern, responsive homepage with featured products and categories*
-
-#### Product Listing
-![Product Listing](docs/screenshots/product-listing.png)
-*Browse products with filtering and sorting options*
-
-#### Product Details
-![Product Details](docs/screenshots/product-details.png)
-*Detailed product view with reviews and variants*
-
-#### Shopping Cart
-![Shopping Cart](docs/screenshots/cart.png)
-*Intuitive cart management with real-time updates*
-
-#### Checkout
-![Checkout](docs/screenshots/checkout.png)
-*Secure checkout with Stripe integration*
-
-### Admin Dashboard
-
-#### Analytics Dashboard
-![Admin Dashboard](docs/screenshots/admin-dashboard.png)
-*Comprehensive analytics with charts and metrics*
-
-#### Product Management
-![Product Management](docs/screenshots/admin-products.png)
-*Easy product creation and management*
-
-#### Order Management
-![Order Management](docs/screenshots/admin-orders.png)
-*Track and manage all orders*
-
-#### User Management
-![User Management](docs/screenshots/admin-users.png)
-*Manage customers, suppliers, and admins*
-
----
-
-## 🎬 Demo
-
-### Live Demo
-Visit our live demo: [https://banwee-demo.com](#) *(Coming Soon)*
-
-### Video Walkthrough
-Watch a complete walkthrough: [YouTube Demo](#) *(Coming Soon)*
 
 ---
 

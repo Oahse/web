@@ -1,23 +1,27 @@
 # Database Migrations
 
-This document describes the simplified database migration process using Alembic directly.
+This document describes the simple database migration process using Alembic directly in Docker startup.
 
 ## Overview
 
-The application uses Alembic for database migrations with a simple, straightforward approach:
+The application uses Alembic for database migrations with a straightforward approach:
 
-- Migrations run automatically when the backend container starts
-- No complex backup/restore utilities - use standard database backup tools if needed
+- Migrations run automatically when the backend container starts via Docker
+- No migration utilities or complex tools - just Alembic
 - Direct Alembic commands for all migration operations
+- Simple, reliable, and integrated with Docker startup
 
-## Automatic Migrations
+## Automatic Migrations on Docker Start
 
 When you start the application with `./docker-start.sh`, migrations are applied automatically:
 
 1. The backend container starts
-2. The `migrate.sh` script runs inside the container
-3. Alembic applies any pending migrations with `alembic upgrade head`
-4. The application starts normally
+2. The `migrate.sh` script runs as part of container startup
+3. Database connection is verified
+4. Alembic applies any pending migrations with `alembic upgrade head`
+5. The FastAPI application starts normally
+
+This ensures your database is always up-to-date when the application starts.
 
 ## Manual Migration Commands
 
@@ -38,6 +42,9 @@ alembic downgrade -1
 
 # Show migration history
 alembic history
+
+# View specific migration details
+alembic show <revision_id>
 ```
 
 ### Creating New Migrations
@@ -46,10 +53,10 @@ alembic history
 # Enter the backend container
 docker-compose exec backend sh
 
-# Generate a new migration
+# Generate a new migration (auto-detects model changes)
 alembic revision --autogenerate -m "Description of changes"
 
-# Create empty migration file
+# Create empty migration file for manual changes
 alembic revision -m "Manual migration description"
 ```
 
