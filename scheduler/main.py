@@ -83,7 +83,7 @@ async def setup_scheduler():
         misfire_grace_time=3600 # 1 hour grace time
     )
 
-    # Define periodic jobs, mapping Celery beat tasks to Kafka messages
+    
     # 'send-cart-abandonment-emails'
     scheduler.add_job(
         func=_publish_task_to_kafka,

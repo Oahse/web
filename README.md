@@ -115,7 +115,7 @@ The platform features a React-based frontend with TypeScript for type safety, a 
 - **Framework**: FastAPI (Python 3.11+)
 - **Database**: PostgreSQL 16 with SQLAlchemy 2.0 (async)
 - **Caching**: Redis 7
-- **Task Queue**: Celery with Redis broker
+- **Task Queue**: Redis for background tasks
 - **Authentication**: JWT with python-jose
 - **Email**: Mailgun API
 - **Payment**: Stripe API
@@ -208,9 +208,7 @@ The platform features a React-based frontend with TypeScript for type safety, a 
    # - Redis (healthy)  
    # - Backend (healthy)
    # - Frontend (healthy)
-   # - Celery Worker (running)
-   # - Celery Beat (running)
-   ```
+      ```
 
 5. **Access the application**
    - **Frontend**: http://localhost:5173
@@ -232,8 +230,7 @@ The platform features a React-based frontend with TypeScript for type safety, a 
 | Backend | 8000 | FastAPI application server |
 | PostgreSQL | 5432 | Database server |
 | Redis | 6379 | Cache and message broker |
-| Celery Worker | - | Background task processor |
-| Celery Beat | - | Periodic task scheduler |
+
 
 #### Default Credentials (After Seeding)
 - **Admin**: `admin@banwee.com` / `adminpass`
@@ -499,14 +496,7 @@ All project documentation is now located in the `docs/` directory.
 │  │  - Pydantic Validation                               │  │
 │  └──────────────────────────────────────────────────────┘  │
 └────────────────────────────────────────────────────────────┘
-         │                    │                    │
-         │                    │                    │
-         ▼                    ▼                    ▼
-┌──────────────┐    ┌──────────────┐    ┌──────────────┐
-│  PostgreSQL  │    │    Redis     │    │    Celery    │
-│   Database   │    │    Cache     │    │   Workers    │
-│              │    │   + Broker   │    │              │
-└──────────────┘    └──────────────┘    └──────────────┘
+
 ```
 
 ### Key Components
@@ -523,7 +513,7 @@ All project documentation is now located in the `docs/` directory.
 - **Services**: Business logic layer (OrderService, ProductService, etc.)
 - **Models**: SQLAlchemy ORM models for database tables
 - **Schemas**: Pydantic models for request/response validation
-- **Tasks**: Celery background tasks for async operations
+- **Tasks**: Background tasks for async operations (using Redis queues)
 - **Core**: Shared utilities (database, auth, exceptions, logging)
 
 ### Database Schema

@@ -50,13 +50,7 @@ else
 fi
 
 echo ""
-echo "⚙️ Applying database migrations..."
-if [ "$ENV" = "prod" ]; then
-    docker-compose -f docker-compose.prod.yml exec backend alembic upgrade head
-else
-    docker-compose exec backend alembic upgrade head
-fi
-echo "✅ Migrations applied successfully."
+echo "⚙️ Database migrations will be handled automatically by the backend container on startup."
 echo ""
 
 if [ "$ENV" = "dev" ]; then
