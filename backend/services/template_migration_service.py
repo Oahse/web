@@ -757,7 +757,7 @@ The Banwee platform uses Jinja2 templates for generating emails and exports, rep
 
 ### Email Templates
 
-Email templates are located in `templates/emails/` and follow this structure:
+Email templates are located in `core/utils/message/templates/` and follow this structure:
 
 ```html
 <!DOCTYPE html>
@@ -775,7 +775,7 @@ Email templates are located in `templates/emails/` and follow this structure:
 
 ### Export Templates
 
-Export templates are located in `templates/exports/` and support multiple formats:
+Export templates are located in `core/utils/message/templates/exports/` and support multiple formats:
 
 - **HTML**: For web display and PDF generation
 - **CSV**: For spreadsheet import
