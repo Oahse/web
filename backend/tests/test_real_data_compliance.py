@@ -22,7 +22,7 @@ with patch.dict('sys.modules', {
     'core.kafka': MagicMock(),
     'services.negotiator_service': MagicMock(),
 }):
-    from services.subscription_cost_calculator import SubscriptionCostCalculator
+    from services.subscriptions import SubscriptionService, CostBreakdown
     from services.payment import PaymentService
     from services.analytics import AnalyticsService
     from services.enhanced_inventory_integration import EnhancedInventoryIntegrationService

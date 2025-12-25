@@ -32,6 +32,10 @@ with patch.dict('sys.modules', {
         from services.admin_pricing import AdminPricingService
         from services.jinja_template import JinjaTemplateService
         from services.tax import TaxService
+        from services.subscription import SubscriptionService
+        from services.analytics import AnalyticsService
+        from services.loyalty import LoyaltyService
+        from services.payment import PaymentService
         from core.exceptions import APIException
     except ImportError:
         # If imports fail, create mock classes for testing
@@ -42,6 +46,14 @@ with patch.dict('sys.modules', {
         class JinjaTemplateService:
             def __init__(self): pass
         class TaxService:
+            def __init__(self, db): self.db = db
+        class SubscriptionService:
+            def __init__(self, db): self.db = db
+        class AnalyticsService:
+            def __init__(self, db): self.db = db
+        class LoyaltyService:
+            def __init__(self, db): self.db = db
+        class PaymentService:
             def __init__(self, db): self.db = db
         class APIException(Exception):
             def __init__(self, message, status_code=400):

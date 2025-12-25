@@ -19,7 +19,7 @@ from core.exceptions import (
     general_exception_handler
 )
 from core.config import settings
-from core.kafka import consume_messages,kafka_producer_service 
+from core.kafka import consume_messages, get_kafka_producer_service 
 from routes.websockets import ws_router
 from routes.auth import router as auth_router
 from routes.user import router as user_router
@@ -38,7 +38,7 @@ from routes.wishlist import router as wishlist_router
 from routes.notification import router as notification_router
 from routes.notification_preferences import router as notification_preferences_router
 from routes.health import router as health_router
-from routes.negotiator import router as negotiator_router
+# from routes.negotiator import router as negotiator_router
 from routes.search import router as search_router
 from routes.inventory import router as inventory_router
 from routes.loyalty import router as loyalty_router
@@ -80,7 +80,7 @@ async def lifespan(app: FastAPI):
     initialize_db(settings.SQLALCHEMY_DATABASE_URI, settings.ENVIRONMENT == "local")
 
     # Start Kafka Producer
-    await kafka_producer_service.start()
+    kafka_producer_service = await get_kafka_producer_service()
 
     # Start Kafka Consumer as a background task
     consumer_task = asyncio.create_task(consume_messages())
@@ -89,7 +89,8 @@ async def lifespan(app: FastAPI):
     yield
     # Shutdown event
     # Stop Kafka Producer
-    await kafka_producer_service.stop()
+    if kafka_producer_service:
+        await kafka_producer_service.stop()
 
     # Cancel Kafka Consumer background task
     consumer_task.cancel()
@@ -159,7 +160,7 @@ app.include_router(wishlist_router)
 app.include_router(notification_router)
 app.include_router(notification_preferences_router)
 app.include_router(health_router)
-app.include_router(negotiator_router)
+# app.include_router(negotiator_router)
 app.include_router(search_router)
 app.include_router(inventory_router)
 app.include_router(loyalty_router)

@@ -68,6 +68,16 @@ class TaxService:
         "GB": {"default": 0.20, "type": TaxType.VAT},
         "DE": {"default": 0.19, "type": TaxType.VAT},
         "FR": {"default": 0.20, "type": TaxType.VAT},
+        "IT": {"default": 0.22, "type": TaxType.VAT},
+        "ES": {"default": 0.21, "type": TaxType.VAT},
+        "NL": {"default": 0.21, "type": TaxType.VAT},
+        "BE": {"default": 0.21, "type": TaxType.VAT},
+        "AT": {"default": 0.20, "type": TaxType.VAT},
+        "IE": {"default": 0.23, "type": TaxType.VAT},
+        "PT": {"default": 0.23, "type": TaxType.VAT},
+        "FI": {"default": 0.24, "type": TaxType.VAT},
+        "SE": {"default": 0.25, "type": TaxType.VAT},
+        "DK": {"default": 0.25, "type": TaxType.VAT},
         "AU": {"default": 0.10, "type": TaxType.GST},
         "NZ": {"default": 0.15, "type": TaxType.GST},
         "GH": {"default": 0.125, "type": TaxType.VAT},
@@ -374,6 +384,30 @@ class TaxService:
                         }],
                         currency=currency,
                         calculation_method="generic_api"
+                    )
+            
+            # Handle VAT countries when VAT API is not available
+            elif country_code in ["GB", "DE", "FR", "IT", "ES", "NL", "BE", "AT", "IE", "PT", "FI", "SE", "DK"]:
+                # Use fallback VAT rates when API is not available
+                fallback_info = self.EMERGENCY_FALLBACK_RATES.get(country_code)
+                if fallback_info and fallback_info["type"] == TaxType.VAT:
+                    tax_rate = fallback_info["default"]
+                    tax_amount = subtotal * Decimal(str(tax_rate))
+                    
+                    return TaxCalculationResult(
+                        tax_rate=tax_rate,
+                        tax_amount=tax_amount,
+                        tax_type=TaxType.VAT,
+                        jurisdiction=country_code,
+                        breakdown=[{
+                            "type": "VAT",
+                            "rate": tax_rate,
+                            "amount": float(tax_amount),
+                            "jurisdiction": country_code,
+                            "note": "Emergency fallback rate used"
+                        }],
+                        currency=currency,
+                        calculation_method="emergency_fallback"
                     )
         
         except Exception as e:

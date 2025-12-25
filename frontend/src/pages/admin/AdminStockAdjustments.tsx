@@ -6,8 +6,8 @@ import ErrorMessage from '../../components/common/ErrorMessage';
 import { toast } from 'react-hot-toast';
 import { StockAdjustmentResponse } from '../../types'; // Assuming StockAdjustmentResponse type exists
 import { useParams } from 'react-router-dom';
-import Input from '../../components/forms/Input';
-import Select from '../../components/forms/Select';
+import { Input } from '../../components/forms/Input';
+import { Select } from '../../components/forms/Select';
 
 export const AdminStockAdjustments = () => {
   const { inventoryId } = useParams<{ inventoryId?: string }>(); // Optional: if viewing adjustments for a specific item

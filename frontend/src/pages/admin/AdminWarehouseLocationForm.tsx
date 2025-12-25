@@ -6,8 +6,8 @@ import ErrorMessage from '../../components/common/ErrorMessage';
 import { toast } from 'react-hot-toast';
 import { WarehouseLocationCreate, WarehouseLocationUpdate, WarehouseLocationResponse } from '../../types';
 import { useNavigate, useParams } from 'react-router-dom';
-import Input from '../../components/forms/Input';
-import Textarea from '../../components/forms/Textarea';
+import { Input } from '../../components/forms/Input';
+import { Textarea } from '../../components/forms/Textarea';
 
 export const AdminWarehouseLocationForm = () => {
   const { locationId } = useParams<{ locationId?: string }>();

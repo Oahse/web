@@ -34,40 +34,40 @@ class User(BaseModel):
 
     # Relationships with lazy loading
     addresses = relationship(
-        "models.user.Address", back_populates="user", cascade="all, delete-orphan", lazy="selectin")
-    orders = relationship("models.order.Order", back_populates="user", lazy="selectin")
-    reviews = relationship("models.review.Review", back_populates="user", lazy="selectin")
+        "Address", back_populates="user", cascade="all, delete-orphan", lazy="selectin")
+    orders = relationship("Order", back_populates="user", lazy="selectin")
+    reviews = relationship("Review", back_populates="user", lazy="selectin")
     wishlists = relationship(
-        "models.wishlist.Wishlist", back_populates="user", lazy="selectin")
+        "Wishlist", back_populates="user", lazy="selectin")
     blog_posts = relationship(
-        "models.blog.BlogPost", back_populates="author", lazy="selectin")
+        "BlogPost", back_populates="author", lazy="selectin")
     subscriptions = relationship(
-        "models.subscription.Subscription", back_populates="user", lazy="selectin")
+        "Subscription", back_populates="user", lazy="selectin")
     payment_methods = relationship(
-        "models.payment.PaymentMethod", back_populates="user", lazy="selectin")
+        "PaymentMethod", back_populates="user", lazy="selectin")
     transactions = relationship(
-        "models.transaction.Transaction", back_populates="user", lazy="selectin")
+        "Transaction", back_populates="user", lazy="selectin")
     supplied_products = relationship(
-        "models.product.Product", back_populates="supplier", lazy="selectin")
+        "Product", back_populates="supplier", lazy="selectin")
     notifications = relationship(
-        "models.notification.Notification", back_populates="user", lazy="selectin")
+        "Notification", back_populates="user", lazy="selectin")
     activity_logs = relationship(
-        "models.activity_log.ActivityLog", back_populates="user", lazy="selectin")
-    comments = relationship("models.blog.Comment", back_populates="author", cascade="all, delete-orphan", lazy="selectin")
-    negotiations_as_buyer = relationship(
-        "Negotiation", foreign_keys="Negotiation.buyer_id", back_populates="buyer"
-    )
-    negotiations_as_seller = relationship(
-        "Negotiation", foreign_keys="Negotiation.seller_id", back_populates="seller"
-    )
+        "ActivityLog", back_populates="user", lazy="selectin")
+    comments = relationship("Comment", back_populates="author", cascade="all, delete-orphan", lazy="selectin")
+    # negotiations_as_buyer = relationship(
+    #     "Negotiation", foreign_keys="Negotiation.buyer_id", back_populates="buyer"
+    # )
+    # negotiations_as_seller = relationship(
+    #     "Negotiation", foreign_keys="Negotiation.seller_id", back_populates="seller"
+    # )
     
     # Enhanced payment and loyalty relationships
     payment_intents = relationship(
-        "models.payment_intent.PaymentIntent", back_populates="user", lazy="selectin")
+        "PaymentIntent", back_populates="user", lazy="selectin")
     loyalty_account = relationship(
-        "models.loyalty.LoyaltyAccount", back_populates="user", uselist=False, lazy="selectin")
+        "LoyaltyAccount", back_populates="user", uselist=False, lazy="selectin")
     notification_preferences = relationship(
-        "models.notification_preference.NotificationPreference", back_populates="user", uselist=False, lazy="selectin")
+        "NotificationPreference", back_populates="user", uselist=False, lazy="selectin")
 
     @property
     def full_name(self) -> str:
@@ -111,7 +111,7 @@ class Address(BaseModel):
     is_default = Column(Boolean, default=False)
 
     # Relationships
-    user = relationship("models.user.User", back_populates="addresses")
+    user = relationship("User", back_populates="addresses")
 
     def to_dict(self) -> dict:
         """Convert address to dictionary for API responses"""

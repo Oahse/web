@@ -1,27 +1,35 @@
-# Models package
+# Models package - Consolidated imports only
 from .user import User, Address
 from .product import Product, ProductVariant, ProductImage, Category
 from .cart import Cart, CartItem
-from .order import Order, OrderItem, TrackingEvent
 from .blog import BlogPost
-from .subscription import Subscription
 from .review import Review
-from .payment import PaymentMethod
 from .promocode import Promocode
 from .shipping import ShippingMethod
-from .transaction import Transaction
 from .wishlist import Wishlist, WishlistItem
-from .notification import Notification
-from .notification_preference import NotificationPreference, NotificationHistory
 from .activity_log import ActivityLog
 from .webhook_event import WebhookEvent
-
-# Enhanced subscription and payment models
-from .pricing_config import PricingConfig, SubscriptionCostHistory
-from .payment_intent import PaymentIntent
-from .analytics import SubscriptionAnalytics, PaymentAnalytics
 from .loyalty import LoyaltyAccount, PointsTransaction
 from .variant_tracking import VariantTrackingEntry, VariantPriceHistory, VariantAnalytics, VariantSubstitution
+
+# Consolidated models - single source of truth
+from .orders import Order, OrderItem, TrackingEvent
+from .subscriptions import Subscription
+from .payments import PaymentMethod, PaymentIntent, Transaction
+from .notifications import Notification, NotificationPreference, NotificationHistory
+from .inventories import WarehouseLocation, Inventory, StockAdjustment
+from .admin import PricingConfig, SubscriptionCostHistory, SubscriptionAnalytics, PaymentAnalytics
+
+# Import settings and utils if they exist
+try:
+    from .settings import Settings
+except ImportError:
+    pass
+
+try:
+    from .utils import ModelUtils
+except ImportError:
+    pass
 
 __all__ = [
     # User models
@@ -38,32 +46,46 @@ __all__ = [
     "Cart",
     "CartItem",
 
-    # Order models
+    # Order models (consolidated)
     "Order",
     "OrderItem",
     "TrackingEvent",
+
+    # Subscription models (consolidated)
+    "Subscription",
+
+    # Payment models (consolidated)
+    "PaymentMethod",
+    "PaymentIntent",
+    "Transaction",
+
+    # Notification models (consolidated)
+    "Notification",
+    "NotificationPreference",
+    "NotificationHistory",
+
+    # Inventory models (consolidated)
+    "WarehouseLocation",
+    "Inventory",
+    "StockAdjustment",
+
+    # Admin models (consolidated)
+    "PricingConfig",
+    "SubscriptionCostHistory",
+    "SubscriptionAnalytics",
+    "PaymentAnalytics",
 
     # Content models
     "BlogPost",
     "Review",
 
     # Commerce models
-    "PaymentMethod",
     "Promocode",
     "ShippingMethod",
-    "Transaction",
 
     # Wishlist models
     "Wishlist",
     "WishlistItem",
-
-    # Subscription models
-    "Subscription",
-
-    # Notification models
-    "Notification",
-    "NotificationPreference",
-    "NotificationHistory",
 
     # Activity models
     "ActivityLog",
@@ -71,12 +93,7 @@ __all__ = [
     # Webhook models
     "WebhookEvent",
     
-    # Enhanced subscription and payment models
-    "PricingConfig",
-    "SubscriptionCostHistory",
-    "PaymentIntent",
-    "SubscriptionAnalytics",
-    "PaymentAnalytics",
+    # Loyalty models
     "LoyaltyAccount",
     "PointsTransaction",
     

@@ -4,17 +4,16 @@ from fastapi import APIRouter, Depends, Query, status, BackgroundTasks
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-from typing import Optional
+from typing import Optional, Dict, Any, List
 from core.database import get_db
 from core.utils.response import Response
 from core.exceptions import APIException
 from services.admin import AdminService
 from services.orders import OrderService
 from models.user import User
-from models.order import Order
+from models.orders import Order
 from services.auth import AuthService
-from schemas.auth import UserCreate  # Added UserCreate import
-from typing import List
+from schemas.auth import UserCreate
 from schemas.settings import SystemSettingResponse, SystemSettingUpdate
 from services.settings import SettingsService
 
@@ -22,20 +21,21 @@ from fastapi.security import OAuth2PasswordBearer
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
-
-
-
-
 async def get_current_auth_user(token: str = Depends(oauth2_scheme), db: AsyncSession = Depends(get_db)) -> User:
     return await AuthService.get_current_user(token, db)
 
 router = APIRouter(prefix="/api/v1/admin", tags=["Admin"])
 
-
 class ShipOrderRequest(BaseModel):
     tracking_number: str
     carrier_name: str
 
+class UpdateOrderStatusRequest(BaseModel):
+    status: str
+    tracking_number: Optional[str] = None
+    carrier_name: Optional[str] = None
+    location: Optional[str] = None
+    description: Optional[str] = None
 
 def require_admin(current_user: User = Depends(get_current_auth_user)):
     """Require admin role."""
@@ -46,7 +46,7 @@ def require_admin(current_user: User = Depends(get_current_auth_user)):
         )
     return current_user
 
-
+# Basic Admin Routes
 @router.get("/stats")
 async def get_admin_stats(
     current_user: User = Depends(require_admin),
@@ -62,7 +62,6 @@ async def get_admin_stats(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             message=f"Failed to fetch admin stats {str(e)}"
         )
-
 
 @router.get("/overview")
 async def get_platform_overview(
@@ -80,7 +79,7 @@ async def get_platform_overview(
             message=f"Failed to fetch platform overview  {str(e)}"
         )
 
-
+# Order Management Routes
 @router.get("/orders")
 async def get_all_orders(
     page: int = Query(1, ge=1),
@@ -105,217 +104,6 @@ async def get_all_orders(
             message=f"Failed to fetch orders {str(e)}"
         )
 
-
-@router.get("/users")
-async def get_all_users(
-    page: int = Query(1, ge=1),
-    limit: int = Query(10, ge=1, le=100),
-    role: Optional[str] = None,
-    search: Optional[str] = None,
-    status: Optional[str] = None,
-    verified: Optional[bool] = None,
-    current_user: User = Depends(require_admin),
-    db: AsyncSession = Depends(get_db)
-):
-    """Get all users (admin only)."""
-    try:
-        admin_service = AdminService(db)
-        users = await admin_service.get_all_users(page, limit, role, search, status, verified)
-        return Response(success=True, data=users)
-    except Exception as e:
-        raise APIException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            message="Failed to fetch users"
-        )
-
-
-@router.post("/users")
-async def create_user_admin(
-    user_data: UserCreate,
-    background_tasks: BackgroundTasks,
-    current_user: User = Depends(require_admin),
-    db: AsyncSession = Depends(get_db),
-):
-    """Create a new user (admin only)."""
-    try:
-        admin_service = AdminService(db)
-        user = await admin_service.create_user(user_data, background_tasks)
-        return Response(success=True, data=user, message="User created successfully")
-    except APIException:
-        raise
-    except Exception as e:
-        raise APIException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            message=f"Failed to create user: {str(e)}"
-        )
-
-
-@router.get("/users/{user_id}")
-async def get_user_by_id(
-    user_id: str,
-    current_user: User = Depends(require_admin),
-    db: AsyncSession = Depends(get_db)
-):
-    """Get a single user by ID (admin only)."""
-    try:
-        admin_service = AdminService(db)
-        user = await admin_service.get_user_by_id(user_id)
-        if not user:
-            raise APIException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                message="User not found"
-            )
-        return Response(success=True, data=user)
-    except APIException:
-        raise
-    except Exception as e:
-        raise APIException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            message=f"Failed to fetch user: {str(e)}"
-        )
-
-
-@router.get("/products")
-async def get_all_products_admin(
-    page: int = Query(1, ge=1),
-    limit: int = Query(10, ge=1, le=100),
-    search: Optional[str] = None,
-    category: Optional[str] = None,
-    status: Optional[str] = None,
-    supplier: Optional[str] = None,
-    current_user: User = Depends(require_admin),
-    db: AsyncSession = Depends(get_db)
-):
-    """Get all products (admin only)."""
-    try:
-        admin_service = AdminService(db)
-        products = await admin_service.get_all_products(page, limit, search, category, status, supplier)
-        return Response(success=True, data=products)
-    except Exception as e:
-        raise APIException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            message="Failed to fetch products"
-        )
-
-
-@router.get("/variants")
-async def get_all_variants_admin(
-    page: int = Query(1, ge=1),
-    limit: int = Query(10, ge=1, le=100),
-    search: Optional[str] = None,
-    product_id: Optional[str] = None,
-    current_user: User = Depends(require_admin),
-    db: AsyncSession = Depends(get_db)
-):
-    """Get all variants (admin only)."""
-    try:
-        admin_service = AdminService(db)
-        variants = await admin_service.get_all_variants(page, limit, search, product_id)
-        return Response(success=True, data=variants)
-    except Exception as e:
-        raise APIException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            message="Failed to fetch variants"
-        )
-
-
-@router.put("/users/{user_id}/status")
-async def update_user_status(
-    user_id: str,
-    active: bool,
-    current_user: User = Depends(require_admin),
-    db: AsyncSession = Depends(get_db)
-):
-    """Update user status (admin only)."""
-    try:
-        admin_service = AdminService(db)
-        user = await admin_service.update_user_status(user_id, active)
-        return Response(success=True, data=user, message="User status updated")
-    except Exception as e:
-        raise APIException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            message="Failed to update user status"
-        )
-
-
-@router.delete("/users/{user_id}")
-async def delete_user(
-    user_id: str,
-    current_user: User = Depends(require_admin),
-    db: AsyncSession = Depends(get_db)
-):
-    """Delete user (admin only)."""
-    try:
-        admin_service = AdminService(db)
-        await admin_service.delete_user(user_id)
-        return Response(success=True, message="User deleted successfully")
-    except Exception as e:
-        raise APIException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            message="Failed to delete user"
-        )
-
-
-@router.post("/users/{user_id}/reset-password")
-async def reset_user_password(
-    user_id: str,
-    current_user: User = Depends(require_admin),
-    db: AsyncSession = Depends(get_db)
-):
-    """Send password reset email to user (admin only)."""
-    try:
-        admin_service = AdminService(db)
-        result = await admin_service.reset_user_password(user_id)
-        return Response(success=True, data=result, message="Password reset email sent successfully")
-    except APIException:
-        raise
-    except Exception as e:
-        raise APIException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            message=f"Failed to send password reset email: {str(e)}"
-        )
-
-
-@router.post("/users/{user_id}/deactivate")
-async def deactivate_user_account(
-    user_id: str,
-    current_user: User = Depends(require_admin),
-    db: AsyncSession = Depends(get_db)
-):
-    """Deactivate user account (admin only)."""
-    try:
-        admin_service = AdminService(db)
-        result = await admin_service.deactivate_user(user_id)
-        return Response(success=True, data=result, message="User account deactivated successfully")
-    except APIException:
-        raise
-    except Exception as e:
-        raise APIException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            message=f"Failed to deactivate user: {str(e)}"
-        )
-
-
-@router.post("/users/{user_id}/activate")
-async def activate_user_account(
-    user_id: str,
-    current_user: User = Depends(require_admin),
-    db: AsyncSession = Depends(get_db)
-):
-    """Activate user account (admin only)."""
-    try:
-        admin_service = AdminService(db)
-        result = await admin_service.activate_user(user_id)
-        return Response(success=True, data=result, message="User account activated successfully")
-    except APIException:
-        raise
-    except Exception as e:
-        raise APIException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            message=f"Failed to activate user: {str(e)}"
-        )
-
-
 @router.get("/orders/{order_id}")
 async def get_order_by_id(
     order_id: UUID,
@@ -337,7 +125,6 @@ async def get_order_by_id(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             message=f"Failed to fetch order: {str(e)}"
         )
-
 
 @router.put("/orders/{order_id}/ship")
 async def ship_order(
@@ -365,15 +152,6 @@ async def ship_order(
             message=f"Failed to update order: {str(e)}"
         )
 
-
-class UpdateOrderStatusRequest(BaseModel):
-    status: str
-    tracking_number: Optional[str] = None
-    carrier_name: Optional[str] = None
-    location: Optional[str] = None
-    description: Optional[str] = None
-
-
 @router.put("/orders/{order_id}/status")
 async def update_order_status(
     order_id: str,
@@ -384,8 +162,7 @@ async def update_order_status(
 ):
     """Update order status with tracking information (admin only)."""
     try:
-        # Import the order service from order.py which has the enhanced method
-        from services.order import OrderService as EnhancedOrderService
+        from services.orders import OrderService as EnhancedOrderService
         
         order_service = EnhancedOrderService(db)
         order = await order_service.update_order_status(
@@ -411,7 +188,6 @@ async def update_order_status(
             message=f"Failed to update order status: {str(e)}"
         )
 
-
 @router.get("/orders/{order_id}/invoice")
 async def get_order_invoice_admin(
     order_id: UUID,
@@ -420,12 +196,11 @@ async def get_order_invoice_admin(
 ):
     """Get order invoice (admin only)."""
     from fastapi.responses import FileResponse
-    from services.order import OrderService as EnhancedOrderService
+    from services.orders import OrderService as EnhancedOrderService
     import os
     
     try:
         order_service = EnhancedOrderService(db)
-        # Get order to verify it exists
         order_query = await db.execute(
             select(Order).where(Order.id == order_id)
         )
@@ -437,27 +212,23 @@ async def get_order_invoice_admin(
                 message="Order not found"
             )
         
-        # Generate invoice (this works for any user as admin)
         invoice = await order_service.generate_invoice(order_id, order.user_id)
         
-        # If invoice_path exists, return the file for download
         if 'invoice_path' in invoice and os.path.exists(invoice['invoice_path']):
             file_path = invoice['invoice_path']
-            # Determine file type
             if file_path.endswith('.pdf'):
                 return FileResponse(
                     path=file_path,
                     filename=f"invoice-{order_id}.pdf",
                     media_type="application/pdf"
                 )
-            else:  # DOCX
+            else:
                 return FileResponse(
                     path=file_path,
                     filename=f"invoice-{order_id}.docx",
                     media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                 )
         
-        # Otherwise return invoice data
         return Response(success=True, data=invoice)
     except APIException:
         raise
@@ -467,7 +238,209 @@ async def get_order_invoice_admin(
             message=f"Failed to generate invoice: {str(e)}"
         )
 
+# User Management Routes
+@router.get("/users")
+async def get_all_users(
+    page: int = Query(1, ge=1),
+    limit: int = Query(10, ge=1, le=100),
+    role: Optional[str] = None,
+    search: Optional[str] = None,
+    status: Optional[str] = None,
+    verified: Optional[bool] = None,
+    current_user: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db)
+):
+    """Get all users (admin only)."""
+    try:
+        admin_service = AdminService(db)
+        users = await admin_service.get_all_users(page, limit, role, search, status, verified)
+        return Response(success=True, data=users)
+    except Exception as e:
+        raise APIException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            message="Failed to fetch users"
+        )
 
+@router.post("/users")
+async def create_user_admin(
+    user_data: UserCreate,
+    background_tasks: BackgroundTasks,
+    current_user: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """Create a new user (admin only)."""
+    try:
+        admin_service = AdminService(db)
+        user = await admin_service.create_user(user_data, background_tasks)
+        return Response(success=True, data=user, message="User created successfully")
+    except APIException:
+        raise
+    except Exception as e:
+        raise APIException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            message=f"Failed to create user: {str(e)}"
+        )
+
+@router.get("/users/{user_id}")
+async def get_user_by_id(
+    user_id: str,
+    current_user: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db)
+):
+    """Get a single user by ID (admin only)."""
+    try:
+        admin_service = AdminService(db)
+        user = await admin_service.get_user_by_id(user_id)
+        if not user:
+            raise APIException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                message="User not found"
+            )
+        return Response(success=True, data=user)
+    except APIException:
+        raise
+    except Exception as e:
+        raise APIException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            message=f"Failed to fetch user: {str(e)}"
+        )
+
+@router.put("/users/{user_id}/status")
+async def update_user_status(
+    user_id: str,
+    active: bool,
+    current_user: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db)
+):
+    """Update user status (admin only)."""
+    try:
+        admin_service = AdminService(db)
+        user = await admin_service.update_user_status(user_id, active)
+        return Response(success=True, data=user, message="User status updated")
+    except Exception as e:
+        raise APIException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            message="Failed to update user status"
+        )
+
+@router.delete("/users/{user_id}")
+async def delete_user(
+    user_id: str,
+    current_user: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db)
+):
+    """Delete user (admin only)."""
+    try:
+        admin_service = AdminService(db)
+        await admin_service.delete_user(user_id)
+        return Response(success=True, message="User deleted successfully")
+    except Exception as e:
+        raise APIException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            message="Failed to delete user"
+        )
+
+@router.post("/users/{user_id}/reset-password")
+async def reset_user_password(
+    user_id: str,
+    current_user: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db)
+):
+    """Send password reset email to user (admin only)."""
+    try:
+        admin_service = AdminService(db)
+        result = await admin_service.reset_user_password(user_id)
+        return Response(success=True, data=result, message="Password reset email sent successfully")
+    except APIException:
+        raise
+    except Exception as e:
+        raise APIException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            message=f"Failed to send password reset email: {str(e)}"
+        )
+
+@router.post("/users/{user_id}/deactivate")
+async def deactivate_user_account(
+    user_id: str,
+    current_user: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db)
+):
+    """Deactivate user account (admin only)."""
+    try:
+        admin_service = AdminService(db)
+        result = await admin_service.deactivate_user(user_id)
+        return Response(success=True, data=result, message="User account deactivated successfully")
+    except APIException:
+        raise
+    except Exception as e:
+        raise APIException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            message=f"Failed to deactivate user: {str(e)}"
+        )
+
+@router.post("/users/{user_id}/activate")
+async def activate_user_account(
+    user_id: str,
+    current_user: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db)
+):
+    """Activate user account (admin only)."""
+    try:
+        admin_service = AdminService(db)
+        result = await admin_service.activate_user(user_id)
+        return Response(success=True, data=result, message="User account activated successfully")
+    except APIException:
+        raise
+    except Exception as e:
+        raise APIException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            message=f"Failed to activate user: {str(e)}"
+        )
+
+# Product Management Routes
+@router.get("/products")
+async def get_all_products_admin(
+    page: int = Query(1, ge=1),
+    limit: int = Query(10, ge=1, le=100),
+    search: Optional[str] = None,
+    category: Optional[str] = None,
+    status: Optional[str] = None,
+    supplier: Optional[str] = None,
+    current_user: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db)
+):
+    """Get all products (admin only)."""
+    try:
+        admin_service = AdminService(db)
+        products = await admin_service.get_all_products(page, limit, search, category, status, supplier)
+        return Response(success=True, data=products)
+    except Exception as e:
+        raise APIException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            message="Failed to fetch products"
+        )
+
+@router.get("/variants")
+async def get_all_variants_admin(
+    page: int = Query(1, ge=1),
+    limit: int = Query(10, ge=1, le=100),
+    search: Optional[str] = None,
+    product_id: Optional[str] = None,
+    current_user: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db)
+):
+    """Get all variants (admin only)."""
+    try:
+        admin_service = AdminService(db)
+        variants = await admin_service.get_all_variants(page, limit, search, product_id)
+        return Response(success=True, data=variants)
+    except Exception as e:
+        raise APIException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            message="Failed to fetch variants"
+        )
+
+# System Settings Routes
 @router.get("/system/settings", response_model=List[SystemSettingResponse])
 async def get_system_settings(
     current_user: User = Depends(require_admin),
@@ -484,7 +457,6 @@ async def get_system_settings(
             message=f"Failed to fetch system settings {str(e)}"
         )
 
-
 @router.put("/system/settings", response_model=List[SystemSettingResponse])
 async def update_system_settings(
     settings_updates: List[SystemSettingUpdate],
@@ -496,7 +468,6 @@ async def update_system_settings(
         settings_service = SettingsService(db)
         updated_settings = []
         for setting_update in settings_updates:
-            # Fetch the existing setting
             existing_setting = await settings_service.get_setting(setting_update.key)
             if not existing_setting:
                 raise APIException(
@@ -504,11 +475,9 @@ async def update_system_settings(
                     message=f"Setting with key {setting_update.key} not found."
                 )
             
-            # Update the setting
             updated_setting = await settings_service.update_setting(existing_setting, setting_update)
             updated_settings.append(updated_setting)
 
-            # Special handling for maintenance mode to trigger set_maintenance_mode
             if setting_update.key == "maintenance_mode" and setting_update.value_type == "boolean":
                 enable_maintenance = updated_setting.value == "true"
                 maintenance_message_setting = await settings_service.get_setting("maintenance_mode_message")
@@ -524,7 +493,7 @@ async def update_system_settings(
             message=f"Failed to update system settings {str(e)}"
         )
 
-
+# Export Routes
 @router.get("/orders/export")
 async def export_orders(
     format: str = Query("csv"),
@@ -541,7 +510,6 @@ async def export_orders(
     from fastapi.responses import StreamingResponse
     from services.export import ExportService
     
-    # Validate format
     if format not in ['csv', 'excel', 'pdf']:
         raise APIException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -551,10 +519,9 @@ async def export_orders(
     try:
         admin_service = AdminService(db)
         
-        # Get all orders without pagination for export
         orders_data = await admin_service.get_all_orders(
             page=1, 
-            limit=10000,  # Large limit to get all orders
+            limit=10000,
             order_status=order_status,
             q=q,
             date_from=date_from,
@@ -565,7 +532,6 @@ async def export_orders(
         
         orders = orders_data.get('data', [])
         
-        # Generate export based on format
         export_service = ExportService()
         
         if format == "csv":

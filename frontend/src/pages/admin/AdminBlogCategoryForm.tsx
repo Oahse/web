@@ -6,8 +6,8 @@ import ErrorMessage from '../../components/common/ErrorMessage';
 import { toast } from 'react-hot-toast';
 import { BlogCategoryCreate, BlogCategoryUpdate, BlogCategoryResponse } from '../../types';
 import { useNavigate, useParams } from 'react-router-dom';
-import Input from '../../components/forms/Input';
-import Textarea from '../../components/forms/Textarea'; // Assuming a Textarea component exists
+import { Input } from '../../components/forms/Input';
+import { Textarea } from '../../components/forms/Textarea'; // Assuming a Textarea component exists
 
 export const AdminBlogCategoryForm = () => {
   const { categoryId } = useParams<{ categoryId?: string }>();

@@ -458,19 +458,12 @@ The platform includes an innovative price negotiation system:
 
 ## 📚 Documentation
 
-### Setup & Configuration
-- **[SETUP_COMPLETE.md](./SETUP_COMPLETE.md)** - Complete setup overview and checklist
-- **[DOCKER_SETUP_GUIDE.md](./DOCKER_SETUP_GUIDE.md)** - Docker setup, commands, and troubleshooting
-- **[LATEST_UPDATES_SUMMARY.md](./LATEST_UPDATES_SUMMARY.md)** - Latest features and updates
-- **[API_DOCUMENTATION.md](./API_DOCUMENTATION.md)** - Complete API endpoint reference
+All project documentation is now located in the `docs/` directory.
 
-### Email System
-- **[EMAIL_BRANDING_GUIDE.md](./EMAIL_BRANDING_GUIDE.md)** - Email template branding and customization
-- **[EMAIL_TEMPLATE_CUSTOMIZATION_GUIDE.md](./EMAIL_TEMPLATE_CUSTOMIZATION_GUIDE.md)** - Template customization guide
-- **[EMAIL_USE_CASES_QUICK_REFERENCE.txt](./EMAIL_USE_CASES_QUICK_REFERENCE.txt)** - All 45 email use cases
-
-### SEO & Marketing
-- **[SEO_OPTIMIZATION_GUIDE.md](./SEO_OPTIMIZATION_GUIDE.md)** - Comprehensive SEO optimization guide
+- **[API.md](./docs/API.md)** - Complete API endpoint reference and usage guide.
+- **[DOCKER.md](./docs/DOCKER.md)** - Docker setup, commands, and troubleshooting.
+- **[MIGRATION.md](./docs/MIGRATION.md)** - Database migration guide.
+- **[EMAIL_USE_CASES.txt](./docs/EMAIL_USE_CASES.txt)** - Quick reference for all 45 email use cases.
 
 ### Live Documentation
 - **Backend API Docs**: http://localhost:8000/docs (Swagger UI)

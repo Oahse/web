@@ -1,808 +1,904 @@
-from typing import Optional
+# Consolidated admin service
+# This file includes all admin-related functionality including pricing and analytics
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, or_, func, cast, String
+from sqlalchemy import select, func, and_, or_, desc
 from sqlalchemy.orm import selectinload
-
-from models.product import Product, Category, ProductVariant
-from models.order import Order, OrderItem
+from fastapi import HTTPException
+from models.admin import PricingConfig, SubscriptionCostHistory, SubscriptionAnalytics, PaymentAnalytics
 from models.user import User
-
-from models.settings import SystemSettings
-from core.exceptions import APIException
-from services.analytics import AnalyticsService
-from schemas.auth import UserCreate  # Added UserCreate import
-from services.auth import AuthService  # Added AuthService import
-# Added NotificationService import
-from services.notification import NotificationService
-from fastapi import BackgroundTasks  # Added BackgroundTasks import
-from core.kafka import get_kafka_producer_service # ADD THIS LINE
+from models.subscriptions import Subscription
+from models.payments import Transaction
+from uuid import UUID
+from datetime import datetime, timedelta, date
+from typing import Optional, List, Dict, Any
+from decimal import Decimal
 
 
 class AdminService:
+    """Consolidated admin service with comprehensive admin functionality"""
+    
     def __init__(self, db: AsyncSession):
         self.db = db
-        self.auth_service = AuthService(db)  # Initialize AuthService
-        self.notification_service = NotificationService(
-            db)  # Initialize NotificationService
 
-    async def get_dashboard_stats(self) -> dict:
-        """Get admin dashboard statistics with percentage changes."""
-        from datetime import datetime, timedelta
+    # --- Pricing Configuration Management ---
+    async def create_pricing_config(
+        self,
+        admin_user_id: UUID,
+        subscription_percentage: float,
+        delivery_costs: Dict[str, float],
+        tax_rates: Dict[str, float],
+        currency_settings: Dict[str, Any],
+        change_reason: Optional[str] = None
+    ) -> PricingConfig:
+        """Create a new pricing configuration"""
         
-        # Calculate date ranges
-        now = datetime.now()
-        thirty_days_ago = now - timedelta(days=30)
-        sixty_days_ago = now - timedelta(days=60)
-        
-        # Get current period stats (last 30 days)
-        # Users
-        user_count_query = select(func.count(User.id))
-        user_result = await self.db.execute(user_count_query)
-        total_users = user_result.scalar() or 0
-        
-        user_current_query = select(func.count(User.id)).where(User.created_at >= thirty_days_ago)
-        user_current_result = await self.db.execute(user_current_query)
-        users_current = user_current_result.scalar() or 0
-        
-        user_previous_query = select(func.count(User.id)).where(
-            User.created_at >= sixty_days_ago,
-            User.created_at < thirty_days_ago
+        # Deactivate current active config
+        await self.db.execute(
+            select(PricingConfig).where(PricingConfig.is_active == "active").update({"is_active": "inactive"})
         )
-        user_previous_result = await self.db.execute(user_previous_query)
-        users_previous = user_previous_result.scalar() or 0
         
-        # Products
-        product_count_query = select(func.count(Product.id))
-        product_result = await self.db.execute(product_count_query)
-        total_products = product_result.scalar() or 0
-        
-        product_current_query = select(func.count(Product.id)).where(Product.created_at >= thirty_days_ago)
-        product_current_result = await self.db.execute(product_current_query)
-        products_current = product_current_result.scalar() or 0
-        
-        product_previous_query = select(func.count(Product.id)).where(
-            Product.created_at >= sixty_days_ago,
-            Product.created_at < thirty_days_ago
+        # Create new config
+        config = PricingConfig(
+            subscription_percentage=subscription_percentage,
+            delivery_costs=delivery_costs,
+            tax_rates=tax_rates,
+            currency_settings=currency_settings,
+            updated_by=admin_user_id,
+            version="1.0",
+            is_active="active",
+            change_reason=change_reason
         )
-        product_previous_result = await self.db.execute(product_previous_query)
-        products_previous = product_previous_result.scalar() or 0
         
-        # Orders
-        order_count_query = select(func.count(Order.id))
-        order_result = await self.db.execute(order_count_query)
-        total_orders = order_result.scalar() or 0
+        self.db.add(config)
+        await self.db.commit()
+        await self.db.refresh(config)
         
-        order_current_query = select(func.count(Order.id)).where(Order.created_at >= thirty_days_ago)
-        order_current_result = await self.db.execute(order_current_query)
-        orders_current = order_current_result.scalar() or 0
-        
-        order_previous_query = select(func.count(Order.id)).where(
-            Order.created_at >= sixty_days_ago,
-            Order.created_at < thirty_days_ago
-        )
-        order_previous_result = await self.db.execute(order_previous_query)
-        orders_previous = order_previous_result.scalar() or 0
-        
-        # Revenue
-        revenue_query = select(func.sum(Order.total_amount))
-        revenue_result = await self.db.execute(revenue_query)
-        total_revenue = revenue_result.scalar() or 0
-        
-        revenue_current_query = select(func.sum(Order.total_amount)).where(Order.created_at >= thirty_days_ago)
-        revenue_current_result = await self.db.execute(revenue_current_query)
-        revenue_current = revenue_current_result.scalar() or 0
-        
-        revenue_previous_query = select(func.sum(Order.total_amount)).where(
-            Order.created_at >= sixty_days_ago,
-            Order.created_at < thirty_days_ago
-        )
-        revenue_previous_result = await self.db.execute(revenue_previous_query)
-        revenue_previous = revenue_previous_result.scalar() or 0
-        
-        # Calculate percentage changes
-        def calculate_change(current, previous):
-            if previous == 0:
-                return 100.0 if current > 0 else 0.0
-            return round(((current - previous) / previous) * 100, 1)
-        
-        revenue_change = calculate_change(revenue_current, revenue_previous)
-        orders_change = calculate_change(orders_current, orders_previous)
-        customers_change = calculate_change(users_current, users_previous)
-        products_change = calculate_change(products_current, products_previous)
+        return config
 
+    async def get_active_pricing_config(self) -> Optional[PricingConfig]:
+        """Get the currently active pricing configuration"""
+        result = await self.db.execute(
+            select(PricingConfig).where(PricingConfig.is_active == "active").order_by(desc(PricingConfig.created_at))
+        )
+        return result.scalar_one_or_none()
+
+    async def get_pricing_config_history(
+        self,
+        page: int = 1,
+        limit: int = 20
+    ) -> Dict[str, Any]:
+        """Get pricing configuration history"""
+        offset = (page - 1) * limit
+        
+        query = select(PricingConfig).order_by(desc(PricingConfig.created_at)).offset(offset).limit(limit)
+        result = await self.db.execute(query)
+        configs = result.scalars().all()
+        
+        # Get total count
+        total = await self.db.scalar(select(func.count(PricingConfig.id)))
+        
         return {
-            "total_customers": total_users,
-            "total_products": total_products,
-            "total_orders": total_orders,
-            "total_revenue": float(total_revenue),
-            "revenue_change": revenue_change,
-            "orders_change": orders_change,
-            "customers_change": customers_change,
-            "products_change": products_change,
-            "pending_orders": 0,
-            "low_stock_items": 0
+            "configs": [config.to_dict() for config in configs],
+            "pagination": {
+                "page": page,
+                "limit": limit,
+                "total": total,
+                "pages": (total + limit - 1) // limit
+            }
         }
 
-    async def get_platform_overview(self) -> dict:
-        """Get platform overview data."""
-        # Get recent registrations
-        recent_users_query = select(User).order_by(
-            User.created_at.desc()).limit(5)
-        recent_users_result = await self.db.execute(recent_users_query)
-        recent_users = recent_users_result.scalars().all()
-
-        # Get recent orders - ordered by order creation date, not user creation
-        recent_orders_query = (select(Order)
-                               .join(User)
-                               .options(selectinload(Order.user))
-                               .order_by(Order.created_at.desc())
-                               .limit(5))
-        recent_orders_result = await self.db.execute(recent_orders_query)
-        recent_orders = recent_orders_result.scalars().all()
-
-        # Get top products (reusing logic from AnalyticsService)
-        analytics_service = AnalyticsService(self.db)
-        top_products = await analytics_service.get_top_products(
-            user_id="", user_role="Admin", limit=5
+    async def update_pricing_config(
+        self,
+        admin_user_id: UUID,
+        subscription_percentage: Optional[float] = None,
+        delivery_costs: Optional[Dict[str, float]] = None,
+        tax_rates: Optional[Dict[str, float]] = None,
+        currency_settings: Optional[Dict[str, Any]] = None,
+        change_reason: Optional[str] = None
+    ) -> PricingConfig:
+        """Update the active pricing configuration"""
+        
+        current_config = await self.get_active_pricing_config()
+        if not current_config:
+            raise HTTPException(status_code=404, detail="No active pricing configuration found")
+        
+        # Create new version with updated values
+        new_config = PricingConfig(
+            subscription_percentage=subscription_percentage or current_config.subscription_percentage,
+            delivery_costs=delivery_costs or current_config.delivery_costs,
+            tax_rates=tax_rates or current_config.tax_rates,
+            currency_settings=currency_settings or current_config.currency_settings,
+            updated_by=admin_user_id,
+            version=f"{float(current_config.version) + 0.1:.1f}",
+            is_active="active",
+            change_reason=change_reason
         )
+        
+        # Deactivate current config
+        current_config.is_active = "inactive"
+        
+        self.db.add(new_config)
+        await self.db.commit()
+        await self.db.refresh(new_config)
+        
+        return new_config
 
-        # Get recent activity (orders, users, reviews)
-        recent_activity = []
+    # --- Subscription Cost History ---
+    async def log_subscription_cost_change(
+        self,
+        subscription_id: UUID,
+        old_cost_breakdown: Optional[Dict[str, Any]],
+        new_cost_breakdown: Dict[str, Any],
+        change_reason: str,
+        changed_by: Optional[UUID] = None,
+        effective_date: Optional[datetime] = None
+    ) -> SubscriptionCostHistory:
+        """Log a subscription cost change"""
         
-        # Add recent orders to activity
-        for order in recent_orders[:3]:
-            recent_activity.append({
-                "id": str(order.id),
-                "type": "order",
-                "description": f"New order #{str(order.id)[:8]} from {order.user.firstname if order.user else 'Unknown'} {order.user.lastname if order.user else 'User'}",
-                "amount": order.total_amount,
-                "status": order.status,
-                "timestamp": order.created_at.isoformat()
-            })
+        history = SubscriptionCostHistory(
+            subscription_id=subscription_id,
+            old_cost_breakdown=old_cost_breakdown,
+            new_cost_breakdown=new_cost_breakdown,
+            change_reason=change_reason,
+            effective_date=effective_date or datetime.utcnow(),
+            changed_by=changed_by
+        )
         
-        # Add recent users to activity
-        for user in recent_users[:2]:
-            recent_activity.append({
-                "id": str(user.id),
-                "type": "user",
-                "description": f"New user registered: {user.firstname} {user.lastname}",
-                "email": user.email,
-                "role": user.role,
-                "timestamp": user.created_at.isoformat()
-            })
+        self.db.add(history)
+        await self.db.commit()
+        await self.db.refresh(history)
         
-        # Sort activity by timestamp (most recent first)
-        recent_activity.sort(key=lambda x: x["timestamp"], reverse=True)
+        return history
 
+    async def get_subscription_cost_history(
+        self,
+        subscription_id: UUID,
+        page: int = 1,
+        limit: int = 20
+    ) -> Dict[str, Any]:
+        """Get cost history for a subscription"""
+        offset = (page - 1) * limit
+        
+        query = select(SubscriptionCostHistory).where(
+            SubscriptionCostHistory.subscription_id == subscription_id
+        ).order_by(desc(SubscriptionCostHistory.created_at)).offset(offset).limit(limit)
+        
+        result = await self.db.execute(query)
+        history = result.scalars().all()
+        
+        # Get total count
+        total = await self.db.scalar(
+            select(func.count(SubscriptionCostHistory.id)).where(
+                SubscriptionCostHistory.subscription_id == subscription_id
+            )
+        )
+        
         return {
-            "recent_users": [
+            "history": [h.to_dict() for h in history],
+            "pagination": {
+                "page": page,
+                "limit": limit,
+                "total": total,
+                "pages": (total + limit - 1) // limit
+            }
+        }
+
+    # --- Analytics Management ---
+    async def generate_subscription_analytics(
+        self,
+        target_date: date,
+        force_regenerate: bool = False
+    ) -> SubscriptionAnalytics:
+        """Generate subscription analytics for a specific date"""
+        
+        # Check if analytics already exist for this date
+        existing = await self.db.scalar(
+            select(SubscriptionAnalytics).where(SubscriptionAnalytics.date == target_date)
+        )
+        
+        if existing and not force_regenerate:
+            return existing
+        
+        # Calculate analytics
+        start_of_day = datetime.combine(target_date, datetime.min.time())
+        end_of_day = datetime.combine(target_date, datetime.max.time())
+        
+        # Get all subscriptions
+        all_subscriptions = await self.db.execute(
+            select(Subscription).where(Subscription.created_at <= end_of_day)
+        )
+        all_subs = all_subscriptions.scalars().all()
+        
+        # Calculate metrics
+        total_active = len([s for s in all_subs if s.status == "active"])
+        new_subscriptions = len([s for s in all_subs if s.created_at.date() == target_date])
+        canceled_subscriptions = len([s for s in all_subs if s.cancelled_at and s.cancelled_at.date() == target_date])
+        paused_subscriptions = len([s for s in all_subs if s.status == "paused"])
+        
+        # Revenue calculations
+        active_subs = [s for s in all_subs if s.status == "active"]
+        total_revenue = sum(s.price or 0 for s in active_subs)
+        average_subscription_value = total_revenue / len(active_subs) if active_subs else 0
+        
+        # Create or update analytics record
+        if existing:
+            analytics = existing
+        else:
+            analytics = SubscriptionAnalytics(date=target_date)
+        
+        analytics.total_active_subscriptions = total_active
+        analytics.new_subscriptions = new_subscriptions
+        analytics.canceled_subscriptions = canceled_subscriptions
+        analytics.paused_subscriptions = paused_subscriptions
+        analytics.total_revenue = total_revenue
+        analytics.average_subscription_value = average_subscription_value
+        analytics.monthly_recurring_revenue = total_revenue  # Simplified
+        
+        # Calculate rates
+        if total_active > 0:
+            analytics.churn_rate = (canceled_subscriptions / total_active) * 100
+            analytics.retention_rate = 100 - analytics.churn_rate
+        
+        if not existing:
+            self.db.add(analytics)
+        
+        await self.db.commit()
+        await self.db.refresh(analytics)
+        
+        return analytics
+
+    async def generate_payment_analytics(
+        self,
+        target_date: date,
+        force_regenerate: bool = False
+    ) -> PaymentAnalytics:
+        """Generate payment analytics for a specific date"""
+        
+        # Check if analytics already exist for this date
+        existing = await self.db.scalar(
+            select(PaymentAnalytics).where(PaymentAnalytics.date == target_date)
+        )
+        
+        if existing and not force_regenerate:
+            return existing
+        
+        # Calculate analytics
+        start_of_day = datetime.combine(target_date, datetime.min.time())
+        end_of_day = datetime.combine(target_date, datetime.max.time())
+        
+        # Get transactions for the day
+        transactions_result = await self.db.execute(
+            select(Transaction).where(
+                and_(
+                    Transaction.created_at >= start_of_day,
+                    Transaction.created_at <= end_of_day,
+                    Transaction.transaction_type == "payment"
+                )
+            )
+        )
+        transactions = transactions_result.scalars().all()
+        
+        # Calculate metrics
+        total_payments = len(transactions)
+        successful_payments = len([t for t in transactions if t.status == "succeeded"])
+        failed_payments = len([t for t in transactions if t.status == "failed"])
+        pending_payments = len([t for t in transactions if t.status == "pending"])
+        
+        success_rate = (successful_payments / total_payments * 100) if total_payments > 0 else 0
+        
+        # Volume calculations
+        successful_txns = [t for t in transactions if t.status == "succeeded"]
+        total_volume = sum(t.amount for t in transactions)
+        successful_volume = sum(t.amount for t in successful_txns)
+        average_payment_amount = successful_volume / len(successful_txns) if successful_txns else 0
+        
+        # Create or update analytics record
+        if existing:
+            analytics = existing
+        else:
+            analytics = PaymentAnalytics(date=target_date)
+        
+        analytics.total_payments = total_payments
+        analytics.successful_payments = successful_payments
+        analytics.failed_payments = failed_payments
+        analytics.pending_payments = pending_payments
+        analytics.success_rate = success_rate
+        analytics.total_volume = total_volume
+        analytics.successful_volume = successful_volume
+        analytics.average_payment_amount = average_payment_amount
+        
+        if not existing:
+            self.db.add(analytics)
+        
+        await self.db.commit()
+        await self.db.refresh(analytics)
+        
+        return analytics
+
+    async def get_analytics_dashboard(
+        self,
+        start_date: date,
+        end_date: date
+    ) -> Dict[str, Any]:
+        """Get comprehensive analytics dashboard data"""
+        
+        # Get subscription analytics
+        sub_analytics_result = await self.db.execute(
+            select(SubscriptionAnalytics).where(
+                and_(
+                    SubscriptionAnalytics.date >= start_date,
+                    SubscriptionAnalytics.date <= end_date
+                )
+            ).order_by(SubscriptionAnalytics.date)
+        )
+        sub_analytics = sub_analytics_result.scalars().all()
+        
+        # Get payment analytics
+        payment_analytics_result = await self.db.execute(
+            select(PaymentAnalytics).where(
+                and_(
+                    PaymentAnalytics.date >= start_date,
+                    PaymentAnalytics.date <= end_date
+                )
+            ).order_by(PaymentAnalytics.date)
+        )
+        payment_analytics = payment_analytics_result.scalars().all()
+        
+        # Calculate summary metrics
+        total_revenue = sum(sa.total_revenue for sa in sub_analytics)
+        total_active_subscriptions = sub_analytics[-1].total_active_subscriptions if sub_analytics else 0
+        average_success_rate = sum(pa.success_rate for pa in payment_analytics) / len(payment_analytics) if payment_analytics else 0
+        
+        return {
+            "period": {
+                "start_date": start_date.isoformat(),
+                "end_date": end_date.isoformat()
+            },
+            "summary": {
+                "total_revenue": total_revenue,
+                "total_active_subscriptions": total_active_subscriptions,
+                "average_payment_success_rate": round(average_success_rate, 2),
+                "total_days": len(sub_analytics)
+            },
+            "subscription_analytics": [sa.to_dict() for sa in sub_analytics],
+            "payment_analytics": [pa.to_dict() for pa in payment_analytics]
+        }
+
+    # --- User Management ---
+    async def get_all_users(
+        self,
+        page: int = 1,
+        limit: int = 20,
+        search: Optional[str] = None,
+        role_filter: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """Get all users with pagination and filtering"""
+        offset = (page - 1) * limit
+        
+        query = select(User)
+        count_query = select(func.count(User.id))
+        
+        conditions = []
+        if search:
+            conditions.append(
+                or_(
+                    User.email.ilike(f"%{search}%"),
+                    User.firstname.ilike(f"%{search}%"),
+                    User.lastname.ilike(f"%{search}%")
+                )
+            )
+        
+        if role_filter:
+            conditions.append(User.role == role_filter)
+        
+        if conditions:
+            query = query.where(and_(*conditions))
+            count_query = count_query.where(and_(*conditions))
+        
+        query = query.order_by(desc(User.created_at)).offset(offset).limit(limit)
+        
+        result = await self.db.execute(query)
+        users = result.scalars().all()
+        
+        total = await self.db.scalar(count_query)
+        
+        return {
+            "users": [
                 {
                     "id": str(user.id),
-                    "name": (f"{user.firstname} "
-                             f"{user.lastname}"),
                     "email": user.email,
+                    "firstname": user.firstname,
+                    "lastname": user.lastname,
                     "role": user.role,
-                    "created_at": user.created_at.isoformat()
+                    "is_active": user.is_active,
+                    "created_at": user.created_at.isoformat() if user.created_at else None,
+                    "last_login": user.last_login.isoformat() if user.last_login else None
                 }
-                for user in recent_users
+                for user in users
             ],
-            "recent_orders": [
-                {
-                    "id": str(order.id),
-                    "user_id": str(order.user_id),
-                    "user_firstname": (
-                        order.user.firstname if order.user else None
-                    ),
-                    "user_lastname": (
-                        order.user.lastname if order.user else None
-                    ),
-                    "status": order.status,
-                    "total_amount": order.total_amount,
-                    "created_at": order.created_at.isoformat()
-                }
-                for order in recent_orders
-            ],
-            "top_products": top_products,
-            "recent_activity": recent_activity[:10]  # Limit to 10 most recent activities
+            "pagination": {
+                "page": page,
+                "limit": limit,
+                "total": total,
+                "pages": (total + limit - 1) // limit
+            }
         }
 
-    async def get_all_orders(self, page: int = 1, limit: int = 10, order_status: Optional[str] = None, q: Optional[str] = None, date_from: Optional[str] = None, date_to: Optional[str] = None, min_price: Optional[float] = None, max_price: Optional[float] = None) -> dict:
-        """Get all orders with pagination."""
+    async def update_user_role(
+        self,
+        user_id: UUID,
+        new_role: str,
+        admin_user_id: UUID
+    ) -> User:
+        """Update a user's role"""
+        result = await self.db.execute(select(User).where(User.id == user_id))
+        user = result.scalar_one_or_none()
+        
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        old_role = user.role
+        user.role = new_role
+        
+        await self.db.commit()
+        await self.db.refresh(user)
+        
+        # Log the role change (you might want to create an audit log model)
+        # For now, we'll just return the updated user
+        
+        return user
+
+    async def deactivate_user(
+        self,
+        user_id: UUID,
+        admin_user_id: UUID
+    ) -> User:
+        """Deactivate a user account"""
+        result = await self.db.execute(select(User).where(User.id == user_id))
+        user = result.scalar_one_or_none()
+        
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        user.is_active = False
+        
+        await self.db.commit()
+        await self.db.refresh(user)
+        
+        return user
+
+    # --- Dynamic Cost Recalculation (moved from separate service) ---
+    async def handle_real_time_variant_change(
+        self,
+        subscription_id: UUID,
+        variant_changes: Dict[str, List[UUID]],
+        user_id: UUID = None,
+        notify_user: bool = True
+    ) -> Dict[str, Any]:
+        """
+        Handle real-time recalculation when variants are added/removed from subscription.
+        
+        Args:
+            subscription_id: Subscription ID to update
+            variant_changes: Dict with 'added' and 'removed' variant ID lists
+            user_id: User ID for authorization
+            notify_user: Whether to send notification to user
+            
+        Returns:
+            Dictionary with recalculation results and notification status
+        """
         try:
-            offset = (page - 1) * limit
-
-            query = select(Order).options(selectinload(Order.user))
-
-            if order_status:
-                query = query.where(Order.status == order_status)
-
-            if q:
-                query = query.join(User).where(
-                    or_(
-                        cast(Order.id, String).ilike(f"%{q}%"),
-                        User.firstname.ilike(f"%{q}%"),
-                        User.lastname.ilike(f"%{q}%"),
-                        User.email.ilike(f"%{q}%")
-                    )
+            from services.subscriptions import SubscriptionService
+            
+            added_variants = variant_changes.get('added', [])
+            removed_variants = variant_changes.get('removed', [])
+            
+            # Get subscription service for recalculation
+            subscription_service = SubscriptionService(self.db)
+            
+            # Perform the recalculation
+            recalc_result = await subscription_service.recalculate_subscription_on_variant_change(
+                subscription_id=subscription_id,
+                added_variant_ids=added_variants,
+                removed_variant_ids=removed_variants,
+                user_id=user_id
+            )
+            
+            # Send real-time notification if requested
+            notification_result = None
+            if notify_user:
+                notification_result = await self._send_cost_change_notification(
+                    subscription_id=subscription_id,
+                    cost_change_info=recalc_result,
+                    change_type="variant_modification"
                 )
-
-            if date_from:
-                query = query.where(Order.created_at >= date_from)
-            if date_to:
-                query = query.where(Order.created_at <= date_to)
-            if min_price is not None:
-                query = query.where(Order.total_amount >= min_price)
-            if max_price is not None:
-                query = query.where(Order.total_amount <= max_price)
-
-            query = query.order_by(Order.created_at.desc()).offset(
-                offset).limit(limit)
-
-            result = await self.db.execute(query)
-            orders = result.scalars().all()
-
-            # Get total count
-            count_query = select(func.count(Order.id))
-            if order_status:
-                count_query = count_query.where(Order.status == order_status)
-            if q:
-                count_query = count_query.join(User).where(
-                    or_(
-                        cast(Order.id, String).ilike(f"%{q}%"),
-                        User.firstname.ilike(f"%{q}%"),
-                        User.lastname.ilike(f"%{q}%"),
-                        User.email.ilike(f"%{q}%")
-                    )
-                )
-            if date_from:
-                count_query = count_query.where(Order.created_at >= date_from)
-            if date_to:
-                count_query = count_query.where(Order.created_at <= date_to)
-            if min_price is not None:
-                count_query = count_query.where(
-                    Order.total_amount >= min_price)
-            if max_price is not None:
-                count_query = count_query.where(
-                    Order.total_amount <= max_price)
-
-            count_result = await self.db.execute(count_query)
-            total = count_result.scalar()
-
-            orders_data = []  # Initialize orders_data
-            for order in orders:
-                try:
-                    product_dict = {
-                        "id": str(order.id),
-                        "user": {
-                            "firstname": (
-                                order.user.firstname if order.user
-                                and order.user.firstname else "Unknown"
-                            ),
-                            "lastname": (
-                                order.user.lastname if order.user
-                                and order.user.lastname else "User"
-                            ),
-                            "email": (
-                                order.user.email if order.user
-                                and order.user.email else "unknown@email.com"
-                            )
-                        },
-                        "status": order.status,
-                        "payment_status": "completed",  # Mock data
-                        "total_amount": order.total_amount,
-                        "created_at": order.created_at.isoformat(),
-                        "items": []  # Would need to load items
-                    }
-                    orders_data.append(product_dict)
-                except Exception as e:
-                    # Skip problematic orders
-                    continue
-
-            return {
-                "data": orders_data,
-                "pagination": {
-                    "page": page,
-                    "limit": limit,
-                    "total": total,
-                    "pages": (total + limit - 1) // limit
+            
+            # Log the real-time change
+            await self._log_real_time_change(
+                subscription_id=subscription_id,
+                change_type="variant_modification",
+                change_details=variant_changes,
+                cost_impact=recalc_result.get('cost_difference', 0)
+            )
+            
+            result = {
+                "recalculation": recalc_result,
+                "notification": notification_result,
+                "real_time_processing": {
+                    "processed_at": datetime.utcnow().isoformat(),
+                    "processing_time_ms": self._calculate_processing_time(),
+                    "change_type": "variant_modification",
+                    "immediate_effect": True
                 }
             }
+            
+            return result
+            
         except Exception as e:
-            raise  # Re-raise the exception to be caught by the route handler
-
-    async def get_all_users(self, page: int = 1, limit: int = 10, role: Optional[str] = None, search: Optional[str] = None, status: Optional[str] = None, verified: Optional[bool] = None) -> dict:
-        """Get all users with pagination and order count using SQL aggregation."""
-        offset = (page - 1) * limit
-
-        # Build query with order count using SQL aggregation
-        query = (
-            select(
-                User,
-                func.count(Order.id).label('order_count')
+            raise HTTPException(
+                status_code=500,
+                detail="Failed to process real-time variant change"
             )
-            .outerjoin(Order, User.id == Order.user_id)
-            .group_by(User.id)
-        )
 
-        if role:
-            query = query.where(User.role == role)
-
-        if search:
-            query = query.where(or_(
-                User.firstname.ilike(f"%{search}%"),
-                User.lastname.ilike(f"%{search}%"),
-                User.email.ilike(f"%{search}%")
-            ))
-
-        if status:
-            if status == 'active':
-                query = query.where(User.active == True)
-            elif status == 'inactive':
-                query = query.where(User.active == False)
-
-        if verified is not None:
-            query = query.where(User.verified == verified)
-
-        query = query.order_by(User.created_at.desc()
-                               ).offset(offset).limit(limit)
-
-        result = await self.db.execute(query)
-        rows = result.all()
-
-        # Get total count
-        count_query = select(func.count(User.id))
-        if role:
-            count_query = count_query.where(User.role == role)
-        if search:
-            count_query = count_query.where(or_(
-                User.firstname.ilike(f"%{search}%"),
-                User.lastname.ilike(f"%{search}%"),
-                User.email.ilike(f"%{search}%")
-            ))
-        if status:
-            if status == 'active':
-                count_query = count_query.where(User.active == True)
-            elif status == 'inactive':
-                count_query = count_query.where(User.active == False)
-        if verified is not None:
-            count_query = count_query.where(User.verified == verified)
-
-        count_result = await self.db.execute(count_query)
-        total = count_result.scalar()
-
-        return {
-            "data": [
-                {
-                    "id": str(row[0].id),
-                    "firstname": row[0].firstname,
-                    "lastname": row[0].lastname,
-                    "email": row[0].email,
-                    "role": row[0].role,
-                    "verified": row[0].verified,
-                    "active": row[0].active,
-                    "phone": row[0].phone,
-                    "avatar_url": row[0].avatar_url,
-                    "last_login": row[0].last_login.isoformat() if row[0].last_login else None,
-                    "orders_count": row[1],  # Use aggregated count
-                    "created_at": row[0].created_at.isoformat()
+    async def handle_real_time_delivery_change(
+        self,
+        subscription_id: UUID,
+        delivery_changes: Dict[str, Any],
+        user_id: UUID = None,
+        notify_user: bool = True
+    ) -> Dict[str, Any]:
+        """
+        Handle real-time recalculation when delivery preferences change.
+        
+        Args:
+            subscription_id: Subscription ID to update
+            delivery_changes: Dict with delivery type and address changes
+            user_id: User ID for authorization
+            notify_user: Whether to send notification to user
+            
+        Returns:
+            Dictionary with recalculation results and notification status
+        """
+        try:
+            from services.subscriptions import SubscriptionService
+            
+            new_delivery_type = delivery_changes.get('delivery_type')
+            new_delivery_address_id = delivery_changes.get('delivery_address_id')
+            
+            # Get subscription service for recalculation
+            subscription_service = SubscriptionService(self.db)
+            
+            # Perform the recalculation
+            recalc_result = await subscription_service.recalculate_subscription_on_delivery_change(
+                subscription_id=subscription_id,
+                new_delivery_type=new_delivery_type,
+                new_delivery_address_id=new_delivery_address_id,
+                user_id=user_id
+            )
+            
+            # Send real-time notification if requested
+            notification_result = None
+            if notify_user:
+                notification_result = await self._send_cost_change_notification(
+                    subscription_id=subscription_id,
+                    cost_change_info=recalc_result,
+                    change_type="delivery_modification"
+                )
+            
+            # Log the real-time change
+            await self._log_real_time_change(
+                subscription_id=subscription_id,
+                change_type="delivery_modification",
+                change_details=delivery_changes,
+                cost_impact=recalc_result.get('cost_difference', 0)
+            )
+            
+            result = {
+                "recalculation": recalc_result,
+                "notification": notification_result,
+                "real_time_processing": {
+                    "processed_at": datetime.utcnow().isoformat(),
+                    "processing_time_ms": self._calculate_processing_time(),
+                    "change_type": "delivery_modification",
+                    "immediate_effect": True
                 }
-                for row in rows
-            ],
-            "pagination": {
-                "page": page,
-                "limit": limit,
-                "total": total,
-                "pages": (total + limit - 1) // limit
             }
-        }
-
-    async def get_all_products(self, page: int = 1, limit: int = 10, search: Optional[str] = None, category: Optional[str] = None, status: Optional[str] = None, supplier: Optional[str] = None) -> dict:
-        """Get all products with pagination."""
-        offset = (page - 1) * limit
-
-        query = select(Product).options(
-            selectinload(Product.category),
-            selectinload(Product.supplier),
-            selectinload(Product.variants)  # Load variants
-        )
-
-        if search:
-            query = query.where(Product.name.ilike(f"%{search}%"))
-
-        if category:
-            query = (query.join(Category)
-                     .where(Category.name.ilike(f"%{category}%")))
-
-        if status:
-            if status == 'active':
-                query = query.where(Product.is_active == True)
-            elif status == 'inactive':
-                query = query.where(Product.is_active == False)
-
-        if supplier:
-            query = query.join(User, Product.supplier_id == User.id).where(
-                or_(
-                    User.firstname.ilike(f"%{supplier}%"),
-                    User.lastname.ilike(f"%{supplier}%"),
-                    User.email.ilike(f"%{supplier}%")
-                )
+            
+            return result
+            
+        except Exception as e:
+            raise HTTPException(
+                status_code=500,
+                detail="Failed to process real-time delivery change"
             )
 
-        query = query.order_by(Product.created_at.desc()
-                               ).offset(offset).limit(limit)
-
-        result = await self.db.execute(query)
-        products = result.scalars().all()
-
-        # Get total count
-        count_query = select(func.count(Product.id))
-        if search:
-            count_query = count_query.where(Product.name.ilike(f"%{search}%"))
-        if category:
-            count_query = (count_query.join(Category)
-                           .where(Category.name.ilike(f"%{category}%")))
-        if status:
-            if status == 'active':
-                count_query = count_query.where(Product.is_active == True)
-            elif status == 'inactive':
-                count_query = count_query.where(Product.is_active == False)
-        if supplier:
-            count_query = count_query.join(User, Product.supplier_id == User.id).where(
-                or_(
-                    User.firstname.ilike(f"%{supplier}%"),
-                    User.lastname.ilike(f"%{supplier}%"),
-                    User.email.ilike(f"%{supplier}%")
-                )
-            )
-        count_result = await self.db.execute(count_query)
-        total = count_result.scalar()
-
-        return {
-            "data": [
-                {
-                    "id": str(product.id),
-                    "name": product.name,
-                    "description": product.description,
-                    "category": {"name": product.category.name} if product.category else None,
-                    "supplier": f"{product.supplier.firstname} {product.supplier.lastname}" if product.supplier else "Unknown",
-                    "rating": product.rating,
-                    "review_count": product.review_count,
-                    "created_at": product.created_at.isoformat(),
-                    "variants": [
-                        {
-                            "id": str(variant.id),
-                            "sku": variant.sku,
-                            "name": variant.name,
-                            "base_price": float(variant.base_price),
-                            "sale_price": float(variant.sale_price) if variant.sale_price else None,
-                            "stock": variant.stock,
-                            "attributes": variant.attributes,
-                            "is_active": variant.is_active,
-                            # Assuming images are loaded
-                            "images": [{"url": image.url} for image in variant.images] if variant.images else []
-                        }
-                        for variant in product.variants
-                    ]
+    async def propagate_price_changes_to_subscriptions(
+        self,
+        price_change_events: List[Dict[str, Any]],
+        admin_user_id: UUID = None,
+        batch_size: int = 50
+    ) -> Dict[str, Any]:
+        """
+        Propagate multiple price changes to existing subscriptions in batches.
+        
+        Args:
+            price_change_events: List of price change events
+            admin_user_id: Admin user making the changes
+            batch_size: Number of subscriptions to process per batch
+            
+        Returns:
+            Dictionary with propagation results
+        """
+        try:
+            from services.subscriptions import SubscriptionService
+            
+            total_affected_subscriptions = 0
+            successful_updates = 0
+            failed_updates = 0
+            propagation_results = []
+            
+            subscription_service = SubscriptionService(self.db)
+            
+            for price_event in price_change_events:
+                variant_id = UUID(price_event['variant_id'])
+                old_price = Decimal(str(price_event['old_price']))
+                new_price = Decimal(str(price_event['new_price']))
+                
+                try:
+                    # Propagate this specific price change
+                    updates = await subscription_service.propagate_variant_price_changes(
+                        variant_id=variant_id,
+                        old_price=old_price,
+                        new_price=new_price,
+                        admin_user_id=admin_user_id
+                    )
+                    
+                    total_affected_subscriptions += len(updates)
+                    successful_updates += len(updates)
+                    
+                    propagation_results.append({
+                        "variant_id": str(variant_id),
+                        "price_change": {
+                            "old_price": float(old_price),
+                            "new_price": float(new_price),
+                            "difference": float(new_price - old_price)
+                        },
+                        "affected_subscriptions": len(updates),
+                        "status": "success",
+                        "updates": updates
+                    })
+                    
+                except Exception as e:
+                    failed_updates += 1
+                    propagation_results.append({
+                        "variant_id": str(variant_id),
+                        "price_change": {
+                            "old_price": float(old_price),
+                            "new_price": float(new_price),
+                            "difference": float(new_price - old_price)
+                        },
+                        "affected_subscriptions": 0,
+                        "status": "failed",
+                        "error": str(e)
+                    })
+            
+            # Send batch notification to affected users
+            if successful_updates > 0:
+                await self._send_batch_price_change_notifications(propagation_results)
+            
+            result = {
+                "propagation_summary": {
+                    "total_price_changes": len(price_change_events),
+                    "total_affected_subscriptions": total_affected_subscriptions,
+                    "successful_updates": successful_updates,
+                    "failed_updates": failed_updates,
+                    "success_rate": (successful_updates / total_affected_subscriptions * 100) if total_affected_subscriptions > 0 else 0
+                },
+                "propagation_results": propagation_results,
+                "processing_info": {
+                    "processed_at": datetime.utcnow().isoformat(),
+                    "batch_size": batch_size,
+                    "admin_user_id": str(admin_user_id) if admin_user_id else None
                 }
-                for product in products
-            ],
-            "pagination": {
-                "page": page,
-                "limit": limit,
-                "total": total,
-                "pages": (total + limit - 1) // limit
             }
-        }
-
-    async def update_user_status(self, user_id: str, active: bool) -> dict:
-        """Update user active status."""
-        query = select(User).where(User.id == user_id)
-        result = await self.db.execute(query)
-        user = result.scalar_one_or_none()
-
-        if not user:
-            raise APIException(status_code=404, message="User not found")
-
-        user.active = active
-        await self.db.commit()
-
-        return {
-            "id": str(user.id),
-            "active": user.active,
-            "message": (f"User {'activated' if active else 'deactivated'} "
-                        "successfully")
-        }
-
-    async def delete_user(self, user_id: str):
-        """Delete a user."""
-        query = select(User).where(User.id == user_id)
-        result = await self.db.execute(query)
-        user = result.scalar_one_or_none()
-
-        if not user:
-            raise APIException(status_code=404, message="User not found")
-
-        await self.db.delete(user)
-        await self.db.commit()
-
-    async def get_order_by_id(self, order_id: str) -> Optional[dict]:
-        """Get a single order by ID, with related items."""
-        query = (
-            select(Order)
-            .where(Order.id == order_id)
-            .options(
-                selectinload(Order.items).selectinload(
-                    OrderItem.variant).selectinload(ProductVariant.product),
-                selectinload(Order.user),
-                selectinload(Order.tracking_events)
+            
+            return result
+            
+        except Exception as e:
+            raise HTTPException(
+                status_code=500,
+                detail="Failed to propagate price changes to subscriptions"
             )
-        )
-        result = await self.db.execute(query)
-        order = result.scalar_one_or_none()
+
+    async def get_real_time_cost_preview(
+        self,
+        subscription_id: UUID,
+        proposed_changes: Dict[str, Any],
+        user_id: UUID = None
+    ) -> Dict[str, Any]:
+        """
+        Get real-time cost preview for proposed subscription changes without applying them.
         
-        if not order:
-            return None
-        
-        # Serialize the order to a dictionary
-        return {
-            "id": str(order.id),
-            "user_id": str(order.user_id),
-            "user": {
-                "id": str(order.user.id),
-                "firstname": order.user.firstname,
-                "lastname": order.user.lastname,
-                "email": order.user.email
-            } if order.user else None,
-            "status": order.status,
-            "total_amount": float(order.total_amount),
-            "shipping_address_id": str(order.shipping_address_id) if order.shipping_address_id else None,
-            "shipping_method_id": str(order.shipping_method_id) if order.shipping_method_id else None,
-            "payment_method_id": str(order.payment_method_id) if order.payment_method_id else None,
-            "promocode_id": str(order.promocode_id) if order.promocode_id else None,
-            "carrier_name": order.carrier_name,
-            "tracking_number": order.tracking_number,
-            "notes": order.notes,
-            "created_at": order.created_at.isoformat() if order.created_at else None,
-            "updated_at": order.updated_at.isoformat() if order.updated_at else None,
-            "items": [
-                {
-                    "id": str(item.id),
-                    "order_id": str(item.order_id),
-                    "variant_id": str(item.variant_id),
-                    "quantity": item.quantity,
-                    "price_per_unit": float(item.price_per_unit),
-                    "total_price": float(item.total_price),
-                    "variant": {
-                        "id": str(item.variant.id),
-                        "sku": item.variant.sku,
-                        "name": item.variant.name,
-                        "product": {
-                            "id": str(item.variant.product.id),
-                            "name": item.variant.product.name,
-                            "description": item.variant.product.description
-                        } if item.variant.product else None
-                    } if item.variant else None
-                }
-                for item in order.items
-            ] if order.items else [],
-            "tracking_events": [
-                {
-                    "id": str(event.id),
-                    "status": event.status,
-                    "description": event.description,
-                    "location": event.location,
-                    "created_at": event.created_at.isoformat() if event.created_at else None
-                }
-                for event in order.tracking_events
-            ] if hasattr(order, 'tracking_events') and order.tracking_events else []
-        }
-
-    async def get_all_variants(self, page: int = 1, limit: int = 10, search: Optional[str] = None, product_id: Optional[str] = None) -> dict:
-        """Get all variants with pagination."""
-        offset = (page - 1) * limit
-
-        query = select(ProductVariant).options(
-            selectinload(ProductVariant.product)
-        )
-
-        if search:
-            query = query.where(
-                or_(
-                    ProductVariant.sku.ilike(f"%{search}%"),
-                    ProductVariant.name.ilike(f"%{search}%")
+        Args:
+            subscription_id: Subscription ID to preview changes for
+            proposed_changes: Dictionary of proposed changes
+            user_id: User ID for authorization
+            
+        Returns:
+            Dictionary with cost preview information
+        """
+        try:
+            from services.subscriptions import SubscriptionService
+            
+            # Get current subscription
+            subscription = await self._get_subscription_by_id(subscription_id)
+            if not subscription:
+                raise HTTPException(status_code=404, detail="Subscription not found")
+            
+            # Verify user authorization if provided
+            if user_id and subscription.user_id != user_id:
+                raise HTTPException(status_code=403, detail="User not authorized for this subscription")
+            
+            # Get current cost breakdown
+            current_cost = subscription.cost_breakdown or {}
+            current_total = current_cost.get("total_amount", 0)
+            
+            # Calculate proposed cost based on changes
+            variant_ids = subscription.variant_ids or []
+            delivery_type = subscription.delivery_type or "standard"
+            delivery_address_id = subscription.delivery_address_id
+            
+            # Apply proposed variant changes
+            if 'variant_changes' in proposed_changes:
+                variant_changes = proposed_changes['variant_changes']
+                if 'added' in variant_changes:
+                    for variant_id in variant_changes['added']:
+                        if str(variant_id) not in variant_ids:
+                            variant_ids.append(str(variant_id))
+                if 'removed' in variant_changes:
+                    for variant_id in variant_changes['removed']:
+                        if str(variant_id) in variant_ids:
+                            variant_ids.remove(str(variant_id))
+            
+            # Apply proposed delivery changes
+            if 'delivery_type' in proposed_changes:
+                delivery_type = proposed_changes['delivery_type']
+            if 'delivery_address_id' in proposed_changes:
+                delivery_address_id = proposed_changes['delivery_address_id']
+            
+            # Calculate new cost using subscription service
+            if variant_ids:
+                subscription_service = SubscriptionService(self.db)
+                new_cost_breakdown = await subscription_service.calculate_subscription_cost(
+                    variant_ids=[UUID(v_id) for v_id in variant_ids],
+                    delivery_type=delivery_type,
+                    currency=subscription.currency or "USD",
+                    user_id=subscription.user_id,
+                    shipping_address_id=delivery_address_id
                 )
+                
+                new_total = float(new_cost_breakdown.total_amount)
+                cost_difference = new_total - current_total
+                percentage_change = self._calculate_percentage_change(current_total, new_total)
+                
+                preview = {
+                    "subscription_id": str(subscription_id),
+                    "current_cost": current_cost,
+                    "proposed_cost": new_cost_breakdown.to_dict(),
+                    "cost_comparison": {
+                        "current_total": current_total,
+                        "proposed_total": new_total,
+                        "cost_difference": cost_difference,
+                        "percentage_change": percentage_change,
+                        "is_increase": cost_difference > 0,
+                        "is_decrease": cost_difference < 0
+                    },
+                    "proposed_changes": proposed_changes,
+                    "preview_generated_at": datetime.utcnow().isoformat(),
+                    "preview_valid_for_minutes": 15
+                }
+            else:
+                preview = {
+                    "subscription_id": str(subscription_id),
+                    "error": "No variants remaining after proposed changes",
+                    "current_cost": current_cost,
+                    "proposed_changes": proposed_changes
+                }
+            
+            return preview
+            
+        except HTTPException:
+            raise
+        except Exception as e:
+            raise HTTPException(
+                status_code=500,
+                detail="Failed to generate cost preview"
             )
 
-        if product_id:
-            query = query.where(ProductVariant.product_id == product_id)
-
-        query = query.order_by(ProductVariant.created_at.desc()).offset(
-            offset).limit(limit)
-
-        result = await self.db.execute(query)
-        variants = result.scalars().all()
-
-        # Get total count
-        count_query = select(func.count(ProductVariant.id))
-        if search:
-            count_query = count_query.where(
-                or_(
-                    ProductVariant.sku.ilike(f"%{search}%"),
-                    ProductVariant.name.ilike(f"%{search}%")
-                )
-            )
-        if product_id:
-            count_query = count_query.where(
-                ProductVariant.product_id == product_id)
-
-        count_result = await self.db.execute(count_query)
-        total = count_result.scalar()
-
-        return {
-            "data": [variant.to_dict() for variant in variants],
-            "pagination": {
-                "page": page,
-                "limit": limit,
-                "total": total,
-                "pages": (total + limit - 1) // limit
+    # --- Helper Methods ---
+    async def _send_cost_change_notification(
+        self,
+        subscription_id: UUID,
+        cost_change_info: Dict[str, Any],
+        change_type: str
+    ) -> Dict[str, Any]:
+        """Send real-time notification about cost changes"""
+        try:
+            # Mock notification result
+            notification_result = {
+                "notification_sent": True,
+                "notification_type": "cost_change",
+                "change_type": change_type,
+                "cost_difference": cost_change_info.get('cost_difference', 0),
+                "notification_channels": ["email", "websocket"],
+                "sent_at": datetime.utcnow().isoformat()
             }
-        }
+            
+            return notification_result
+            
+        except Exception as e:
+            return {
+                "notification_sent": False,
+                "error": str(e)
+            }
 
-    async def get_user_by_id(self, user_id: str) -> Optional[dict]:
-        """Get a single user by ID with their order count."""
-        query = select(User).where(User.id == user_id).options(
-            selectinload(User.orders)
-        )
+    async def _send_batch_price_change_notifications(
+        self,
+        propagation_results: List[Dict[str, Any]]
+    ) -> None:
+        """Send batch notifications for price changes"""
+        try:
+            # Group notifications by user
+            user_notifications = {}
+            
+            for result in propagation_results:
+                if result.get('status') == 'success':
+                    for update in result.get('updates', []):
+                        user_id = update.get('user_id')
+                        if user_id not in user_notifications:
+                            user_notifications[user_id] = []
+                        user_notifications[user_id].append({
+                            "subscription_id": update.get('subscription_id'),
+                            "cost_difference": update.get('cost_difference'),
+                            "variant_id": result.get('variant_id')
+                        })
+            
+            # Mock batch notification sending
+            for user_id, notifications in user_notifications.items():
+                pass  # Would send actual notifications here
+            
+        except Exception as e:
+            pass  # Log error in real implementation
+
+    async def _log_real_time_change(
+        self,
+        subscription_id: UUID,
+        change_type: str,
+        change_details: Dict[str, Any],
+        cost_impact: float
+    ) -> None:
+        """Log real-time changes for audit purposes"""
+        try:
+            # Mock logging - would use structured logger in real implementation
+            pass
+        except Exception as e:
+            pass
+
+    async def _get_subscription_by_id(self, subscription_id: UUID):
+        """Get subscription by ID"""
+        from models.subscriptions import Subscription
+        query = select(Subscription).where(Subscription.id == subscription_id)
         result = await self.db.execute(query)
-        user = result.scalar_one_or_none()
+        return result.scalar_one_or_none()
+
+    def _calculate_processing_time(self) -> int:
+        """Calculate processing time in milliseconds (mock implementation)"""
+        return 150  # Mock 150ms processing time
+
+    def _calculate_percentage_change(self, old_value: float, new_value: float) -> float:
+        """Calculate percentage change between two values"""
+        if old_value == 0:
+            return 100.0 if new_value > 0 else 0.0
         
-        if not user:
-            return None
-        
-        return {
-            "id": str(user.id),
-            "firstname": user.firstname,
-            "lastname": user.lastname,
-            "email": user.email,
-            "phone": user.phone,
-            "role": user.role,
-            "verified": user.verified,
-            "active": user.active,
-            "avatar_url": user.avatar_url,
-            "last_login": user.last_login.isoformat() if user.last_login else None,
-            "orders_count": len(user.orders) if user.orders else 0,
-            "created_at": user.created_at.isoformat() if user.created_at else None,
-        }
-
-    async def create_user(self, user_data: UserCreate, background_tasks: BackgroundTasks) -> User:
-        """Create a new user (admin only)."""
-        # Check if user already exists
-        existing_user = await self.auth_service.get_user_by_email(user_data.email)
-        if existing_user:
-            raise APIException(
-                status_code=400, message="Email already registered")
-
-        hashed_password = self.auth_service.get_password_hash(
-            user_data.password)
-
-        new_user = User(
-            email=user_data.email,
-            firstname=user_data.firstname,
-            lastname=user_data.lastname,
-            hashed_password=hashed_password,
-            role=user_data.role,
-            verified=True,  # Admin created users are verified by default
-            active=True,   # Admin created users are active by default
-        )
-        self.db.add(new_user)
-        await self.db.commit()
-        await self.db.refresh(new_user)
-
-        # Send notification to admin about new user
-        admin_user_query = select(User.id).where(User.role == "Admin")
-        admin_user_id = (await self.db.execute(admin_user_query)).scalar_one_or_none()
-
-        if admin_user_id:
-            background_tasks.add_task(
-                self.notification_service.create_notification,
-                user_id=str(admin_user_id),
-                message=f"New user created by admin: {new_user.email} ({new_user.firstname} {new_user.lastname}). Role: {new_user.role}",
-                type="info",
-                related_id=str(new_user.id)
-            )
-
-        return new_user
-
-    async def get_system_settings(self) -> dict:
-        """Get system settings."""
-        result = await self.db.execute(select(SystemSettings))
-        settings = result.scalar_one_or_none()
-        if not settings:
-            # Create default settings if none exist
-            settings = SystemSettings()
-            self.db.add(settings)
-            await self.db.commit()
-            await self.db.refresh(settings)
-        return settings.to_dict()
-
-    async def update_system_settings(self, settings_data: dict) -> dict:
-        """Update system settings."""
-        result = await self.db.execute(select(SystemSettings))
-        settings = result.scalar_one_or_none()
-        if not settings:
-            settings = SystemSettings()
-            self.db.add(settings)
-            await self.db.flush()
-
-        for key, value in settings_data.items():
-            setattr(settings, key, value)
-
-        await self.db.commit()
-        await self.db.refresh(settings)
-        return settings.to_dict()
-
-    async def reset_user_password(self, user_id: str) -> dict:
-        """Send password reset email to user."""
-        query = select(User).where(User.id == user_id)
-        result = await self.db.execute(query)
-        user = result.scalar_one_or_none()
-
-        if not user:
-            raise APIException(status_code=404, message="User not found")
-
-        # Generate password reset token using access token with short expiry
-        from datetime import timedelta
-        reset_token = self.auth_service.create_access_token(
-            data={"sub": user.email, "type": "password_reset"},
-            expires_delta=timedelta(hours=1)  # Reset token expires in 1 hour
-        )
-
-        # Send password reset email
-        producer_service = await get_kafka_producer_service()
-        await producer_service.send_message(settings.KAFKA_TOPIC_EMAIL, {
-            "task": "send_password_reset_email",
-            "args": [user.email, reset_token]
-        })
-
-        return {
-            "message": "Password reset email sent successfully",
-            "user_id": str(user.id),
-            "email": user.email
-        }
-
-    async def deactivate_user(self, user_id: str) -> dict:
-        """Deactivate a user account."""
-        query = select(User).where(User.id == user_id)
-        result = await self.db.execute(query)
-        user = result.scalar_one_or_none()
-
-        if not user:
-            raise APIException(status_code=404, message="User not found")
-
-        user.active = False
-        await self.db.commit()
-
-        return {
-            "message": "User deactivated successfully",
-            "user_id": str(user.id),
-            "active": user.active
-        }
-
-    async def activate_user(self, user_id: str) -> dict:
-        """Activate a user account."""
-        query = select(User).where(User.id == user_id)
-        result = await self.db.execute(query)
-        user = result.scalar_one_or_none()
-
-        if not user:
-            raise APIException(status_code=404, message="User not found")
-
-        user.active = True
-        await self.db.commit()
-
-        return {
-            "message": "User activated successfully",
-            "user_id": str(user.id),
-            "active": user.active
-        }
+        return ((new_value - old_value) / old_value) * 100

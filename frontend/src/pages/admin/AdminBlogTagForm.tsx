@@ -6,7 +6,7 @@ import ErrorMessage from '../../components/common/ErrorMessage';
 import { toast } from 'react-hot-toast';
 import { BlogTagCreate, BlogTagUpdate, BlogTagResponse } from '../../types';
 import { useNavigate, useParams } from 'react-router-dom';
-import Input from '../../components/forms/Input';
+import { Input } from '../../components/forms/Input';
 
 export const AdminBlogTagForm = () => {
   const { tagId } = useParams<{ tagId?: string }>();

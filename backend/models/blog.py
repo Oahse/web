@@ -12,7 +12,7 @@ class BlogCategory(BaseModel):
     slug = Column(String(CHAR_LENGTH), unique=True, nullable=False)
     description = Column(Text, nullable=True)
 
-    posts = relationship("models.blog.BlogPost", back_populates="category")
+    posts = relationship("BlogPost", back_populates="category")
 
 
 class BlogTag(BaseModel):
@@ -41,10 +41,10 @@ class BlogPost(BaseModel):
     seo_keywords = Column(Text, nullable=True) # Store as comma-separated string or JSON list if needed
 
     # Relationships
-    author = relationship("models.user.User", back_populates="blog_posts")
-    category = relationship("models.blog.BlogCategory", back_populates="posts")
-    tags = relationship("models.blog.BlogPostTag", back_populates="blog_post", cascade="all, delete-orphan") # Link to BlogPostTag for many-to-many
-    comments = relationship("models.blog.Comment", back_populates="blog_post", cascade="all, delete-orphan") # Link to Comment
+    author = relationship("User", back_populates="blog_posts")
+    category = relationship("BlogCategory", back_populates="posts")
+    tags = relationship("BlogPostTag", back_populates="blog_post", cascade="all, delete-orphan") # Link to BlogPostTag for many-to-many
+    comments = relationship("Comment", back_populates="blog_post", cascade="all, delete-orphan") # Link to Comment
 
 
 class BlogPostTag(BaseModel):
@@ -55,8 +55,8 @@ class BlogPostTag(BaseModel):
     blog_post_id = Column(GUID(), ForeignKey("blog_posts.id"), primary_key=True)
     blog_tag_id = Column(GUID(), ForeignKey("blog_tags.id"), primary_key=True)
 
-    blog_post = relationship("models.blog.BlogPost", back_populates="tags")
-    blog_tag = relationship("models.blog.BlogTag")
+    blog_post = relationship("BlogPost", back_populates="tags")
+    blog_tag = relationship("BlogTag")
 
 
 class Comment(BaseModel):
@@ -70,7 +70,7 @@ class Comment(BaseModel):
     is_approved = Column(Boolean, default=False)
 
     # Relationships
-    author = relationship("models.user.User", back_populates="comments") # Need to add comments relationship to User model
-    blog_post = relationship("models.blog.BlogPost", back_populates="comments")
-    parent = relationship("models.blog.Comment", remote_side='models.blog.Comment.id')
-    replies = relationship("models.blog.Comment", back_populates="parent")
+    author = relationship("User", back_populates="comments") # Need to add comments relationship to User model
+    blog_post = relationship("BlogPost", back_populates="comments")
+    parent = relationship("Comment", remote_side='Comment.id')
+    replies = relationship("Comment", back_populates="parent")

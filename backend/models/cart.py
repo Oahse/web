@@ -15,9 +15,9 @@ class Cart(BaseModel):
     discount_amount = Column(Float, default=0.0)
 
     # Relationships
-    items = relationship("models.cart.CartItem", back_populates="cart",
+    items = relationship("CartItem", back_populates="cart",
                          cascade="all, delete-orphan", lazy="selectin")
-    promocode = relationship("models.promocode.Promocode", foreign_keys=[promocode_id])
+    promocode = relationship("Promocode", foreign_keys=[promocode_id])
 
     def get_item(self, variant_id):
         """Get cart item by variant ID"""
@@ -91,8 +91,8 @@ class CartItem(BaseModel):
     saved_for_later = Column(Boolean, default=False)
 
     # Relationships
-    cart = relationship("models.cart.Cart", back_populates="items")
-    variant = relationship("models.product.ProductVariant", back_populates="cart_items")
+    cart = relationship("Cart", back_populates="items")
+    variant = relationship("ProductVariant", back_populates="cart_items")
 
     def recalc_total(self):
         """Recalculate total price"""

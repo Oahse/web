@@ -14,7 +14,7 @@ class Category(BaseModel):
     is_active = Column(Boolean, default=True)
 
     # Relationships
-    products = relationship("models.product.Product", back_populates="category")
+    products = relationship("Product", back_populates="category")
 
     def to_dict(self) -> dict:
         """Convert category to dictionary for API responses"""
@@ -49,13 +49,13 @@ class Product(BaseModel):
     
     
     # Relationships with lazy loading
-    category = relationship("models.product.Category", back_populates="products")
-    supplier = relationship("models.user.User", back_populates="supplied_products")
-    variants = relationship("models.product.ProductVariant", back_populates="product",
+    category = relationship("Category", back_populates="products")
+    supplier = relationship("User", back_populates="supplied_products")
+    variants = relationship("ProductVariant", back_populates="product",
                             cascade="all, delete-orphan", lazy="selectin")
-    reviews = relationship("models.review.Review", back_populates="product")
-    wishlist_items = relationship("models.wishlist.WishlistItem", back_populates="product")
-    negotiations = relationship("Negotiation", back_populates="product") # NEW
+    reviews = relationship("Review", back_populates="product")
+    wishlist_items = relationship("WishlistItem", back_populates="product")
+    # negotiations = relationship("Negotiation", back_populates="product") # NEW - Commented out
 
     @property
     def primary_variant(self):
@@ -159,12 +159,12 @@ class ProductVariant(BaseModel):
     is_active = Column(Boolean, default=True)
 
     # Relationships with lazy loading
-    product = relationship("models.product.Product", back_populates="variants")
-    images = relationship("models.product.ProductImage", back_populates="variant",
+    product = relationship("Product", back_populates="variants")
+    images = relationship("ProductImage", back_populates="variant",
                           cascade="all, delete-orphan", lazy="selectin")
-    cart_items = relationship("models.cart.CartItem", back_populates="variant")
-    order_items = relationship("models.order.OrderItem", back_populates="variant")
-    inventory = relationship("models.inventory.Inventory", uselist=False, back_populates="variant", cascade="all, delete-orphan", lazy="selectin")
+    cart_items = relationship("CartItem", back_populates="variant")
+    order_items = relationship("OrderItem", back_populates="variant")
+    inventory = relationship("Inventory", uselist=False, back_populates="variant", cascade="all, delete-orphan", lazy="selectin")
 
     @property
     def current_price(self) -> float:
@@ -227,7 +227,7 @@ class ProductImage(BaseModel):
     format = Column(String(10), nullable=True)  # jpg, png, webp
 
     # Relationships
-    variant = relationship("models.product.ProductVariant", back_populates="images")
+    variant = relationship("ProductVariant", back_populates="images")
 
     def to_dict(self) -> dict:
         """Convert image to dictionary for API responses"""

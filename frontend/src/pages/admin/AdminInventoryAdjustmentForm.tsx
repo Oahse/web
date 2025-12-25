@@ -6,9 +6,9 @@ import ErrorMessage from '../../components/common/ErrorMessage';
 import { toast } from 'react-hot-toast';
 import { StockAdjustmentCreate, Product, WarehouseLocationResponse, InventoryResponse } from '../../types';
 import { useNavigate } from 'react-router-dom';
-import Input from '../../components/forms/Input';
-import Select from '../../components/forms/Select';
-import Textarea from '../../components/forms/Textarea';
+import { Input } from '../../components/forms/Input';
+import { Select } from '../../components/forms/Select';
+import { Textarea } from '../../components/forms/Textarea';
 
 export const AdminInventoryAdjustmentForm = () => {
   const navigate = useNavigate();

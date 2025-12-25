@@ -6,8 +6,8 @@ import ErrorMessage from '../../components/common/ErrorMessage';
 import { toast } from 'react-hot-toast';
 import { InventoryResponse, WarehouseLocationResponse, Product } from '../../types'; // Assuming types exist
 import { Link } from 'react-router-dom';
-import Input from '../../components/forms/Input';
-import Select from '../../components/forms/Select';
+import { Input } from '../../components/forms/Input';
+import { Select } from '../../components/forms/Select';
 
 export const AdminInventory = () => {
   const [inventoryItems, setInventoryItems] = useState<InventoryResponse[]>([]);

@@ -27,8 +27,8 @@ class VariantTrackingEntry(BaseModel):
     entry_metadata = Column(JSON, nullable=True)
     
     # Relationships
-    variant = relationship("models.product.ProductVariant", backref="tracking_entries")
-    subscription = relationship("models.subscription.Subscription", backref="variant_tracking_entries")
+    variant = relationship("ProductVariant", backref="tracking_entries")
+    subscription = relationship("Subscription", backref="variant_tracking_entries")
     
     def to_dict(self) -> Dict[str, Any]:
         """Convert tracking entry to dictionary"""
@@ -73,8 +73,8 @@ class VariantPriceHistory(BaseModel):
     price_metadata = Column(JSON, nullable=True)
     
     # Relationships
-    variant = relationship("models.product.ProductVariant", backref="price_history")
-    changed_by = relationship("models.user.User", backref="variant_price_changes")
+    variant = relationship("ProductVariant", backref="price_history")
+    changed_by = relationship("User", backref="variant_price_changes")
     
     def to_dict(self) -> Dict[str, Any]:
         """Convert price history to dictionary"""
@@ -129,7 +129,7 @@ class VariantAnalytics(BaseModel):
     additional_metrics = Column(JSON, nullable=True)
     
     # Relationships
-    variant = relationship("models.product.ProductVariant", backref="analytics")
+    variant = relationship("ProductVariant", backref="analytics")
     
     def to_dict(self) -> Dict[str, Any]:
         """Convert variant analytics to dictionary"""
@@ -178,8 +178,8 @@ class VariantSubstitution(BaseModel):
     substitution_metadata = Column(JSON, nullable=True)
     
     # Relationships
-    original_variant = relationship("models.product.ProductVariant", foreign_keys=[original_variant_id], backref="substitution_suggestions")
-    substitute_variant = relationship("models.product.ProductVariant", foreign_keys=[substitute_variant_id], backref="substitute_for")
+    original_variant = relationship("ProductVariant", foreign_keys=[original_variant_id], backref="substitution_suggestions")
+    substitute_variant = relationship("ProductVariant", foreign_keys=[substitute_variant_id], backref="substitute_for")
     
     def to_dict(self) -> Dict[str, Any]:
         """Convert variant substitution to dictionary"""

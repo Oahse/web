@@ -15,8 +15,8 @@ class Wishlist(BaseModel):
     is_public = Column(Boolean, default=False)
 
     # Relationships
-    user = relationship("models.user.User", back_populates="wishlists")
-    items = relationship("models.wishlist.WishlistItem", back_populates="wishlist",
+    user = relationship("User", back_populates="wishlists")
+    items = relationship("WishlistItem", back_populates="wishlist",
                          cascade="all, delete-orphan", lazy="selectin")
 
 
@@ -33,9 +33,9 @@ class WishlistItem(BaseModel):
     quantity = Column(Integer, default=1)
 
     # Relationships
-    wishlist = relationship("models.wishlist.Wishlist", back_populates="items")
-    product = relationship("models.product.Product", back_populates="wishlist_items")
-    variant = relationship("models.product.ProductVariant", foreign_keys=[variant_id])
+    wishlist = relationship("Wishlist", back_populates="items")
+    product = relationship("Product", back_populates="wishlist_items")
+    variant = relationship("ProductVariant", foreign_keys=[variant_id])
 
     @property
     def added_at(self):

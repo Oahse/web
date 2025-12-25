@@ -4,8 +4,8 @@ import { AdminAPI } from '../../apis';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import ErrorMessage from '../../components/common/ErrorMessage';
 import { ActivityLog } from '../../types'; // Assuming ActivityLog type exists
-import Input from '../../components/forms/Input';
-import Select from '../../components/forms/Select';
+import { Input } from '../../components/forms/Input';
+import { Select } from '../../components/forms/Select';
 
 export const AdminActivityLogs = () => {
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);

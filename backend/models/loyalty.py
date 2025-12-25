@@ -37,8 +37,8 @@ class LoyaltyAccount(BaseModel):
     loyalty_metadata = Column(JSON, nullable=True)
     
     # Relationships
-    user = relationship("models.user.User", back_populates="loyalty_account")
-    points_transactions = relationship("models.loyalty.PointsTransaction", back_populates="loyalty_account", cascade="all, delete-orphan")
+    user = relationship("User", back_populates="loyalty_account")
+    points_transactions = relationship("PointsTransaction", back_populates="loyalty_account", cascade="all, delete-orphan")
     
     def to_dict(self) -> Dict[str, Any]:
         """Convert loyalty account to dictionary"""
@@ -97,7 +97,7 @@ class PointsTransaction(BaseModel):
     transaction_metadata = Column(JSON, nullable=True)
     
     # Relationships
-    loyalty_account = relationship("models.loyalty.LoyaltyAccount", back_populates="points_transactions")
+    loyalty_account = relationship("LoyaltyAccount", back_populates="points_transactions")
     
     def to_dict(self) -> Dict[str, Any]:
         """Convert points transaction to dictionary"""

@@ -7,7 +7,7 @@ import { toast } from 'react-hot-toast';
 import { BlogPostResponse, CommentCreate, CommentResponse } from '../types';
 import { Link, useParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import Textarea from '../components/forms/Textarea';
+import { Textarea } from '../components/forms/Textarea';
 
 export const BlogPost = () => {
   const { slug } = useParams<{ slug?: string }>();

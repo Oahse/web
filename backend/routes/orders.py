@@ -1,14 +1,26 @@
-from fastapi import APIRouter, Depends, Query, status, BackgroundTasks
-from sqlalchemy.ext.asyncio import AsyncSession
-from typing import Optional
 from uuid import UUID
+from datetime import datetime
+from fastapi import APIRouter, Depends, Query, status, BackgroundTasks
+from pydantic import BaseModel
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
+from typing import Optional
 from core.database import get_db
 from core.utils.response import Response
 from core.exceptions import APIException
-from schemas.order import OrderCreate, CheckoutRequest
-from services.order import OrderService
+from services.orders import OrderService
 from models.user import User
+from models.orders import Order
+from services.auth import AuthService
+from schemas.orders import OrderCreate, CheckoutRequest
 from core.dependencies import get_current_auth_user
+
+from fastapi.security import OAuth2PasswordBearer
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+
+async def get_current_auth_user_alt(token: str = Depends(oauth2_scheme), db: AsyncSession = Depends(get_db)) -> User:
+    return await AuthService.get_current_user(token, db)
 
 router = APIRouter(prefix="/api/v1/orders", tags=["Orders"])
 
@@ -66,18 +78,13 @@ async def get_orders(
     """Get user's orders."""
     try:
         order_service = OrderService(db)
-        print(f"Fetching orders for user: {current_user.id}")
         orders = await order_service.get_user_orders(
             current_user.id, page, limit, status_filter
         )
-        print(f"Successfully fetched {len(orders.get('orders', []))} orders")
         return Response(success=True, data=orders)
     except APIException:
         raise
     except Exception as e:
-        print(f"Error fetching orders: {e}")
-        import traceback
-        traceback.print_exc()
         raise APIException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             message=f"Failed to fetch orders: {str(e)}"
@@ -93,21 +100,16 @@ async def get_order(
     """Get a specific order."""
     try:
         order_service = OrderService(db)
-        print(f"Fetching order {order_id} for user {current_user.id}")
         order = await order_service.get_order_by_id(order_id, current_user.id)
         if not order:
             raise APIException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 message="Order not found"
             )
-        print(f"Successfully fetched order: {order.id}")
         return Response(success=True, data=order)
     except APIException:
         raise
     except Exception as e:
-        print(f"Error fetching order {order_id}: {e}")
-        import traceback
-        traceback.print_exc()
         raise APIException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             message=f"Failed to fetch order: {str(e)}"
@@ -158,7 +160,6 @@ async def track_order_public(
     """Get order tracking information (public - no authentication required)."""
     try:
         order_service = OrderService(db)
-        # Get order without user_id verification for public access
         tracking = await order_service.get_order_tracking_public(order_id)
         return Response(success=True, data=tracking)
     except Exception as e:
@@ -219,27 +220,23 @@ async def get_order_invoice(
         order_service = OrderService(db)
         invoice = await order_service.generate_invoice(order_id, current_user.id)
         
-        # If invoice_path exists, return the file for download
         if 'invoice_path' in invoice and os.path.exists(invoice['invoice_path']):
             file_path = invoice['invoice_path']
-            # Determine file type
             if file_path.endswith('.pdf'):
                 return FileResponse(
                     path=file_path,
                     filename="invoice.pdf",
                     media_type="application/pdf"
                 )
-            else:  # DOCX
+            else:
                 return FileResponse(
                     path=file_path,
                     filename="invoice.docx",
                     media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                 )
         
-        # Otherwise return invoice data
         return Response(success=True, data=invoice)
     except Exception as e:
-        print(f"Error generating invoice: {e}")
         raise APIException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             message=f"Failed to generate invoice: {str(e)}"

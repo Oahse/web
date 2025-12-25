@@ -6,10 +6,10 @@ import ErrorMessage from '../../components/common/ErrorMessage';
 import { toast } from 'react-hot-toast';
 import { BlogPostCreate, BlogPostUpdate, BlogPostResponse, BlogCategoryResponse, BlogTagResponse } from '../../types';
 import { useNavigate, useParams } from 'react-router-dom';
-import Input from '../../components/forms/Input';
-import Textarea from '../../components/forms/Textarea';
-import Select from '../../components/forms/Select';
-import Checkbox from '../../components/forms/Checkbox'; // Assuming a Checkbox component exists
+import { Input } from '../../components/forms/Input';
+import { Textarea } from '../../components/forms/Textarea';
+import { Select } from '../../components/forms/Select';
+import { Checkbox } from '../../components/forms/Checkbox'; // Assuming a Checkbox component exists
 
 // Helper to create a slug from a title
 const createSlug = (title: string) => {
