@@ -15,7 +15,7 @@ from datetime import datetime, timedelta
 from typing import Optional, List, Dict, Any
 from enum import Enum
 from core.config import settings
-from core.message_broker import publish_payment_event, publish_notification
+from core.kafka import get_kafka_producer_service
 import stripe
 import logging
 import time

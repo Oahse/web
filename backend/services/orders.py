@@ -920,12 +920,11 @@ class OrderService:
                 expires_at = (datetime.utcnow() + timedelta(minutes=15)).isoformat()
                 
                 # Note: Inventory reservation removed - implement as needed
-                    quantity=item["quantity"],
-                    order_id=str(order.id),
-                    reservation_id=reservation_id,
-                    expires_at=expires_at,
-                    correlation_id=correlation_id
-                )
+                # quantity=item["quantity"],
+                # order_id=str(order.id),
+                # reservation_id=reservation_id,
+                # expires_at=expires_at,
+                # correlation_id=correlation_id
             
             import logging
             logger = logging.getLogger(__name__)
