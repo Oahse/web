@@ -22,7 +22,7 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 async def get_current_auth_user_alt(token: str = Depends(oauth2_scheme), db: AsyncSession = Depends(get_db)) -> User:
     return await AuthService.get_current_user(token, db)
 
-router = APIRouter(prefix="/v1/orders", tags=["Orders"])
+router = APIRouter(prefix="/orders", tags=["Orders"])
 
 
 @router.post("/")
@@ -180,14 +180,23 @@ async def checkout(
     idempotency_key: Optional[str] = Header(None, alias="Idempotency-Key")
 ):
     """
-    Place an order from the current cart with comprehensive validation.
+    Place an order from the current cart with comprehensive validation and security checks.
     
     Cart validation is ALWAYS performed before order creation.
+    Price tampering protection is enforced.
     Idempotency-Key header prevents duplicate orders from being created.
     If not provided, one will be generated based on cart contents.
     """
     try:
-        order = await order_service.place_order_with_idempotency(
+        # Import security service
+        from core.middleware.rate_limit import SecurityService
+        from fastapi import Request
+        
+        # Get request object for security checks
+        # Note: In a real implementation, you'd get this from the middleware
+        # For now, we'll perform price validation in the order service
+        
+        order = await order_service.place_order_with_security_validation(
             current_user.id, 
             request, 
             background_tasks,

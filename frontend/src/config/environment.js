@@ -8,9 +8,9 @@ const environment = import.meta.env.VITE_ENVIRONMENT || 'local';
 // Dynamic URL configuration based on environment
 const getApiBaseUrl = () => {
   if (environment === 'local' || environment === 'development') {
-    return import.meta.env.VITE_API_BASE_URL_DEV || import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1';
+    return import.meta.env.VITE_API_BASE_URL_DEV || import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
   }
-  return import.meta.env.VITE_API_BASE_URL_PROD || import.meta.env.VITE_API_BASE_URL || 'https://api.banwee.com/api/v1';
+  return import.meta.env.VITE_API_BASE_URL_PROD || import.meta.env.VITE_API_BASE_URL || 'https://api.banwee.com';
 };
 
 const getAppUrl = () => {

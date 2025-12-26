@@ -10,7 +10,7 @@ from core.dependencies import get_current_auth_user
 from core.utils.response import Response
 from core.exceptions import APIException
 
-router = APIRouter(prefix="/v1/users", tags=["Wishlists"])
+router = APIRouter(prefix="/users", tags=["Wishlists"])
 
 
 @router.post("/{user_id}/wishlists/default")

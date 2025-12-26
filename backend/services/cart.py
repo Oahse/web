@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_
 from sqlalchemy.orm import selectinload
 from models.product import ProductVariant, Product
-from models.promocode import PromoCode
+from models.promocode import Promocode
 from schemas.cart import CartResponse, CartItemResponse, AddToCartRequest, UpdateCartItemRequest
 from core.redis import RedisService, RedisKeyManager
 from core.config import settings

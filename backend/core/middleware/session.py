@@ -162,12 +162,7 @@ class SessionMiddleware(BaseHTTPMiddleware):
         # Process request
         response = await call_next(request)
         
-        return response"""
-Redis Integration Middleware
-Handles Redis-based session management and rate limiting
-"""
-from fastapi import Request, Response
-from fastapi.responses import JSONResponse
+        return response
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.types import ASGIApp
 from typing import Optional

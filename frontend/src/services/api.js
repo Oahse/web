@@ -1,14 +1,14 @@
 /**
- * API Service with Dynamic URL Configuration
+ * API Service with Dynamic URL Configuration and v1 API versioning
  * Handles all HTTP requests to the backend API
  */
 
 import axios from 'axios';
 import { config } from '../config/environment.js';
 
-// Create axios instance with dynamic base URL
+// Create axios instance with dynamic base URL and v1 API versioning
 const api = axios.create({
-  baseURL: config.apiBaseUrl,
+  baseURL: `${config.apiBaseUrl}/v1`,
   timeout: 30000,
   headers: {
     'Content-Type': 'application/json',
@@ -42,7 +42,13 @@ api.interceptors.request.use(
   }
 );
 
-// Response interceptor for error handling
+// Response interceptor for error handling and token refresh
+api.interceptors.response.use(
+  (response) => {
+    if (config.debugMode) {
+      console.log('API Response:', response.status, response.config.url, response.data);
+    }
+// Response interceptor for error handling and token refresh
 api.interceptors.response.use(
   (response) => {
     if (config.debugMode) {
@@ -50,17 +56,50 @@ api.interceptors.response.use(
     }
     return response;
   },
-  (error) => {
+  async (error) => {
     if (config.debugMode) {
       console.error('API Error:', error.response?.status, error.config?.url, error.response?.data);
     }
 
-    // Handle token expiration
-    if (error.response?.status === 401) {
-      localStorage.removeItem('access_token');
-      localStorage.removeItem('refresh_token');
-      // Redirect to login or emit event
-      window.dispatchEvent(new CustomEvent('auth:logout'));
+    const originalRequest = error.config;
+
+    // Handle token expiration with refresh token
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      originalRequest._retry = true;
+
+      const refreshToken = localStorage.getItem('refresh_token');
+      
+      if (refreshToken) {
+        try {
+          // Attempt to refresh the access token
+          const response = await axios.post(`${config.apiBaseUrl}/v1/auth/refresh`, {
+            refresh_token: refreshToken
+          });
+
+          const { access_token } = response.data.data;
+          
+          // Update stored token
+          localStorage.setItem('access_token', access_token);
+          
+          // Update the authorization header for the original request
+          originalRequest.headers.Authorization = `Bearer ${access_token}`;
+          
+          // Retry the original request
+          return api(originalRequest);
+          
+        } catch (refreshError) {
+          // Refresh failed, logout user
+          localStorage.removeItem('access_token');
+          localStorage.removeItem('refresh_token');
+          window.dispatchEvent(new CustomEvent('auth:logout'));
+          return Promise.reject(refreshError);
+        }
+      } else {
+        // No refresh token available, logout user
+        localStorage.removeItem('access_token');
+        localStorage.removeItem('refresh_token');
+        window.dispatchEvent(new CustomEvent('auth:logout'));
+      }
     }
 
     return Promise.reject(error);
@@ -69,7 +108,7 @@ api.interceptors.response.use(
 
 // Generate session ID for guest users
 function generateSessionId() {
-  return 'sess_' + Math.random().toString(36).substr(2, 9) + Date.now().toString(36);
+  return 'sess_' + Math.random().toString(36).substring(2, 9) + Date.now().toString(36);
 }
 
 // API methods
@@ -79,6 +118,7 @@ export const apiService = {
   register: (userData) => api.post('/auth/register', userData),
   logout: () => api.post('/auth/logout'),
   refreshToken: (refreshToken) => api.post('/auth/refresh', { refresh_token: refreshToken }),
+  revokeRefreshToken: (refreshToken) => api.post('/auth/revoke', { refresh_token: refreshToken }),
 
   // Cart
   getCart: () => api.get('/cart/'),
@@ -108,12 +148,20 @@ export const apiService = {
     payment_intent_id: paymentIntentId, 
     payment_method_id: paymentMethodId 
   }),
+  
+  // Payment Failures
+  getPaymentFailureStatus: (paymentIntentId) => api.get(`/payments/failures/${paymentIntentId}/status`),
+  retryFailedPayment: (paymentIntentId, newPaymentMethodId = null) => 
+    api.post(`/payments/failures/${paymentIntentId}/retry`, { new_payment_method_id: newPaymentMethodId }),
+  getUserFailedPayments: (params) => api.get('/payments/failures/user/failed-payments', { params }),
+  abandonFailedPayment: (paymentIntentId) => api.post(`/payments/failures/${paymentIntentId}/abandon`),
+  getFailureAnalytics: () => api.get('/payments/failures/analytics/failure-reasons'),
 
   // User
-  getProfile: () => api.get('/user/profile'),
-  updateProfile: (profileData) => api.put('/user/profile', profileData),
-  getAddresses: () => api.get('/user/addresses'),
-  addAddress: (addressData) => api.post('/user/addresses', addressData),
+  getProfile: () => api.get('/users/profile'),
+  updateProfile: (profileData) => api.put('/users/profile', profileData),
+  getAddresses: () => api.get('/users/addresses'),
+  addAddress: (addressData) => api.post('/users/addresses', addressData),
 
   // Notifications
   getNotifications: (params) => api.get('/notifications/', { params }),
@@ -121,9 +169,9 @@ export const apiService = {
   markAllNotificationsRead: () => api.put('/notifications/mark-all-read'),
 
   // Wishlist
-  getWishlist: () => api.get('/wishlist/'),
-  addToWishlist: (productId) => api.post('/wishlist/add', { product_id: productId }),
-  removeFromWishlist: (productId) => api.delete(`/wishlist/remove/${productId}`),
+  getWishlist: () => api.get('/users/wishlist/'),
+  addToWishlist: (productId) => api.post('/users/wishlist/add', { product_id: productId }),
+  removeFromWishlist: (productId) => api.delete(`/users/wishlist/remove/${productId}`),
 
   // Health
   healthCheck: () => api.get('/health/'),

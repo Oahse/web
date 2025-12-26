@@ -135,7 +135,7 @@ class WebhookService:
             }
 
     async def _handle_payment_failed(self, payment_intent_data: Dict[str, Any]) -> Dict[str, Any]:
-        """Handle failed payment webhook"""
+        """Handle failed payment webhook with comprehensive failure handling"""
         stripe_payment_intent_id = payment_intent_data["id"]
         
         # Find the transaction with lock to prevent race conditions
@@ -165,9 +165,44 @@ class WebhookService:
                 if order:
                     order.status = "payment_failed"
                     order.version += 1  # Optimistic locking increment
-                    
             
             await self.db.commit()
+            
+            # Use comprehensive failure handler if payment intent exists
+            try:
+                from services.payment_failure_handler import PaymentFailureHandler
+                
+                # Find the payment intent
+                payment_intent_result = await self.db.execute(
+                    select(PaymentIntent).where(
+                        PaymentIntent.stripe_payment_intent_id == stripe_payment_intent_id
+                    )
+                )
+                payment_intent = payment_intent_result.scalar_one_or_none()
+                
+                if payment_intent:
+                    failure_handler = PaymentFailureHandler(self.db)
+                    
+                    stripe_error = payment_intent_data.get("last_payment_error", {})
+                    failure_result = await failure_handler.handle_payment_failure(
+                        payment_intent_id=payment_intent.id,
+                        stripe_error=stripe_error,
+                        failure_context={
+                            "webhook_source": True,
+                            "stripe_payment_intent_id": stripe_payment_intent_id
+                        }
+                    )
+                    
+                    return {
+                        "action": "payment_failed_comprehensive",
+                        "transaction_id": str(transaction.id),
+                        "order_id": str(transaction.order_id) if transaction.order_id else None,
+                        "failure_reason": transaction.failure_reason,
+                        "failure_handling": failure_result
+                    }
+                    
+            except Exception as e:
+                logger.error(f"Error in comprehensive failure handling: {e}")
             
             return {
                 "action": "payment_failed",

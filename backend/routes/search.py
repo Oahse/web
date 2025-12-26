@@ -7,7 +7,7 @@ from core.utils.response import Response
 from core.exceptions import APIException
 from services.search import SearchService
 
-router = APIRouter(prefix="/v1/search", tags=["Search"])
+router = APIRouter(prefix="/search", tags=["Search"])
 
 
 @router.get("/autocomplete")

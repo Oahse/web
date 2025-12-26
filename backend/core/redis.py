@@ -226,6 +226,7 @@ class RedisKeyManager:
     CART_PREFIX = "cart"
     SESSION_PREFIX = "session"
     RATE_LIMIT_PREFIX = "rate_limit"
+    SECURITY_PREFIX = "security"
     PRODUCT_CACHE_PREFIX = "product"
     INVENTORY_LOCK_PREFIX = "inventory_lock"
     USER_CACHE_PREFIX = "user"
@@ -244,6 +245,11 @@ class RedisKeyManager:
     def rate_limit_key(identifier: str, endpoint: str) -> str:
         """Generate rate limit key"""
         return f"{RedisKeyManager.RATE_LIMIT_PREFIX}:{identifier}:{endpoint}"
+    
+    @staticmethod
+    def security_key(key_suffix: str) -> str:
+        """Generate security-related key"""
+        return f"{RedisKeyManager.SECURITY_PREFIX}:{key_suffix}"
     
     @staticmethod
     def product_cache_key(product_id: str) -> str:

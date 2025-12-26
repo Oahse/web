@@ -14,7 +14,7 @@ from services.user import UserService, AddressService
 from models.user import User
 from uuid import UUID
 
-router = APIRouter(prefix="/v1/auth", tags=["Authentication"])
+router = APIRouter(prefix="/auth", tags=["Authentication"])
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 
@@ -56,6 +56,46 @@ async def login(
         raise APIException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             message=f"Invalid credentials - {str(e)}"
+        )
+
+
+@router.post("/refresh")
+async def refresh_token(
+    refresh_token: str,
+    db: AsyncSession = Depends(get_db)
+):
+    """Refresh access token using refresh token."""
+    try:
+        auth_service = AuthService(db)
+        token_data = await auth_service.refresh_access_token(refresh_token)
+        return Response.success(data=token_data, message="Token refreshed successfully")
+    except Exception as e:
+        raise APIException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            message=f"Failed to refresh token - {str(e)}"
+        )
+
+
+@router.post("/revoke")
+async def revoke_refresh_token(
+    refresh_token: str,
+    db: AsyncSession = Depends(get_db)
+):
+    """Revoke a refresh token."""
+    try:
+        auth_service = AuthService(db)
+        success = await auth_service.revoke_refresh_token(refresh_token)
+        if success:
+            return Response.success(message="Refresh token revoked successfully")
+        else:
+            raise APIException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                message="Invalid refresh token"
+            )
+    except Exception as e:
+        raise APIException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            message=f"Failed to revoke token - {str(e)}"
         )
 
 

@@ -36,6 +36,66 @@ class OrderService:
         self.db = db
         self.inventory_service = InventoryService(db, lock_service)
 
+    async def place_order_with_security_validation(
+        self, 
+        user_id: UUID, 
+        request: CheckoutRequest, 
+        background_tasks: BackgroundTasks,
+        idempotency_key: Optional[str] = None
+    ) -> OrderResponse:
+        """
+        Place an order with comprehensive security validation including price tampering protection
+        """
+        # Import security service
+        from core.middleware.rate_limit import SecurityService
+        
+        # Initialize security service
+        security_service = SecurityService()
+        
+        # Get client identifier for security tracking
+        client_id = f"user:{user_id}"
+        
+        # STEP 1: Validate cart and get current prices
+        cart_service = CartService(self.db)
+        validation_result = await cart_service.validate_cart(user_id)
+        
+        if not validation_result.get("valid", False) or not validation_result.get("can_checkout", False):
+            error_issues = [issue for issue in validation_result.get("issues", []) if issue.get("severity") == "error"]
+            if error_issues:
+                error_messages = [issue["message"] for issue in error_issues]
+                raise HTTPException(
+                    status_code=400, 
+                    detail={
+                        "message": "Cart validation failed. Please review and update your cart.",
+                        "issues": error_issues,
+                        "validation_summary": validation_result.get("summary", {}),
+                        "error_count": len(error_issues)
+                    }
+                )
+        
+        cart = validation_result["cart"]
+        
+        # STEP 2: Price tampering detection
+        if hasattr(request, 'submitted_prices') and request.submitted_prices:
+            # Extract actual prices from validated cart
+            actual_prices = {}
+            for item in cart.items:
+                actual_prices[str(item.variant_id)] = float(item.price_per_unit)
+            
+            # Check for price tampering
+            tampering_result = await security_service.detect_price_tampering(
+                client_id, request.submitted_prices, actual_prices
+            )
+            
+            if tampering_result.get("blocked"):
+                if tampering_result["reason"] == "account_suspended":
+                    raise HTTPException(status_code=403, detail=tampering_result["message"])
+                else:
+                    raise HTTPException(status_code=400, detail=tampering_result["message"])
+        
+        # STEP 3: Proceed with regular order placement
+        return await self.place_order_with_idempotency(user_id, request, background_tasks, idempotency_key)
+
     async def place_order_with_idempotency(
         self, 
         user_id: UUID, 

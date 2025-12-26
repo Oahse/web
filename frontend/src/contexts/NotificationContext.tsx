@@ -80,19 +80,14 @@ export const NotificationProvider = ({ children }) => {
       return;
     }
 
-    // Optimistic update
-    setNotifications(prev => prev.map(n => 
-      n.id === id ? { ...n, read: true } : n
-    ));
-
     try {
       await NotificationAPI.markNotificationAsRead(id);
+      // Update state after successful API call
+      setNotifications(prev => prev.map(n => 
+        n.id === id ? { ...n, read: true } : n
+      ));
     } catch (error) {
       console.error('Failed to mark notification as read:', error);
-      // Revert on error
-      setNotifications(prev => prev.map(n => 
-        n.id === id ? { ...n, read: false } : n
-      ));
       toast.error('Failed to mark notification as read');
     }
   };
@@ -104,17 +99,13 @@ export const NotificationProvider = ({ children }) => {
       return;
     }
 
-    // Optimistic update
-    const previousNotifications = [...notifications];
-    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
-
     try {
       await NotificationAPI.markAllNotificationsAsRead();
+      // Update state after successful API call
+      setNotifications(prev => prev.map(n => ({ ...n, read: true })));
       toast.success('All notifications marked as read');
     } catch (error) {
       console.error('Failed to mark all as read:', error);
-      // Revert on error
-      setNotifications(previousNotifications);
       toast.error('Failed to mark all as read');
     }
   };

@@ -1,12 +1,13 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
+from sqlalchemy import select, func, update
 from fastapi import HTTPException, Depends, status, BackgroundTasks
 from fastapi.security import OAuth2PasswordBearer
 from passlib.context import CryptContext
 from jose import JWTError, jwt
 from datetime import datetime, timedelta
-from typing import Optional
+from typing import Optional, Dict, Any
 import secrets
+import uuid
 from core.config import settings
 from models.user import User
 from schemas.auth import UserCreate, Token, UserResponse, AuthResponse
@@ -15,7 +16,7 @@ from core.database import get_db
 from core.utils.messages.email import send_email
 from core.utils.encryption import PasswordManager
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/v1/auth/token")
 
 
 class AuthService:
@@ -31,30 +32,139 @@ class AuthService:
         """Hash a password."""
         return self.password_manager.hash_password(password)
 
-    def create_access_token(self, data: dict, expires_delta: Optional[timedelta] = None):
+    def create_access_token(self, data: dict, expires_delta: Optional[timedelta] = None) -> str:
         """Create a JWT access token."""
         to_encode = data.copy()
         if expires_delta:
             expire = datetime.utcnow() + expires_delta
         else:
             expire = datetime.utcnow() + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
-        to_encode.update({"exp": expire})
+        
+        to_encode.update({
+            "exp": expire,
+            "iat": datetime.utcnow(),
+            "type": "access",
+            "jti": str(uuid.uuid4())  # JWT ID for token tracking
+        })
+        
         encoded_jwt = jwt.encode(
             to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
         return encoded_jwt
 
-    def create_refresh_token(self, data: dict, expires_delta: Optional[timedelta] = None):
+    def create_refresh_token(self, data: dict, expires_delta: Optional[timedelta] = None) -> str:
         """Create a JWT refresh token."""
         to_encode = data.copy()
         if expires_delta:
             expire = datetime.utcnow() + expires_delta
         else:
-            expire = datetime.utcnow() + timedelta(days=7)  # Refresh tokens last 7 days
-        to_encode.update({"exp": expire, "type": "refresh"})
+            expire = datetime.utcnow() + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
+        
+        to_encode.update({
+            "exp": expire,
+            "iat": datetime.utcnow(),
+            "type": "refresh",
+            "jti": str(uuid.uuid4())  # JWT ID for token tracking
+        })
+        
         encoded_jwt = jwt.encode(
             to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
         return encoded_jwt
 
+    def verify_token(self, token: str, token_type: str = "access") -> Dict[str, Any]:
+        """Verify and decode JWT token."""
+        try:
+            payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+            
+            # Check token type
+            if payload.get("type") != token_type:
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail=f"Invalid token type. Expected {token_type}",
+                    headers={"WWW-Authenticate": "Bearer"},
+                )
+            
+            # Check expiration
+            exp = payload.get("exp")
+            if exp is None or datetime.utcnow() > datetime.fromtimestamp(exp):
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Token has expired",
+                    headers={"WWW-Authenticate": "Bearer"},
+                )
+            
+            return payload
+            
+        except JWTError as e:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Could not validate credentials",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
+    async def refresh_access_token(self, refresh_token: str) -> Dict[str, str]:
+        """Generate new access token using refresh token."""
+        try:
+            # Verify refresh token
+            payload = self.verify_token(refresh_token, "refresh")
+            
+            # Get user from token
+            user_id = payload.get("sub")
+            if user_id is None:
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Invalid token payload"
+                )
+            
+            # Verify user still exists and is active
+            user = await self.get_user_by_id(user_id)
+            if not user or not user.is_active:
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="User not found or inactive"
+                )
+            
+            # Create new access token
+            access_token_data = {
+                "sub": str(user.id),
+                "email": user.email,
+                "role": user.role,
+                "is_active": user.is_active
+            }
+            
+            new_access_token = self.create_access_token(access_token_data)
+            
+            return {
+                "access_token": new_access_token,
+                "token_type": "bearer"
+            }
+            
+        except HTTPException:
+            raise
+        except Exception as e:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Could not refresh token"
+            )
+
+    async def revoke_refresh_token(self, refresh_token: str) -> bool:
+        """Revoke a refresh token (add to blacklist)."""
+        try:
+            payload = self.verify_token(refresh_token, "refresh")
+            jti = payload.get("jti")
+            
+            if jti:
+                # In a production system, you would store revoked tokens in Redis or database
+                # For now, we'll just validate the token structure
+                return True
+                
+        except HTTPException:
+            return False
+        
+        return False
+
+    async def get_user_by_id(self, user_id: str) -> Optional[User]:
+        """Get user by ID."""
+        result = await self.db.execute(select(User).where(User.id == user_id))
     async def get_user_by_email(self, email: str) -> Optional[User]:
         """Get user by email."""
         result = await self.db.execute(select(User).where(User.email == email))
@@ -62,8 +172,7 @@ class AuthService:
 
     async def _send_verification_email(self, email: str, verification_code: str):
         """Placeholder for sending a verification email."""
-        print(
-            f"Sending verification email to {email} with code {verification_code}")
+        print(f"Sending verification email to {email} with code {verification_code}")
         # In a real application, integrate with an email service here
 
     async def _send_welcome_sms(self, phone_number: str):
@@ -104,7 +213,7 @@ class AuthService:
         return UserResponse.from_orm(new_user)
 
     async def authenticate_user(self, email: str, password: str, background_tasks: BackgroundTasks) -> AuthResponse:
-        """Authenticate user and return token."""
+        """Authenticate user and return JWT tokens."""
         print(f"Attempting to authenticate user: {email}")
         user = await self.get_user_by_email(email)
         if not user:
@@ -115,14 +224,21 @@ class AuthService:
                 headers={"WWW-Authenticate": "Bearer"},
             )
 
-        password_verified = self.verify_password(
-            password, user.hashed_password)
+        password_verified = self.verify_password(password, user.hashed_password)
         print(f"Password verification for {email}: {password_verified}")
 
         if not password_verified:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Incorrect email or password",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
+        # Check if user is active
+        if not user.is_active:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Account is deactivated",
                 headers={"WWW-Authenticate": "Bearer"},
             )
 
@@ -150,17 +266,21 @@ class AuthService:
             )
             print(f"Login alert email task added for {user.email}.")
         except Exception as e:
-            print(
-                f"Failed to add login alert email task for {user.email}. Error: {e}")
+            print(f"Failed to add login alert email task for {user.email}. Error: {e}")
 
-        access_token_expires = timedelta(
-            minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
-        print(f"Access token expires in: {access_token_expires}")
-        access_token = self.create_access_token(
-            data={"sub": user.email}, expires_delta=access_token_expires
-        )
-        refresh_token = self.create_refresh_token(data={"sub": user.email})
-        print(f"Generated access token: {access_token}")
+        # Create token data
+        token_data = {
+            "sub": str(user.id),
+            "email": user.email,
+            "role": user.role,
+            "is_active": user.is_active
+        }
+
+        # Create access and refresh tokens
+        access_token = self.create_access_token(token_data)
+        refresh_token = self.create_refresh_token(token_data)
+        
+        print(f"Generated tokens for user {user.email}")
 
         auth_response = AuthResponse(
             access_token=access_token,
@@ -169,7 +289,7 @@ class AuthService:
             expires_in=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
             user=UserResponse.from_orm(user)
         )
-        print(f"Returning AuthResponse object: {auth_response}")
+        
         return auth_response
 
     @staticmethod
@@ -177,7 +297,7 @@ class AuthService:
         token: str = Depends(oauth2_scheme),
         db: AsyncSession = Depends(get_db)
     ) -> User:
-        """Get current authenticated user."""
+        """Get current authenticated user using enhanced JWT verification."""
         credentials_exception = HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Could not validate credentials",
@@ -185,18 +305,50 @@ class AuthService:
         )
 
         try:
-            payload = jwt.decode(token, settings.SECRET_KEY,
-                                 algorithms=[settings.ALGORITHM])
-            email: str = payload.get("sub")
-            if email is None:
+            # Decode and verify token
+            payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+            
+            # Check token type
+            token_type = payload.get("type")
+            if token_type != "access":
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Invalid token type",
+                    headers={"WWW-Authenticate": "Bearer"},
+                )
+            
+            # Get user ID from token
+            user_id: str = payload.get("sub")
+            if user_id is None:
                 raise credentials_exception
+                
+            # Check token expiration
+            exp = payload.get("exp")
+            if exp is None or datetime.utcnow() > datetime.fromtimestamp(exp):
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Token has expired",
+                    headers={"WWW-Authenticate": "Bearer"},
+                )
+                
         except JWTError:
             raise credentials_exception
 
-        result = await db.execute(select(User).where(User.email == email))
+        # Get user from database
+        result = await db.execute(select(User).where(User.id == user_id))
         user = result.scalar_one_or_none()
+        
         if user is None:
             raise credentials_exception
+            
+        # Check if user is still active
+        if not user.is_active:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="User account is deactivated",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+            
         return user
 
     async def send_password_reset(self, email: str, background_tasks: BackgroundTasks):

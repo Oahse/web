@@ -10,7 +10,7 @@ from schemas.cart import AddToCartRequest, ApplyPromocodeRequest, UpdateCartItem
 from core.dependencies import get_current_auth_user
 from typing import Optional
 
-router = APIRouter(prefix="/v1/cart", tags=["Cart"])
+router = APIRouter(prefix="/cart", tags=["Cart"])
 
 
 def get_session_id(request: Request) -> Optional[str]:

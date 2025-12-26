@@ -16,7 +16,7 @@ from schemas.inventories import (
 )
 from services.inventories import InventoryService
 
-router = APIRouter(prefix="/v1/inventory", tags=["Inventory Management"])
+router = APIRouter(prefix="/inventory", tags=["Inventory Management"])
 
 
 # --- WarehouseLocation Endpoints ---
