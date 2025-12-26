@@ -68,7 +68,21 @@ export class OrdersAPI {
    * Request order refund
    */
   static async requestRefund(orderId, data) {
-    return await apiClient.post(`/orders/${orderId}/refund`, data);
+    return await apiClient.post(`/refunds/orders/${orderId}/request`, data);
+  }
+
+  /**
+   * Check refund eligibility
+   */
+  static async checkRefundEligibility(orderId) {
+    return await apiClient.get(`/refunds/orders/${orderId}/eligibility`);
+  }
+
+  /**
+   * Validate checkout before placing order
+   */
+  static async validateCheckout(checkoutData) {
+    return await apiClient.post('/orders/checkout/validate', checkoutData);
   }
 
   /**

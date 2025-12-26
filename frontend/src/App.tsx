@@ -20,6 +20,7 @@ import { ProtectedRoute } from './components/routing/ProtectedRoute';
 import ErrorBoundary from './components/common/ErrorBoundary';
 import { OfflineIndicator } from './components/common/OfflineIndicator';
 import { AdminSettings } from './pages/admin/AdminSettings';
+import SupportWidget from './components/support/SupportWidget';
 
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY);
 
@@ -126,6 +127,7 @@ const TrackOrder = lazy(() =>
 const TrackOrderSearch = lazy(() =>
   import('./components/account/TrackOrder').then((module) => ({ default: module.default }))
 );
+const Support = lazy(() => import('./pages/Support').then((module) => ({ default: module.default })));
 
 // Lazy load supplier pages
 const SupplierDashboard = lazy(() =>
@@ -153,6 +155,7 @@ export const App: React.FC = () => {
                       <CategoryProvider>
                       <FontLoader />
                       <OfflineIndicator />
+                      <SupportWidget />
                       <Toaster
                         position="top-right"
                         toastOptions={{
@@ -544,6 +547,7 @@ export const App: React.FC = () => {
                               <Route path="/register" element={<Layout><Register /></Layout>} />
                               <Route path="/about" element={<Layout><About /></Layout>} />
                               <Route path="/contact" element={<Layout><Contact /></Layout>} />
+                              <Route path="/support" element={<Layout><Support /></Layout>} />
                               <Route path="/faq" element={<Layout><FAQ /></Layout>} />
                               <Route path="/blog" element={<Layout><Blog /></Layout>} />
                               <Route path="/blog/:slug" element={<Layout><BlogPost /></Layout>} />                              <Route path="/account/wishlist" element={<ProtectedRoute><Layout><Wishlist /></Layout></ProtectedRoute>} />

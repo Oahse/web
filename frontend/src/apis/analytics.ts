@@ -1,175 +1,152 @@
 /**
- * Analytics API endpoints
+ * Analytics API endpoints for business metrics
  */
-
 import { apiClient } from './client';
 
 export class AnalyticsAPI {
   /**
-   * Get dashboard data
+   * Track an analytics event
    */
-  static async getDashboardData(filters) {
+  static async trackEvent(eventData: {
+    session_id: string;
+    event_type: string;
+    data?: any;
+    page_url?: string;
+    page_title?: string;
+    order_id?: string;
+    product_id?: string;
+    revenue?: number;
+  }) {
+    return await apiClient.post('/analytics/track', eventData);
+  }
+
+  /**
+   * Get conversion rate metrics
+   */
+  static async getConversionRates(params?: {
+    start_date?: string;
+    end_date?: string;
+    traffic_source?: string;
+    days?: number;
+  }) {
     const queryParams = new URLSearchParams();
-      
-    if (typeof filters?.date_range === 'string') {
-      queryParams.append('date_range', filters.date_range);
-    } else if (filters?.date_range) {
-      if (filters.date_range.start) queryParams.append('date_from', filters.date_range.start);
-      if (filters.date_range.end) queryParams.append('date_to', filters.date_range.end);
-    }
-    if (filters?.category) queryParams.append('category', filters.category);
-    if (filters?.supplier) queryParams.append('supplier', filters.supplier);
+    
+    if (params?.start_date) queryParams.append('start_date', params.start_date);
+    if (params?.end_date) queryParams.append('end_date', params.end_date);
+    if (params?.traffic_source) queryParams.append('traffic_source', params.traffic_source);
+    if (params?.days) queryParams.append('days', params.days.toString());
+
+    const url = `/analytics/conversion-rates${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
+    return await apiClient.get(url);
+  }
+
+  /**
+   * Get cart abandonment metrics
+   */
+  static async getCartAbandonment(params?: {
+    start_date?: string;
+    end_date?: string;
+    days?: number;
+  }) {
+    const queryParams = new URLSearchParams();
+    
+    if (params?.start_date) queryParams.append('start_date', params.start_date);
+    if (params?.end_date) queryParams.append('end_date', params.end_date);
+    if (params?.days) queryParams.append('days', params.days.toString());
+
+    const url = `/analytics/cart-abandonment${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
+    return await apiClient.get(url);
+  }
+
+  /**
+   * Get time to purchase metrics
+   */
+  static async getTimeToPurchase(params?: {
+    start_date?: string;
+    end_date?: string;
+    days?: number;
+  }) {
+    const queryParams = new URLSearchParams();
+    
+    if (params?.start_date) queryParams.append('start_date', params.start_date);
+    if (params?.end_date) queryParams.append('end_date', params.end_date);
+    if (params?.days) queryParams.append('days', params.days.toString());
+
+    const url = `/analytics/time-to-purchase${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
+    return await apiClient.get(url);
+  }
+
+  /**
+   * Get refund rate metrics
+   */
+  static async getRefundRates(params?: {
+    start_date?: string;
+    end_date?: string;
+    days?: number;
+  }) {
+    const queryParams = new URLSearchParams();
+    
+    if (params?.start_date) queryParams.append('start_date', params.start_date);
+    if (params?.end_date) queryParams.append('end_date', params.end_date);
+    if (params?.days) queryParams.append('days', params.days.toString());
+
+    const url = `/analytics/refund-rates${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
+    return await apiClient.get(url);
+  }
+
+  /**
+   * Get repeat customer metrics
+   */
+  static async getRepeatCustomers(params?: {
+    start_date?: string;
+    end_date?: string;
+    days?: number;
+  }) {
+    const queryParams = new URLSearchParams();
+    
+    if (params?.start_date) queryParams.append('start_date', params.start_date);
+    if (params?.end_date) queryParams.append('end_date', params.end_date);
+    if (params?.days) queryParams.append('days', params.days.toString());
+
+    const url = `/analytics/repeat-customers${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
+    return await apiClient.get(url);
+  }
+
+  /**
+   * Get comprehensive dashboard data
+   */
+  static async getDashboardData(params?: {
+    start_date?: string;
+    end_date?: string;
+    days?: number;
+  }) {
+    const queryParams = new URLSearchParams();
+    
+    if (params?.start_date) queryParams.append('start_date', params.start_date);
+    if (params?.end_date) queryParams.append('end_date', params.end_date);
+    if (params?.days) queryParams.append('days', params.days.toString());
 
     const url = `/analytics/dashboard${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
     return await apiClient.get(url);
   }
 
   /**
-   * Get real-time metrics
+   * Get key performance indicators
    */
-  static async getRealTimeMetrics() {
-    return await apiClient.get('/analytics/real-time');
-  }
-
-  /**
-   * Get sales analytics
-   */
-  static async getSalesAnalytics(filters) {
-    const queryParams = new URLSearchParams();
-      
-    if (filters?.date_range?.start) queryParams.append('date_from', filters.date_range.start);
-    if (filters?.date_range?.end) queryParams.append('date_to', filters.date_range.end);
-    if (filters?.category) queryParams.append('category', filters.category);
-    if (filters?.supplier) queryParams.append('supplier', filters.supplier);
-    if (filters?.group_by) queryParams.append('group_by', filters.group_by);
-
-    const url = `/analytics/sales${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
-    return await apiClient.get(url);
-  }
-
-  /**
-   * Get user analytics
-   */
-  static async getUserAnalytics(filters) {
-    const queryParams = new URLSearchParams();
-      
-    if (filters?.date_range?.start) queryParams.append('date_from', filters.date_range.start);
-    if (filters?.date_range?.end) queryParams.append('date_to', filters.date_range.end);
-
-    const url = `/analytics/users${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
-    return await apiClient.get(url);
-  }
-
-  /**
-   * Get product analytics
-   */
-  static async getProductAnalytics(filters) {
-    const queryParams = new URLSearchParams();
-      
-    if (filters?.category) queryParams.append('category', filters.category);
-    if (filters?.supplier) queryParams.append('supplier', filters.supplier);
-
-    const url = `/analytics/products${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
-    return await apiClient.get(url);
-  }
-
-  /**
-   * Get conversion funnel analytics
-   */
-  static async getConversionFunnel(filters) {
-    const queryParams = new URLSearchParams();
-      
-    if (filters?.date_range?.start) queryParams.append('date_from', filters.date_range.start);
-    if (filters?.date_range?.end) queryParams.append('date_to', filters.date_range.end);
-
-    const url = `/analytics/conversion-funnel${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
-    return await apiClient.get(url);
-  }
-
-  /**
-   * Get geographic analytics
-   */
-  static async getGeographicAnalytics(filters) {
-    const queryParams = new URLSearchParams();
-      
-    if (filters?.date_range?.start) queryParams.append('date_from', filters.date_range.start);
-    if (filters?.date_range?.end) queryParams.append('date_to', filters.date_range.end);
-
-    const url = `/analytics/geo${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
-    return await apiClient.get(url);
-  }
-
-  // Supplier Analytics
-  /**
-   * Get supplier dashboard data
-   */
-  static async getSupplierDashboard(filters) {
-    const queryParams = new URLSearchParams();
-      
-    if (filters?.date_range?.start) queryParams.append('date_from', filters.date_range.start);
-    if (filters?.date_range?.end) queryParams.append('date_to', filters.date_range.end);
-
-    const url = `/analytics/supplier${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
-    return await apiClient.get(url);
-  }
-
-  /**
-   * Get supplier product performance
-   */
-  static async getSupplierProductPerformance(filters) {
-    const queryParams = new URLSearchParams();
-      
-    if (filters?.date_range?.start) queryParams.append('date_from', filters.date_range.start);
-    if (filters?.date_range?.end) queryParams.append('date_to', filters.date_range.end);
-
-    const url = `/analytics/supplier/products${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
-    return await apiClient.get(url);
-  }
-
-  /**
-   * Export analytics data
-   */
-  static async exportAnalytics(data) {
-    const queryParams = new URLSearchParams();
-      
-    queryParams.append('type', data.type);
-    queryParams.append('format', data.format);
-    
-    if (data.filters?.date_range?.start) queryParams.append('date_from', data.filters.date_range.start);
-    if (data.filters?.date_range?.end) queryParams.append('date_to', data.filters.date_range.end);
-    if (data.filters?.category) queryParams.append('category', data.filters.category);
-    if (data.filters?.supplier) queryParams.append('supplier', data.filters.supplier);
-
-    const url = `/analytics/export?${queryParams.toString()}`;
-    const filename = `${data.type}-analytics-${new Date().toISOString().split('T')[0]}.${data.format}`;
-    
-    await apiClient.download(url, filename);
-  }
-
-  /**
-   * Track custom event
-   */
-  static async trackEvent(event) {
-    return await apiClient.post('/analytics/events', event);
-  }
-
-  /**
-   * Get performance metrics
-   */
-  static async getPerformanceMetrics() {
-    return await apiClient.get('/analytics/performance');
-  }
-
-  /**
-   * Get recent activity logs
-   */
-  static async getRecentActivity(params?: { limit?: number; since?: string }) {
+  static async getKPIs(params?: {
+    start_date?: string;
+    end_date?: string;
+    days?: number;
+    compare_previous?: boolean;
+  }) {
     const queryParams = new URLSearchParams();
     
-    if (params?.limit) queryParams.append('limit', params.limit.toString());
-    if (params?.since) queryParams.append('since', params.since);
+    if (params?.start_date) queryParams.append('start_date', params.start_date);
+    if (params?.end_date) queryParams.append('end_date', params.end_date);
+    if (params?.days) queryParams.append('days', params.days.toString());
+    if (params?.compare_previous !== undefined) queryParams.append('compare_previous', params.compare_previous.toString());
 
-    const url = `/analytics/recent-activity${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
+    const url = `/analytics/kpis${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
     return await apiClient.get(url);
   }
 }

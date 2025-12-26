@@ -9,6 +9,8 @@ import { CartAPI } from '../apis/cart';
 import { toast } from 'react-hot-toast';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
+import ExpressCheckout from '../components/checkout/ExpressCheckout';
+import SmartCheckoutForm from '../components/checkout/SmartCheckoutForm';
 
 export const Checkout = () => {
   const navigate = useNavigate();
@@ -95,6 +97,7 @@ export const Checkout = () => {
   }, [cart, cartLoading, navigate]);
   // Fetch checkout data
   useEffect(() => {
+    const fetchCheckoutData = async () => {
       if (!isAuthenticated) return;
 
       try {

@@ -125,10 +125,41 @@ class OrderService:
         
         if existing:
             # Return existing order
-            return await self._format_order_response(existing)
-        
-        # Proceed with order creation
-        return await self.place_order(user_id, request, background_tasks, idempotency_key)
+        async def request_refund(
+        self, 
+        order_id: UUID, 
+        user_id: UUID, 
+        refund_data: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """
+        Request a refund for an order
+        Delegates to the RefundService for comprehensive refund processing
+        """
+        try:
+            from services.refunds import RefundService
+            from schemas.refunds import RefundRequest
+            
+            # Create refund service
+            refund_service = RefundService(self.db)
+            
+            # Convert refund_data to RefundRequest schema
+            refund_request = RefundRequest(**refund_data)
+            
+            # Process refund request
+            refund_response = await refund_service.request_refund(
+                user_id=user_id,
+                order_id=order_id,
+                refund_request=refund_request
+            )
+            
+            return refund_response.dict()
+            
+        except Exception as e:
+            logger.error(f"Failed to request refund for order {order_id}: {e}")
+            raise HTTPException(
+                status_code=500,
+                detail=f"Failed to process refund request: {str(e)}"
+            )
 
     async def place_order(
         self, 
@@ -935,3 +966,38 @@ class OrderService:
             logger = logging.getLogger(__name__)
             logger.error(f"Failed to publish order events using new event system: {e}")
             raise
+    async def request_refund(
+        self, 
+        order_id: UUID, 
+        user_id: UUID, 
+        refund_data: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """
+        Request a refund for an order
+        Delegates to the RefundService for comprehensive refund processing
+        """
+        try:
+            from services.refunds import RefundService
+            from schemas.refunds import RefundRequest
+            
+            # Create refund service
+            refund_service = RefundService(self.db)
+            
+            # Convert refund_data to RefundRequest schema
+            refund_request = RefundRequest(**refund_data)
+            
+            # Process refund request
+            refund_response = await refund_service.request_refund(
+                user_id=user_id,
+                order_id=order_id,
+                refund_request=refund_request
+            )
+            
+            return refund_response.dict()
+            
+        except Exception as e:
+            logger.error(f"Failed to request refund for order {order_id}: {e}")
+            raise HTTPException(
+                status_code=500,
+                detail=f"Failed to process refund request: {str(e)}"
+            )
