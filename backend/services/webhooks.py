@@ -88,16 +88,16 @@ class WebhookService:
         """Handle successful payment webhook"""
         stripe_payment_intent_id = payment_intent_data["id"]
         
-        # Find the transaction
+        # Find the transaction with lock to prevent race conditions
         transaction_result = await self.db.execute(
             select(Transaction).where(
                 Transaction.stripe_payment_intent_id == stripe_payment_intent_id
-            )
+            ).with_for_update()
         )
         transaction = transaction_result.scalar_one_or_none()
         
         if transaction:
-            # Update transaction status
+            # Update transaction status atomically
             transaction.status = "succeeded"
             transaction.transaction_details_metadata = {
                 **transaction.transaction_details_metadata,
@@ -105,15 +105,15 @@ class WebhookService:
                 "stripe_charges": payment_intent_data.get("charges", {})
             }
             
-            # If this is an order payment, update order status
+            # If this is an order payment, update order status atomically
             if transaction.order_id:
                 order_result = await self.db.execute(
-                    select(Order).where(Order.id == transaction.order_id)
+                    select(Order).where(Order.id == transaction.order_id).with_for_update()
                 )
                 order = order_result.scalar_one_or_none()
                 
                 if order:
-                    # Update order status to confirmed
+                    # Update order status to confirmed atomically
                     order.status = "confirmed"
                     order.version += 1  # Optimistic locking increment
                     
@@ -138,16 +138,16 @@ class WebhookService:
         """Handle failed payment webhook"""
         stripe_payment_intent_id = payment_intent_data["id"]
         
-        # Find the transaction
+        # Find the transaction with lock to prevent race conditions
         transaction_result = await self.db.execute(
             select(Transaction).where(
                 Transaction.stripe_payment_intent_id == stripe_payment_intent_id
-            )
+            ).with_for_update()
         )
         transaction = transaction_result.scalar_one_or_none()
         
         if transaction:
-            # Update transaction status
+            # Update transaction status atomically
             transaction.status = "failed"
             transaction.failure_reason = payment_intent_data.get("last_payment_error", {}).get("message", "Payment failed")
             transaction.transaction_details_metadata = {
@@ -156,10 +156,10 @@ class WebhookService:
                 "failure_details": payment_intent_data.get("last_payment_error", {})
             }
             
-            # If this is an order payment, update order status
+            # If this is an order payment, update order status atomically
             if transaction.order_id:
                 order_result = await self.db.execute(
-                    select(Order).where(Order.id == transaction.order_id)
+                    select(Order).where(Order.id == transaction.order_id).with_for_update()
                 )
                 order = order_result.scalar_one_or_none()
                 if order:
@@ -188,21 +188,21 @@ class WebhookService:
         """Handle canceled payment webhook"""
         stripe_payment_intent_id = payment_intent_data["id"]
         
-        # Find the transaction
+        # Find the transaction with lock to prevent race conditions
         transaction_result = await self.db.execute(
             select(Transaction).where(
                 Transaction.stripe_payment_intent_id == stripe_payment_intent_id
-            )
+            ).with_for_update()
         )
         transaction = transaction_result.scalar_one_or_none()
         
         if transaction:
             transaction.status = "cancelled"
             
-            # Update order status if applicable
+            # Update order status if applicable atomically
             if transaction.order_id:
                 order_result = await self.db.execute(
-                    select(Order).where(Order.id == transaction.order_id)
+                    select(Order).where(Order.id == transaction.order_id).with_for_update()
                 )
                 order = order_result.scalar_one_or_none()
                 if order:

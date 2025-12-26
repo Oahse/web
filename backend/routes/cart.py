@@ -204,17 +204,57 @@ async def validate_cart(
     current_user: Optional[User] = Depends(get_current_auth_user),
     db: AsyncSession = Depends(get_db)
 ):
+    """
+    Comprehensive cart validation - should be called before checkout
+    Validates availability, stock, prices, and product status
+    """
     try:
         cart_service = CartService(db)
-        session_id = get_session_id(request) if not current_user else None
-        result = await cart_service.validate_cart(
-            user_id=current_user.id if current_user else None,
-            session_id=session_id
+        
+        if not current_user:
+            raise APIException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                message="Authentication required for cart validation"
+            )
+        
+        result = await cart_service.validate_cart(user_id=current_user.id)
+        
+        # Determine response status based on validation results
+        if result.get("valid", False) and result.get("can_checkout", False):
+            return Response(
+                success=True, 
+                data=result, 
+                message="Cart validation successful - ready for checkout"
+            )
+        elif result.get("issues"):
+            # Cart has issues but may be recoverable
+            error_count = len([issue for issue in result["issues"] if issue.get("severity") == "error"])
+            warning_count = len([issue for issue in result["issues"] if issue.get("severity") == "warning"])
+            
+            if error_count > 0:
+                return Response(
+                    success=False,
+                    data=result,
+                    message=f"Cart validation failed with {error_count} error(s) and {warning_count} warning(s). Please review your cart."
+                )
+            else:
+                return Response(
+                    success=True,
+                    data=result,
+                    message=f"Cart validation completed with {warning_count} warning(s). You can proceed to checkout."
+                )
+        else:
+            return Response(
+                success=False,
+                data=result,
+                message="Cart validation failed"
+            )
+            
+    except Exception as e:
+        raise APIException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            message=f"Cart validation error: {str(e)}"
         )
-        return Response(success=True, data=result)
-    except Exception:
-        raise APIException(status_code=status.HTTP_400_BAD_REQUEST,
-                           message="Failed to validate cart")
 
 
 @router.post("/shipping-options")

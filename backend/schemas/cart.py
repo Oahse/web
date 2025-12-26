@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field, ConfigDict
-from typing import List
+from typing import List, Optional, Dict, Any
 from datetime import datetime
 from uuid import UUID
 from schemas.product import ProductVariantResponse
@@ -40,3 +40,73 @@ class CartResponse(BaseModel):
 
 class UpdateCartItemRequest(BaseModel):
     quantity: int
+
+
+class CartValidationIssue(BaseModel):
+    """Individual cart validation issue"""
+    variant_id: Optional[str] = None
+    issue: str = Field(..., description="Type of issue (e.g., 'out_of_stock', 'price_changed')")
+    message: str = Field(..., description="Human-readable description of the issue")
+    severity: str = Field(..., description="Severity level: 'error', 'warning', 'info'")
+    
+    # Optional fields for specific issue types
+    current_stock: Optional[int] = None
+    requested_quantity: Optional[int] = None
+    adjusted_quantity: Optional[int] = None
+    old_price: Optional[float] = None
+    new_price: Optional[float] = None
+    old_total: Optional[float] = None
+    new_total: Optional[float] = None
+    quantity: Optional[int] = None
+    price_increased: Optional[bool] = None
+
+
+class CartValidationSummary(BaseModel):
+    """Summary of cart validation results"""
+    total_items_checked: int
+    valid_items: int
+    removed_items: int
+    price_updates: int
+    stock_adjustments: int
+    availability_issues: int
+    cart_updated: bool
+
+
+class CartValidationResponse(BaseModel):
+    """Comprehensive cart validation response"""
+    valid: bool = Field(..., description="Whether the cart passed validation")
+    can_checkout: bool = Field(..., description="Whether the cart can proceed to checkout")
+    cart: CartResponse = Field(..., description="Updated cart after validation")
+    issues: List[CartValidationIssue] = Field(default=[], description="List of validation issues found")
+    summary: CartValidationSummary = Field(..., description="Summary of validation results")
+    validation_timestamp: str = Field(..., description="When validation was performed")
+    error: Optional[str] = Field(None, description="Error message if validation failed")
+
+
+class CheckoutValidationRequest(BaseModel):
+    """Request for checkout validation"""
+    shipping_address_id: UUID
+    shipping_method_id: UUID
+    payment_method_id: UUID
+    notes: Optional[str] = None
+
+
+class EstimatedTotals(BaseModel):
+    """Estimated order totals"""
+    subtotal: float
+    shipping_cost: float
+    tax_amount: float
+    tax_rate: float
+    discount_amount: float
+    total_amount: float
+
+
+class CheckoutValidationResponse(BaseModel):
+    """Response for checkout validation"""
+    cart_validation: CartValidationResponse
+    shipping_address_valid: bool
+    shipping_method_valid: bool
+    payment_method_valid: bool
+    can_proceed: bool
+    validation_errors: List[str] = Field(default=[])
+    estimated_totals: Optional[EstimatedTotals] = None

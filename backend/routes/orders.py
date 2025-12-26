@@ -45,6 +45,132 @@ async def create_order(
         )
 
 
+@router.post("/checkout/validate")
+async def validate_checkout(
+    request: CheckoutRequest,
+    current_user: User = Depends(get_current_auth_user),
+    order_service: OrderService = Depends(get_order_service)
+):
+    """
+    Validate checkout requirements before actual order placement
+    This endpoint performs all validation checks without creating an order
+    """
+    try:
+        # Import CartService here to avoid circular imports
+        from services.cart import CartService
+        
+        cart_service = CartService(order_service.db)
+        
+        # Step 1: Validate cart
+        cart_validation = await cart_service.validate_cart(current_user.id)
+        
+        if not cart_validation.get("valid", False) or not cart_validation.get("can_checkout", False):
+            error_issues = [issue for issue in cart_validation.get("issues", []) if issue.get("severity") == "error"]
+            return Response.error(
+                message="Cart validation failed",
+                data={
+                    "cart_validation": cart_validation,
+                    "can_proceed": False,
+                    "error_count": len(error_issues)
+                }
+            )
+        
+        # Step 2: Validate shipping address
+        shipping_address = await order_service.db.execute(
+            select(Address).where(
+                and_(Address.id == request.shipping_address_id, Address.user_id == current_user.id)
+            )
+        )
+        shipping_address = shipping_address.scalar_one_or_none()
+        
+        # Step 3: Validate shipping method
+        shipping_method = await order_service.db.execute(
+            select(ShippingMethod).where(ShippingMethod.id == request.shipping_method_id)
+        )
+        shipping_method = shipping_method.scalar_one_or_none()
+        
+        # Step 4: Validate payment method
+        payment_method = await order_service.db.execute(
+            select(PaymentMethod).where(
+                and_(PaymentMethod.id == request.payment_method_id, PaymentMethod.user_id == current_user.id)
+            )
+        )
+        payment_method = payment_method.scalar_one_or_none()
+        
+        # Collect validation results
+        validation_results = {
+            "cart_validation": cart_validation,
+            "shipping_address_valid": shipping_address is not None,
+            "shipping_method_valid": shipping_method is not None,
+            "payment_method_valid": payment_method is not None,
+            "can_proceed": True
+        }
+        
+        # Check for validation failures
+        validation_errors = []
+        
+        if not shipping_address:
+            validation_errors.append("Invalid shipping address")
+            validation_results["can_proceed"] = False
+            
+        if not shipping_method:
+            validation_errors.append("Invalid shipping method")
+            validation_results["can_proceed"] = False
+            
+        if not payment_method:
+            validation_errors.append("Invalid payment method")
+            validation_results["can_proceed"] = False
+        
+        # Calculate estimated totals if validation passes
+        if validation_results["can_proceed"]:
+            try:
+                cart = cart_validation["cart"]
+                validated_cart_items = []
+                
+                # Convert cart items to format expected by price validation
+                for item in cart.items:
+                    validated_cart_items.append({
+                        "variant_id": item.variant_id,
+                        "quantity": item.quantity,
+                        "backend_price": item.price_per_unit,
+                        "backend_total": item.total_price
+                    })
+                
+                # Calculate final totals
+                final_total = await order_service._calculate_final_order_total(
+                    validated_cart_items,
+                    shipping_method,
+                    shipping_address
+                )
+                
+                validation_results["estimated_totals"] = final_total
+                
+            except Exception as e:
+                validation_errors.append(f"Failed to calculate totals: {str(e)}")
+                validation_results["can_proceed"] = False
+        
+        validation_results["validation_errors"] = validation_errors
+        
+        if validation_results["can_proceed"]:
+            return Response.success(
+                data=validation_results,
+                message="Checkout validation successful - ready to place order"
+            )
+        else:
+            return Response.error(
+                message="Checkout validation failed",
+                data=validation_results
+            )
+            
+    except APIException:
+        raise
+    except Exception as e:
+        raise APIException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            message=f"Checkout validation failed: {str(e)}"
+        )
+
+
 @router.post("/checkout")
 async def checkout(
     request: CheckoutRequest,
@@ -54,8 +180,9 @@ async def checkout(
     idempotency_key: Optional[str] = Header(None, alias="Idempotency-Key")
 ):
     """
-    Place an order from the current cart with idempotency protection.
+    Place an order from the current cart with comprehensive validation.
     
+    Cart validation is ALWAYS performed before order creation.
     Idempotency-Key header prevents duplicate orders from being created.
     If not provided, one will be generated based on cart contents.
     """

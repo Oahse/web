@@ -39,13 +39,18 @@ class PaymentService:
             # Get payment method details from Stripe
             stripe_pm = stripe.PaymentMethod.retrieve(stripe_payment_method_id)
             
-            # If this is set as default, unset other defaults
+            # If this is set as default, unset other defaults atomically
             if is_default:
-                await self.db.execute(
+                # Get existing default payment methods with lock
+                existing_defaults = await self.db.execute(
                     select(PaymentMethod).where(
                         and_(PaymentMethod.user_id == user_id, PaymentMethod.is_default == True)
-                    ).update({"is_default": False})
+                    ).with_for_update()
                 )
+                
+                # Update them to not be default
+                for pm in existing_defaults.scalars().all():
+                    pm.is_default = False
             
             payment_method = PaymentMethod(
                 user_id=user_id,
@@ -162,7 +167,7 @@ class PaymentService:
     ) -> PaymentIntent:
         """Confirm a payment intent with optional transaction control"""
         result = await self.db.execute(
-            select(PaymentIntent).where(PaymentIntent.id == payment_intent_id)
+            select(PaymentIntent).where(PaymentIntent.id == payment_intent_id).with_for_update()
         )
         payment_intent = result.scalar_one_or_none()
         
@@ -176,7 +181,7 @@ class PaymentService:
                 payment_method=payment_method_id
             )
             
-            # Update our record
+            # Update our record atomically
             payment_intent.status = stripe_intent.status
             payment_intent.payment_method_id = payment_method_id
             

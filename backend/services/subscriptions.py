@@ -107,15 +107,19 @@ class SubscriptionService:
     async def get_subscription_by_id(
         self,
         subscription_id: UUID,
-        user_id: Optional[UUID] = None
+        user_id: Optional[UUID] = None,
+        for_update: bool = False
     ) -> Optional[Subscription]:
-        """Get a subscription by ID"""
+        """Get a subscription by ID with optional locking"""
         query = select(Subscription).where(Subscription.id == subscription_id).options(
             selectinload(Subscription.products)
         )
         
         if user_id:
             query = query.where(Subscription.user_id == user_id)
+            
+        if for_update:
+            query = query.with_for_update()
         
         result = await self.db.execute(query)
         return result.scalar_one_or_none()
@@ -190,8 +194,8 @@ class SubscriptionService:
         user_id: UUID,
         reason: Optional[str] = None
     ) -> Subscription:
-        """Cancel a subscription"""
-        subscription = await self.get_subscription_by_id(subscription_id, user_id)
+        """Cancel a subscription with atomic status update"""
+        subscription = await self.get_subscription_by_id(subscription_id, user_id, for_update=True)
         
         if not subscription:
             raise HTTPException(status_code=404, detail="Subscription not found")
@@ -227,8 +231,8 @@ class SubscriptionService:
         user_id: UUID,
         reason: Optional[str] = None
     ) -> Subscription:
-        """Pause a subscription"""
-        subscription = await self.get_subscription_by_id(subscription_id, user_id)
+        """Pause a subscription with atomic status update"""
+        subscription = await self.get_subscription_by_id(subscription_id, user_id, for_update=True)
         
         if not subscription:
             raise HTTPException(status_code=404, detail="Subscription not found")
@@ -258,8 +262,8 @@ class SubscriptionService:
         subscription_id: UUID,
         user_id: UUID
     ) -> Subscription:
-        """Resume a paused subscription"""
-        subscription = await self.get_subscription_by_id(subscription_id, user_id)
+        """Resume a paused subscription with atomic status update"""
+        subscription = await self.get_subscription_by_id(subscription_id, user_id, for_update=True)
         
         if not subscription:
             raise HTTPException(status_code=404, detail="Subscription not found")

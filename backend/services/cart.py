@@ -269,12 +269,20 @@ class CartService(RedisService):
             raise HTTPException(status_code=500, detail="Failed to clear cart")
 
     async def validate_cart(self, user_id: UUID) -> Dict[str, Any]:
-        """Validate cart items availability and stock"""
+        """
+        Comprehensive cart validation - ALWAYS run before checkout
+        Validates availability, stock, prices, and product status
+        """
         try:
             cart_data = await self.get_hash(RedisKeyManager.cart_key(str(user_id)))
             
             if not cart_data or not cart_data.get("items"):
-                return {"valid": True, "cart": await self._format_cart_response({}), "issues": []}
+                return {
+                    "valid": False, 
+                    "cart": await self._format_cart_response({}), 
+                    "issues": ["Cart is empty"],
+                    "can_checkout": False
+                }
             
             # Parse items if it's a string
             if isinstance(cart_data.get("items"), str):
@@ -282,46 +290,120 @@ class CartService(RedisService):
             
             issues = []
             updated_items = {}
+            price_changes = []
+            stock_issues = []
+            availability_issues = []
             
             for variant_key, item in cart_data["items"].items():
                 variant = await self._get_variant_with_product(UUID(variant_key))
                 
+                # Check if product/variant still exists
                 if not variant:
-                    issues.append({
+                    availability_issues.append({
                         "variant_id": variant_key,
                         "issue": "product_not_found",
-                        "message": f"Product {item['product_name']} is no longer available"
+                        "message": f"Product '{item.get('product_name', 'Unknown')}' is no longer available",
+                        "severity": "error"
                     })
                     continue
                 
-                if variant.inventory and variant.inventory.quantity <= 0:
-                    issues.append({
+                # Check if product is still active
+                if not variant.is_active or (variant.product and not variant.product.is_active):
+                    availability_issues.append({
+                        "variant_id": variant_key,
+                        "issue": "product_inactive",
+                        "message": f"Product '{item.get('product_name', variant.product.name if variant.product else 'Unknown')}' is no longer available for purchase",
+                        "severity": "error"
+                    })
+                    continue
+                
+                # Check stock availability
+                current_stock = 0
+                if variant.inventory:
+                    current_stock = variant.inventory.quantity
+                
+                if current_stock <= 0:
+                    stock_issues.append({
                         "variant_id": variant_key,
                         "issue": "out_of_stock",
-                        "message": f"Product {item['product_name']} is out of stock"
+                        "message": f"'{item.get('product_name', variant.product.name if variant.product else 'Unknown')}' is out of stock",
+                        "severity": "error",
+                        "current_stock": 0,
+                        "requested_quantity": item["quantity"]
                     })
                     continue
                 
-                if variant.inventory and item["quantity"] > variant.inventory.quantity:
+                # Check if requested quantity is available
+                if item["quantity"] > current_stock:
                     # Adjust quantity to available stock
-                    available_qty = variant.inventory.quantity
+                    available_qty = current_stock
+                    original_quantity = item["quantity"]
                     item["quantity"] = available_qty
-                    item["total_price"] = available_qty * item["price_per_unit"]
                     
-                    issues.append({
+                    # Recalculate price with new quantity
+                    current_price = float(variant.sale_price or variant.base_price)
+                    item["total_price"] = available_qty * current_price
+                    
+                    stock_issues.append({
                         "variant_id": variant_key,
                         "issue": "quantity_adjusted",
-                        "message": f"Quantity for {item['product_name']} adjusted to {available_qty} (available stock)"
+                        "message": f"Quantity for '{item.get('product_name', variant.product.name if variant.product else 'Unknown')}' adjusted from {original_quantity} to {available_qty} (available stock)",
+                        "severity": "warning",
+                        "current_stock": current_stock,
+                        "requested_quantity": original_quantity,
+                        "adjusted_quantity": available_qty
                     })
                 
+                # Validate and update prices - CRITICAL for security
+                current_price = float(variant.sale_price or variant.base_price)
+                stored_price = float(item.get("price_per_unit", 0))
+                
+                # Allow small floating point differences (1 cent)
+                if abs(current_price - stored_price) > 0.01:
+                    old_total = item.get("total_price", 0)
+                    new_total = current_price * item["quantity"]
+                    
+                    # Update item with current price
+                    item["price_per_unit"] = current_price
+                    item["total_price"] = new_total
+                    
+                    price_changes.append({
+                        "variant_id": variant_key,
+                        "issue": "price_changed",
+                        "message": f"Price updated for '{item.get('product_name', variant.product.name if variant.product else 'Unknown')}': ${stored_price:.2f} → ${current_price:.2f}",
+                        "severity": "info" if current_price < stored_price else "warning",
+                        "old_price": stored_price,
+                        "new_price": current_price,
+                        "old_total": old_total,
+                        "new_total": new_total,
+                        "quantity": item["quantity"],
+                        "price_increased": current_price > stored_price
+                    })
+                
+                # Update product information
+                if variant.product:
+                    item["product_name"] = variant.product.name
+                    item["variant_name"] = variant.name
+                
+                # Item is valid - add to updated items
                 updated_items[variant_key] = item
             
-            # Update cart with valid items
-            if updated_items != cart_data["items"]:
+            # Combine all issues
+            all_issues = availability_issues + stock_issues + price_changes
+            
+            # Determine if cart can proceed to checkout
+            error_issues = [issue for issue in all_issues if issue.get("severity") == "error"]
+            can_checkout = len(error_issues) == 0 and len(updated_items) > 0
+            
+            # Update cart with validated items if there were changes
+            cart_updated = False
+            if updated_items != cart_data["items"] or price_changes:
                 cart_data["items"] = updated_items
                 cart_data["total_items"] = sum(item["quantity"] for item in updated_items.values())
                 cart_data["subtotal"] = sum(item["total_price"] for item in updated_items.values())
                 cart_data["updated_at"] = datetime.utcnow().isoformat()
+                cart_data["last_validated"] = datetime.utcnow().isoformat()
+                cart_updated = True
                 
                 # Save updated cart
                 cart_key = RedisKeyManager.cart_key(str(user_id))
@@ -330,15 +412,39 @@ class CartService(RedisService):
                 else:
                     await self.delete_key(cart_key)
             
+            # Prepare validation summary
+            validation_summary = {
+                "total_items_checked": len(cart_data.get("items", {})),
+                "valid_items": len(updated_items),
+                "removed_items": len(cart_data.get("items", {})) - len(updated_items),
+                "price_updates": len(price_changes),
+                "stock_adjustments": len([issue for issue in stock_issues if issue.get("issue") == "quantity_adjusted"]),
+                "availability_issues": len(availability_issues),
+                "cart_updated": cart_updated
+            }
+            
             return {
-                "valid": len(issues) == 0,
+                "valid": can_checkout,
+                "can_checkout": can_checkout,
                 "cart": await self._format_cart_response(cart_data),
-                "issues": issues
+                "issues": all_issues,
+                "summary": validation_summary,
+                "validation_timestamp": datetime.utcnow().isoformat()
             }
             
         except Exception as e:
             logger.error(f"Error validating cart: {e}")
-            return {"valid": False, "error": "Failed to validate cart"}
+            return {
+                "valid": False,
+                "can_checkout": False,
+                "error": f"Cart validation failed: {str(e)}",
+                "cart": await self._format_cart_response({}),
+                "issues": [{
+                    "issue": "validation_error",
+                    "message": "Unable to validate cart. Please try again.",
+                    "severity": "error"
+                }]
+            }
 
     async def get_cart_count(self, user_id: UUID) -> int:
         """Get total item count in cart"""
@@ -873,29 +979,6 @@ class CartService(RedisService):
         except Exception as e:
             logger.error(f"Error getting cart count: {e}")
             return {"count": 0}
-
-    async def validate_cart(self, user_id: UUID, session_id: Optional[str] = None):
-        """Validate cart items against current product data"""
-        try:
-            cart = await self.get_cart(user_id, session_id)
-            issues = []
-            
-            for item in cart.items:
-                variant_details = await self._get_variant_details(item.variant.id)
-                if not variant_details:
-                    issues.append(f"Product variant {item.variant.id} no longer exists")
-                elif variant_details.get('stock', 0) < item.quantity:
-                    issues.append(f"Insufficient stock for {variant_details.get('name', 'product')}. Available: {variant_details.get('stock', 0)}, in cart: {item.quantity}")
-            
-            return {
-                "valid": len(issues) == 0,
-                "issues": issues,
-                "cart": cart
-            }
-            
-        except Exception as e:
-            logger.error(f"Error validating cart: {e}")
-            return {"valid": False, "issues": [f"Validation error: {str(e)}"], "cart": await self.get_cart(user_id, session_id)}
 
     async def get_shipping_options(self, user_id: UUID, address: dict, session_id: Optional[str] = None):
         """Get available shipping options"""

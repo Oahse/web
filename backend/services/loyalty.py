@@ -96,13 +96,15 @@ class LoyaltyService:
     # LOYALTY ACCOUNT MANAGEMENT
     # ============================================================================
 
-    async def get_or_create_loyalty_account(self, user_id: UUID) -> LoyaltyAccount:
-        """Get existing loyalty account or create new one for user"""
+    async def get_or_create_loyalty_account(self, user_id: UUID, for_update: bool = False) -> LoyaltyAccount:
+        """Get existing loyalty account or create new one for user with optional locking"""
         try:
-            # Check if loyalty account exists
-            result = await self.db.execute(
-                select(LoyaltyAccount).where(LoyaltyAccount.user_id == user_id)
-            )
+            # Check if loyalty account exists with optional lock
+            query = select(LoyaltyAccount).where(LoyaltyAccount.user_id == user_id)
+            if for_update:
+                query = query.with_for_update()
+                
+            result = await self.db.execute(query)
             loyalty_account = result.scalar_one_or_none()
             
             if not loyalty_account:
@@ -633,9 +635,9 @@ class LoyaltyService:
             RedemptionResponse with redemption details
         """
         try:
-            loyalty_account = await self.get_or_create_loyalty_account(user_id)
+            loyalty_account = await self.get_or_create_loyalty_account(user_id, for_update=True)
             
-            # Check if user has enough points
+            # Check if user has enough points (with locked account)
             if loyalty_account.available_points < points_to_redeem:
                 raise APIException(
                     status_code=400,

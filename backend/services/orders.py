@@ -1,6 +1,7 @@
 # Consolidated order service
 # This file includes all order-related functionality
 
+import hashlib
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_, desc
 from sqlalchemy.orm import selectinload
@@ -23,6 +24,9 @@ from typing import Optional, List, Dict, Any
 from core.config import settings
 from core.kafka import get_kafka_producer_service
 from services.event_service import event_service
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class OrderService:
@@ -53,9 +57,9 @@ class OrderService:
             cart_hash = self._generate_cart_hash(cart, request)
             idempotency_key = f"order_{user_id}_{cart_hash}"
         
-        # Check if order already exists with this idempotency key
+        # Check if order already exists with this idempotency key (with lock to prevent duplicates)
         existing_order = await self.db.execute(
-            select(Order).where(Order.idempotency_key == idempotency_key)
+            select(Order).where(Order.idempotency_key == idempotency_key).with_for_update()
         )
         existing = existing_order.scalar_one_or_none()
         
@@ -73,20 +77,47 @@ class OrderService:
         background_tasks: BackgroundTasks,
         idempotency_key: Optional[str] = None
     ) -> OrderResponse:
-        """Place an order from the user's cart with single database transaction and price validation"""
-        # Pre-validation outside transaction to fail fast
+        """
+        Place an order from the user's cart with comprehensive validation
+        ALWAYS validates cart before proceeding with checkout
+        """
+        # STEP 1: MANDATORY CART VALIDATION - Never skip this step
         cart_service = CartService(self.db)
-        cart = await cart_service.get_or_create_cart(user_id)
-
-        if not cart.items or len([item for item in cart.items if not item.saved_for_later]) == 0:
-            raise HTTPException(status_code=400, detail="Cart is empty")
-
-        # Validate cart items availability
+        
+        # Always validate cart first - this is critical for data integrity
         validation_result = await cart_service.validate_cart(user_id)
-        if not validation_result.get("valid", False):
-            raise HTTPException(status_code=400, detail="Cart validation failed")
-
-        # Validate all prices against current database prices - never trust frontend
+        
+        if not validation_result.get("valid", False) or not validation_result.get("can_checkout", False):
+            # Cart validation failed - return detailed error
+            error_issues = [issue for issue in validation_result.get("issues", []) if issue.get("severity") == "error"]
+            if error_issues:
+                error_messages = [issue["message"] for issue in error_issues]
+                raise HTTPException(
+                    status_code=400, 
+                    detail={
+                        "message": "Cart validation failed. Please review and update your cart.",
+                        "issues": error_issues,
+                        "validation_summary": validation_result.get("summary", {}),
+                        "error_count": len(error_issues)
+                    }
+                )
+            else:
+                raise HTTPException(status_code=400, detail="Cart is empty or invalid")
+        
+        # Get validated cart
+        cart = validation_result["cart"]
+        
+        # Check if cart has items after validation
+        active_items = [item for item in cart.items if not getattr(item, 'saved_for_later', False)]
+        if not active_items:
+            raise HTTPException(status_code=400, detail="No items available for checkout after validation")
+        
+        # Log validation results for monitoring
+        validation_summary = validation_result.get("summary", {})
+        if validation_summary.get("price_updates", 0) > 0 or validation_summary.get("stock_adjustments", 0) > 0:
+            logger.info(f"Cart validation updated items for user {user_id}: {validation_summary}")
+        
+        # STEP 2: BACKEND PRICE VALIDATION - Never trust frontend prices
         price_validation_result = await self._validate_and_recalculate_prices(cart)
         if not price_validation_result["valid"]:
             raise HTTPException(
@@ -102,7 +133,8 @@ class OrderService:
         # If there are price updates, send notification to frontend via WebSocket
         if price_updates:
             await self._send_price_update_notification(user_id, price_updates)
-
+        
+        # STEP 3: VALIDATE CHECKOUT DEPENDENCIES
         # Verify shipping address exists
         shipping_address = await self.db.execute(
             select(Address).where(
@@ -128,14 +160,14 @@ class OrderService:
         if not payment_method:
             raise HTTPException(status_code=404, detail="Payment method not found")
 
-        # Calculate final total with shipping and taxes (backend calculation only)
+        # STEP 4: CALCULATE FINAL TOTAL (backend calculation only)
         final_total = await self._calculate_final_order_total(
             validated_cart_items, 
             shipping_method, 
             shipping_address
         )
 
-        # Start single database transaction for entire checkout process
+        # STEP 5: ATOMIC TRANSACTION FOR ORDER CREATION
         try:
             # Begin transaction - all operations below must succeed or all will be rolled back
             async with self.db.begin():
@@ -147,7 +179,7 @@ class OrderService:
                     shipping_address_id=request.shipping_address_id,
                     shipping_method_id=request.shipping_method_id,
                     payment_method_id=request.payment_method_id,
-                    promocode_id=cart.promocode_id,
+                    promocode_id=getattr(cart, 'promocode_id', None),
                     notes=request.notes,
                     idempotency_key=idempotency_key  # Store idempotency key
                 )
@@ -156,21 +188,16 @@ class OrderService:
 
                 # Create order items with validated backend prices
                 for validated_item in validated_cart_items:
-                    # Check if stock is available (set to zero if out of stock)
-                    inventory_item = await self.inventory_service.get_inventory_item_by_variant_id(
-                        validated_item["variant_id"]
+                    # FINAL STOCK CHECK - Double-check stock availability using atomic method
+                    stock_check = await self.inventory_service.check_stock_availability(
+                        variant_id=validated_item["variant_id"],
+                        quantity=validated_item["quantity"]
                     )
                     
-                    if not inventory_item or inventory_item.quantity <= 0:
+                    if not stock_check["available"]:
                         raise HTTPException(
                             status_code=400, 
-                            detail=f"Product {validated_item['product_name']} is out of stock"
-                        )
-                    
-                    if inventory_item.quantity < validated_item["quantity"]:
-                        raise HTTPException(
-                            status_code=400, 
-                            detail=f"Insufficient stock for {validated_item['product_name']}. Available: {inventory_item.quantity}, Requested: {validated_item['quantity']}"
+                            detail=f"Stock validation failed: {stock_check['message']}"
                         )
                     
                     order_item = OrderItem(
@@ -182,15 +209,14 @@ class OrderService:
                     )
                     self.db.add(order_item)
                     
-                    # Set stock to zero instead of reserving - immediate decrement
-                    new_quantity = inventory_item.quantity - validated_item["quantity"]
-                    if new_quantity < 0:
-                        new_quantity = 0
-                    
-                    inventory_item.quantity = new_quantity
-                    inventory_item.version += 1  # Optimistic locking increment
-                    
-                    
+                    # Atomically decrement stock using SELECT ... FOR UPDATE
+                    await self.inventory_service.decrement_stock_on_purchase(
+                        variant_id=validated_item["variant_id"],
+                        quantity=validated_item["quantity"],
+                        location_id=stock_check["location_id"],
+                        order_id=order.id,
+                        user_id=user_id
+                    )
 
                 # Process payment with backend-calculated amount and idempotency
                 payment_service = PaymentService(self.db)
@@ -222,7 +248,7 @@ class OrderService:
                 )
                 self.db.add(tracking_event)
 
-                # Clear cart after successful order
+                # Clear cart after successful order (validated cart)
                 await cart_service.clear_cart(user_id)
 
                 # Transaction will auto-commit here if no exceptions occurred
@@ -235,8 +261,6 @@ class OrderService:
                 await self._send_order_events_with_idempotency(order, user_id, validated_cart_items)
             except Exception as kafka_error:
                 # Log Kafka errors but don't fail the order
-                import logging
-                logger = logging.getLogger(__name__)
                 logger.error(f"Failed to send order events for order {order.id}: {kafka_error}")
                 # Order is still successful even if events fail
                 
@@ -309,7 +333,7 @@ class OrderService:
 
     async def cancel_order(self, order_id: UUID, user_id: UUID) -> OrderResponse:
         """Cancel an order with transaction safety"""
-        query = select(Order).where(and_(Order.id == order_id, Order.user_id == user_id))
+        query = select(Order).where(and_(Order.id == order_id, Order.user_id == user_id)).with_for_update()
         result = await self.db.execute(query)
         order = result.scalar_one_or_none()
 

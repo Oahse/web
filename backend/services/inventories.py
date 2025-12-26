@@ -311,63 +311,64 @@ class InventoryService:
         self,
         warehouse_data: List[Dict[str, Any]]
     ) -> Dict[str, Any]:
-        """Batch update inventory from real warehouse data"""
-        updated_items = []
-        errors = []
-        
-        for item_data in warehouse_data:
-            try:
-                variant_id = UUID(item_data["variant_id"])
-                new_quantity = item_data["quantity"]
-                location_id = UUID(item_data.get("location_id")) if item_data.get("location_id") else None
-                
-                # Find inventory item
-                inventory_query = select(Inventory).where(Inventory.variant_id == variant_id)
-                if location_id:
-                    inventory_query = inventory_query.where(Inventory.location_id == location_id)
-                
-                inventory_result = await self.db.execute(inventory_query)
-                inventory = inventory_result.scalar_one_or_none()
-                
-                if not inventory:
-                    errors.append({
-                        "variant_id": str(variant_id),
-                        "error": "Inventory item not found"
-                    })
+        """Batch update inventory from real warehouse data using atomic operations"""
+        try:
+            # Prepare stock changes for atomic bulk update
+            stock_changes = []
+            
+            for item_data in warehouse_data:
+                try:
+                    variant_id = UUID(item_data["variant_id"])
+                    new_quantity = item_data["quantity"]
+                    
+                    # Get current inventory to calculate change
+                    inventory = await self.get_inventory_item_by_variant_id(variant_id)
+                    
+                    if not inventory:
+                        continue  # Skip items not found
+                    
+                    # Calculate quantity change
+                    quantity_change = new_quantity - inventory.quantity
+                    
+                    if quantity_change != 0:  # Only update if there's a change
+                        stock_changes.append({
+                            "variant_id": variant_id,
+                            "quantity_change": quantity_change,
+                            "notes": f"Warehouse sync: {inventory.quantity} -> {new_quantity}"
+                        })
+                        
+                except Exception as e:
+                    logger.error(f"Error preparing warehouse data for variant {item_data.get('variant_id')}: {e}")
                     continue
-                
-                # Calculate quantity change
-                old_quantity = inventory.quantity
-                quantity_change = new_quantity - old_quantity
-                
-                # Update inventory
-                inventory.quantity = new_quantity
-                inventory.updated_at = datetime.utcnow()
-                
-                # Create stock adjustment record
-                adjustment = StockAdjustment(
-                    inventory_id=inventory.id,
-                    quantity_change=quantity_change,
+            
+            # Perform atomic bulk update
+            if stock_changes:
+                result = await self.bulk_stock_update(
+                    stock_changes=stock_changes,
                     reason="warehouse_sync",
-                    notes=f"Batch update from warehouse data. Old: {old_quantity}, New: {new_quantity}"
+                    user_id=None  # System update
                 )
                 
-                self.db.add(adjustment)
+                return {
+                    "success": True,
+                    "updated_count": result["updated_count"],
+                    "results": result["results"],
+                    "errors": []
+                }
+            else:
+                return {
+                    "success": True,
+                    "updated_count": 0,
+                    "results": [],
+                    "errors": []
+                }
                 
-                updated_items.append({
-                    "variant_id": str(variant_id),
-                    "old_quantity": old_quantity,
-                    "new_quantity": new_quantity,
-                    "quantity_change": quantity_change
-                })
-                
-            except Exception as e:
-                errors.append({
-                    "variant_id": item_data.get("variant_id", "unknown"),
-                    "error": str(e)
-                })
-        
-        await self.db.commit()
+        except Exception as e:
+            logger.error(f"Error in batch warehouse update: {e}")
+            raise APIException(
+                status_code=500,
+                message=f"Failed to update inventory from warehouse data: {str(e)}"
+            )
         
     async def check_stock_availability(
         self,
@@ -474,94 +475,7 @@ class InventoryService:
                 message=f"Failed to decrement stock: {str(e)}"
             )
     
-    async def _perform_stock_decrement(
-        self,
-        variant_id: UUID,
-        quantity: int,
-        location_id: UUID,
-        order_id: Optional[UUID] = None,
-        user_id: Optional[UUID] = None
-    ) -> Dict[str, Any]:
-        """Perform the actual stock decrement operation"""
-        async with self.db.begin():
-            # Additional pessimistic locking within the distributed lock
-            inventory_result = await self.db.execute(
-                select(Inventory)
-                .where(
-                    and_(
-                        Inventory.variant_id == variant_id,
-                        Inventory.location_id == location_id
-                    )
-                )
-                .with_for_update()  # Pessimistic lock prevents concurrent modifications
-            )
-            
-            inventory = inventory_result.scalar_one_or_none()
-            
-            if not inventory:
-                raise APIException(
-                    status_code=404,
-                    message=f"Inventory not found for variant {variant_id} at location {location_id}"
-                )
-            
-            # Check if sufficient stock is available
-            if inventory.quantity < quantity:
-                raise APIException(
-                    status_code=400,
-                    message=f"Insufficient stock. Available: {inventory.quantity}, Requested: {quantity}"
-                )
-            
-            # Decrement stock and increment version for optimistic locking
-            old_quantity = inventory.quantity
-            inventory.quantity -= quantity
-            inventory.version += 1
-            inventory.updated_at = datetime.utcnow()
-            
-            # Create stock adjustment record for audit trail
-            adjustment = StockAdjustment(
-                inventory_id=inventory.id,
-                quantity_change=-quantity,
-                reason="order_purchase",
-                adjusted_by_user_id=user_id,
-                notes=f"Stock decremented for order {order_id}" if order_id else "Stock decremented for purchase"
-                )
-                
-                self.db.add(adjustment)
-                await self.db.commit()
-                
-                # Log inventory change if logging is enabled
-                await self._log_inventory_change(
-                    action="stock_decremented",
-                    inventory_id=str(inventory.id),
-                    variant_id=str(variant_id),
-                    old_quantity=old_quantity,
-                    new_quantity=inventory.quantity,
-                    quantity_change=-quantity,
-                    reason="order_purchase",
-                    order_id=str(order_id) if order_id else None,
-                    user_id=str(user_id) if user_id else None
-                )
-                
-                logger.info(f"Decremented stock for variant {variant_id}: {old_quantity} -> {inventory.quantity}")
-                
-                return {
-                    "success": True,
-                    "old_quantity": old_quantity,
-                    "new_quantity": inventory.quantity,
-                    "quantity_decremented": quantity,
-                    "inventory_id": str(inventory.id),
-                    "is_now_out_of_stock": inventory.quantity == 0,
-                    "is_low_stock": inventory.quantity <= inventory.low_stock_threshold
-                }
-                
-        except APIException:
-            raise
-        except Exception as e:
-            logger.error(f"Failed to decrement stock: {e}")
-            raise APIException(
-                status_code=500,
-                message=f"Failed to decrement stock: {str(e)}"
-            )
+
 
     async def increment_stock_on_cancellation(
         self,
@@ -834,85 +748,7 @@ class InventoryService:
                 message=f"Failed to update bulk stock: {str(e)}"
             )
     
-    async def _perform_stock_increment(
-        self,
-        variant_id: UUID,
-        quantity: int,
-        location_id: UUID,
-        order_id: Optional[UUID] = None,
-        user_id: Optional[UUID] = None
-    ) -> Dict[str, Any]:
-        """Perform the actual stock increment operation"""
-        async with self.db.begin():
-            # Lock inventory row for update
-            inventory_result = await self.db.execute(
-                select(Inventory)
-                .where(
-                    and_(
-                        Inventory.variant_id == variant_id,
-                        Inventory.location_id == location_id
-                    )
-                )
-                .with_for_update()
-            )
-            
-            inventory = inventory_result.scalar_one_or_none()
-            
-            if not inventory:
-                raise APIException(
-                    status_code=404,
-                    message=f"Inventory not found for variant {variant_id} at location {location_id}"
-                )
-            
-            # Increment stock
-            old_quantity = inventory.quantity
-            inventory.quantity += quantity
-            inventory.version += 1
-            inventory.updated_at = datetime.utcnow()
-            
-            # Create stock adjustment record
-            adjustment = StockAdjustment(
-                inventory_id=inventory.id,
-                quantity_change=quantity,
-                reason="order_cancelled",
-                adjusted_by_user_id=user_id,
-                notes=f"Stock restored from cancelled order {order_id}" if order_id else "Stock restored from cancellation"
-            )
-            
-            self.db.add(adjustment)
-            await self.db.commit()
-            
-            # Log inventory change
-            await self._log_inventory_change(
-                    action="stock_incremented",
-                    inventory_id=str(inventory.id),
-                    variant_id=str(variant_id),
-                    old_quantity=old_quantity,
-                    new_quantity=inventory.quantity,
-                    quantity_change=quantity,
-                    reason="order_cancelled",
-                    order_id=str(order_id) if order_id else None,
-                    user_id=str(user_id) if user_id else None
-                )
-                
-                logger.info(f"Incremented stock for variant {variant_id}: {old_quantity} -> {inventory.quantity}")
-                
-                return {
-                    "success": True,
-                    "old_quantity": old_quantity,
-                    "new_quantity": inventory.quantity,
-                    "quantity_incremented": quantity,
-                    "inventory_id": str(inventory.id)
-                }
-                
-        except APIException:
-            raise
-        except Exception as e:
-            logger.error(f"Failed to increment stock: {e}")
-            raise APIException(
-                status_code=500,
-                message=f"Failed to increment stock: {str(e)}"
-            )
+
 
     async def _log_inventory_change(
         self,
