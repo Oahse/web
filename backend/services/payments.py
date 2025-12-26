@@ -15,7 +15,7 @@ from datetime import datetime, timedelta
 from typing import Optional, List, Dict, Any
 from enum import Enum
 from core.config import settings
-from core.kafka import get_kafka_producer_service
+from core.message_broker import publish_payment_event, publish_notification
 import stripe
 import logging
 import time
@@ -221,7 +221,7 @@ class PaymentService:
                 )
                 self.db.add(transaction)
                 
-                # Send Kafka notification for successful payment (only if committing)
+                # Send secure notification for successful payment (only if committing)
                 if commit:
                     await self._send_payment_notification(
                         payment_intent.user_id,
@@ -636,40 +636,35 @@ class PaymentService:
         event_type: str,
         data: Dict[str, Any]
     ):
-        """Send payment notification via Kafka for real-time updates"""
+        """Send payment notification via secure message broker"""
         try:
-            kafka_producer = await get_kafka_producer_service()
-            
-            message = {
-                'user_id': str(user_id),
-                'order_id': str(order_id) if order_id else None,
-                'event_type': event_type,
-                'data': data,
-                'timestamp': datetime.utcnow().isoformat()
-            }
-            
-            # Send to both payment and websocket topics for real-time notifications
-            await kafka_producer.send_message(
-                settings.KAFKA_TOPIC_PAYMENT,
-                message,
-                key=str(user_id)
-            )
-            
-            await kafka_producer.send_message(
-                settings.KAFKA_TOPIC_WEBSOCKET,
-                {
-                    'type': 'payment_update',
-                    'user_id': str(user_id),
-                    'message': message
+            # Publish payment event
+            await publish_payment_event(
+                event_type=event_type,
+                payment_data={
+                    "user_id": str(user_id),
+                    "order_id": str(order_id) if order_id else None,
+                    "event_data": data,
+                    "timestamp": datetime.utcnow().isoformat()
                 },
-                key=str(user_id)
+                correlation_id=str(order_id) if order_id else str(user_id)
             )
             
-            logger.info(f"Payment notification sent: {event_type} for user {user_id}")
+            # Publish notification for real-time updates
+            await publish_notification({
+                "type": "payment_update",
+                "user_id": str(user_id),
+                "order_id": str(order_id) if order_id else None,
+                "event_type": event_type,
+                "data": data,
+                "timestamp": datetime.utcnow().isoformat()
+            })
+            
+            logger.info(f"Payment notification sent securely: {event_type} for user {user_id}")
             
         except Exception as e:
             logger.error(f"Failed to send payment notification: {e}")
-            # Don't raise exception as this is not critical for payment functionality
+            # Don't fail payment processing if notification fails
     # ============================================================================
     # PAYMENT FAILURE HANDLING METHODS
     # ============================================================================

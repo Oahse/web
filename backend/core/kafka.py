@@ -12,7 +12,10 @@ from core.config import settings
 from sqlalchemy import select
 
 # Import new event system
-from core.events import EventProducer, EventConsumer, event_producer, event_consumer
+from core.events import EventProducer, EventConsumer
+
+# Initialize event producer
+event_producer = EventProducer()
 from core.events.handlers import OrderEventHandler, InventoryEventHandler, UserEventHandler
 
 logging.basicConfig(level=logging.INFO)
@@ -578,12 +581,6 @@ async def publish_order_paid_event(order_id: str, payment_id: str, amount: float
 
 
 # Note: Inventory reservation functions removed - implement as needed
-        quantity=quantity,
-        order_id=order_id,
-        reservation_id=reservation_id,
-        expires_at=expires_at,
-        **kwargs
-    )
 
 
 async def publish_user_registered_event(user_id: str, email: str, username: str, **kwargs):

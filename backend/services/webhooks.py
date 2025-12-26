@@ -1,6 +1,6 @@
 """
-Webhook Service - Secure Stripe webhook handling with signature verification
-Processes Stripe webhooks without storing webhook events
+Webhook Service - Secure Stripe webhook handling with comprehensive security
+Processes Stripe webhooks with signature verification, rate limiting, and secure message publishing
 """
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_
@@ -9,13 +9,13 @@ from models.payments import Transaction, PaymentIntent
 from models.orders import Order
 from services.payments import PaymentService
 from services.inventories import InventoryService
+from core.webhook_security import verify_stripe_webhook_request, WebhookSecurityError
+from core.message_broker import publish_payment_event, publish_order_event
 from uuid import UUID
 from datetime import datetime
 from typing import Dict, Any, Optional
 from core.config import settings
-import stripe
 import logging
-import json
 
 logger = logging.getLogger(__name__)
 
@@ -33,31 +33,57 @@ class WebhookService:
         
     async def handle_stripe_webhook(
         self,
+        request: Request,
         request_body: bytes,
-        signature: str,
-        ip_address: Optional[str] = None
+        signature: str
     ) -> Dict[str, Any]:
         """
-        Handle Stripe webhook with signature verification
-        Process webhook events immediately without storing them
+        Handle Stripe webhook with comprehensive security verification
         """
         start_time = datetime.utcnow()
         
-        # Verify webhook signature
         try:
-            event = stripe.Webhook.construct_event(
-                request_body,
-                signature,
-                settings.STRIPE_WEBHOOK_SECRET
+            # Comprehensive security verification
+            verification_result = await verify_stripe_webhook_request(
+                request=request,
+                db=self.db,
+                signature_header=signature,
+                payload=request_body
             )
-        except ValueError as e:
-            raise HTTPException(status_code=400, detail="Invalid payload")
-        except stripe.error.SignatureVerificationError as e:
             
-            raise HTTPException(status_code=400, detail="Invalid signature")
-        
-        event_id = event["id"]
-        event_type = event["type"]
+            if not verification_result["verified"]:
+                raise HTTPException(
+                    status_code=401,
+                    detail="Webhook verification failed"
+                )
+            
+            event = verification_result["event"]
+            security_metadata = verification_result["security_metadata"]
+            
+            # Process the verified event
+            result = await self._process_webhook_event(event)
+            
+            # Publish secure event notification
+            await self._publish_webhook_event(event, result, security_metadata)
+            
+            # Log processing completion
+            processing_time = (datetime.utcnow() - start_time).total_seconds()
+            logger.info(f"Webhook processed successfully: {event['id']} in {processing_time:.3f}s")
+            
+            return {
+                "status": "success",
+                "event_id": event["id"],
+                "event_type": event["type"],
+                "processing_time": processing_time,
+                "result": result
+            }
+            
+        except WebhookSecurityError as e:
+            logger.error(f"Webhook security error: {e}")
+            raise HTTPException(status_code=401, detail=str(e))
+        except Exception as e:
+            logger.error(f"Webhook processing error: {e}")
+            raise HTTPException(status_code=500, detail="Webhook processing failed")
         
         
     async def _process_webhook_event(
@@ -257,3 +283,56 @@ class WebhookService:
         """Handle refund webhook"""
         
         return {"action": "refund_processed", "charge_id": charge_data["id"]}
+
+    async def _publish_webhook_event(
+        self,
+        event: Dict[str, Any],
+        processing_result: Dict[str, Any],
+        security_metadata: Dict[str, Any]
+    ):
+        """Publish webhook event through secure message broker"""
+        try:
+            event_type = event.get("type", "unknown")
+            
+            # Determine appropriate topic and data based on event type
+            if event_type.startswith("payment_intent"):
+                await publish_payment_event(
+                    event_type=f"webhook_{event_type}",
+                    payment_data={
+                        "stripe_event_id": event.get("id"),
+                        "stripe_event_type": event_type,
+                        "processing_result": processing_result,
+                        "security_metadata": security_metadata
+                    },
+                    correlation_id=event.get("id")
+                )
+            
+            elif event_type.startswith("charge"):
+                await publish_payment_event(
+                    event_type=f"webhook_{event_type}",
+                    payment_data={
+                        "stripe_event_id": event.get("id"),
+                        "stripe_event_type": event_type,
+                        "processing_result": processing_result
+                    },
+                    correlation_id=event.get("id")
+                )
+            
+            # Publish order events if order was affected
+            if processing_result.get("order_id"):
+                await publish_order_event(
+                    event_type=f"order_{event_type}",
+                    order_data={
+                        "order_id": processing_result["order_id"],
+                        "stripe_event_id": event.get("id"),
+                        "action": processing_result.get("action"),
+                        "status_change": True
+                    },
+                    correlation_id=processing_result["order_id"]
+                )
+            
+            logger.info(f"Webhook event published securely: {event.get('id')}")
+            
+        except Exception as e:
+            logger.error(f"Failed to publish webhook event: {e}")
+            # Don't fail the webhook processing if publishing fails
