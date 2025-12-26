@@ -11,8 +11,8 @@ from models.variant_tracking import (
     VariantAnalytics, VariantSubstitution
 )
 from models.product import ProductVariant, Product
-from models.subscription import Subscription
-from models.inventory import Inventory
+from models.subscriptions import Subscription
+from models.inventories import Inventory
 from core.exceptions import APIException
 
 

@@ -14,7 +14,7 @@ from schemas.user import AddressCreate, AddressUpdate
 from services.auth import AuthService, oauth2_scheme
 from models.user import User  # Import User model
 
-router = APIRouter(prefix="/api/v1/users", tags=["Users & Addresses"])
+router = APIRouter(prefix="/v1/users", tags=["Users & Addresses"])
 
 # Dependency to get current authenticated user
 

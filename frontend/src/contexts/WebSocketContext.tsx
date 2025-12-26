@@ -1,233 +1,333 @@
-import React, { createContext, useEffect, useState } from 'react';
+import React, { createContext, useEffect, useState, useCallback } from 'react';
 import {
-  orderTrackingService,
-  inventoryService,
-  notificationService, // NEW: Import notificationService
-  WebSocketStatus
+  createWebSocketService,
+  WebSocketStatus,
+  MessageType,
+  type WebSocketMessage,
+  type ConnectionStats
 } from '../lib/websocket';
 import { useNotifications } from '../hooks/useNotifications';
-import { useAuth } from './AuthContext'; // NEW: Import useAuth
-import { Notification } from '../types'; // NEW: Import Notification type
+import { useAuth } from './AuthContext';
+import { Notification } from '../types';
 
-export const WebSocketContext = createContext(undefined);
+interface WebSocketContextType {
+  // Connection status
+  status: WebSocketStatus;
+  stats: ConnectionStats;
+  isConnected: boolean;
+  
+  // Connection management
+  connect: () => Promise<void>;
+  disconnect: () => void;
+  
+  // Subscription methods
+  subscribe: (events: string[]) => void;
+  unsubscribe: (events: string[]) => void;
+  
+  // Business-specific subscriptions
+  subscribeToOrder: (orderId: string, handler: Function) => () => void;
+  subscribeToProduct: (productId: string, handler: Function) => () => void;
+  subscribeToNotifications: (handler: Function) => () => void;
+  subscribeToCart: (handler: Function) => () => void;
+  
+  // Message sending
+  sendMessage: (message: Partial<WebSocketMessage>) => boolean;
+}
 
-export const WebSocketProvider = ({
+export const WebSocketContext = createContext<WebSocketContextType | undefined>(undefined);
+
+interface WebSocketProviderProps {
+  children: React.ReactNode;
+  autoConnect?: boolean;
+}
+
+export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({
   children,
   autoConnect = true,
 }) => {
-  const [orderStatus, setOrderStatus] = useState(WebSocketStatus.DISCONNECTED);
-  const [inventoryStatus, setInventoryStatus] = useState(WebSocketStatus.DISCONNECTED);
-  const [notificationStatus, setNotificationStatus] = useState(WebSocketStatus.DISCONNECTED); // NEW: Notification WebSocket status
-  const { info, warning, error, removeNotification: removeToast } = useNotifications(); // NEW: removeNotification from useNotifications
-  const { user, isAuthenticated, token } = useAuth(); // NEW: Get user and token from AuthContext
+  const [status, setStatus] = useState<WebSocketStatus>(WebSocketStatus.DISCONNECTED);
+  const [stats, setStats] = useState<ConnectionStats>({
+    status: WebSocketStatus.DISCONNECTED,
+    reconnectAttempts: 0,
+    messagesSent: 0,
+    messagesReceived: 0,
+    queuedMessages: 0
+  });
+  
+  const { info, warning, error, removeNotification: removeToast } = useNotifications();
+  const { user, isAuthenticated, token } = useAuth();
+  
+  // Create WebSocket service instance
+  const [wsService] = useState(() => {
+    const baseUrl = import.meta.env.VITE_WS_URL || 'ws://localhost:8000/v1/ws';
+    
+    return createWebSocketService({
+      url: baseUrl,
+      token: token || undefined,
+      userId: user?.id,
+      autoReconnect: true,
+      maxReconnectAttempts: 10,
+      reconnectInterval: 1000,
+      heartbeatInterval: 30000,
+      messageQueueSize: 100
+    });
+  });
 
+  // Update service configuration when auth changes
   useEffect(() => {
-    if (!autoConnect) return;
+    if (wsService) {
+      // Update configuration
+      wsService['config'] = {
+        ...wsService['config'],
+        token: token || undefined,
+        userId: user?.id
+      };
+    }
+  }, [user?.id, token, wsService]);
 
-    // Set up status listeners
-    const unsubscribeOrderStatus = orderTrackingService.onStatusChange((status) => {
-      setOrderStatus(status);
-      switch (status) {
+  // Status change handler
+  useEffect(() => {
+    const unsubscribe = wsService.onStatusChange((newStatus: WebSocketStatus) => {
+      setStatus(newStatus);
+      setStats(wsService.getStats());
+      
+      // Show status notifications
+      switch (newStatus) {
         case WebSocketStatus.CONNECTED:
-          info('Order tracking connected', 'Real-time order updates are now available');
+          info('Connected', 'Real-time updates are now available');
           break;
         case WebSocketStatus.DISCONNECTED:
-          warning('Order tracking disconnected', 'Real-time updates are temporarily unavailable');
+          warning('Disconnected', 'Real-time updates are temporarily unavailable');
           break;
         case WebSocketStatus.ERROR:
-          error('Order tracking error', 'Failed to connect to order tracking service');
+          error('Connection Error', 'Failed to connect to real-time service');
+          break;
+        case WebSocketStatus.RECONNECTING:
+          info('Reconnecting', 'Attempting to restore real-time connection');
           break;
       }
     });
 
-    const unsubscribeInventoryStatus = inventoryService.onStatusChange((status) => {
-      setInventoryStatus(status);
-      switch (status) {
-        case WebSocketStatus.CONNECTED:
-          info('Inventory tracking connected', 'Real-time inventory updates are now available');
-          break;
-        case WebSocketStatus.DISCONNECTED:
-          warning('Inventory tracking disconnected', 'Real-time inventory updates are temporarily unavailable');
-          break;
-        case WebSocketStatus.ERROR:
-          error('Inventory tracking error', 'Failed to connect to inventory service');
-          break;
-      }
-    });
+    return unsubscribe;
+  }, [wsService, info, warning, error]);
 
-    // NEW: Notification service status listener
-    let unsubscribeNotificationStatus: () => void;
-    if (isAuthenticated && user?.id && token) {
-      unsubscribeNotificationStatus = notificationService.onStatusChange((status) => {
-        setNotificationStatus(status);
-        switch (status) {
-          case WebSocketStatus.CONNECTED:
-            info('Notification service connected', 'Real-time notifications are now active');
-            break;
-          case WebSocketStatus.DISCONNECTED:
-            warning('Notification service disconnected', 'Real-time notifications are temporarily unavailable');
-            break;
-          case WebSocketStatus.ERROR:
-            error('Notification service error', 'Failed to connect to real-time notification service');
-            break;
-        }
+  // Auto-connect on mount
+  useEffect(() => {
+    if (autoConnect) {
+      wsService.connect().catch(err => {
+        console.error('Failed to connect WebSocket:', err);
       });
     }
 
-
-    // Connect services with error handling
-    try {
-      orderTrackingService.connect(import.meta.env.VITE_ORDER_WS_URL);
-    } catch (err) {
-      console.warn('Failed to connect order tracking service:', err);
-    }
-
-    try {
-      inventoryService.connect(import.meta.env.VITE_INVENTORY_WS_URL);
-    } catch (err) {
-      console.warn('Failed to connect inventory service:', err);
-    }
-
-    // NEW: Connect notification service if authenticated
-    if (isAuthenticated && user?.id && token) {
-      try {
-        notificationService.connect(import.meta.env.VITE_NOTIFICATION_WS_URL, token, user.id);
-      } catch (err) {
-        console.warn('Failed to connect notification service:', err);
-      }
-    }
-
-
-    // Cleanup on unmount
     return () => {
-      unsubscribeOrderStatus();
-      unsubscribeInventoryStatus();
-      if (unsubscribeNotificationStatus) unsubscribeNotificationStatus(); // NEW: Cleanup notification service status listener
-
-      orderTrackingService.disconnect();
-      inventoryService.disconnect();
-      notificationService.disconnect(); // NEW: Disconnect notification service
+      wsService.disconnect();
     };
-  }, [autoConnect, info, warning, error, user?.id, isAuthenticated, token]); // NEW: Added user, isAuthenticated, token to dependencies
+  }, [wsService, autoConnect]);
 
-  // Set up global event handlers for notifications
+  // Set up global event handlers
   useEffect(() => {
     // Order update notifications
-    const unsubscribeOrderUpdates = orderTrackingService.on('order_update', (data: any) => {
-      const { orderId, status } = data;
+    const unsubscribeOrderUpdates = wsService.on(MessageType.ORDER_UPDATE, (message: WebSocketMessage) => {
+      const { order_id, status: orderStatus, order_number } = message.data;
+      const displayId = order_number || order_id;
 
-      switch (status) {
+      switch (orderStatus) {
         case 'shipped':
           info(
             'Order Shipped',
-            `Your order #${orderId} has been shipped and is on its way!`
+            `Your order ${displayId} has been shipped and is on its way!`
           );
           break;
         case 'delivered':
           info(
             'Order Delivered',
-            `Your order #${orderId} has been delivered successfully!`
+            `Your order ${displayId} has been delivered successfully!`
           );
           break;
         case 'cancelled':
           warning(
             'Order Cancelled',
-            `Order #${orderId} has been cancelled.`
+            `Order ${displayId} has been cancelled.`
           );
           break;
         default:
           info(
             'Order Update',
-            `Your order #${orderId} status has been updated to ${status}`
+            `Your order ${displayId} status has been updated to ${orderStatus}`
           );
           break;
       }
     });
 
-    // Low stock alerts
-    const unsubscribeLowStock = inventoryService.on('low_stock_alert', (data: any) => {
-      const { productName, currentStock, threshold } = data;
-      warning(
-        'Low Stock Alert',
-        `${productName} is running low (${currentStock} remaining, threshold: ${threshold})`
-      );
-    });
-
-    // Inventory updates
-    const unsubscribeInventoryUpdates = inventoryService.on('product_inventory_update', (data: any) => {
-      const { productId, previousStock, currentStock } = data;
-
-      if (currentStock === 0) {
+    // Product/Inventory updates
+    const unsubscribeInventoryUpdates = wsService.on(MessageType.INVENTORY_UPDATE, (message: WebSocketMessage) => {
+      const { product_name, current_stock, threshold, product_id } = message.data;
+      
+      if (current_stock === 0) {
         error(
           'Out of Stock',
-          `Product #${productId} is now out of stock`
+          `${product_name || `Product ${product_id}`} is now out of stock`
         );
-      } else if (currentStock < previousStock) {
-        info(
-          'Stock Updated',
-          `Product #${productId} stock updated: ${currentStock} remaining`
+      } else if (threshold && current_stock <= threshold) {
+        warning(
+          'Low Stock Alert',
+          `${product_name || `Product ${product_id}`} is running low (${current_stock} remaining)`
         );
       }
     });
 
-    // NEW: Notification service event listeners
-    let unsubscribeNewNotification: () => void;
-    let unsubscribeNotificationUpdate: () => void;
-    let unsubscribeNotificationDeleted: () => void;
-    let unsubscribeAllNotificationsRead: () => void;
+    // Product updates
+    const unsubscribeProductUpdates = wsService.on(MessageType.PRODUCT_UPDATE, (message: WebSocketMessage) => {
+      const { product_name, product_id, update_type } = message.data;
+      
+      if (update_type === 'price_change') {
+        info(
+          'Price Update',
+          `Price updated for ${product_name || `Product ${product_id}`}`
+        );
+      }
+    });
+
+    // Price updates during checkout
+    const unsubscribePriceUpdates = wsService.on(MessageType.PRICE_UPDATE, (message: WebSocketMessage) => {
+      const { summary, items, message: updateMessage } = message.data;
+      
+      if (summary.total_price_change > 0) {
+        warning(
+          'Prices Updated',
+          updateMessage || `Prices have increased for ${summary.total_items_updated} items in your cart.`
+        );
+      } else if (summary.total_price_change < 0) {
+        info(
+          'Price Reduction!',
+          updateMessage || `Great news! Prices reduced for ${summary.total_items_updated} items. You save $${Math.abs(summary.total_price_change).toFixed(2)}!`
+        );
+      } else {
+        info(
+          'Prices Updated',
+          updateMessage || `Prices have been updated for ${summary.total_items_updated} items in your cart.`
+        );
+      }
+      
+      // Trigger cart refresh to show updated prices
+      window.dispatchEvent(new CustomEvent('priceUpdate', { 
+        detail: { 
+          items, 
+          summary,
+          message: updateMessage 
+        } 
+      }));
+    });
+
+    // Notification service event listeners
+    let unsubscribeNewNotification: (() => void) | undefined;
+    let unsubscribeNotificationUpdate: (() => void) | undefined;
+    let unsubscribeNotificationDeleted: (() => void) | undefined;
 
     if (isAuthenticated && user?.id) {
-        unsubscribeNewNotification = notificationService.on('new_notification', (data: { notification: Notification }) => {
-            const { notification } = data;
-            info(notification.message, `New ${notification.type} notification`, notification.id);
-        });
+      unsubscribeNewNotification = wsService.on(MessageType.NOTIFICATION, (message: WebSocketMessage) => {
+        const notification = message.data as Notification;
+        
+        // Show toast notification
+        switch (notification.type) {
+          case 'error':
+            error(notification.title || 'Error', notification.message, notification.id);
+            break;
+          case 'warning':
+            warning(notification.title || 'Warning', notification.message, notification.id);
+            break;
+          case 'success':
+            info(notification.title || 'Success', notification.message, notification.id);
+            break;
+          default:
+            info(notification.title || 'Notification', notification.message, notification.id);
+            break;
+        }
+      });
 
-        unsubscribeNotificationUpdate = notificationService.on('notification_update', (data: { notification: Notification }) => {
-            const { notification } = data;
-            info(notification.message, `Notification updated: ${notification.type}`, notification.id);
-        });
-
-        unsubscribeNotificationDeleted = notificationService.on('notification_deleted', (data: { notification_id: string, user_id: string }) => {
-            const { notification_id } = data;
-            removeToast(notification_id); // Remove toast if it exists
-            warning('Notification removed', 'A notification has been removed.', notification_id);
-        });
-
-        unsubscribeAllNotificationsRead = notificationService.on('all_notifications_read', (data: { user_id: string, notification_ids: string[] }) => {
-            info('All notifications marked as read', 'Your notifications have been cleared.');
-            data.notification_ids.forEach(id => removeToast(id)); // Remove all related toasts
-        });
+      // Handle notification deletions
+      unsubscribeNotificationDeleted = wsService.on('notification_deleted', (message: WebSocketMessage) => {
+        const { notification_id } = message.data;
+        removeToast(notification_id);
+      });
     }
 
+    // Cart updates
+    const unsubscribeCartUpdates = wsService.on(MessageType.CART_UPDATE, (message: WebSocketMessage) => {
+      const { action, item_count } = message.data;
+      
+      if (action === 'item_added') {
+        info('Cart Updated', 'Item added to your cart');
+      } else if (action === 'item_removed') {
+        info('Cart Updated', 'Item removed from your cart');
+      } else if (item_count !== undefined) {
+        info('Cart Updated', `You have ${item_count} items in your cart`);
+      }
+    });
+
+    // Admin broadcasts
+    const unsubscribeAdminBroadcast = wsService.on(MessageType.ADMIN_BROADCAST, (message: WebSocketMessage) => {
+      const { title, content, priority } = message.data;
+      
+      switch (priority) {
+        case 'high':
+          error(title || 'Important Notice', content);
+          break;
+        case 'medium':
+          warning(title || 'Notice', content);
+          break;
+        default:
+          info(title || 'Announcement', content);
+          break;
+      }
+    });
 
     return () => {
       unsubscribeOrderUpdates();
-      unsubscribeLowStock();
       unsubscribeInventoryUpdates();
-      if (unsubscribeNewNotification) unsubscribeNewNotification(); // NEW: Cleanup notification event listeners
+      unsubscribeProductUpdates();
+      unsubscribePriceUpdates();
+      unsubscribeCartUpdates();
+      unsubscribeAdminBroadcast();
+      
+      if (unsubscribeNewNotification) unsubscribeNewNotification();
       if (unsubscribeNotificationUpdate) unsubscribeNotificationUpdate();
       if (unsubscribeNotificationDeleted) unsubscribeNotificationDeleted();
-      if (unsubscribeAllNotificationsRead) unsubscribeAllNotificationsRead();
     };
-  }, [info, warning, error, removeToast, user?.id, isAuthenticated]); // NEW: Added removeToast, user, isAuthenticated to dependencies
+  }, [wsService, info, warning, error, removeToast, user?.id, isAuthenticated]);
 
-  const value = {
-    orderStatus,
-    inventoryStatus,
-    notificationStatus, // NEW
-    isOrderServiceConnected: orderStatus === WebSocketStatus.CONNECTED,
-    isInventoryServiceConnected: inventoryStatus === WebSocketStatus.CONNECTED,
-    isNotificationServiceConnected: notificationStatus === WebSocketStatus.CONNECTED, // NEW
-    subscribeToOrder: orderTrackingService.subscribeToOrder.bind(orderTrackingService),
-    subscribeToUserOrders: orderTrackingService.subscribeToUserOrders.bind(orderTrackingService),
-    subscribeToProduct: inventoryService.subscribeToProduct.bind(inventoryService),
-    subscribeToLowStockAlerts: inventoryService.subscribeToLowStockAlerts.bind(inventoryService),
-    updateOrderStatus: orderTrackingService.updateOrderStatus.bind(orderTrackingService),
-    // NEW: Notification service methods (if any needed directly from context)
+  // Context value
+  const contextValue: WebSocketContextType = {
+    // Connection status
+    status,
+    stats,
+    isConnected: status === WebSocketStatus.CONNECTED,
+    
+    // Connection management
+    connect: useCallback(() => wsService.connect(), [wsService]),
+    disconnect: useCallback(() => wsService.disconnect(), [wsService]),
+    
+    // Subscription methods
+    subscribe: useCallback((events: string[]) => wsService.subscribe(events), [wsService]),
+    unsubscribe: useCallback((events: string[]) => wsService.unsubscribe(events), [wsService]),
+    
+    // Business-specific subscriptions
+    subscribeToOrder: useCallback((orderId: string, handler: Function) => 
+      wsService.subscribeToOrder(orderId, handler), [wsService]),
+    subscribeToProduct: useCallback((productId: string, handler: Function) => 
+      wsService.subscribeToProduct(productId, handler), [wsService]),
+    subscribeToNotifications: useCallback((handler: Function) => 
+      wsService.subscribeToNotifications(handler), [wsService]),
+    subscribeToCart: useCallback((handler: Function) => 
+      wsService.subscribeToCart(handler), [wsService]),
+    
+    // Message sending
+    sendMessage: useCallback((message: Partial<WebSocketMessage>) => 
+      wsService.sendMessage(message), [wsService])
   };
 
   return (
-    <WebSocketContext.Provider value={value}>
+    <WebSocketContext.Provider value={contextValue}>
       {children}
     </WebSocketContext.Provider>
   );

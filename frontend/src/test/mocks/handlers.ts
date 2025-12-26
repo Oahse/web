@@ -68,7 +68,7 @@ const mockProducts = {
   },
 };
 
-const API_BASE_URL = 'http://localhost:8000/api/v1';
+const API_BASE_URL = 'http://localhost:8000/v1';
 
 // Auth handlers
 export const authHandlers = [
@@ -438,6 +438,105 @@ export const errorHandlers = [
   }),
 ];
 
+// GitHub API handlers
+export const githubHandlers = [
+  // Get file content (for checking if file exists)
+  rest.get('https://api.github.com/repos/:owner/:repo/contents/:path*', (req, res, ctx) => {
+    const { path } = req.params;
+    
+    // Simulate file not found for new files
+    if (path?.toString().includes('new-file')) {
+      return res(
+        ctx.status(404),
+        ctx.json({ message: 'Not Found' })
+      );
+    }
+    
+    // Simulate existing file
+    return res(
+      ctx.status(200),
+      ctx.json({
+        name: 'existing-file.png',
+        path: 'products/existing-file.png',
+        sha: 'existing-sha-123',
+        size: 1024,
+        url: 'https://api.github.com/repos/test/test/contents/products/existing-file.png',
+        html_url: 'https://github.com/test/test/blob/main/products/existing-file.png',
+        git_url: 'https://api.github.com/repos/test/test/git/blobs/existing-sha-123',
+        download_url: 'https://raw.githubusercontent.com/test/test/main/products/existing-file.png',
+        type: 'file',
+        content: 'base64-encoded-content',
+        encoding: 'base64',
+      })
+    );
+  }),
+
+  // Create or update file
+  rest.put('https://api.github.com/repos/:owner/:repo/contents/:path*', (req, res, ctx) => {
+    const { path } = req.params;
+    const body = req.body as any;
+    
+    return res(
+      ctx.status(201),
+      ctx.json({
+        content: {
+          name: path?.toString().split('/').pop() || 'file.png',
+          path: path?.toString() || 'products/file.png',
+          sha: 'new-sha-456',
+          size: 2048,
+          url: `https://api.github.com/repos/test/test/contents/${path}`,
+          html_url: `https://github.com/test/test/blob/main/${path}`,
+          git_url: 'https://api.github.com/repos/test/test/git/blobs/new-sha-456',
+          download_url: `https://raw.githubusercontent.com/test/test/main/${path}`,
+          type: 'file',
+        },
+        commit: {
+          sha: 'commit-sha-789',
+          url: 'https://api.github.com/repos/test/test/git/commits/commit-sha-789',
+          html_url: 'https://github.com/test/test/commit/commit-sha-789',
+          author: {
+            name: 'Test User',
+            email: 'test@example.com',
+            date: '2023-01-01T00:00:00Z',
+          },
+          committer: {
+            name: 'Test User',
+            email: 'test@example.com',
+            date: '2023-01-01T00:00:00Z',
+          },
+          message: body.message || 'Upload file',
+        },
+      })
+    );
+  }),
+
+  // Delete file
+  rest.delete('https://api.github.com/repos/:owner/:repo/contents/:path*', (req, res, ctx) => {
+    return res(
+      ctx.status(200),
+      ctx.json({
+        content: null,
+        commit: {
+          sha: 'delete-commit-sha',
+          url: 'https://api.github.com/repos/test/test/git/commits/delete-commit-sha',
+          html_url: 'https://github.com/test/test/commit/delete-commit-sha',
+          author: {
+            name: 'Test User',
+            email: 'test@example.com',
+            date: '2023-01-01T00:00:00Z',
+          },
+          committer: {
+            name: 'Test User',
+            email: 'test@example.com',
+            date: '2023-01-01T00:00:00Z',
+          },
+          message: 'Delete file',
+        },
+      })
+    );
+  }),
+];
+
 // Combine all handlers
 export const handlers = [
   ...authHandlers,
@@ -445,4 +544,5 @@ export const handlers = [
   ...cartHandlers,
   ...categoryHandlers,
   ...errorHandlers,
+  ...githubHandlers,
 ];

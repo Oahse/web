@@ -5,7 +5,7 @@ from sqlalchemy.orm import selectinload
 from typing import List, Optional
 from uuid import UUID, uuid4
 from models.user import Address, User
-from models.order import Order
+from models.orders import Order
 from core.exceptions import APIException
 from schemas.user import UserCreate, UserUpdate
 from datetime import datetime, timedelta

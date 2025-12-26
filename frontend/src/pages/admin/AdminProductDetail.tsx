@@ -1,13 +1,16 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { ArrowLeftIcon, EditIcon, TrashIcon, PackageIcon, TrendingUpIcon, UsersIcon } from 'lucide-react';
+import { ArrowLeftIcon, EditIcon, TrashIcon, PackageIcon, TrendingUpIcon, UsersIcon, QrCodeIcon, ScanLineIcon } from 'lucide-react';
 import { useApi } from '../../hooks/useApi';
 import { ProductsAPI } from '../../apis';
 import ErrorMessage from '../../components/common/ErrorMessage';
+import { BarcodeDisplay } from '../../components/product/BarcodeDisplay';
+import { toast } from 'react-hot-toast';
 
 export const AdminProductDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const [selectedVariant, setSelectedVariant] = useState<any>(null);
 
   const { data: apiResponse, loading, error, execute } = useApi();
 
@@ -54,9 +57,24 @@ export const AdminProductDetail = () => {
   // Extract the actual product data from the API response
   const product = apiResponse?.data || apiResponse;
 
+  // Set initial variant when product loads
+  useEffect(() => {
+    if (product && product.variants && product.variants.length > 0) {
+      setSelectedVariant(product.variants[0]);
+    }
+  }, [product]);
+
   const totalStock = Array.isArray(product.variants)
     ? product.variants.reduce((sum: number, variant: any) => sum + (variant.stock || 0), 0)
     : 0;
+
+  const handleCodesGenerated = (codes: any) => {
+    toast.success('Barcode and QR code generated successfully!');
+    // Refresh the product data to get updated codes
+    if (id) {
+      execute(ProductsAPI.getProduct, id);
+    }
+  };
 
   return (
     <div className="p-6">
@@ -153,6 +171,26 @@ export const AdminProductDetail = () => {
                           {Object.entries(variant.attributes).map(([key, value]) => `${key}: ${value}`).join(', ')}
                         </p>
                       )}
+                      <div className="flex items-center space-x-2 mt-2">
+                        {variant.barcode && (
+                          <span className="flex items-center text-xs text-success">
+                            <ScanLineIcon size={12} className="mr-1" />
+                            Barcode
+                          </span>
+                        )}
+                        {variant.qr_code && (
+                          <span className="flex items-center text-xs text-success">
+                            <QrCodeIcon size={12} className="mr-1" />
+                            QR Code
+                          </span>
+                        )}
+                        <button
+                          onClick={() => setSelectedVariant(variant)}
+                          className="text-xs text-primary hover:underline"
+                        >
+                          View Codes
+                        </button>
+                      </div>
                     </div>
                   </div>
                   <div className="text-right">
@@ -175,6 +213,20 @@ export const AdminProductDetail = () => {
               )}
             </div>
           </div>
+
+          {/* Barcode/QR Code Section */}
+          {selectedVariant && (
+            <div className="bg-surface rounded-lg p-6 border border-border-light">
+              <h2 className="text-lg font-semibold text-main mb-4">Product Codes</h2>
+              <BarcodeDisplay
+                variant={selectedVariant}
+                showBoth={true}
+                size="md"
+                onCodesGenerated={handleCodesGenerated}
+                canGenerate={true}
+              />
+            </div>
+          )}
         </div>
 
         {/* Sidebar */}

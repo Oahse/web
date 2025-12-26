@@ -473,23 +473,49 @@ class ProductService:
 
     async def generate_qr_code(self, variant_id: UUID) -> Optional[str]:
         """Generate QR code for a product variant."""
-        variant = await self.get_variant_by_id(variant_id)
-        if not variant:
+        from services.barcode import BarcodeService
+        barcode_service = BarcodeService(self.db)
+        
+        try:
+            codes = await barcode_service.generate_variant_codes(variant_id)
+            return codes.get("qr_code")
+        except Exception as e:
+            print(f"Error generating QR code: {e}")
             return None
-
-        # For now, return a placeholder QR code URL
-        # In a real implementation, you would generate an actual QR code
-        return f"https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=variant_{variant_id}"
 
     async def generate_barcode(self, variant_id: UUID) -> Optional[str]:
         """Generate barcode for a product variant."""
-        variant = await self.get_variant_by_id(variant_id)
-        if not variant:
+        from services.barcode import BarcodeService
+        barcode_service = BarcodeService(self.db)
+        
+        try:
+            codes = await barcode_service.generate_variant_codes(variant_id)
+            return codes.get("barcode")
+        except Exception as e:
+            print(f"Error generating barcode: {e}")
             return None
-
-        # For now, return a placeholder barcode URL
-        # In a real implementation, you would generate an actual barcode
-        return f"https://barcode.tec-it.com/barcode.ashx?data={variant.sku}&code=Code128&translate-esc=on"
+    
+    async def generate_variant_codes(self, variant_id: UUID) -> dict:
+        """Generate both barcode and QR code for a product variant."""
+        from services.barcode import BarcodeService
+        barcode_service = BarcodeService(self.db)
+        
+        try:
+            return await barcode_service.generate_variant_codes(variant_id)
+        except Exception as e:
+            print(f"Error generating variant codes: {e}")
+            raise HTTPException(status_code=500, detail=f"Failed to generate codes: {str(e)}")
+    
+    async def update_variant_codes(self, variant_id: UUID, barcode: Optional[str] = None, qr_code: Optional[str] = None) -> dict:
+        """Update barcode and/or QR code for a product variant."""
+        from services.barcode import BarcodeService
+        barcode_service = BarcodeService(self.db)
+        
+        try:
+            return await barcode_service.update_variant_codes(variant_id, barcode, qr_code)
+        except Exception as e:
+            print(f"Error updating variant codes: {e}")
+            raise HTTPException(status_code=500, detail=f"Failed to update codes: {str(e)}")
 
     async def create_product(self, product_data: ProductCreate, supplier_id: UUID) -> ProductResponse:
         """Create a new product."""

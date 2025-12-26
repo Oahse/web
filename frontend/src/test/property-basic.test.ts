@@ -21,7 +21,7 @@ describe('Property-Based Testing Infrastructure', () => {
 
   it('should validate number generation properties', () => {
     fc.assert(
-      fc.property(fc.integer(1, 100), (num) => {
+      fc.property(fc.integer({ min: 1, max: 100 }), (num) => {
         expect(num).toBeGreaterThanOrEqual(1);
         expect(num).toBeLessThanOrEqual(100);
         expect(Number.isInteger(num)).toBe(true);
@@ -85,7 +85,7 @@ describe('Property-Based Testing Infrastructure', () => {
     const productArbitrary = fc.record({
       id: fc.string({ minLength: 1, maxLength: 50 }),
       name: fc.string({ minLength: 1, maxLength: 200 }),
-      price: fc.float({ min: 0.01, max: 10000, noNaN: true }),
+      price: fc.float({ min: Math.fround(0.01), max: Math.fround(10000), noNaN: true }),
       category: fc.constantFrom('Electronics', 'Clothing', 'Books', 'Home'),
       inStock: fc.boolean(),
       tags: fc.array(fc.string({ minLength: 1, maxLength: 20 }), { maxLength: 5 }),
@@ -104,7 +104,7 @@ describe('Property-Based Testing Infrastructure', () => {
         expect(transformed.id).toBe(product.id);
         expect(transformed.category).toBe(product.category);
         expect(transformed.inStock).toBe(product.inStock);
-        expect(transformed.price).toBeGreaterThan(0);
+        expect(transformed.price).toBeGreaterThanOrEqual(0.01);
         expect(transformed.name.length).toBeGreaterThan(0);
         
         return true;

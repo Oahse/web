@@ -226,7 +226,7 @@ function isStaticAsset(url) {
 }
 
 function isAPIRequest(url) {
-  return url.pathname.startsWith('/api/') ||
+  return url.pathname.startsWith('/') ||
          API_CACHE_PATTERNS.some(pattern => pattern.test(url.pathname));
 }
 

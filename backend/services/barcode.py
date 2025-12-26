@@ -28,6 +28,9 @@ class BarcodeService:
         Returns:
             Base64 encoded QR code image
         """
+        if not data or not data.strip():
+            raise APIException("QR code data cannot be empty")
+            
         try:
             qr = qrcode.QRCode(
                 version=1,

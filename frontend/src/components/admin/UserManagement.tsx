@@ -40,7 +40,7 @@ const UserManagement = () => {
       if (roleFilter) params.append('role_filter', roleFilter);
       if (activeFilter !== null) params.append('active_filter', activeFilter.toString());
 
-      const response = await fetch(`/api/v1/admin/users?${params}`, {
+      const response = await fetch(`/v1/admin/users?${params}`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('access_token')}`
         }
@@ -80,7 +80,7 @@ const UserManagement = () => {
     if (selectedUsers.length === 0) return;
 
     try {
-      const response = await fetch('/api/v1/admin/bulk-actions', {
+      const response = await fetch('/v1/admin/bulk-actions', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

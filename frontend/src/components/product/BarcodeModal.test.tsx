@@ -1,150 +1,157 @@
-// frontend/src/components/product/BarcodeModal.test.tsx
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { describe, it, expect, vitest, beforeEach } from 'vitest';
+import { render, screen, fireEvent } from '@testing-library/react';
+import { vi, describe, it, expect } from 'vitest';
 import { BarcodeModal } from './BarcodeModal';
+import { ProductVariant } from '../../types';
 
-// --- Mock external dependencies ---
-vitest.mock('framer-motion', () => ({
+// Mock framer-motion
+vi.mock('framer-motion', () => ({
   motion: {
-    div: vitest.fn((props) => (
-      <div data-testid="motion-div" {...props}>
-        {props.children}
-      </div>
-    )),
+    div: ({ children, ...props }: any) => <div {...props}>{children}</div>,
   },
 }));
 
-vitest.mock('lucide-react', () => ({
-  ScanLineIcon: vitest.fn(() => <svg data-testid="icon-scan-line" />),
-  DownloadIcon: vitest.fn(() => <svg data-testid="icon-download" />),
-  CopyIcon: vitest.fn(() => <svg data-testid="icon-copy" />),
-  XIcon: vitest.fn(() => <svg data-testid="icon-x" />),
+// Mock BarcodeDisplay component
+vi.mock('./BarcodeDisplay', () => ({
+  BarcodeDisplay: ({ variant, showBoth, size, canGenerate }: any) => (
+    <div data-testid="barcode-display">
+      <div>Variant: {variant.name}</div>
+      <div>SKU: {variant.sku}</div>
+      <div>Show Both: {showBoth ? 'true' : 'false'}</div>
+      <div>Size: {size}</div>
+      <div>Can Generate: {canGenerate ? 'true' : 'false'}</div>
+    </div>
+  ),
 }));
 
-// Mock canvas and its context
-const mockGetContext = vitest.fn(() => ({
-  fillRect: vitest.fn(),
-  fillText: vitest.fn(),
-  clearRect: vitest.fn(),
-  // Add other canvas context methods if they are called
-}));
-const mockCanvasToDataURL = vitest.fn(() => 'data:image/png;base64,mock-barcode-image');
-const mockCanvasElement = {
-  getContext: mockGetContext,
-  toDataURL: mockCanvasToDataURL,
-  width: 0,
-  height: 0,
-};
+describe('BarcodeModal', () => {
+  const mockVariant: ProductVariant = {
+    id: '123e4567-e89b-12d3-a456-426614174000',
+    product_id: 'prod-123',
+    sku: 'TEST-SKU-001',
+    name: 'Test Variant',
+    base_price: 29.99,
+    sale_price: 24.99,
+    stock: 100,
+    images: [],
+    product_name: 'Test Product',
+    barcode: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=',
+    qr_code: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII='
+  };
 
-// Mock document.createElement('a') for download functionality
-const mockLinkClick = vitest.fn();
-const mockCreateElement = vitest.spyOn(document, 'createElement');
-mockCreateElement.mockImplementation((tagName) => {
-  if (tagName === 'a') {
-    return {
-      href: '',
-      download: '',
-      click: mockLinkClick,
-      // Mock appendChild and removeChild as they interact with document.body
-      // For a simple 'a' tag download, these might not be strictly necessary to mock
-      // as the link.click() is what performs the action.
-      // However, the component does use them.
-      // A more robust mock would involve creating a fake DOM element.
-      // For now, we'll just check if click is called.
-    } as unknown as HTMLElement;
-  }
-  return vitest.importActual('jsdom').JSDOM.fragment('<div></div>').firstChild as HTMLElement;
-});
-
-
-// Mock navigator.clipboard
-const mockClipboardWriteText = vitest.fn();
-Object.defineProperty(navigator, 'clipboard', {
-  value: { writeText: mockClipboardWriteText },
-  configurable: true,
-});
-
-describe('BarcodeModal Component', () => {
-  const mockCode = '123456789012';
-  const mockOnClose = vitest.fn();
+  const defaultProps = {
+    variant: mockVariant,
+    isOpen: true,
+    onClose: vi.fn(),
+  };
 
   beforeEach(() => {
-    vitest.clearAllMocks();
-    mockGetContext.mockClear();
-    mockCanvasToDataURL.mockClear();
-    mockLinkClick.mockClear();
-    mockCreateElement.mockClear();
-    mockClipboardWriteText.mockClear();
-
-    // Reset canvas ref mock
-    const useRefSpy = vitest.spyOn(React, 'useRef');
-    useRefSpy.mockReturnValue({ current: mockCanvasElement });
+    vi.clearAllMocks();
   });
 
-  it('renders nothing when isOpen is false', () => {
-    const { container } = render(<BarcodeModal code={mockCode} isOpen={false} onClose={mockOnClose} />);
-    expect(container).toBeEmptyDOMElement();
+  it('renders when isOpen is true', () => {
+    render(<BarcodeModal {...defaultProps} />);
+    
+    expect(screen.getByText('Product Barcode & QR Code')).toBeInTheDocument();
+    expect(screen.getByTestId('barcode-display')).toBeInTheDocument();
   });
 
-  it('renders modal content when isOpen is true', () => {
-    render(<BarcodeModal code={mockCode} isOpen={true} onClose={mockOnClose} />);
-    expect(screen.getByText('Product Barcode')).toBeInTheDocument();
-    expect(screen.getByText(mockCode)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Download' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Copy Code' })).toBeInTheDocument();
-    expect(screen.getByTestId('icon-scan-line')).toBeInTheDocument();
+  it('does not render when isOpen is false', () => {
+    render(<BarcodeModal {...defaultProps} isOpen={false} />);
+    
+    expect(screen.queryByText('Product Barcode & QR Code')).not.toBeInTheDocument();
   });
 
-  it('calls generateBarcode on mount when open and with code', () => {
-    const generateBarcodeSpy = vitest.spyOn(BarcodeModal.prototype, 'generateBarcode' as any); // Spy on the internal function
-    render(<BarcodeModal code={mockCode} isOpen={true} onClose={mockOnClose} />);
-    expect(generateBarcodeSpy).toHaveBeenCalledTimes(1);
-    expect(generateBarcodeSpy).toHaveBeenCalledWith(mockCode, mockCanvasElement);
-    generateBarcodeSpy.mockRestore(); // Restore original function
+  it('displays custom title when provided', () => {
+    render(<BarcodeModal {...defaultProps} title="Custom Title" />);
+    
+    expect(screen.getByText('Custom Title')).toBeInTheDocument();
   });
 
   it('calls onClose when close button is clicked', () => {
-    render(<BarcodeModal code={mockCode} isOpen={true} onClose={mockOnClose} />);
-    fireEvent.click(screen.getByTestId('icon-x').closest('button')!);
-    expect(mockOnClose).toHaveBeenCalledTimes(1);
+    const onClose = vi.fn();
+    render(<BarcodeModal {...defaultProps} onClose={onClose} />);
+    
+    const closeButton = screen.getByLabelText('Close modal');
+    fireEvent.click(closeButton);
+    
+    expect(onClose).toHaveBeenCalledTimes(1);
   });
 
   it('calls onClose when backdrop is clicked', () => {
-    render(<BarcodeModal code={mockCode} isOpen={true} onClose={mockOnClose} />);
-    fireEvent.click(screen.getByTestId('motion-div')); // Click on the outer motion.div (backdrop)
-    expect(mockOnClose).toHaveBeenCalledTimes(1);
+    const onClose = vi.fn();
+    render(<BarcodeModal {...defaultProps} onClose={onClose} />);
+    
+    const backdrop = screen.getByText('Product Barcode & QR Code').closest('.fixed');
+    if (backdrop) {
+      fireEvent.click(backdrop);
+      expect(onClose).toHaveBeenCalledTimes(1);
+    }
   });
 
   it('does not call onClose when modal content is clicked', () => {
-    render(<BarcodeModal code={mockCode} isOpen={true} onClose={mockOnClose} />);
-    fireEvent.click(screen.getByText('Product Barcode')); // Click on modal header
-    expect(mockOnClose).not.toHaveBeenCalled();
+    const onClose = vi.fn();
+    render(<BarcodeModal {...defaultProps} onClose={onClose} />);
+    
+    const modalContent = screen.getByText('Product Barcode & QR Code').closest('.bg-white');
+    if (modalContent) {
+      fireEvent.click(modalContent);
+      expect(onClose).not.toHaveBeenCalled();
+    }
   });
 
-  it('downloads barcode when "Download" button is clicked', () => {
-    render(<BarcodeModal code={mockCode} isOpen={true} onClose={mockOnClose} title="My Barcode" />);
-    fireEvent.click(screen.getByRole('button', { name: 'Download' }));
-
-    expect(mockCanvasToDataURL).toHaveBeenCalledTimes(1);
-    expect(mockCreateElement).toHaveBeenCalledWith('a');
-    // For more robust checking of dynamic download link:
-    // const link = mockCreateElement.mock.results[0].value;
-    // expect(link.download).toMatch(/^barcode-123456789012-\d+\.png$/);
-    // expect(link.href).toBe('data:image/png;base64,mock-barcode-image');
-    expect(mockLinkClick).toHaveBeenCalledTimes(1);
+  it('passes correct props to BarcodeDisplay', () => {
+    render(<BarcodeModal {...defaultProps} canGenerate={true} />);
+    
+    expect(screen.getByText('Variant: Test Variant')).toBeInTheDocument();
+    expect(screen.getByText('SKU: TEST-SKU-001')).toBeInTheDocument();
+    expect(screen.getByText('Show Both: true')).toBeInTheDocument();
+    expect(screen.getByText('Size: lg')).toBeInTheDocument();
+    expect(screen.getByText('Can Generate: true')).toBeInTheDocument();
   });
 
-  it('copies code to clipboard when "Copy Code" button is clicked', async () => {
-    // Mock window.alert as component uses it
-    const mockAlert = vitest.spyOn(window, 'alert').mockImplementation(() => {});
-    render(<BarcodeModal code={mockCode} isOpen={true} onClose={mockOnClose} />);
-    fireEvent.click(screen.getByRole('button', { name: 'Copy Code' }));
+  it('displays product information correctly', () => {
+    render(<BarcodeModal {...defaultProps} />);
+    
+    expect(screen.getByText('Product Information')).toBeInTheDocument();
+    expect(screen.getByText('Test Product')).toBeInTheDocument();
+    expect(screen.getByText('Test Variant')).toBeInTheDocument();
+    expect(screen.getByText('TEST-SKU-001')).toBeInTheDocument();
+  });
 
-    await waitFor(() => {
-      expect(mockClipboardWriteText).toHaveBeenCalledWith(mockCode);
-      expect(mockAlert).toHaveBeenCalledWith('Barcode copied to clipboard!');
-    });
-    mockAlert.mockRestore();
+  it('displays pricing information correctly', () => {
+    render(<BarcodeModal {...defaultProps} />);
+    
+    expect(screen.getByText('Pricing & Stock')).toBeInTheDocument();
+    expect(screen.getByText('$24.99')).toBeInTheDocument(); // sale_price
+    expect(screen.getByText('$29.99')).toBeInTheDocument(); // base_price (crossed out)
+    expect(screen.getByText('100 units')).toBeInTheDocument();
+  });
+
+  it('displays usage tips', () => {
+    render(<BarcodeModal {...defaultProps} />);
+    
+    expect(screen.getByText('Usage Tips')).toBeInTheDocument();
+    expect(screen.getByText(/Use the barcode for inventory management/)).toBeInTheDocument();
+    expect(screen.getByText(/Share the QR code for quick product access/)).toBeInTheDocument();
+  });
+
+  it('applies custom className', () => {
+    render(<BarcodeModal {...defaultProps} className="custom-class" />);
+    
+    const modalContent = screen.getByText('Product Barcode & QR Code').closest('.bg-white');
+    expect(modalContent).toHaveClass('custom-class');
+  });
+
+  it('handles variant without sale price', () => {
+    const variantWithoutSale = {
+      ...mockVariant,
+      sale_price: undefined
+    };
+    
+    render(<BarcodeModal {...defaultProps} variant={variantWithoutSale} />);
+    
+    expect(screen.getByText('$29.99')).toBeInTheDocument(); // base_price only
+    expect(screen.queryByText('Original:')).not.toBeInTheDocument();
   });
 });

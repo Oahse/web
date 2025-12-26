@@ -6,7 +6,7 @@ from uuid import UUID
 from core.database import get_db
 from core.utils.response import Response
 from core.exceptions import APIException
-from core.dependencies import require_admin_or_supplier
+from core.dependencies import require_admin_or_supplier, get_inventory_service
 from models.user import User
 
 from schemas.inventories import (
@@ -16,7 +16,7 @@ from schemas.inventories import (
 )
 from services.inventories import InventoryService
 
-router = APIRouter(prefix="/api/v1/inventory", tags=["Inventory Management"])
+router = APIRouter(prefix="/v1/inventory", tags=["Inventory Management"])
 
 
 # --- WarehouseLocation Endpoints ---
@@ -24,12 +24,11 @@ router = APIRouter(prefix="/api/v1/inventory", tags=["Inventory Management"])
 async def create_warehouse_location(
     location_data: WarehouseLocationCreate,
     current_user: User = Depends(require_admin_or_supplier),
-    db: AsyncSession = Depends(get_db)
+    inventory_service: InventoryService = Depends(get_inventory_service)
 ):
     """Create a new warehouse location (Admin/Supplier access)."""
     try:
-        service = InventoryService(db)
-        location = await service.create_warehouse_location(location_data)
+        location = await inventory_service.create_warehouse_location(location_data)
         return Response(success=True, data=location, message="Warehouse location created successfully")
     except APIException:
         raise
@@ -40,12 +39,11 @@ async def create_warehouse_location(
 @router.get("/locations", response_model=List[WarehouseLocationResponse])
 async def get_all_warehouse_locations(
     current_user: User = Depends(require_admin_or_supplier),
-    db: AsyncSession = Depends(get_db)
+    inventory_service: InventoryService = Depends(get_inventory_service)
 ):
     """Get all warehouse locations (Admin/Supplier access)."""
     try:
-        service = InventoryService(db)
-        locations = await service.get_warehouse_locations()
+        locations = await inventory_service.get_warehouse_locations()
         return Response(success=True, data=locations)
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to fetch locations: {e}")
@@ -55,12 +53,11 @@ async def get_all_warehouse_locations(
 async def get_warehouse_location(
     location_id: UUID,
     current_user: User = Depends(require_admin_or_supplier),
-    db: AsyncSession = Depends(get_db)
+    inventory_service: InventoryService = Depends(get_inventory_service)
 ):
     """Get a specific warehouse location by ID (Admin/Supplier access)."""
     try:
-        service = InventoryService(db)
-        location = await service.get_warehouse_location_by_id(location_id)
+        location = await inventory_service.get_warehouse_location_by_id(location_id)
         if not location:
             raise APIException(status_code=status.HTTP_404_NOT_FOUND, message="Warehouse location not found")
         return Response(success=True, data=location)
@@ -75,12 +72,11 @@ async def update_warehouse_location(
     location_id: UUID,
     location_data: WarehouseLocationUpdate,
     current_user: User = Depends(require_admin_or_supplier),
-    db: AsyncSession = Depends(get_db)
+    inventory_service: InventoryService = Depends(get_inventory_service)
 ):
     """Update a warehouse location (Admin/Supplier access)."""
     try:
-        service = InventoryService(db)
-        location = await service.update_warehouse_location(location_id, location_data)
+        location = await inventory_service.update_warehouse_location(location_id, location_data)
         return Response(success=True, data=location, message="Warehouse location updated successfully")
     except APIException:
         raise
@@ -92,12 +88,11 @@ async def update_warehouse_location(
 async def delete_warehouse_location(
     location_id: UUID,
     current_user: User = Depends(require_admin_or_supplier),
-    db: AsyncSession = Depends(get_db)
+    inventory_service: InventoryService = Depends(get_inventory_service)
 ):
     """Delete a warehouse location (Admin/Supplier access)."""
     try:
-        service = InventoryService(db)
-        await service.delete_warehouse_location(location_id)
+        await inventory_service.delete_warehouse_location(location_id)
         return Response(success=True, message="Warehouse location deleted successfully")
     except APIException:
         raise
@@ -110,12 +105,11 @@ async def delete_warehouse_location(
 async def create_inventory_item(
     inventory_data: InventoryCreate,
     current_user: User = Depends(require_admin_or_supplier),
-    db: AsyncSession = Depends(get_db)
+    inventory_service: InventoryService = Depends(get_inventory_service)
 ):
     """Create a new inventory item (Admin/Supplier access)."""
     try:
-        service = InventoryService(db)
-        item = await service.create_inventory_item(inventory_data)
+        item = await inventory_service.create_inventory_item(inventory_data)
         return Response(success=True, data=item, message="Inventory item created successfully")
     except APIException:
         raise
@@ -131,12 +125,11 @@ async def get_all_inventory_items(
     location_id: Optional[UUID] = Query(None),
     low_stock: Optional[bool] = Query(None),
     current_user: User = Depends(require_admin_or_supplier),
-    db: AsyncSession = Depends(get_db)
+    inventory_service: InventoryService = Depends(get_inventory_service)
 ):
     """Get all inventory items with filters (Admin/Supplier access)."""
     try:
-        service = InventoryService(db)
-        items = await service.get_all_inventory_items(page, limit, product_id, location_id, low_stock)
+        items = await inventory_service.get_all_inventory_items(page, limit, product_id, location_id, low_stock)
         return Response(success=True, data=items)
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to fetch inventory items: {e}")
@@ -146,12 +139,11 @@ async def get_all_inventory_items(
 async def get_inventory_item(
     inventory_id: UUID,
     current_user: User = Depends(require_admin_or_supplier),
-    db: AsyncSession = Depends(get_db)
+    inventory_service: InventoryService = Depends(get_inventory_service)
 ):
     """Get a specific inventory item by ID (Admin/Supplier access)."""
     try:
-        service = InventoryService(db)
-        item = await service.get_inventory_item_by_id(inventory_id)
+        item = await inventory_service.get_inventory_item_by_id(inventory_id)
         if not item:
             raise APIException(status_code=status.HTTP_404_NOT_FOUND, message="Inventory item not found")
         return Response(success=True, data=item)
@@ -166,12 +158,11 @@ async def update_inventory_item(
     inventory_id: UUID,
     inventory_data: InventoryUpdate,
     current_user: User = Depends(require_admin_or_supplier),
-    db: AsyncSession = Depends(get_db)
+    inventory_service: InventoryService = Depends(get_inventory_service)
 ):
     """Update an inventory item (Admin/Supplier access)."""
     try:
-        service = InventoryService(db)
-        item = await service.update_inventory_item(inventory_id, inventory_data)
+        item = await inventory_service.update_inventory_item(inventory_id, inventory_data)
         return Response(success=True, data=item, message="Inventory item updated successfully")
     except APIException:
         raise
@@ -183,12 +174,11 @@ async def update_inventory_item(
 async def delete_inventory_item(
     inventory_id: UUID,
     current_user: User = Depends(require_admin_or_supplier),
-    db: AsyncSession = Depends(get_db)
+    inventory_service: InventoryService = Depends(get_inventory_service)
 ):
     """Delete an inventory item (Admin/Supplier access)."""
     try:
-        service = InventoryService(db)
-        await service.delete_inventory_item(inventory_id)
+        await inventory_service.delete_inventory_item(inventory_id)
         return Response(success=True, message="Inventory item deleted successfully")
     except APIException:
         raise
@@ -201,12 +191,11 @@ async def delete_inventory_item(
 async def adjust_stock(
     adjustment_data: StockAdjustmentCreate,
     current_user: User = Depends(require_admin_or_supplier),
-    db: AsyncSession = Depends(get_db)
+    inventory_service: InventoryService = Depends(get_inventory_service)
 ):
     """Adjust stock quantity for an inventory item (Admin/Supplier access)."""
     try:
-        service = InventoryService(db)
-        updated_inventory = await service.adjust_stock(adjustment_data, adjusted_by_user_id=current_user.id)
+        updated_inventory = await inventory_service.adjust_stock(adjustment_data, adjusted_by_user_id=current_user.id)
         return Response(success=True, data=updated_inventory, message="Stock adjusted successfully")
     except APIException:
         raise
@@ -218,12 +207,11 @@ async def adjust_stock(
 async def get_stock_adjustments(
     inventory_id: UUID,
     current_user: User = Depends(require_admin_or_supplier),
-    db: AsyncSession = Depends(get_db)
+    inventory_service: InventoryService = Depends(get_inventory_service)
 ):
     """Get all stock adjustments for an inventory item (Admin/Supplier access)."""
     try:
-        service = InventoryService(db)
-        adjustments = await service.get_stock_adjustments_for_inventory(inventory_id)
+        adjustments = await inventory_service.get_stock_adjustments_for_inventory(inventory_id)
         return Response(success=True, data=adjustments)
     except APIException:
         raise

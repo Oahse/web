@@ -18,8 +18,8 @@ from hypothesis import given, strategies as st, settings, assume, HealthCheck
 from hypothesis.strategies import composite
 
 # Import the container environment service
-from core.container_environment import (
-    ContainerEnvironmentService,
+from core.config import (
+    EnvironmentValidator,
     ValidationResult,
     ContainerConfig,
     EnvironmentType,

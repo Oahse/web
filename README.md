@@ -606,7 +606,7 @@ All frontend environment variables should be configured in `frontend/.env`. See 
 
 | Variable | Description | Example |
 |----------|-------------|---------|
-| `VITE_API_BASE_URL` | Backend API URL | `http://localhost:8000/api/v1` |
+| `VITE_API_BASE_URL` | Backend API URL | `http://localhost:8000/v1` |
 | `VITE_STRIPE_PUBLIC_KEY` | Stripe publishable key | `pk_test_...` |
 
 #### Optional Variables
@@ -640,7 +640,7 @@ BACKEND_CORS_ORIGINS=http://localhost:5173,http://0.0.0.0:5173,http://127.0.0.1:
 **Frontend (`frontend/.env`):**
 ```bash
 # API endpoint (configured for Docker host networking)
-VITE_API_BASE_URL=http://localhost:8000/api/v1
+VITE_API_BASE_URL=http://localhost:8000/v1
 ```
 
 #### Optional Service Configuration

@@ -28,14 +28,14 @@ export const PerformanceMonitor = () => {
 
   const fetchPerformanceStats = async () => {
     try {
-      const response = await fetch('/api/v1/performance/dashboard');
+      const response = await fetch('/v1/performance/dashboard');
       if (!response.ok) throw new Error('Failed to fetch performance stats');
       
       const result = await response.json();
       setStats(result.data);
       
       // Fetch cache stats
-      const cacheResponse = await fetch('/api/v1/performance/cache/stats');
+      const cacheResponse = await fetch('/v1/performance/cache/stats');
       if (cacheResponse.ok) {
         const cacheResult = await cacheResponse.json();
         setCacheStats(cacheResult.data);
@@ -61,8 +61,8 @@ export const PerformanceMonitor = () => {
   const clearCache = async (cacheName) => {
     try {
       const url = cacheName 
-        ? `/api/v1/performance/cache/clear?cache_name=${cacheName}`
-        : '/api/v1/performance/cache/clear';
+        ? `/v1/performance/cache/clear?cache_name=${cacheName}`
+        : '/v1/performance/cache/clear';
       
       const response = await fetch(url, { method: 'POST' });
       if (!response.ok) throw new Error('Failed to clear cache');
@@ -75,7 +75,7 @@ export const PerformanceMonitor = () => {
 
   const resolveAlert = async (alertId) => {
     try {
-      const response = await fetch(`/api/v1/performance/alerts/${alertId}/resolve`, {
+      const response = await fetch(`/v1/performance/alerts/${alertId}/resolve`, {
         method: 'POST'
       });
       if (!response.ok) throw new Error('Failed to resolve alert');

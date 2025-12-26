@@ -55,6 +55,8 @@ export interface ProductVariant {
   product_name?: string;
   product_description?: string;
   attributes?: Record<string, any>;
+  barcode?: string;  // Base64 encoded barcode image
+  qr_code?: string;  // Base64 encoded QR code image
 }
 
 export interface Product {
@@ -383,6 +385,18 @@ export interface ModalProps {
 // Utility Types
 export type SortOrder = 'asc' | 'desc';
 export type LoadingState = 'idle' | 'loading' | 'success' | 'error';
+
+// Barcode/QR Code Types
+export interface BarcodeData {
+  variant_id: string;
+  barcode?: string;
+  qr_code?: string;
+}
+
+export interface BarcodeUpdateRequest {
+  barcode?: string;
+  qr_code?: string;
+}
 
 // Activity Log Types
 export interface ActivityLog {

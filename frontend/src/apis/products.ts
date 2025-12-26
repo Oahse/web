@@ -78,6 +78,20 @@ export class ProductsAPI {
   }
 
   /**
+   * Generate barcode and QR code for variant (Supplier/Admin only)
+   */
+  static async generateVariantCodes(variantId) {
+    return await apiClient.post(`/products/variants/${variantId}/codes/generate`);
+  }
+
+  /**
+   * Update barcode and/or QR code for variant (Supplier/Admin only)
+   */
+  static async updateVariantCodes(variantId, codes) {
+    return await apiClient.put(`/products/variants/${variantId}/codes`, codes);
+  }
+
+  /**
    * Get featured products
    */
   static async getFeaturedProducts(limit = 10) {

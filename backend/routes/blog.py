@@ -32,7 +32,7 @@ def require_admin(current_user: User = Depends(get_current_auth_user)):
         )
     return current_user
 
-router = APIRouter(prefix="/api/v1/blog", tags=["Blog"])
+router = APIRouter(prefix="/v1/blog", tags=["Blog"])
 
 
 # --- Blog Posts ---

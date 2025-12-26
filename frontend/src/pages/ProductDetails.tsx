@@ -305,12 +305,27 @@ export const ProductDetails = () => {
             />
 
             {/* Barcode Modal */}
-            <BarcodeModal
-              code={selectedVariant?.barcode || selectedVariant?.sku || product.sku}
-              title={`${product.name} - Barcode`}
-              isOpen={showBarcode}
-              onClose={() => setShowBarcode(false)}
-            />
+            {selectedVariant && (
+              <BarcodeModal
+                variant={{
+                  id: selectedVariant.id,
+                  product_id: actualProductData.id,
+                  sku: selectedVariant.sku,
+                  name: selectedVariant.name,
+                  base_price: selectedVariant.base_price,
+                  sale_price: selectedVariant.sale_price,
+                  stock: selectedVariant.stock,
+                  images: actualProductData.variants?.find(v => v.id === selectedVariant.id)?.images || [],
+                  product_name: product.name,
+                  barcode: selectedVariant.barcode,
+                  qr_code: selectedVariant.qr_code
+                }}
+                title={`${product.name} - Product Codes`}
+                isOpen={showBarcode}
+                onClose={() => setShowBarcode(false)}
+                canGenerate={false} // Set to true if user has admin permissions
+              />
+            )}
           </div>
 
           {/* Product Info */}

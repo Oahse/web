@@ -2,7 +2,6 @@
 
 # Core services
 from .activity import ActivityService
-from .analytics import AnalyticsService
 from .auth import AuthService
 from .blog import BlogService
 from .cart import CartService
@@ -12,13 +11,13 @@ from .products import ProductService
 from .promocode import PromocodeService
 from .review import ReviewService
 from .search import SearchService
-from .settings import SettingsService
 from .shipping import ShippingService
 from .tax import TaxService
 from .user import UserService, AddressService
 from .variant_tracking import VariantTrackingService
 from .wishlist import WishlistService
-from .websockets import WebSocketService
+from .websockets import ConnectionManager
+from .barcode import BarcodeService
 
 # Consolidated services - single source of truth
 from .orders import OrderService
@@ -31,13 +30,11 @@ from .export import ExportService
 
 # Utility services
 from .jinja_template import JinjaTemplateService
-from .migration_service import MigrationService
 from .template_migration_service import TemplateMigrationService
 
 __all__ = [
     # Core services
     "ActivityService",
-    "AnalyticsService",
     "AuthService",
     "BlogService", 
     "CartService",
@@ -47,14 +44,14 @@ __all__ = [
     "PromocodeService",
     "ReviewService",
     "SearchService",
-    "SettingsService",
     "ShippingService",
     "TaxService",
     "UserService",
     "AddressService",
     "VariantTrackingService",
     "WishlistService",
-    "WebSocketService",
+    "ConnectionManager",
+    "BarcodeService",
     
     # Consolidated services
     "OrderService",
@@ -67,6 +64,5 @@ __all__ = [
     
     # Utility services
     "JinjaTemplateService",
-    "MigrationService",
     "TemplateMigrationService",
 ]

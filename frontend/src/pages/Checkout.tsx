@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCart } from '../contexts/CartContext';
 import { useAuth } from '../contexts/AuthContext';
+import { useWebSocket } from '../hooks/useWebSocket';
 import { OrdersAPI } from '../apis/orders';
 import { AuthAPI } from '../apis/auth';
 import { CartAPI } from '../apis/cart';
@@ -11,8 +12,9 @@ import { Input } from '../components/ui/Input';
 
 export const Checkout = () => {
   const navigate = useNavigate();
-  const { cart, loading: cartLoading, clearCart } = useCart();
+  const { cart, loading: cartLoading, clearCart, refreshCart } = useCart();
   const { isAuthenticated } = useAuth();
+  const { isConnected } = useWebSocket();
 
   // State management
   const [loading, setLoading] = useState(false);
@@ -36,6 +38,45 @@ export const Checkout = () => {
   });
   const [errors, setErrors] = useState({});
   const [processingPayment, setProcessingPayment] = useState(false);
+  const [priceUpdateReceived, setPriceUpdateReceived] = useState(false);
+
+  // Listen for price updates via WebSocket
+  useEffect(() => {
+    const handlePriceUpdate = (event) => {
+      const { items, summary, message } = event.detail;
+      
+      // Show detailed toast with price changes
+      if (summary.total_price_change !== 0) {
+        const changeText = summary.total_price_change > 0 
+          ? `increased by $${summary.total_price_change.toFixed(2)}`
+          : `reduced by $${Math.abs(summary.total_price_change).toFixed(2)}`;
+          
+        toast.success(
+          `Cart prices ${changeText}. ${summary.total_items_updated} item(s) updated.`,
+          {
+            duration: 6000,
+            icon: summary.total_price_change > 0 ? '⚠️' : '🎉'
+          }
+        );
+      }
+      
+      // Refresh cart to show updated prices
+      if (refreshCart) {
+        refreshCart();
+      }
+      
+      setPriceUpdateReceived(true);
+      
+      // Reset the flag after a short delay
+      setTimeout(() => setPriceUpdateReceived(false), 3000);
+    };
+
+    window.addEventListener('priceUpdate', handlePriceUpdate);
+    
+    return () => {
+      window.removeEventListener('priceUpdate', handlePriceUpdate);
+    };
+  }, [refreshCart]);
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -52,10 +93,8 @@ export const Checkout = () => {
       navigate('/cart');
     }
   }, [cart, cartLoading, navigate]);
-
   // Fetch checkout data
   useEffect(() => {
-    const fetchCheckoutData = async () => {
       if (!isAuthenticated) return;
 
       try {
@@ -464,7 +503,25 @@ export const Checkout = () => {
           {/* Right Column - Order Summary */}
           <div className="lg:col-span-1">
             <div className="bg-white rounded-lg shadow p-6 sticky top-4">
-              <h2 className="text-xl font-semibold text-gray-900 mb-4">Order Summary</h2>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-semibold text-gray-900">Order Summary</h2>
+                {priceUpdateReceived && (
+                  <div className="flex items-center text-green-600 text-sm">
+                    <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                    </svg>
+                    Prices Updated
+                  </div>
+                )}
+                {!isConnected && (
+                  <div className="flex items-center text-yellow-600 text-sm">
+                    <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                    </svg>
+                    Offline
+                  </div>
+                )}
+              </div>
 
               {/* Cart Items */}
               <div className="space-y-4 mb-6 max-h-64 overflow-y-auto">

@@ -6,21 +6,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
 from models.user import User, Address
-from models.order import Order
+from models.orders import Order
 from models.product import ProductVariant
 from services.jinja_template import JinjaTemplateService
-from tasks.email_tasks import (
-    send_order_confirmation_email,
-    send_shipping_update_email,
-    send_welcome_email,
-    send_password_reset_email,
-    send_email_verification,
-    send_email_change_confirmation,
-    send_order_delivered_email,
-    send_return_process_email,
-    send_referral_request_email,
-    send_low_stock_alert_email, # NEW
-)
+# Email tasks are imported separately where needed
+# from tasks.email_tasks import (...)
 from core.config import settings
 from core.kafka import get_kafka_producer_service # ADD THIS LINE
 from core.exceptions import APIException # Assuming APIException is suitable for service layer errors
@@ -30,7 +20,7 @@ from core.exceptions import APIException # Assuming APIException is suitable for
 class EmailService:
     def __init__(self, db_session: AsyncSession):
         self.db_session = db_session
-        self.template_service = JinjaTemplateService(template_dir="templates")
+        self.template_service = JinjaTemplateService(template_dir="core/utils/messages/templates")
 
     async def _get_user_by_id(self, user_id: UUID) -> User:
         result = await self.db_session.execute(select(User).filter(User.id == user_id))
@@ -221,7 +211,7 @@ class EmailService:
         """
         Sends an email notification to a user about their expiring payment method.
         """
-        from models.payment import PaymentMethod
+        from models.payments import PaymentMethod
         
         user = await self._get_user_by_id(user_id)
         payment_method = await self.db_session.get(PaymentMethod, payment_method_id)

@@ -119,7 +119,7 @@ export const TEST_UTILITIES_CONFIG = {
   
   // API mocking configuration
   apiMocking: {
-    baseUrl: 'http://localhost:8000/api/v1',
+    baseUrl: 'http://localhost:8000/v1',
     timeout: 5000,
     retries: 3,
   },

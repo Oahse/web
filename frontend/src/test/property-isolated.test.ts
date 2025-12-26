@@ -109,7 +109,7 @@ describe('Property-Based Testing Infrastructure', () => {
         expect(transformed.id).toBe(product.id);
         expect(transformed.category).toBe(product.category);
         expect(transformed.inStock).toBe(product.inStock);
-        expect(transformed.price).toBeGreaterThan(0);
+        expect(transformed.price).toBeGreaterThanOrEqual(0.01);
         expect(transformed.name.length).toBeGreaterThan(0);
         
         return true;

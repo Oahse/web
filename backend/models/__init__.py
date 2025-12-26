@@ -7,8 +7,8 @@ from .review import Review
 from .promocode import Promocode
 from .shipping import ShippingMethod
 from .wishlist import Wishlist, WishlistItem
-from .activity_log import ActivityLog
-from .webhook_event import WebhookEvent
+from .notifications import Notification
+from .transaction_logs import SagaLog, RequestLog
 from .loyalty import LoyaltyAccount, PointsTransaction
 from .variant_tracking import VariantTrackingEntry, VariantPriceHistory, VariantAnalytics, VariantSubstitution
 
@@ -17,7 +17,7 @@ from .orders import Order, OrderItem, TrackingEvent
 from .subscriptions import Subscription
 from .payments import PaymentMethod, PaymentIntent, Transaction
 from .notifications import Notification, NotificationPreference, NotificationHistory
-from .inventories import WarehouseLocation, Inventory, StockAdjustment
+from .inventories import WarehouseLocation, Inventory, StockAdjustment, InventoryReservation
 from .admin import PricingConfig, SubscriptionCostHistory, SubscriptionAnalytics, PaymentAnalytics
 
 # Import settings and utils if they exist
@@ -68,6 +68,7 @@ __all__ = [
     "WarehouseLocation",
     "Inventory",
     "StockAdjustment",
+    "InventoryReservation",
 
     # Admin models (consolidated)
     "PricingConfig",
@@ -87,12 +88,6 @@ __all__ = [
     "Wishlist",
     "WishlistItem",
 
-    # Activity models
-    "ActivityLog",
-    
-    # Webhook models
-    "WebhookEvent",
-    
     # Loyalty models
     "LoyaltyAccount",
     "PointsTransaction",

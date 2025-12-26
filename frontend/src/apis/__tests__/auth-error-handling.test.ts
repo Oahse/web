@@ -35,7 +35,7 @@ describe('Authentication Error Handling', () => {
       };
       
       try {
-        await mockClient.get('/api/v1/auth/profile');
+        await mockClient.get('/v1/auth/profile');
         expect.fail('Should have thrown an error');
       } catch (error: any) {
         expect(error.response.status).toBe(401);
@@ -66,7 +66,7 @@ describe('Authentication Error Handling', () => {
       };
       
       try {
-        await mockClient.get('/api/v1/auth/profile');
+        await mockClient.get('/v1/auth/profile');
         expect.fail('Should have thrown an error');
       } catch (error: any) {
         expect(error.response.status).toBe(401);
@@ -145,7 +145,7 @@ describe('Authentication Error Handling', () => {
       };
       
       try {
-        await mockClient.get('/api/v1/auth/profile');
+        await mockClient.get('/v1/auth/profile');
         expect.fail('Should have thrown an error');
       } catch (error: any) {
         expect(error.response.status).toBe(401);
@@ -165,7 +165,7 @@ describe('Authentication Error Handling', () => {
       };
       
       try {
-        await mockClient.get('/api/v1/auth/profile');
+        await mockClient.get('/v1/auth/profile');
         expect.fail('Should have thrown an error');
       } catch (error: any) {
         expect(error.response.status).toBe(401);
@@ -187,7 +187,7 @@ describe('Authentication Error Handling', () => {
       };
       
       try {
-        await mockClient.post('/api/v1/admin/users');
+        await mockClient.post('/v1/admin/users');
         expect.fail('Should have thrown an error');
       } catch (error: any) {
         expect(error.response.status).toBe(403);
@@ -211,7 +211,7 @@ describe('Authentication Error Handling', () => {
       };
       
       try {
-        await mockClient.get('/api/v1/auth/profile');
+        await mockClient.get('/v1/auth/profile');
         expect.fail('Should have thrown an error');
       } catch (error: any) {
         expect(error.response.status).toBe(401);
@@ -233,7 +233,7 @@ describe('Authentication Error Handling', () => {
       };
       
       try {
-        await mockClient.get('/api/v1/auth/profile');
+        await mockClient.get('/v1/auth/profile');
         expect.fail('Should have thrown an error');
       } catch (error: any) {
         expect(error.response.status).toBe(401);
@@ -291,7 +291,7 @@ describe('Authentication Error Handling', () => {
         })
       };
       
-      const response = await mockClient.post('/api/v1/auth/refresh', {
+      const response = await mockClient.post('/v1/auth/refresh', {
         refresh_token: refreshToken
       });
       
@@ -320,7 +320,7 @@ describe('Authentication Error Handling', () => {
       };
       
       try {
-        await mockClient.post('/api/v1/auth/refresh', {
+        await mockClient.post('/v1/auth/refresh', {
           refresh_token: refreshToken
         });
         expect.fail('Should have thrown an error');
@@ -340,9 +340,9 @@ describe('Authentication Error Handling', () => {
       
       // Public routes should be accessible
       const publicRoutes = [
-        '/api/v1/products',
-        '/api/v1/products/featured',
-        '/api/v1/categories'
+        '/v1/products',
+        '/v1/products/featured',
+        '/v1/categories'
       ];
       
       publicRoutes.forEach(route => {
@@ -353,10 +353,10 @@ describe('Authentication Error Handling', () => {
 
     it('should require token for protected routes', () => {
       const protectedRoutes = [
-        '/api/v1/auth/profile',
-        '/api/v1/cart',
-        '/api/v1/orders',
-        '/api/v1/products/' // POST to create
+        '/v1/auth/profile',
+        '/v1/cart',
+        '/v1/orders',
+        '/v1/products/' // POST to create
       ];
       
       // Without token, these should fail

@@ -28,7 +28,7 @@ with patch.dict('sys.modules', {
     from services.subscription_cost_calculator import SubscriptionCostCalculator
     from services.payment import PaymentService
     from services.jinja_template import JinjaTemplateService
-    from core.container_environment import ContainerEnvironmentService
+    from core.config import EnvironmentValidator
     from core.exceptions import APIException
 
 

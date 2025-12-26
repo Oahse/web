@@ -1,8 +1,9 @@
 from sqlalchemy.orm import sessionmaker, declarative_base
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
-from sqlalchemy import text, Column, DateTime, func, TypeDecorator, CHAR
+from sqlalchemy import text, Column, DateTime, func, TypeDecorator, CHAR, Index
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.exc import SQLAlchemyError, DisconnectionError, OperationalError
+from sqlalchemy.pool import QueuePool
 import asyncio
 import time
 import uuid
@@ -11,10 +12,13 @@ from contextlib import asynccontextmanager
 from fastapi import HTTPException
 from fastapi.exceptions import RequestValidationError
 from pydantic import ValidationError
+import logging
 
 # from core.config import settings # REMOVE THIS IMPORT
 from core.utils.logging import structured_logger
 from core.exceptions.api_exceptions import DatabaseException, APIException
+
+logger = logging.getLogger(__name__)
 
 Base = declarative_base()
 CHAR_LENGTH = 255
@@ -65,6 +69,276 @@ class BaseModel(Base):
 engine_db = None
 AsyncSessionDB = None
 
+class DatabaseOptimizer:
+    """PostgreSQL optimization utilities"""
+    
+    @staticmethod
+    def get_optimized_engine(database_uri: str = None, env_is_local: bool = None):
+        """Create optimized async engine with connection pooling"""
+        # Import settings here to avoid circular dependency
+        if database_uri is None or env_is_local is None:
+            from core.config import settings
+            database_uri = database_uri or settings.SQLALCHEMY_DATABASE_URI
+            env_is_local = env_is_local if env_is_local is not None else (settings.ENVIRONMENT == "local")
+            pool_size = getattr(settings, 'DB_POOL_SIZE', 20)
+            max_overflow = getattr(settings, 'DB_MAX_OVERFLOW', 30)
+            pool_timeout = getattr(settings, 'DB_POOL_TIMEOUT', 30)
+            pool_recycle = getattr(settings, 'DB_POOL_RECYCLE', 3600)
+        else:
+            pool_size = 20
+            max_overflow = 30
+            pool_timeout = 30
+            pool_recycle = 3600
+        
+        return create_async_engine(
+            database_uri,
+            # Connection pool settings for high performance
+            poolclass=QueuePool,
+            pool_size=pool_size,  # Number of connections to maintain in pool
+            max_overflow=max_overflow,  # Additional connections beyond pool_size
+            pool_pre_ping=True,  # Validate connections before use
+            pool_recycle=pool_recycle,  # Recycle connections every hour
+            pool_timeout=pool_timeout,  # Timeout for getting connection from pool
+            # Async settings
+            echo=env_is_local,  # Log SQL in development
+            future=True,
+            # Performance settings
+            connect_args={
+                "server_settings": {
+                    "application_name": "banwee_backend",
+                    "jit": "off",  # Disable JIT for faster startup
+                    "shared_preload_libraries": "pg_stat_statements",  # Enable query statistics
+                }
+            }
+        )
+    
+    @staticmethod
+    async def create_performance_indexes(db: AsyncSession):
+        """Create performance indexes for frequently queried columns"""
+        indexes = [
+            # User indexes
+            "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_users_email ON users(email);",
+            "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_users_created_at ON users(created_at);",
+            "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_users_is_active ON users(is_active);",
+            
+            # Product indexes
+            "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_products_category_id ON products(category_id);",
+            "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_products_is_active ON products(is_active);",
+            "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_products_created_at ON products(created_at);",
+            "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_products_name_gin ON products USING gin(to_tsvector('english', name));",
+            
+            # Product variants indexes
+            "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_product_variants_product_id ON product_variants(product_id);",
+            "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_product_variants_sku ON product_variants(sku);",
+            "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_product_variants_stock ON product_variants(stock);",
+            "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_product_variants_is_active ON product_variants(is_active);",
+            
+            # Order indexes
+            "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_orders_user_id ON orders(user_id);",
+            "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_orders_status ON orders(status);",
+            "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_orders_created_at ON orders(created_at);",
+            "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_orders_user_status ON orders(user_id, status);",
+            
+            # Order items indexes
+            "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_order_items_order_id ON order_items(order_id);",
+            "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_order_items_variant_id ON order_items(variant_id);",
+            
+            # Payment indexes
+            "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_payment_methods_user_id ON payment_methods(user_id);",
+            "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_payment_methods_is_active ON payment_methods(is_active);",
+            "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_payment_intents_user_id ON payment_intents(user_id);",
+            "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_payment_intents_status ON payment_intents(status);",
+            "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_transactions_user_id ON transactions(user_id);",
+            "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_transactions_created_at ON transactions(created_at);",
+            
+            # Review indexes
+            "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_reviews_product_id ON reviews(product_id);",
+            "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_reviews_user_id ON reviews(user_id);",
+            "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_reviews_rating ON reviews(rating);",
+            "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_reviews_created_at ON reviews(created_at);",
+            
+            # Notification indexes
+            "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_notifications_user_id ON notifications(user_id);",
+            "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_notifications_is_read ON notifications(is_read);",
+            "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_notifications_created_at ON notifications(created_at);",
+            "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_notifications_user_unread ON notifications(user_id, is_read) WHERE is_read = false;",
+            
+            # Wishlist indexes
+            "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_wishlist_items_user_id ON wishlist_items(user_id);",
+            "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_wishlist_items_product_id ON wishlist_items(product_id);",
+            "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_wishlist_items_user_product ON wishlist_items(user_id, product_id);",
+            
+            # Category indexes
+            "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_categories_parent_id ON categories(parent_id);",
+            "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_categories_is_active ON categories(is_active);",
+            
+            # Subscription indexes
+            "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_subscriptions_user_id ON subscriptions(user_id);",
+            "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_subscriptions_status ON subscriptions(status);",
+            "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_subscriptions_next_billing ON subscriptions(next_billing_date);",
+        ]
+        
+        for index_sql in indexes:
+            try:
+                await db.execute(text(index_sql))
+                logger.info(f"Created index: {index_sql.split('idx_')[1].split(' ')[0] if 'idx_' in index_sql else 'unknown'}")
+            except Exception as e:
+                # Index might already exist or other error
+                logger.warning(f"Index creation warning: {e}")
+        
+        await db.commit()
+        logger.info("Performance indexes creation completed")
+    
+    @staticmethod
+    async def optimize_postgresql_settings(db: AsyncSession):
+        """Apply PostgreSQL optimization settings"""
+        optimizations = [
+            # Memory settings
+            "SET shared_buffers = '256MB';",
+            "SET effective_cache_size = '1GB';",
+            "SET work_mem = '4MB';",
+            "SET maintenance_work_mem = '64MB';",
+            
+            # Checkpoint settings
+            "SET checkpoint_completion_target = 0.9;",
+            "SET wal_buffers = '16MB';",
+            
+            # Query planner settings
+            "SET random_page_cost = 1.1;",  # For SSD storage
+            "SET effective_io_concurrency = 200;",  # For SSD storage
+            
+            # Logging settings for production
+            "SET log_min_duration_statement = 1000;",  # Log slow queries (>1s)
+            "SET log_checkpoints = on;",
+            "SET log_connections = on;",
+            "SET log_disconnections = on;",
+            
+            # Connection settings
+            "SET max_connections = 100;",
+            
+            # Autovacuum settings
+            "SET autovacuum = on;",
+            "SET autovacuum_max_workers = 3;",
+            "SET autovacuum_naptime = '1min';",
+        ]
+        
+        for setting in optimizations:
+            try:
+                await db.execute(text(setting))
+                logger.info(f"Applied setting: {setting.split('SET ')[1].split(' =')[0]}")
+            except Exception as e:
+                # Some settings might require superuser privileges
+                logger.warning(f"Setting application warning: {e}")
+        
+        logger.info("PostgreSQL optimization settings applied")
+    
+    @staticmethod
+    async def analyze_tables(db: AsyncSession):
+        """Update table statistics for better query planning"""
+        tables = [
+            'users', 'products', 'product_variants', 'orders', 'order_items',
+            'payment_methods', 'payment_intents', 'transactions', 'reviews',
+            'notifications', 'wishlist_items', 'categories', 'subscriptions'
+        ]
+        
+        for table in tables:
+            try:
+                await db.execute(text(f"ANALYZE {table};"))
+                logger.info(f"Analyzed table: {table}")
+            except Exception as e:
+                logger.warning(f"Table analysis warning for {table}: {e}")
+        
+        logger.info("Table analysis completed")
+    
+    @staticmethod
+    async def vacuum_tables(db: AsyncSession):
+        """Vacuum tables to reclaim space and update statistics"""
+        tables = [
+            'users', 'products', 'product_variants', 'orders', 'order_items',
+            'payment_methods', 'payment_intents', 'transactions', 'reviews',
+            'notifications', 'wishlist_items', 'categories', 'subscriptions'
+        ]
+        
+        for table in tables:
+            try:
+                # Use VACUUM ANALYZE for better performance
+                await db.execute(text(f"VACUUM ANALYZE {table};"))
+                logger.info(f"Vacuumed table: {table}")
+            except Exception as e:
+                logger.warning(f"Vacuum warning for {table}: {e}")
+        
+        logger.info("Table vacuum completed")
+    
+    @staticmethod
+    async def get_database_stats(db: AsyncSession) -> dict:
+        """Get database performance statistics"""
+        try:
+            # Get database size
+            size_result = await db.execute(text(
+                "SELECT pg_size_pretty(pg_database_size(current_database())) as db_size;"
+            ))
+            db_size = size_result.scalar()
+            
+            # Get connection count
+            conn_result = await db.execute(text(
+                "SELECT count(*) as active_connections FROM pg_stat_activity WHERE state = 'active';"
+            ))
+            active_connections = conn_result.scalar()
+            
+            # Get slow queries count
+            slow_queries_result = await db.execute(text(
+                "SELECT count(*) as slow_queries FROM pg_stat_statements WHERE mean_time > 1000;"
+            ))
+            slow_queries = slow_queries_result.scalar() or 0
+            
+            # Get cache hit ratio
+            cache_result = await db.execute(text("""
+                SELECT 
+                    round(
+                        (sum(heap_blks_hit) / (sum(heap_blks_hit) + sum(heap_blks_read))) * 100, 2
+                    ) as cache_hit_ratio
+                FROM pg_statio_user_tables;
+            """))
+            cache_hit_ratio = cache_result.scalar() or 0
+            
+            return {
+                "database_size": db_size,
+                "active_connections": active_connections,
+                "slow_queries_count": slow_queries,
+                "cache_hit_ratio": f"{cache_hit_ratio}%",
+                "status": "healthy" if cache_hit_ratio > 90 else "needs_attention"
+            }
+            
+        except Exception as e:
+            logger.error(f"Error getting database stats: {e}")
+            return {
+                "error": str(e),
+                "status": "error"
+            }
+    
+    @staticmethod
+    async def run_maintenance(db: AsyncSession):
+        """Run complete database maintenance"""
+        logger.info("Starting database maintenance...")
+        
+        try:
+            # Create performance indexes
+            await DatabaseOptimizer.create_performance_indexes(db)
+            
+            # Analyze tables
+            await DatabaseOptimizer.analyze_tables(db)
+            
+            # Get stats
+            stats = await DatabaseOptimizer.get_database_stats(db)
+            logger.info(f"Database maintenance completed. Stats: {stats}")
+            
+            return stats
+            
+        except Exception as e:
+            logger.error(f"Database maintenance error: {e}")
+            raise
+
+
 class DatabaseManager:
     """Enhanced database manager with connection resilience and monitoring."""
 
@@ -75,21 +349,24 @@ class DatabaseManager:
         self._last_health_check = 0
         self._health_check_interval = 60  # Check health every 60 seconds
     
-    def initialize(self, database_uri: str, env_is_local: bool):
+    def initialize(self, database_uri: str, env_is_local: bool, use_optimized_engine: bool = True):
         """Initializes the database engine and session factory."""
         global engine_db, AsyncSessionDB
         if self.engine and self.session_factory: # Prevent re-initialization
             return
 
-        engine_db = create_async_engine(
-            database_uri,
-            echo=env_is_local,
-            pool_pre_ping=True,
-            pool_recycle=3600,
-            pool_size=10,
-            max_overflow=20,
-            pool_timeout=30
-        )
+        if use_optimized_engine:
+            engine_db = DatabaseOptimizer.get_optimized_engine(database_uri, env_is_local)
+        else:
+            engine_db = create_async_engine(
+                database_uri,
+                echo=env_is_local,
+                pool_pre_ping=True,
+                pool_recycle=3600,
+                pool_size=10,
+                max_overflow=20,
+                pool_timeout=30
+            )
 
         AsyncSessionDB = sessionmaker(
             bind=engine_db,
@@ -249,9 +526,21 @@ class DatabaseManager:
 # Global database manager instance
 db_manager = DatabaseManager()
 
-def initialize_db(database_uri: str, env_is_local: bool):
+def initialize_db(database_uri: str, env_is_local: bool, engine=None, use_optimized_engine: bool = True):
     """Initializes the database manager with engine and session factory."""
-    db_manager.initialize(database_uri, env_is_local)
+    if engine:
+        # Use provided optimized engine
+        global engine_db, AsyncSessionDB
+        engine_db = engine
+        AsyncSessionDB = sessionmaker(
+            bind=engine_db,
+            class_=AsyncSession,
+            expire_on_commit=False
+        )
+        db_manager.set_engine_and_session_factory(engine_db, AsyncSessionDB)
+    else:
+        # Use default initialization with optional optimization
+        db_manager.initialize(database_uri, env_is_local, use_optimized_engine)
 
 
 # Enhanced dependency to get the async session with retry logic
@@ -315,3 +604,52 @@ async def get_db_health() -> dict:
 async def get_db_pool_status() -> dict:
     """Get database connection pool status."""
     return await db_manager.get_connection_pool_status()
+
+
+# Async context manager for optimized database sessions
+class OptimizedAsyncSession:
+    """Optimized async session context manager"""
+    
+    def __init__(self, engine):
+        self.engine = engine
+        self.session = None
+    
+    async def __aenter__(self):
+        from sqlalchemy.ext.asyncio import AsyncSession
+        self.session = AsyncSession(
+            self.engine,
+            expire_on_commit=False,  # Keep objects accessible after commit
+            autoflush=True,  # Auto-flush before queries
+            autocommit=False
+        )
+        return self.session
+    
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        if self.session:
+            if exc_type:
+                await self.session.rollback()
+            else:
+                await self.session.commit()
+            await self.session.close()
+
+
+# Connection pool monitoring
+async def monitor_connection_pool(engine):
+    """Monitor connection pool health"""
+    pool = engine.pool
+    
+    stats = {
+        "pool_size": pool.size(),
+        "checked_in": pool.checkedin(),
+        "checked_out": pool.checkedout(),
+        "overflow": pool.overflow(),
+        "invalid": pool.invalid()
+    }
+    
+    logger.info(f"Connection pool stats: {stats}")
+    
+    # Alert if pool is getting full
+    if stats["checked_out"] > (stats["pool_size"] * 0.8):
+        logger.warning("Connection pool is getting full!")
+    
+    return stats

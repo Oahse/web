@@ -20,7 +20,7 @@ describe('Fast-check Configuration', () => {
 
   it('should generate and validate numbers', () => {
     fc.assert(
-      fc.property(fc.integer(1, 100), (num) => {
+      fc.property(fc.integer({ min: 1, max: 100 }), (num) => {
         expect(num).toBeGreaterThanOrEqual(1);
         expect(num).toBeLessThanOrEqual(100);
       }),

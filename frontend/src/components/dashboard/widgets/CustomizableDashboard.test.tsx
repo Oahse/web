@@ -14,8 +14,8 @@ vitest.mock('react-grid-layout', () => ({
   )),
   WidthProvider: vitest.fn((Component) => (props) => <Component {...props} />),
 }));
-vitest.mock('react-resizable/css/styles.css', () => {}); // Mock CSS import
-vitest.mock('react-grid-layout/css/styles.css', () => {}); // Mock CSS import
+vitest.mock('react-resizable/css/styles.css', () => ({ default: {} })); // Mock CSS import
+vitest.mock('react-grid-layout/css/styles.css', () => ({ default: {} })); // Mock CSS import
 
 // Mock lucide-react icons
 vitest.mock('lucide-react', () => ({

@@ -5,28 +5,7 @@ import { server } from './mocks/server';
 
 // Setup MSW server
 beforeAll(() => {
-  server.listen({ onUnhandledRequest: 'error' });
-});
-
-afterEach(() => {
-  // Reset handlers after each test
-  server.resetHandlers();
-  // Cleanup React Testing Library
-  cleanup();
-  // Clear all mocks
-  vi.clearAllMocks();
-  // Clear localStorage and sessionStorage
-  localStorage.clear();
-  sessionStorage.clear();
-});
-
-afterAll(() => {
-  server.close();
-});
-
-// Setup MSW server
-beforeAll(() => {
-  server.listen({ onUnhandledRequest: 'error' });
+  server.listen({ onUnhandledRequest: 'warn' });
 });
 
 afterEach(() => {

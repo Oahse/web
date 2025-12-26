@@ -9,7 +9,7 @@ from services.search import SearchService
 from services.products import ProductService
 from services.user import UserService
 
-router = APIRouter(prefix="/api/v1/search", tags=["Search"])
+router = APIRouter(prefix="/v1/search", tags=["Search"])
 
 
 @router.get("/autocomplete")

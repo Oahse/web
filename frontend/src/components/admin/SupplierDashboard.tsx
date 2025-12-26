@@ -47,7 +47,7 @@ const SupplierDashboard = () => {
   const fetchSupplierData = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/v1/admin/supplier/dashboard', {
+      const response = await fetch('/v1/admin/supplier/dashboard', {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('access_token')}`
         }

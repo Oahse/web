@@ -287,7 +287,7 @@ export const Subscription = () => {
               </p>
               <div className="flex items-center">
                 <img
-                  src="https://randomuser.me/api/portraits/women/12.jpg"
+                  src="https://randomuser.me/portraits/women/12.jpg"
                   alt="Customer"
                   className="w-10 h-10 rounded-full mr-3"
                 />
@@ -305,7 +305,7 @@ export const Subscription = () => {
               </p>
               <div className="flex items-center">
                 <img
-                  src="https://randomuser.me/api/portraits/men/32.jpg"
+                  src="https://randomuser.me/portraits/men/32.jpg"
                   alt="Customer"
                   className="w-10 h-10 rounded-full mr-3"
                 />
@@ -323,7 +323,7 @@ export const Subscription = () => {
               </p>
               <div className="flex items-center">
                 <img
-                  src="https://randomuser.me/api/portraits/women/45.jpg"
+                  src="https://randomuser.me/portraits/women/45.jpg"
                   alt="Customer"
                   className="w-10 h-10 rounded-full mr-3"
                 />

@@ -55,7 +55,7 @@ VAT_API_URL=https://vatlayer.com/api
 ### API Key Setup
 
 1. **TaxJar API** (US/Canada tax calculations):
-   - Sign up at: https://www.taxjar.com/api/
+   - Sign up at: https://www.taxjar.com/
    - Get your API key from the dashboard
    - Add to `TAX_API_KEY` environment variable
 

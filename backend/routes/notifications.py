@@ -7,11 +7,11 @@ from typing import List, Optional
 from uuid import UUID
 
 from core.database import get_db
-from core.auth import get_current_user
+from core.dependencies import get_current_user
 from models.user import User
 from models.notifications import Notification, NotificationPreference
 from services.notifications import NotificationService
-from schemas.notification import (
+from schemas.notifications import (
     NotificationResponse,
     NotificationPreferenceResponse,
     NotificationPreferenceUpdate,

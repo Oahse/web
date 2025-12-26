@@ -868,9 +868,9 @@ result = service.migrate_reportlab_template('invoice.html', reportlab_code)
 
 All existing export APIs continue to work with Jinja templates:
 
-- `/api/exports/subscriptions` - Subscription export
-- `/api/exports/payments` - Payment export
-- `/api/exports/invoices` - Invoice generation
+- `/exports/subscriptions` - Subscription export
+- `/exports/payments` - Payment export
+- `/exports/invoices` - Invoice generation
 
 ### Response Formats
 
@@ -878,13 +878,13 @@ APIs support multiple response formats through template selection:
 
 ```python
 # HTML response
-GET /api/exports/subscriptions?format=html
+GET /exports/subscriptions?format=html
 
 # CSV response  
-GET /api/exports/subscriptions?format=csv
+GET /exports/subscriptions?format=csv
 
 # JSON response
-GET /api/exports/subscriptions?format=json
+GET /exports/subscriptions?format=json
 ```
 
 ## Best Practices

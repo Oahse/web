@@ -95,7 +95,7 @@ describe('StripePaymentForm Component', () => {
     
     await waitFor(() => {
       expect(mockAxiosPost).toHaveBeenCalledWith(
-        '/api/v1/payments/create-payment-intent',
+        '/v1/payments/create-payment-intent',
         { order_id: defaultProps.orderId, amount: defaultProps.amount, currency: defaultProps.currency },
         { headers: { Authorization: 'Bearer mock-access-token' } }
       );

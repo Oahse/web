@@ -81,6 +81,8 @@ class ProductVariantResponse(BaseModel):
     stock: int
     attributes: Optional[Dict[str, Any]]
     is_active: bool
+    barcode: Optional[str] = None  # Base64 encoded barcode image
+    qr_code: Optional[str] = None  # Base64 encoded QR code image
     images: List[ProductImageResponse] = []
     primary_image: Optional[ProductImageResponse] = None
     created_at: str
@@ -134,3 +136,23 @@ class ProductListResponse(BaseModel):
 class ProductDetailResponse(ProductResponse):
     # Includes all product fields plus additional details
     pass
+
+
+class BarcodeGenerateRequest(BaseModel):
+    """Request model for generating barcode/QR code"""
+    variant_id: UUID
+
+
+class BarcodeResponse(BaseModel):
+    """Response model for barcode/QR code generation"""
+    variant_id: UUID
+    barcode: Optional[str] = None
+    qr_code: Optional[str] = None
+    
+    model_config = ConfigDict(from_attributes=True)
+
+
+class BarcodeUpdateRequest(BaseModel):
+    """Request model for updating barcode/QR code"""
+    barcode: Optional[str] = None
+    qr_code: Optional[str] = None

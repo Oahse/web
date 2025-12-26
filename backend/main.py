@@ -5,10 +5,13 @@ from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.sessions import SessionMiddleware
 from sqlalchemy.exc import SQLAlchemyError
-from core.database import AsyncSessionDB, initialize_db, db_manager 
-from services.notification import NotificationService 
+from core.database import AsyncSessionDB, initialize_db, db_manager, DatabaseOptimizer
+from services.notifications import NotificationService 
 import asyncio 
-from core.middleware import MaintenanceModeMiddleware, ActivityLoggingMiddleware 
+import os
+# Import configuration and middleware
+from core.config import settings, validate_startup_environment, get_setup_instructions
+from core.middleware import SessionMiddleware, RateLimitMiddleware, CacheMiddleware, MaintenanceModeMiddleware
 # Import exceptions and handlers
 from core.exceptions import (
     APIException,
@@ -18,29 +21,27 @@ from core.exceptions import (
     sqlalchemy_exception_handler,
     general_exception_handler
 )
-from core.config import settings
 from core.kafka import consume_messages, get_kafka_producer_service 
-from routes.websockets import ws_router
+from routes.websockets.index import ws_router
 from routes.auth import router as auth_router
 from routes.user import router as user_router
 from routes.products import router as products_router
 from routes.cart import router as cart_router
 from routes.orders import router as orders_router
 from routes.admin import router as admin_router
-from routes.admin_pricing import router as admin_pricing_router
-from routes.analytics import router as analytics_router
+# Import WebSocket Kafka consumer
+from services.websocket_kafka_consumer import start_websocket_kafka_consumer, stop_websocket_kafka_consumer
 from routes.social_auth import router as social_auth_router
 from routes.blog import router as blog_router
-from routes.subscription import router as subscription_router
+from routes.subscriptions import router as subscription_router
 from routes.review import router as review_router
-from routes.payment import payment_method_router, payment_router
+from routes.payments import router as payment_router
 from routes.wishlist import router as wishlist_router
-from routes.notification import router as notification_router
-from routes.notification_preferences import router as notification_preferences_router
+from routes.notifications import router as notification_router
 from routes.health import router as health_router
 # from routes.negotiator import router as negotiator_router
 from routes.search import router as search_router
-from routes.inventory import router as inventory_router
+from routes.inventories import router as inventory_router
 from routes.loyalty import router as loyalty_router
 
 
@@ -50,7 +51,7 @@ from contextlib import asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup event
     # Validate environment variables first
-    from core.environment_validator import validate_startup_environment
+    from core.config import validate_startup_environment, get_setup_instructions
     import logging
     
     logger = logging.getLogger(__name__)
@@ -63,21 +64,32 @@ async def lifespan(app: FastAPI):
             logger.error(validation_result.error_message)
         
         # Print setup instructions
-        from core.environment_validator import get_setup_instructions
         instructions = get_setup_instructions()
         logger.error("Setup Instructions:")
         logger.error(instructions)
         
-        raise RuntimeError("Invalid environment configuration. Please check your .env file.")
+        # For development, just warn instead of failing
+        if os.getenv("ENVIRONMENT", "local").lower() in ["local", "development", "dev"]:
+            logger.warning("Continuing with invalid environment configuration in development mode")
+        else:
+            raise RuntimeError("Invalid environment configuration. Please check your .env file.")
     
     logger.info("Environment validation passed ✅")
     if validation_result.warnings:
         for warning in validation_result.warnings:
             logger.warning(warning)
     
-    # Initialize the database engine and session factory
+    # Initialize the database engine and session factory with optimization
     from core.config import settings # Import settings here to avoid circular dependency
-    initialize_db(settings.SQLALCHEMY_DATABASE_URI, settings.ENVIRONMENT == "local")
+    optimized_engine = DatabaseOptimizer.get_optimized_engine()
+    initialize_db(settings.SQLALCHEMY_DATABASE_URI, settings.ENVIRONMENT == "local", engine=optimized_engine)
+
+    # Run database maintenance and optimization
+    try:
+        async with AsyncSessionDB() as db:
+            await DatabaseOptimizer.run_maintenance(db)
+    except Exception as e:
+        logger.warning(f"Database optimization warning: {e}")
 
     # Start Kafka Producer
     kafka_producer_service = await get_kafka_producer_service()
@@ -85,9 +97,25 @@ async def lifespan(app: FastAPI):
     # Start Kafka Consumer as a background task
     consumer_task = asyncio.create_task(consume_messages())
 
+    # Start WebSocket Kafka Consumer
+    try:
+        from services.websockets import start_websocket_kafka_consumer
+        await start_websocket_kafka_consumer()
+        logger.info("WebSocket Kafka consumer started successfully")
+    except Exception as e:
+        logger.error(f"Failed to start WebSocket Kafka consumer: {e}")
+
     asyncio.create_task(run_notification_cleanup())
     yield
     # Shutdown event
+    # Stop WebSocket Kafka Consumer
+    try:
+        from services.websockets import stop_websocket_kafka_consumer
+        await stop_websocket_kafka_consumer()
+        logger.info("WebSocket Kafka consumer stopped successfully")
+    except Exception as e:
+        logger.error(f"Error stopping WebSocket Kafka consumer: {e}")
+    
     # Stop Kafka Producer
     if kafka_producer_service:
         await kafka_producer_service.stop()
@@ -103,7 +131,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="Banwee API",
-    description="E-commerce platform with user management, product catalog, and order tracking.",
+    description="Discover premium organic products from Africa. Ethically sourced, sustainably produced, and delivered to your doorstep.",
     version="1.0.0",
     docs_url="/docs",
     redoc_url="/redoc",
@@ -134,11 +162,11 @@ if hasattr(settings, 'ALLOWED_HOSTS'):
         allowed_hosts=settings.ALLOWED_HOSTS
     )
 
-# Maintenance Mode Middleware (NEW ADDITION)
+# Middleware Stack (order matters - last added is executed first)
 app.add_middleware(MaintenanceModeMiddleware)
-
-# Activity Logging Middleware (NEW ADDITION)
-app.add_middleware(ActivityLoggingMiddleware)
+app.add_middleware(CacheMiddleware)
+app.add_middleware(RateLimitMiddleware)
+app.add_middleware(SessionMiddleware)
 
 
 # Include all routers with API versioning
@@ -148,17 +176,13 @@ app.include_router(products_router)
 app.include_router(cart_router)
 app.include_router(orders_router)
 app.include_router(admin_router)
-app.include_router(admin_pricing_router)
-app.include_router(analytics_router)
 app.include_router(social_auth_router)
 app.include_router(blog_router)
 app.include_router(subscription_router)
 app.include_router(review_router)
-app.include_router(payment_method_router)
 app.include_router(payment_router)
 app.include_router(wishlist_router)
 app.include_router(notification_router)
-app.include_router(notification_preferences_router)
 app.include_router(health_router)
 # app.include_router(negotiator_router)
 app.include_router(search_router)
@@ -193,7 +217,7 @@ async def read_root():
         "service": "Banwee API",
         "status": "Running",
         "version": "1.0.0",
-        "description": "E-commerce platform with user management, product catalog, and order tracking",
+        "description": "Discover premium organic products from Africa. Ethically sourced, sustainably produced, and delivered to your doorstep.",
     }
 
 # Legacy health endpoint - redirects to new health router

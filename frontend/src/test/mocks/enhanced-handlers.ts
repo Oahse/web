@@ -6,7 +6,7 @@
 import { rest } from 'msw';
 import { mockUsers, mockProducts, mockAPIErrors } from '../utils';
 
-const API_BASE_URL = 'http://localhost:8000/api/v1';
+const API_BASE_URL = 'http://localhost:8000/v1';
 
 // Enhanced authentication handlers with more scenarios
 export const enhancedAuthHandlers = [

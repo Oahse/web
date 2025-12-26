@@ -16,7 +16,7 @@ export const EmailVerification = () => {
 
     const verifyEmail = async () => {
       try {
-        const response = await fetch(`/api/v1/auth/verify-email?token=${token}`);
+        const response = await fetch(`/v1/auth/verify-email?token=${token}`);
         const data = await response.json();
 
         if (response.ok) {

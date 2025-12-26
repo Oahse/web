@@ -14,7 +14,7 @@ from services.user import UserService, AddressService
 from models.user import User
 from uuid import UUID
 
-router = APIRouter(prefix="/api/v1/auth", tags=["Authentication"])
+router = APIRouter(prefix="/v1/auth", tags=["Authentication"])
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 

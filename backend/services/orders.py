@@ -11,31 +11,70 @@ from models.user import User, Address
 from models.product import ProductVariant
 from models.shipping import ShippingMethod
 from models.payments import PaymentMethod
-from schemas.order import OrderResponse, OrderItemResponse, CheckoutRequest, OrderCreate
-from schemas.inventory import StockAdjustmentCreate
+from schemas.orders import OrderResponse, OrderItemResponse, CheckoutRequest, OrderCreate
+from schemas.inventories import StockAdjustmentCreate
 from services.cart import CartService
 from services.payments import PaymentService
-from services.notifications import NotificationService
-from services.activity import ActivityService
-from services.inventories import InventoryService
+from services.inventories import InventoryService 
 from models.inventories import Inventory
-from uuid import UUID
+from uuid import UUID, uuid4
 from datetime import datetime, timedelta
 from typing import Optional, List, Dict, Any
 from core.config import settings
 from core.kafka import get_kafka_producer_service
+import hashlib
 
 
 class OrderService:
     """Consolidated order service with comprehensive order management"""
     
-    def __init__(self, db: AsyncSession):
+    def __init__(self, db: AsyncSession, lock_service=None):
         self.db = db
-        self.inventory_service = InventoryService(db)
+        self.inventory_service = InventoryService(db, lock_service)
 
-    async def place_order(self, user_id: UUID, request: CheckoutRequest, background_tasks: BackgroundTasks) -> OrderResponse:
-        """Place an order from the user's cart"""
-        # Get user's cart
+    async def place_order_with_idempotency(
+        self, 
+        user_id: UUID, 
+        request: CheckoutRequest, 
+        background_tasks: BackgroundTasks,
+        idempotency_key: Optional[str] = None
+    ) -> OrderResponse:
+        """
+        Place an order with idempotency protection
+        Prevents duplicate orders from being created
+        """
+        # Generate idempotency key if not provided
+        if not idempotency_key:
+            # Create deterministic key based on user, cart state, and timestamp
+            cart_service = CartService(self.db)
+            cart = await cart_service.get_or_create_cart(user_id)
+            
+            # Create hash of cart contents + user + shipping details
+            cart_hash = self._generate_cart_hash(cart, request)
+            idempotency_key = f"order_{user_id}_{cart_hash}"
+        
+        # Check if order already exists with this idempotency key
+        existing_order = await self.db.execute(
+            select(Order).where(Order.idempotency_key == idempotency_key)
+        )
+        existing = existing_order.scalar_one_or_none()
+        
+        if existing:
+            # Return existing order
+            return await self._format_order_response(existing)
+        
+        # Proceed with order creation
+        return await self.place_order(user_id, request, background_tasks, idempotency_key)
+
+    async def place_order(
+        self, 
+        user_id: UUID, 
+        request: CheckoutRequest, 
+        background_tasks: BackgroundTasks,
+        idempotency_key: Optional[str] = None
+    ) -> OrderResponse:
+        """Place an order from the user's cart with single database transaction and price validation"""
+        # Pre-validation outside transaction to fail fast
         cart_service = CartService(self.db)
         cart = await cart_service.get_or_create_cart(user_id)
 
@@ -47,6 +86,23 @@ class OrderService:
         if not validation_result.get("valid", False):
             raise HTTPException(status_code=400, detail="Cart validation failed")
 
+        # Validate all prices against current database prices - never trust frontend
+        price_validation_result = await self._validate_and_recalculate_prices(cart)
+        if not price_validation_result["valid"]:
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Price validation failed: {price_validation_result['message']}"
+            )
+        
+        # Use backend-calculated prices, not frontend prices
+        validated_cart_items = price_validation_result["validated_items"]
+        backend_calculated_total = price_validation_result["total_amount"]
+        price_updates = price_validation_result.get("price_updates", [])
+        
+        # If there are price updates, send notification to frontend via WebSocket
+        if price_updates:
+            await self._send_price_update_notification(user_id, price_updates)
+
         # Verify shipping address exists
         shipping_address = await self.db.execute(
             select(Address).where(
@@ -56,7 +112,7 @@ class OrderService:
         if not shipping_address:
             raise HTTPException(status_code=404, detail="Shipping address not found")
 
-        # Verify shipping method exists
+        # Verify shipping method exists and get its cost
         shipping_method = await self.db.execute(
             select(ShippingMethod).where(ShippingMethod.id == request.shipping_method_id)
         )
@@ -72,65 +128,90 @@ class OrderService:
         if not payment_method:
             raise HTTPException(status_code=404, detail="Payment method not found")
 
-        # Calculate total amount
-        total_amount = cart.total_amount()
-
-        # Create order
-        order = Order(
-            user_id=user_id,
-            status="pending",
-            total_amount=total_amount,
-            shipping_address_id=request.shipping_address_id,
-            shipping_method_id=request.shipping_method_id,
-            payment_method_id=request.payment_method_id,
-            promocode_id=cart.promocode_id,
-            notes=request.notes
+        # Calculate final total with shipping and taxes (backend calculation only)
+        final_total = await self._calculate_final_order_total(
+            validated_cart_items, 
+            shipping_method, 
+            shipping_address
         )
-        self.db.add(order)
-        await self.db.flush()
 
-        # Create order items from cart items
-        active_cart_items = [item for item in cart.items if not item.saved_for_later]
-        for cart_item in active_cart_items:
-            order_item = OrderItem(
-                order_id=order.id,
-                variant_id=cart_item.variant_id,
-                quantity=cart_item.quantity,
-                price_per_unit=cart_item.price_per_unit,
-                total_price=cart_item.total_price
-            )
-            self.db.add(order_item)
-            
-            # Decrement stock for the ordered item
-            inventory_item = await self.inventory_service.get_inventory_item_by_variant_id(cart_item.variant_id)
-
-            if not inventory_item:
-                raise HTTPException(status_code=400, detail=f"No inventory record found for variant {cart_item.variant_id}")
-
-            await self.inventory_service.adjust_stock(
-                StockAdjustmentCreate(
-                    variant_id=cart_item.variant_id,
-                    location_id=inventory_item.location_id,
-                    quantity_change=-cart_item.quantity,
-                    reason="order_placed"
-                ),
-                adjusted_by_user_id=user_id
-            )
-
-        # Process payment
-        payment_service = PaymentService(self.db)
-        payment_result = None
-        
+        # Start single database transaction for entire checkout process
         try:
-            payment_result = await payment_service.process_payment(
-                user_id=user_id,
-                amount=total_amount,
-                payment_method_id=request.payment_method_id,
-                order_id=order.id
-            )
+            # Begin transaction - all operations below must succeed or all will be rolled back
+            async with self.db.begin():
+                # Create order with backend-calculated prices and idempotency key
+                order = Order(
+                    user_id=user_id,
+                    status="pending",
+                    total_amount=final_total["total_amount"],
+                    shipping_address_id=request.shipping_address_id,
+                    shipping_method_id=request.shipping_method_id,
+                    payment_method_id=request.payment_method_id,
+                    promocode_id=cart.promocode_id,
+                    notes=request.notes,
+                    idempotency_key=idempotency_key  # Store idempotency key
+                )
+                self.db.add(order)
+                await self.db.flush()  # Get order ID without committing
 
-            if payment_result.get("status") == "succeeded":
+                # Create order items with validated backend prices
+                for validated_item in validated_cart_items:
+                    # Check if stock is available (set to zero if out of stock)
+                    inventory_item = await self.inventory_service.get_inventory_item_by_variant_id(
+                        validated_item["variant_id"]
+                    )
+                    
+                    if not inventory_item or inventory_item.quantity <= 0:
+                        raise HTTPException(
+                            status_code=400, 
+                            detail=f"Product {validated_item['product_name']} is out of stock"
+                        )
+                    
+                    if inventory_item.quantity < validated_item["quantity"]:
+                        raise HTTPException(
+                            status_code=400, 
+                            detail=f"Insufficient stock for {validated_item['product_name']}. Available: {inventory_item.quantity}, Requested: {validated_item['quantity']}"
+                        )
+                    
+                    order_item = OrderItem(
+                        order_id=order.id,
+                        variant_id=validated_item["variant_id"],
+                        quantity=validated_item["quantity"],
+                        price_per_unit=validated_item["backend_price"],  # Use backend price
+                        total_price=validated_item["backend_total"]     # Use backend total
+                    )
+                    self.db.add(order_item)
+                    
+                    # Set stock to zero instead of reserving - immediate decrement
+                    new_quantity = inventory_item.quantity - validated_item["quantity"]
+                    if new_quantity < 0:
+                        new_quantity = 0
+                    
+                    inventory_item.quantity = new_quantity
+                    inventory_item.version += 1  # Optimistic locking increment
+                    
+                    
+
+                # Process payment with backend-calculated amount and idempotency
+                payment_service = PaymentService(self.db)
+                payment_idempotency_key = f"payment_{order.id}_{idempotency_key}" if idempotency_key else None
+                
+                payment_result = await payment_service.process_payment_idempotent(
+                    user_id=user_id,
+                    order_id=order.id,
+                    amount=final_total["total_amount"],  # Use backend-calculated total
+                    payment_method_id=request.payment_method_id,
+                    idempotency_key=payment_idempotency_key,
+                    request_id=str(uuid4())
+                )
+
+                if payment_result.get("status") != "succeeded":
+                    error_message = payment_result.get("error", "Payment processing failed")
+                    raise HTTPException(status_code=400, detail=f"Payment failed: {error_message}")
+
+                # Payment succeeded - update order status
                 order.status = "confirmed"
+                order.version += 1  # Optimistic locking increment
 
                 # Create initial tracking event
                 tracking_event = TrackingEvent(
@@ -141,62 +222,25 @@ class OrderService:
                 )
                 self.db.add(tracking_event)
 
-                # Commit order and tracking event BEFORE triggering Kafka tasks
-                await self.db.commit()
-                await self.db.refresh(order)
-
-                # Log activity for new order
-                activity_service = ActivityService(self.db)
-                await activity_service.log_activity(
-                    action_type="order",
-                    description=f"New order placed: #{order.id}",
-                    user_id=user_id,
-                    metadata={
-                        "order_id": str(order.id),
-                        "total_amount": float(total_amount),
-                        "status": order.status
-                    }
-                )
-
-                # Clear cart after successful order and commit
+                # Clear cart after successful order
                 await cart_service.clear_cart(user_id)
-                
-                # Trigger Kafka tasks AFTER commit
-                producer_service = await get_kafka_producer_service()
-                await producer_service.send_message(settings.KAFKA_TOPIC_EMAIL, {
-                    "service": "EmailService",
-                    "method": "send_order_confirmation",
-                    "args": [str(order.id)]
-                })
-                await producer_service.send_message(settings.KAFKA_TOPIC_NOTIFICATION, {
-                    "service": "NotificationService",
-                    "method": "create_notification",
-                    "args": [],
-                    "kwargs": {
-                        "user_id": str(user_id),
-                        "message": f"Your order #{order.id} has been confirmed!",
-                        "type": "success",
-                        "related_id": str(order.id)
-                    }
-                })
 
-            else:
-                # Payment failed
-                order.status = "payment_failed"
-                await self.db.commit()
-                await self.db.refresh(order)
+                # Transaction will auto-commit here if no exceptions occurred
                 
-                error_message = payment_result.get("error", "Payment processing failed")
-                raise HTTPException(status_code=400, detail=f"Payment failed: {error_message}")
-
-        except HTTPException:
-            raise
-        except Exception as e:
-            order.status = "payment_failed"
-            await self.db.commit()
+            # Refresh order after transaction commit
             await self.db.refresh(order)
             
-            raise HTTPException(status_code=400, detail=f"Payment processing failed: {str(e)}")
+            # Send Kafka events with idempotency after successful transaction commit
+            try:
+                await self._send_order_events_with_idempotency(order, user_id)
+            except Exception as kafka_error:
+                
+        except HTTPException:
+            # Re-raise HTTP exceptions (validation errors, payment failures, etc.)
+            raise
+        except Exception as e:
+            # Any other exception during transaction will auto-rollback
+            raise HTTPException(status_code=500, detail=f"Order processing failed: {str(e)}")
 
         return await self._format_order_response(order)
 
@@ -259,7 +303,7 @@ class OrderService:
         return await self._format_order_response(order)
 
     async def cancel_order(self, order_id: UUID, user_id: UUID) -> OrderResponse:
-        """Cancel an order"""
+        """Cancel an order with transaction safety"""
         query = select(Order).where(and_(Order.id == order_id, Order.user_id == user_id))
         result = await self.db.execute(query)
         order = result.scalar_one_or_none()
@@ -270,40 +314,47 @@ class OrderService:
         if order.status not in ["pending", "confirmed"]:
             raise HTTPException(status_code=400, detail="Order cannot be cancelled")
 
-        order.status = "cancelled"
+        # Use transaction for order cancellation
+        try:
+            async with self.db.begin():
+                order.status = "cancelled"
 
-        # Increment stock for cancelled order items
-        query_items = select(OrderItem).where(OrderItem.order_id == order.id).options(
-            selectinload(OrderItem.variant).selectinload(ProductVariant.inventory)
-        )
-        order_items_with_inventory = (await self.db.execute(query_items)).scalars().all()
+                # Increment stock for cancelled order items
+                query_items = select(OrderItem).where(OrderItem.order_id == order.id).options(
+                    selectinload(OrderItem.variant).selectinload(ProductVariant.inventory)
+                )
+                order_items_with_inventory = (await self.db.execute(query_items)).scalars().all()
 
-        for item in order_items_with_inventory:
-            if not item.variant or not item.variant.inventory:
-                print(f"Warning: No inventory found for variant {item.variant_id} during order cancellation.")
-                continue
-            
-            await self.inventory_service.adjust_stock(
-                StockAdjustmentCreate(
-                    variant_id=item.variant.id,
-                    location_id=item.variant.inventory.location_id,
-                    quantity_change=item.quantity,
-                    reason="order_cancelled"
-                ),
-                adjusted_by_user_id=user_id
-            )
+                for item in order_items_with_inventory:
+                    if not item.variant or not item.variant.inventory:
+                        print(f"Warning: No inventory found for variant {item.variant_id} during order cancellation.")
+                        continue
+                    
+                    # Use new increment stock method for cancellations
+                    await self.inventory_service.increment_stock_on_cancellation(
+                        variant_id=item.variant.id,
+                        quantity=item.quantity,
+                        location_id=item.variant.inventory.location_id,
+                        order_id=order.id,
+                        user_id=user_id
+                    )
 
-        # Add tracking event
-        tracking_event = TrackingEvent(
-            order_id=order.id,
-            status="cancelled",
-            description="Order cancelled by customer",
-            location="System"
-        )
-        self.db.add(tracking_event)
+                # Add tracking event
+                tracking_event = TrackingEvent(
+                    order_id=order.id,
+                    status="cancelled",
+                    description="Order cancelled by customer",
+                    location="System"
+                )
+                self.db.add(tracking_event)
 
-        await self.db.commit()
-        await self.db.refresh(order)
+                # Transaction will auto-commit here
+                
+            # Refresh order after transaction commit
+            await self.db.refresh(order)
+
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Order cancellation failed: {str(e)}")
 
         return await self._format_order_response(order)
 
@@ -369,6 +420,7 @@ class OrderService:
         await self.db.refresh(order)
         
         # Send notification to user about status change
+        from services.notifications import NotificationService
         notification_service = NotificationService(self.db)
         await notification_service.create_notification(
             user_id=order.user_id,
@@ -429,3 +481,336 @@ class OrderService:
             items=items,
             created_at=order.created_at.isoformat() if order.created_at else ""
         )
+
+    async def _validate_and_recalculate_prices(self, cart) -> Dict[str, Any]:
+        """
+        CRITICAL SECURITY: Validate all prices against current database prices
+        Never trust frontend prices - always recalculate on backend
+        """
+        try:
+            validated_items = []
+            total_discrepancies = []
+            price_updates = []  # Track items with price changes for frontend notification
+            
+            active_cart_items = [item for item in cart.items if not item.saved_for_later]
+            
+            for cart_item in active_cart_items:
+                # Fetch current variant details from database
+                variant_result = await self.db.execute(
+                    select(ProductVariant).where(ProductVariant.id == cart_item.variant_id).options(
+                        selectinload(ProductVariant.product)
+                    )
+                )
+                variant = variant_result.scalar_one_or_none()
+                
+                if not variant:
+                    return {
+                        "valid": False,
+                        "message": f"Product variant {cart_item.variant_id} no longer exists"
+                    }
+                
+                # Get current backend price (sale_price takes precedence over base_price)
+                backend_price = variant.sale_price if variant.sale_price else variant.base_price
+                backend_total = backend_price * cart_item.quantity
+                
+                # Compare with cart price (allow small floating point differences)
+                price_difference = abs(backend_price - cart_item.price_per_unit)
+                total_difference = abs(backend_total - cart_item.total_price)
+                
+                if price_difference > 0.01 or total_difference > 0.01:
+                    discrepancy_info = {
+                        "variant_id": str(cart_item.variant_id),
+                        "product_name": variant.product.name if variant.product else "Unknown",
+                        "variant_name": variant.name,
+                        "cart_price": cart_item.price_per_unit,
+                        "backend_price": backend_price,
+                        "difference": price_difference
+                    }
+                    total_discrepancies.append(discrepancy_info)
+                    
+                    # Add to price updates for frontend notification
+                    price_updates.append({
+                        "variant_id": str(cart_item.variant_id),
+                        "product_name": variant.product.name if variant.product else "Unknown",
+                        "variant_name": variant.name,
+                        "old_price": cart_item.price_per_unit,
+                        "new_price": backend_price,
+                        "quantity": cart_item.quantity,
+                        "old_total": cart_item.total_price,
+                        "new_total": backend_total,
+                        "is_sale": variant.sale_price is not None,
+                        "price_increased": backend_price > cart_item.price_per_unit
+                    })
+                
+                # Always use backend-calculated prices
+                validated_items.append({
+                    "variant_id": cart_item.variant_id,
+                    "quantity": cart_item.quantity,
+                    "cart_price": cart_item.price_per_unit,
+                    "backend_price": backend_price,
+                    "backend_total": backend_total,
+                    "product_name": variant.product.name if variant.product else "Unknown",
+                    "variant_name": variant.name
+                })
+            
+            # Calculate backend subtotal
+            backend_subtotal = sum(item["backend_total"] for item in validated_items)
+            
+            # If there are price discrepancies, we can either:
+            # 1. Reject the order (strict security)
+            # 2. Accept with backend prices (user-friendly)
+            # For security, we'll log discrepancies but use backend prices
+            
+            if total_discrepancies:
+                from core.utils.logging import structured_logger
+                structured_logger.warning(
+                    message="Price discrepancies detected during checkout",
+                    metadata={
+                        "discrepancies": total_discrepancies,
+                        "total_items": len(validated_items)
+                    }
+                )
+            
+            return {
+                "valid": True,
+                "validated_items": validated_items,
+                "backend_subtotal": backend_subtotal,
+                "total_amount": backend_subtotal,  # Will be updated with shipping/tax
+                "price_discrepancies": total_discrepancies,
+                "price_updates": price_updates  # For frontend notification
+            }
+            
+        except Exception as e:
+            return {
+                "valid": False,
+                "message": f"Price validation failed: {str(e)}"
+            }
+
+    async def _calculate_final_order_total(
+        self, 
+        validated_items: List[Dict], 
+        shipping_method, 
+        shipping_address
+    ) -> Dict[str, float]:
+        """
+        Calculate final order total with shipping, taxes, and discounts
+        All calculations done on backend - never trust frontend
+        """
+        try:
+            # Calculate subtotal from validated backend prices
+            subtotal = sum(item["backend_total"] for item in validated_items)
+            
+            # Calculate shipping cost
+            shipping_cost = 0.0
+            if shipping_method:
+                if hasattr(shipping_method, 'cost'):
+                    shipping_cost = shipping_method.cost
+                elif hasattr(shipping_method, 'price'):
+                    shipping_cost = shipping_method.price
+                else:
+                    # Default shipping logic if no cost field
+                    shipping_cost = 0.0 if subtotal >= 50 else 10.0
+            
+            # Calculate tax based on shipping address
+            tax_rate = await self._get_tax_rate(shipping_address)
+            tax_amount = subtotal * tax_rate
+            
+            # Apply any discounts (from promocodes, etc.)
+            discount_amount = 0.0  # TODO: Implement discount calculation
+            
+            # Calculate final total
+            total_amount = subtotal + shipping_cost + tax_amount - discount_amount
+            
+            return {
+                "subtotal": subtotal,
+                "shipping_cost": shipping_cost,
+                "tax_amount": tax_amount,
+                "tax_rate": tax_rate,
+                "discount_amount": discount_amount,
+                "total_amount": total_amount
+            }
+            
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Failed to calculate order total: {str(e)}")
+
+    async def _get_tax_rate(self, shipping_address) -> float:
+        """
+        Get tax rate based on shipping address
+        This should be implemented based on your tax requirements
+        """
+        # Default tax rate - implement proper tax calculation based on address
+        default_tax_rate = 0.08  # 8%
+        
+        # TODO: Implement proper tax calculation based on:
+        # - shipping_address.state
+        # - shipping_address.country
+        # - Local tax regulations
+        # - Tax service integration
+        
+        return default_tax_rate
+    async def _send_price_update_notification(self, user_id: UUID, price_updates: List[Dict]) -> None:
+        """
+        Send real-time price update notification to frontend via WebSocket
+        """
+        try:
+            from core.kafka import get_kafka_producer_service
+            from core.config import settings
+            
+            # Calculate summary statistics
+            total_items_updated = len(price_updates)
+            price_increases = [update for update in price_updates if update["price_increased"]]
+            price_decreases = [update for update in price_updates if not update["price_increased"]]
+            total_price_change = sum(update["new_total"] - update["old_total"] for update in price_updates)
+            
+            # Create notification message
+            notification_data = {
+                "type": "price_update",
+                "user_id": str(user_id),
+                "timestamp": datetime.utcnow().isoformat(),
+                "summary": {
+                    "total_items_updated": total_items_updated,
+                    "price_increases": len(price_increases),
+                    "price_decreases": len(price_decreases),
+                    "total_price_change": round(total_price_change, 2),
+                    "currency": "USD"
+                },
+                "items": price_updates,
+                "message": self._generate_price_update_message(price_updates, total_price_change)
+            }
+            
+            # Send via Kafka to WebSocket service
+            producer_service = await get_kafka_producer_service()
+            await producer_service.send_message(
+                settings.KAFKA_TOPIC_WEBSOCKET,
+                {
+                    "type": "price_update_notification",
+                    "user_id": str(user_id),
+                    "data": notification_data
+                },
+                key=str(user_id)
+            )
+            
+            # Also send as regular notification for persistence
+            await producer_service.send_message(
+                settings.KAFKA_TOPIC_NOTIFICATION,
+                {
+                    "service": "NotificationService",
+                    "method": "create_notification",
+                    "args": [],
+                    "kwargs": {
+                        "user_id": str(user_id),
+                        "message": notification_data["message"],
+                        "type": "info",
+                        "title": "Price Update",
+                        "metadata": {
+                            "type": "price_update",
+                            "items_updated": total_items_updated,
+                            "total_change": total_price_change
+                        }
+                    }
+                }
+            )
+            
+        except Exception as e:
+            # Don't fail checkout if notification fails
+            from core.utils.logging import structured_logger
+            structured_logger.error(
+                message="Failed to send price update notification",
+                metadata={
+                    "user_id": str(user_id),
+                    "price_updates_count": len(price_updates),
+                    "error": str(e)
+                },
+                exception=e
+            )
+    
+    def _generate_price_update_message(self, price_updates: List[Dict], total_change: float) -> str:
+        """
+        Generate a user-friendly message about price updates
+        """
+        total_items = len(price_updates)
+        
+        if total_items == 1:
+            update = price_updates[0]
+            if update["price_increased"]:
+                if update["is_sale"]:
+                    return f"Good news! {update['product_name']} is now on sale for ${update['new_price']:.2f}"
+                else:
+                    return f"Price updated: {update['product_name']} is now ${update['new_price']:.2f} (was ${update['old_price']:.2f})"
+            else:
+                return f"Price reduced: {update['product_name']} is now ${update['new_price']:.2f} (was ${update['old_price']:.2f})"
+        else:
+            if total_change > 0:
+                return f"Prices updated for {total_items} items in your cart. Total increase: ${total_change:.2f}"
+            elif total_change < 0:
+                return f"Great news! Prices reduced for {total_items} items in your cart. You save ${abs(total_change):.2f}!"
+            else:
+                return f"Prices updated for {total_items} items in your cart."
+
+    def _generate_cart_hash(self, cart: Cart, request: CheckoutRequest) -> str:
+        """
+        Generate deterministic hash for cart contents and checkout details
+        Used for idempotency key generation
+        """
+        # Create string representation of cart state
+        cart_items = sorted([
+            f"{item.variant_id}:{item.quantity}:{item.price_per_unit}"
+            for item in cart.items if not item.saved_for_later
+        ])
+        
+        cart_string = "|".join(cart_items)
+        
+        # Include checkout details
+        checkout_details = f"{request.shipping_address_id}:{request.shipping_method_id}:{request.payment_method_id}"
+        
+        # Create hash
+        full_string = f"{cart_string}|{checkout_details}"
+        return hashlib.md5(full_string.encode()).hexdigest()[:16]
+
+    async def _send_order_events_with_idempotency(self, order: Order, user_id: UUID):
+        """
+        Send Kafka events for order creation with idempotency keys
+        Prevents duplicate event processing
+        """
+        try:
+            producer_service = await get_kafka_producer_service()
+            
+            # Generate unique event IDs for idempotency
+            email_event_id = f"email_order_confirmation_{order.id}_{datetime.utcnow().timestamp()}"
+            notification_event_id = f"notification_order_created_{order.id}_{datetime.utcnow().timestamp()}"
+            
+            # Send email confirmation with idempotency
+            await producer_service.send_message_with_deduplication(
+                settings.KAFKA_TOPIC_EMAIL, 
+                {
+                    "event_id": email_event_id,
+                    "service": "EmailService",
+                    "method": "send_order_confirmation",
+                    "args": [str(order.id)],
+                    "idempotency_key": f"email_{order.id}",
+                    "timestamp": datetime.utcnow().isoformat()
+                }
+            )
+            
+            # Send notification with idempotency
+            await producer_service.send_message_with_deduplication(
+                settings.KAFKA_TOPIC_NOTIFICATION, 
+                {
+                    "event_id": notification_event_id,
+                    "service": "NotificationService",
+                    "method": "create_notification",
+                    "args": [],
+                    "kwargs": {
+                        "user_id": str(user_id),
+                        "message": f"Your order #{order.id} has been confirmed!",
+                        "type": "success",
+                        "related_id": str(order.id)
+                    },
+                    "idempotency_key": f"notification_order_{order.id}",
+                    "timestamp": datetime.utcnow().isoformat()
+                }
+            )
+            
+            
+        except Exception as e:
+            raise

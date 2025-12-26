@@ -12,11 +12,11 @@ import time
 from typing import Dict, Any, Optional
 import logging
 
-from core.database import get_db
+from core.database import get_db, DatabaseOptimizer
 from core.dependencies import get_current_user
 from models.user import User
 
-router = APIRouter(prefix="/health", tags=["health"])
+router = APIRouter(prefix="/v1/health", tags=["health"])
 logger = logging.getLogger(__name__)
 
 # Health check response models
@@ -235,10 +235,10 @@ async def api_endpoints_health_check():
     Check health of all API endpoints
     """
     endpoints_to_check = [
-        "/api/v1/products",
-        "/api/v1/users/profile",
-        "/api/v1/orders",
-        "/api/v1/cart"
+        "/v1/products",
+        "/v1/users/profile",
+        "/v1/orders",
+        "/v1/cart"
     ]
 
     checks = []
@@ -307,6 +307,60 @@ async def performance_metrics(
         "timestamp": datetime.utcnow().isoformat(),
         "metrics": metrics
     }
+
+
+# Database optimization endpoints
+@router.get("/database/stats")
+async def database_stats(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get database performance statistics (requires authentication)"""
+    if current_user.role not in ["admin", "moderator"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not enough permissions"
+        )
+    
+    try:
+        stats = await DatabaseOptimizer.get_database_stats(db)
+        return {
+            "timestamp": datetime.utcnow().isoformat(),
+            "database_stats": stats
+        }
+    except Exception as e:
+        logger.error(f"Error getting database stats: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to get database stats: {str(e)}"
+        )
+
+
+@router.post("/database/maintenance")
+async def run_database_maintenance(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Run database maintenance tasks (requires admin authentication)"""
+    if current_user.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin access required"
+        )
+    
+    try:
+        stats = await DatabaseOptimizer.run_maintenance(db)
+        return {
+            "timestamp": datetime.utcnow().isoformat(),
+            "message": "Database maintenance completed successfully",
+            "stats": stats
+        }
+    except Exception as e:
+        logger.error(f"Error running database maintenance: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Database maintenance failed: {str(e)}"
+        )
 
 # Health check helper functions
 

@@ -5,7 +5,7 @@ import { InteractiveChart } from './InteractiveChart';
 
 // Mock chart.js and react-chartjs-2 completely
 vitest.mock('chart.js', () => ({
-  Chart as ChartJS: { register: vitest.fn() },
+  Chart: { register: vitest.fn() },
   CategoryScale: vitest.fn(),
   LinearScale: vitest.fn(),
   PointElement: vitest.fn(),

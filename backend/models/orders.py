@@ -24,6 +24,12 @@ class Order(BaseModel):
     carrier_name = Column(String(100), nullable=True)
     tracking_number = Column(String(255), nullable=True)
     notes = Column(Text, nullable=True)
+    
+    # GOLDEN RULE 7: Optimistic locking
+    version = Column(Integer, default=0)
+    
+    # GOLDEN RULE 2: Idempotency for orders
+    idempotency_key = Column(String(255), unique=True, index=True, nullable=True)
 
     # Relationships with lazy loading
     user = relationship("User", back_populates="orders")

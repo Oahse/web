@@ -9,25 +9,25 @@ export const About = () => {
       name: 'Amara Okafor',
       position: 'Founder & CEO',
       bio: 'Amara founded Banwee with a vision to connect African producers with global markets while ensuring fair compensation and sustainable practices.',
-      image: 'https://randomuser.me/api/portraits/women/23.jpg',
+      image: 'https://randomuser.me/portraits/women/23.jpg',
     },
     {
       name: 'David Mensah',
       position: 'Chief Operating Officer',
       bio: 'David oversees day-to-day operations and our partnerships with producer cooperatives across Africa.',
-      image: 'https://randomuser.me/api/portraits/men/32.jpg',
+      image: 'https://randomuser.me/portraits/men/32.jpg',
     },
     {
       name: 'Fatima Diallo',
       position: 'Head of Sustainability',
       bio: 'Fatima ensures that all our products and practices meet the highest standards of environmental and social responsibility.',
-      image: 'https://randomuser.me/api/portraits/women/65.jpg',
+      image: 'https://randomuser.me/portraits/women/65.jpg',
     },
     {
       name: 'Michael Osei',
       position: 'Product Director',
       bio: 'Michael leads our product curation team, discovering exceptional African products and bringing them to our customers.',
-      image: 'https://randomuser.me/api/portraits/men/67.jpg',
+      image: 'https://randomuser.me/portraits/men/67.jpg',
     },
   ];
 

@@ -1,193 +1,154 @@
 import React, { useState } from 'react';
-import { ScanIcon, DownloadIcon, PrinterIcon, CopyIcon, CheckIcon } from 'lucide-react';
+import { ProductVariant, BarcodeData } from '../../types';
+import { ProductsAPI } from '../../apis/products';
 
-/**
- * @typedef {object} BarcodeDisplayProps
- * @property {string} barcode - base64 encoded barcode
- * @property {object} variant
- * @property {string} variant.id
- * @property {string} variant.name
- * @property {string} variant.sku
- * @property {string} [variant.product_name]
- * @property {'CODE128' | 'EAN13' | 'UPC'} [format='CODE128']
- * @property {'sm' | 'md' | 'lg'} [size='md']
- * @property {boolean} [showControls=true]
- * @property {boolean} [showSKU=true]
- * @property {string} [className]
- */
+interface BarcodeDisplayProps {
+  variant: ProductVariant;
+  showBoth?: boolean;
+  size?: 'sm' | 'md' | 'lg';
+  onCodesGenerated?: (codes: BarcodeData) => void;
+  canGenerate?: boolean;
+}
 
-export const BarcodeDisplay = ({
-  barcode,
+export const BarcodeDisplay: React.FC<BarcodeDisplayProps> = ({
   variant,
-  format = 'CODE128',
+  showBoth = true,
   size = 'md',
-  showControls = true,
-  showSKU = true,
-  className
+  onCodesGenerated,
+  canGenerate = false
 }) => {
-  const [copied, setCopied] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [codes, setCodes] = useState<BarcodeData>({
+    variant_id: variant.id,
+    barcode: variant.barcode,
+    qr_code: variant.qr_code
+  });
 
   const sizeClasses = {
-    sm: 'h-8',
-    md: 'h-12',
-    lg: 'h-16'
+    sm: 'w-24 h-16',
+    md: 'w-32 h-20',
+    lg: 'w-48 h-32'
   };
 
-  const downloadBarcode = () => {
+  const handleGenerateCodes = async () => {
+    if (!canGenerate) return;
+    
+    setIsGenerating(true);
+    try {
+      const response = await ProductsAPI.generateVariantCodes(variant.id);
+      if (response.success) {
+        const newCodes = {
+          variant_id: variant.id,
+          barcode: response.data.barcode,
+          qr_code: response.data.qr_code
+        };
+        setCodes(newCodes);
+        onCodesGenerated?.(newCodes);
+      }
+    } catch (error) {
+      console.error('Failed to generate codes:', error);
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const downloadCode = (dataUrl: string, filename: string) => {
     const link = document.createElement('a');
-    link.href = `data:image/png;base64,${barcode}`;
-    link.download = `barcode-${variant.sku}.png`;
+    link.href = dataUrl;
+    link.download = filename;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
   };
 
-  const printBarcode = () => {
-    const printWindow = window.open('', '_blank');
-    if (printWindow) {
-      printWindow.document.write(`
-        <html>
-          <head>
-            <title>Barcode - ${variant.name}</title>
-            <style>
-              body { 
-                font-family: Arial, sans-serif; 
-                text-align: center; 
-                padding: 20px; 
-              }
-              .barcode-container { 
-                display: inline-block; 
-  border: '1px solid var(--color-border)'; 
-                padding: 20px; 
-                margin: 20px; 
-              }
-              .barcode-info { 
-                margin-top: 10px; 
-                font-size: 14px; 
-              }
-              img { 
-                max-width: 300px; 
-                height: auto; 
-              }
-            </style>
-          </head>
-          <body>
-            <div className="barcode-container">
-              <h2>${variant.product_name || 'Product'}</h2>
-              <h3>${variant.name}</h3>
-              <img src="data:image/png;base64,${barcode}" alt="Barcode" />
-              <div className="barcode-info">
-                <p><strong>SKU:</strong> ${variant.sku}</p>
-                <p><strong>Format:</strong> ${format}</p>
-                <p><strong>Variant ID:</strong> ${variant.id}</p>
-              </div>
-            </div>
-          </body>
-        </html>
-      `);
-      printWindow.document.close();
-      printWindow.print();
-    }
-  };
-
-  const copyToClipboard = async () => {
-    try {
-      // Convert base64 to blob and copy to clipboard
-      const response = await fetch(`data:image/png;base64,${barcode}`);
-      const blob = await response.blob();
-      
-      await navigator.clipboard.write([
-        new ClipboardItem({ 'image/png': blob })
-      ]);
-      
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch (error) {
-      console.error('Failed to copy barcode:', error);
-      // Fallback: copy the base64 string
-      try {
-        await navigator.clipboard.writeText(`data:image/png;base64,${barcode}`);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
-      } catch (fallbackError) {
-        console.error('Failed to copy base64 string:', fallbackError);
-      }
-    }
-  };
-
-  if (!barcode) {
-    return (
-      <div className={`flex items-center justify-center bg-gray-100 rounded-lg border-2 border-dashed border-gray-300 p-4 ${className || ''}`}>
-        <div className="text-center">
-          <ScanIcon size={24} className="text-gray-400 mx-auto mb-2" />
-          <span className="text-xs text-gray-500">No Barcode</span>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className={`space-y-3 ${className || ''}`}>
-      {/* Barcode Image */}
-      <div className="relative group bg-white border border-gray-200 rounded-lg p-3">
-        <img
-          src={`data:image/png;base64,${barcode}`}
-          alt={`Barcode for ${variant.name}`}
-          className={`w-full object-contain ${sizeClasses[size]}`}
-        />
-        
-        {/* SKU Text */}
-        {showSKU && (
-          <div className="text-center mt-2">
-            <span className="text-xs font-mono text-gray-600">{variant.sku}</span>
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h3 className="text-lg font-semibold">Product Codes</h3>
+        {canGenerate && (
+          <button
+            onClick={handleGenerateCodes}
+            disabled={isGenerating}
+            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
+          >
+            {isGenerating ? 'Generating...' : 'Generate Codes'}
+          </button>
+        )}
+      </div>
+
+      <div className={`grid ${showBoth ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1'} gap-4`}>
+        {/* Barcode */}
+        {(showBoth || !codes.qr_code) && (
+          <div className="border rounded-lg p-4">
+            <div className="flex items-center justify-between mb-2">
+              <h4 className="font-medium">Barcode</h4>
+              {codes.barcode && (
+                <button
+                  onClick={() => downloadCode(codes.barcode!, `barcode-${variant.sku}.png`)}
+                  className="text-sm text-blue-600 hover:text-blue-800"
+                >
+                  Download
+                </button>
+              )}
+            </div>
+            {codes.barcode ? (
+              <div className="flex justify-center">
+                <img
+                  src={codes.barcode}
+                  alt={`Barcode for ${variant.sku}`}
+                  className={`${sizeClasses[size]} object-contain border`}
+                />
+              </div>
+            ) : (
+              <div className={`${sizeClasses[size]} border-2 border-dashed border-gray-300 flex items-center justify-center text-gray-500`}>
+                No barcode available
+              </div>
+            )}
+            <p className="text-xs text-gray-600 mt-2 text-center">SKU: {variant.sku}</p>
           </div>
         )}
-        
-        {/* Hover overlay with info */}
-        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center">
-          <div className="text-white text-center text-xs">
-            <ScanIcon size={16} className="mx-auto mb-1" />
-            <div>{format} Barcode</div>
-            <div className="font-mono">{variant.sku}</div>
+
+        {/* QR Code */}
+        {(showBoth || !codes.barcode) && (
+          <div className="border rounded-lg p-4">
+            <div className="flex items-center justify-between mb-2">
+              <h4 className="font-medium">QR Code</h4>
+              {codes.qr_code && (
+                <button
+                  onClick={() => downloadCode(codes.qr_code!, `qrcode-${variant.sku}.png`)}
+                  className="text-sm text-blue-600 hover:text-blue-800"
+                >
+                  Download
+                </button>
+              )}
+            </div>
+            {codes.qr_code ? (
+              <div className="flex justify-center">
+                <img
+                  src={codes.qr_code}
+                  alt={`QR Code for ${variant.name}`}
+                  className={`${sizeClasses[size]} object-contain border`}
+                />
+              </div>
+            ) : (
+              <div className={`${sizeClasses[size]} border-2 border-dashed border-gray-300 flex items-center justify-center text-gray-500`}>
+                No QR code available
+              </div>
+            )}
+            <p className="text-xs text-gray-600 mt-2 text-center">{variant.name}</p>
           </div>
-        </div>
+        )}
       </div>
 
-      {/* Controls */}
-      {showControls && (
-        <div className="flex items-center justify-center space-x-2">
-          <button
-            onClick={downloadBarcode}
-            className="p-2 text-gray-600 hover:text-primary hover:bg-gray-100 rounded-md transition-colors"
-            title="Download Barcode"
-          >
-            <DownloadIcon size={16} />
-          </button>
-          
-          <button
-            onClick={printBarcode}
-            className="p-2 text-gray-600 hover:text-primary hover:bg-gray-100 rounded-md transition-colors"
-            title="Print Barcode"
-          >
-            <PrinterIcon size={16} />
-          </button>
-          
-          <button
-            onClick={copyToClipboard}
-            className={`p-2 rounded-md transition-colors ${copied ? 'text-green-600 bg-green-100' : 'text-gray-600 hover:text-primary hover:bg-gray-100'}`}
-            title="Copy Barcode"
-          >
-            {copied ? <CheckIcon size={16} /> : <CopyIcon size={16} />}
-          </button>
-        </div>
-      )}
-
-      {/* Format Info */}
-      {size !== 'sm' && (
-        <div className="text-center text-xs text-gray-500">
-          <div>{format} Format</div>
-        </div>
-      )}
+      {/* Product Info */}
+      <div className="text-sm text-gray-600 space-y-1">
+        <p><span className="font-medium">Product:</span> {variant.product_name || 'N/A'}</p>
+        <p><span className="font-medium">Variant:</span> {variant.name}</p>
+        <p><span className="font-medium">Price:</span> ${variant.sale_price || variant.base_price}</p>
+        <p><span className="font-medium">Stock:</span> {variant.stock} units</p>
+      </div>
     </div>
   );
 };
+
+export default BarcodeDisplay;

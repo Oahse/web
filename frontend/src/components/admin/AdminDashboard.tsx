@@ -13,7 +13,14 @@ import {
 import { ExportButton } from '../dashboard/utils/ExportUtils';
 import { exportAnalytics } from '../../lib/exportUtils';
 
-// ... (rest of the file)
+export const AdminDashboard: React.FC = () => {
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // Simulate loading
+    const timer = setTimeout(() => setLoading(false), 1000);
+    return () => clearTimeout(timer);
+  }, []);
 
   const handleExport = async (format: string, exportType: 'users' | 'orders') => {
     try {

@@ -6,6 +6,7 @@ from decimal import Decimal
 
 from core.database import get_db
 from core.dependencies import get_current_user
+from core.utils.response import Response
 from models.user import User
 from services.loyalty import LoyaltyService
 from schemas.loyalty import (
@@ -22,17 +23,18 @@ from core.exceptions import APIException
 router = APIRouter(prefix="/loyalty", tags=["loyalty"])
 
 
-@router.get("/account", response_model=LoyaltyAccountResponse)
+@router.get("/account")
 async def get_loyalty_account(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
     """Get current user's loyalty account"""
     loyalty_service = LoyaltyService(db)
-    return await loyalty_service.get_loyalty_account(current_user.id)
+    account = await loyalty_service.get_loyalty_account(current_user.id)
+    return Response.success(data=account)
 
 
-@router.put("/account", response_model=LoyaltyAccountResponse)
+@router.put("/account")
 async def update_loyalty_account(
     update_data: LoyaltyAccountUpdate,
     current_user: User = Depends(get_current_user),
@@ -40,10 +42,11 @@ async def update_loyalty_account(
 ):
     """Update current user's loyalty account"""
     loyalty_service = LoyaltyService(db)
-    return await loyalty_service.update_loyalty_account(current_user.id, update_data)
+    account = await loyalty_service.update_loyalty_account(current_user.id, update_data)
+    return Response.success(data=account)
 
 
-@router.post("/calculate-points", response_model=PointsCalculationResponse)
+@router.post("/calculate-points")
 async def calculate_points(
     request: PointsCalculationRequest,
     current_user: User = Depends(get_current_user),
@@ -51,10 +54,11 @@ async def calculate_points(
 ):
     """Calculate points for a given subscription value and tier"""
     loyalty_service = LoyaltyService(db)
-    return await loyalty_service.calculate_points_earned(
+    result = await loyalty_service.calculate_points_earned(
         subscription_value=request.subscription_value,
         user_tier=request.user_tier
     )
+    return Response.success(data=result)
 
 
 @router.post("/referral-bonus", response_model=ReferralBonusResponse)

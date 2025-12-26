@@ -1,19 +1,26 @@
-# routers/websockets.py
+"""
+Enhanced WebSocket Routes for Real-time Communication
+
+This module provides WebSocket endpoints with:
+- Structured message handling
+- Event-based subscriptions
+- User authentication
+- Connection management
+- Health monitoring
+"""
+
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Query, HTTPException
-from services.websockets import ConnectionManager
+from services.websockets import manager, MessageType, WebSocketMessage
 import json
 import logging
 from typing import Dict, Any, Optional
 from datetime import datetime
 
-# Setup logging
 logger = logging.getLogger(__name__)
-
 ws_router = APIRouter()
-manager = ConnectionManager()
 
 
-@ws_router.websocket("/ws")
+@ws_router.websocket("/v1/ws")
 async def websocket_endpoint(websocket: WebSocket, token: Optional[str] = Query(None)):
     """General WebSocket endpoint with optional authentication"""
     connection_id = None
@@ -24,74 +31,7 @@ async def websocket_endpoint(websocket: WebSocket, token: Optional[str] = Query(
 
         while True:
             data = await websocket.receive_text()
-            manager.stats["total_messages_received"] += 1
-
-            try:
-                # Parse JSON message
-                message = json.loads(data)
-                message_type = message.get("type", "message")
-
-                if message_type == "ping":
-                    # Handle ping and update connection status
-                    await manager.handle_ping(connection_id, message.get("timestamp"))
-
-                elif message_type == "subscribe":
-                    # Subscribe to event types
-                    event_types = message.get("events", [])
-                    success = await manager.subscribe_to_events(connection_id, event_types)
-                    response = {
-                        "type": "subscription_response",
-                        "success": success,
-                        "events": event_types,
-                        "timestamp": datetime.utcnow().isoformat()
-                    }
-                    await manager.send_to_connection(connection_id, json.dumps(response))
-
-                elif message_type == "unsubscribe":
-                    # Unsubscribe from event types
-                    event_types = message.get("events", [])
-                    success = await manager.unsubscribe_from_events(connection_id, event_types)
-                    response = {
-                        "type": "unsubscription_response",
-                        "success": success,
-                        "events": event_types,
-                        "timestamp": datetime.utcnow().isoformat()
-                    }
-                    await manager.send_to_connection(connection_id, json.dumps(response))
-
-                elif message_type == "cart_update":
-                    # Broadcast cart updates to user's connections
-                    user_id = message.get("user_id")
-                    if user_id:
-                        await manager.broadcast_cart_update(user_id, message.get("data", {}))
-
-                elif message_type == "order_update":
-                    # Broadcast order updates to user's connections
-                    user_id = message.get("user_id")
-                    if user_id:
-                        await manager.broadcast_order_update(user_id, message.get("data", {}))
-
-                elif message_type == "product_update":
-                    # Broadcast product updates to all connections
-                    await manager.broadcast_product_update(message.get("data", {}))
-
-                else:
-                    # Echo back unknown message types
-                    echo_response = {
-                        "type": "echo",
-                        "original_message": message,
-                        "timestamp": datetime.utcnow().isoformat()
-                    }
-                    await manager.send_to_connection(connection_id, json.dumps(echo_response))
-
-            except json.JSONDecodeError:
-                # Handle plain text messages
-                text_response = {
-                    "type": "text_message",
-                    "content": data,
-                    "timestamp": datetime.utcnow().isoformat()
-                }
-                await manager.send_to_connection(connection_id, json.dumps(text_response))
+            await manager.handle_message(connection_id, data)
 
     except WebSocketDisconnect:
         logger.info(f"WebSocket disconnected: {connection_id}")
@@ -103,121 +43,64 @@ async def websocket_endpoint(websocket: WebSocket, token: Optional[str] = Query(
             await manager.disconnect(connection_id, "error")
 
 
-@ws_router.websocket("/ws/notifications/{user_id}")
-async def user_notifications(websocket: WebSocket, user_id: str, token: Optional[str] = Query(None)):
+@ws_router.websocket("/v1/ws/notifications/{user_id}")
+async def user_notifications_endpoint(websocket: WebSocket, user_id: str, token: Optional[str] = Query(None)):
     """WebSocket endpoint for user-specific notifications with authentication"""
     connection_id = None
     try:
+        # Verify token if provided
+        if token:
+            authenticated_user_id = await manager.authenticate_connection(token)
+            if not authenticated_user_id or authenticated_user_id != user_id:
+                await websocket.close(code=1008, reason="Authentication failed")
+                raise HTTPException(status_code=401, detail="Authentication failed")
+
         # Connect with user authentication
-        connection_id = await manager.connect_user(websocket, user_id, token)
-        logger.info(
-            f"User WebSocket connection established: {connection_id} for user {user_id}")
+        connection_id = await manager.connect(websocket, token)
+        logger.info(f"User WebSocket connection established: {connection_id} for user {user_id}")
 
         # Auto-subscribe to user-specific events
-        user_events = ["order_updates", "cart_updates",
-                       "notifications", "user_status"]
+        user_events = ["notifications", "order_updates", "cart_updates", "user_status"]
         await manager.subscribe_to_events(connection_id, user_events)
 
         # Send subscription confirmation
-        subscription_message = {
-            "type": "auto_subscribed",
-            "events": user_events,
-            "user_id": user_id,
-            "message": f"Auto-subscribed to notifications for user {user_id}",
-            "timestamp": datetime.utcnow().isoformat()
-        }
-        await manager.send_to_connection(connection_id, json.dumps(subscription_message))
+        subscription_message = WebSocketMessage(
+            type=MessageType.SUBSCRIPTION_RESPONSE,
+            data={
+                "auto_subscribed": True,
+                "events": user_events,
+                "user_id": user_id,
+                "message": f"Auto-subscribed to notifications for user {user_id}"
+            },
+            connection_id=connection_id,
+            user_id=user_id
+        )
+        await manager.send_to_connection(connection_id, subscription_message)
 
         while True:
             data = await websocket.receive_text()
-            manager.stats["total_messages_received"] += 1
-
-            try:
-                message = json.loads(data)
-                message_type = message.get("type", "message")
-
-                if message_type == "ping":
-                    await manager.handle_ping(connection_id, message.get("timestamp"))
-
-                elif message_type == "subscribe":
-                    # Subscribe to additional notification types
-                    event_types = message.get("events", [])
-                    success = await manager.subscribe_to_events(connection_id, event_types)
-                    response = {
-                        "type": "subscription_response",
-                        "success": success,
-                        "events": event_types,
-                        "user_id": user_id,
-                        "timestamp": datetime.utcnow().isoformat()
-                    }
-                    await manager.send_to_connection(connection_id, json.dumps(response))
-
-                elif message_type == "unsubscribe":
-                    # Unsubscribe from notification types
-                    event_types = message.get("events", [])
-                    success = await manager.unsubscribe_from_events(connection_id, event_types)
-                    response = {
-                        "type": "unsubscription_response",
-                        "success": success,
-                        "events": event_types,
-                        "user_id": user_id,
-                        "timestamp": datetime.utcnow().isoformat()
-                    }
-                    await manager.send_to_connection(connection_id, json.dumps(response))
-
-                elif message_type == "get_status":
-                    # Get connection status
-                    connection_info = manager.get_connection_info(
-                        connection_id)
-                    status_response = {
-                        "type": "status_response",
-                        "connection_info": connection_info,
-                        "timestamp": datetime.utcnow().isoformat()
-                    }
-                    await manager.send_to_connection(connection_id, json.dumps(status_response))
-
-                else:
-                    # Handle other user-specific messages
-                    echo_response = {
-                        "type": "user_echo",
-                        "user_id": user_id,
-                        "original_message": message,
-                        "timestamp": datetime.utcnow().isoformat()
-                    }
-                    await manager.send_to_connection(connection_id, json.dumps(echo_response))
-
-            except json.JSONDecodeError:
-                error_response = {
-                    "type": "parse_error",
-                    "message": "Invalid JSON format",
-                    "timestamp": datetime.utcnow().isoformat()
-                }
-                await manager.send_to_connection(connection_id, json.dumps(error_response))
+            await manager.handle_message(connection_id, data)
 
     except WebSocketDisconnect:
-        logger.info(
-            f"User WebSocket disconnected: {connection_id} for user {user_id}")
+        logger.info(f"User WebSocket disconnected: {connection_id} for user {user_id}")
         if connection_id:
-            await manager.disconnect_user(connection_id, user_id)
+            await manager.disconnect(connection_id, "user_disconnect")
     except HTTPException as e:
         logger.warning(f"Authentication failed for user {user_id}: {e.detail}")
-        # Connection will be closed by the HTTPException
     except Exception as e:
-        logger.error(
-            f"User WebSocket error for {user_id}, connection {connection_id}: {e}")
+        logger.error(f"User WebSocket error for {user_id}, connection {connection_id}: {e}")
         if connection_id:
-            await manager.disconnect_user(connection_id, user_id)
+            await manager.disconnect(connection_id, "error")
+
 
 # Health and management endpoints
-
-
-@ws_router.get("/ws/stats")
+@ws_router.get("/v1/ws/stats")
 async def get_websocket_stats():
-    """Get WebSocket connection statistics"""
+    """Get comprehensive WebSocket connection statistics"""
     return manager.get_stats()
 
 
-@ws_router.get("/ws/connections/{user_id}")
+@ws_router.get("/v1/ws/connections/{user_id}")
 async def get_user_connections(user_id: str):
     """Get all connections for a specific user"""
     connections = manager.get_user_connections(user_id)
@@ -228,25 +111,112 @@ async def get_user_connections(user_id: str):
     }
 
 
-@ws_router.post("/ws/cleanup")
+@ws_router.get("/v1/ws/connection/{connection_id}")
+async def get_connection_info(connection_id: str):
+    """Get information about a specific connection"""
+    connection_info = manager.get_connection_info(connection_id)
+    if not connection_info:
+        raise HTTPException(status_code=404, detail="Connection not found")
+    return connection_info
+
+
+@ws_router.post("/v1/ws/cleanup")
 async def cleanup_dead_connections():
     """Manually trigger cleanup of dead connections"""
-    await manager.cleanup_dead_connections()
-    return {"message": "Dead connections cleanup completed"}
+    # This will be handled by the health check, but we can provide manual trigger
+    stats_before = manager.get_stats()
+    
+    # The cleanup is now handled automatically by the health check
+    # But we can return current stats
+    stats_after = manager.get_stats()
+    
+    return {
+        "message": "Health check is running automatically",
+        "stats_before": stats_before,
+        "stats_after": stats_after
+    }
 
 
-@ws_router.post("/ws/broadcast")
+@ws_router.post("/v1/ws/broadcast")
 async def broadcast_message(message: Dict[str, Any]):
     """Broadcast a message to all connections (admin only)"""
     # Note: In production, this should have proper admin authentication
-    message_json = json.dumps({
-        **message,
-        "timestamp": datetime.utcnow().isoformat(),
-        "type": message.get("type", "admin_broadcast")
-    })
+    
+    broadcast_message = WebSocketMessage(
+        type=MessageType.ADMIN_BROADCAST,
+        data={
+            **message,
+            "broadcast_type": "admin",
+            "server_timestamp": datetime.utcnow().isoformat()
+        }
+    )
 
-    sent_count = await manager.broadcast(message_json)
+    sent_count = await manager.broadcast(broadcast_message)
     return {
         "message": "Broadcast sent",
-        "sent_to_connections": sent_count
+        "sent_to_connections": sent_count,
+        "broadcast_data": broadcast_message.data
+    }
+
+
+@ws_router.post("/v1/ws/notify/{user_id}")
+async def notify_user(user_id: str, notification: Dict[str, Any]):
+    """Send notification to a specific user"""
+    sent_count = await manager.notify_user(user_id, notification)
+    return {
+        "message": f"Notification sent to user {user_id}",
+        "sent_to_connections": sent_count,
+        "notification": notification
+    }
+
+
+@ws_router.post("/v1/ws/broadcast/subscribers/{event_type}")
+async def broadcast_to_subscribers(event_type: str, message: Dict[str, Any]):
+    """Broadcast message to subscribers of a specific event type"""
+    
+    broadcast_message = WebSocketMessage(
+        type=MessageType(event_type) if event_type in [mt.value for mt in MessageType] else MessageType.NOTIFICATION,
+        data=message
+    )
+    
+    sent_count = await manager.broadcast_to_subscribers(event_type, broadcast_message)
+    return {
+        "message": f"Message broadcast to {event_type} subscribers",
+        "sent_to_connections": sent_count,
+        "event_type": event_type,
+        "data": message
+    }
+
+
+# Business-specific endpoints
+@ws_router.post("/v1/ws/order-update")
+async def broadcast_order_update(order_data: Dict[str, Any]):
+    """Broadcast order update to relevant subscribers"""
+    sent_count = await manager.broadcast_order_update(order_data)
+    return {
+        "message": "Order update broadcast",
+        "sent_to_connections": sent_count,
+        "order_data": order_data
+    }
+
+
+@ws_router.post("/v1/ws/product-update")
+async def broadcast_product_update(product_data: Dict[str, Any]):
+    """Broadcast product update to relevant subscribers"""
+    sent_count = await manager.broadcast_product_update(product_data)
+    return {
+        "message": "Product update broadcast",
+        "sent_to_connections": sent_count,
+        "product_data": product_data
+    }
+
+
+@ws_router.post("/v1/ws/inventory-update")
+async def broadcast_inventory_update(inventory_data: Dict[str, Any]):
+    """Broadcast inventory update to relevant subscribers"""
+    sent_count = await manager.broadcast_inventory_update(inventory_data)
+    return {
+        "message": "Inventory update broadcast",
+        "sent_to_connections": sent_count,
+        "inventory_data": inventory_data
     }

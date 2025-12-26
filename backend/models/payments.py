@@ -144,6 +144,10 @@ class Transaction(BaseModel):
     description = Column(Text, nullable=True)
     failure_reason = Column(Text, nullable=True)
     
+    # GOLDEN RULE 2: Idempotency for payments
+    idempotency_key = Column(String(255), unique=True, index=True, nullable=True)
+    request_id = Column(String(255), index=True, nullable=True)  # For tracking
+    
     # Additional transaction metadata
     transaction_details_metadata = Column(JSON, default=dict)
 
@@ -165,6 +169,8 @@ class Transaction(BaseModel):
             "transaction_type": self.transaction_type,
             "description": self.description,
             "failure_reason": self.failure_reason,
+            "idempotency_key": self.idempotency_key,
+            "request_id": self.request_id,
             "metadata": self.transaction_details_metadata,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,

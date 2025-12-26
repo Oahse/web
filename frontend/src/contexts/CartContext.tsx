@@ -7,6 +7,7 @@ interface CartContextType {
   cart: Cart | null;
   loading: boolean;
   fetchCart: () => Promise<void>;
+  refreshCart: () => Promise<void>;
   addItem: (item: AddToCartRequest) => Promise<boolean>;
   removeItem: (itemId: string) => Promise<void>;
   updateQuantity: (itemId: string, quantity: number) => Promise<void>;
@@ -44,6 +45,11 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
       setLoading(false);
     }
   }, []);
+
+  // ✅ Refresh cart (alias for fetchCart for price updates)
+  const refreshCart = useCallback(async () => {
+    await fetchCart();
+  }, [fetchCart]);
 
   // ✅ Load cart on mount
   useEffect(() => {
@@ -124,7 +130,7 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
       if (response?.data) {
         setCart(response.data);
       } else {
-        // Fallback if API doesn’t return updated cart
+        // Fallback if API doesn't return updated cart
         setCart(cart ? { ...cart, items: [], total_items: 0, total_amount: 0 } : null);
       }
     } catch (error) {
@@ -146,6 +152,7 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
         cart,
         loading,
         fetchCart,
+        refreshCart,
         addItem,
         removeItem,
         updateQuantity,
@@ -158,6 +165,7 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
     </CartContext.Provider>
   );
 };
+
 export const useCart = (): CartContextType => {
   const context = useContext(CartContext);
   if (context === undefined) {

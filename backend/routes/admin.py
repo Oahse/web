@@ -14,8 +14,6 @@ from models.user import User
 from models.orders import Order
 from services.auth import AuthService
 from schemas.auth import UserCreate
-from schemas.settings import SystemSettingResponse, SystemSettingUpdate
-from services.settings import SettingsService
 
 from fastapi.security import OAuth2PasswordBearer
 
@@ -24,7 +22,7 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 async def get_current_auth_user(token: str = Depends(oauth2_scheme), db: AsyncSession = Depends(get_db)) -> User:
     return await AuthService.get_current_user(token, db)
 
-router = APIRouter(prefix="/api/v1/admin", tags=["Admin"])
+router = APIRouter(prefix="/v1/admin", tags=["Admin"])
 
 class ShipOrderRequest(BaseModel):
     tracking_number: str
@@ -438,59 +436,6 @@ async def get_all_variants_admin(
         raise APIException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             message="Failed to fetch variants"
-        )
-
-# System Settings Routes
-@router.get("/system/settings", response_model=List[SystemSettingResponse])
-async def get_system_settings(
-    current_user: User = Depends(require_admin),
-    db: AsyncSession = Depends(get_db)
-):
-    """Get system settings (admin only)."""
-    try:
-        settings_service = SettingsService(db)
-        settings = await settings_service.get_all_settings()
-        return Response(success=True, data=settings)
-    except Exception as e:
-        raise APIException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            message=f"Failed to fetch system settings {str(e)}"
-        )
-
-@router.put("/system/settings", response_model=List[SystemSettingResponse])
-async def update_system_settings(
-    settings_updates: List[SystemSettingUpdate],
-    current_user: User = Depends(require_admin),
-    db: AsyncSession = Depends(get_db)
-):
-    """Update system settings (admin only)."""
-    try:
-        settings_service = SettingsService(db)
-        updated_settings = []
-        for setting_update in settings_updates:
-            existing_setting = await settings_service.get_setting(setting_update.key)
-            if not existing_setting:
-                raise APIException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    message=f"Setting with key {setting_update.key} not found."
-                )
-            
-            updated_setting = await settings_service.update_setting(existing_setting, setting_update)
-            updated_settings.append(updated_setting)
-
-            if setting_update.key == "maintenance_mode" and setting_update.value_type == "boolean":
-                enable_maintenance = updated_setting.value == "true"
-                maintenance_message_setting = await settings_service.get_setting("maintenance_mode_message")
-                maintenance_message = maintenance_message_setting.value if maintenance_message_setting else None
-                await settings_service.set_maintenance_mode(enable_maintenance, maintenance_message)
-
-        return Response(success=True, data=updated_settings, message="System settings updated successfully")
-    except APIException:
-        raise
-    except Exception as e:
-        raise APIException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            message=f"Failed to update system settings {str(e)}"
         )
 
 # Export Routes

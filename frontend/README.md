@@ -14,7 +14,7 @@ Copy `.env.example` to `.env` and fill in the following values:
 
 ```bash
 # API Configuration
-VITE_API_BASE_URL=http://localhost:8000/api/v1
+VITE_API_BASE_URL=http://localhost:8000/v1
 VITE_WS_BASE_URL=ws://localhost:8000
 VITE_STRIPE_PUBLIC_KEY=your_stripe_public_key
 

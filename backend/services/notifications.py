@@ -14,10 +14,10 @@ from uuid import UUID
 
 from models.notifications import Notification, NotificationPreference, NotificationHistory
 from models.user import User
-from models.subscription import Subscription
+from models.subscriptions import Subscription
 from models.product import ProductVariant
 from core.exceptions import APIException
-from routes.websockets import manager as websocket_manager
+# from routes.websockets import manager as websocket_manager  # Removed to break circular import
 from core.config import settings
 from services.email import EmailService
 
@@ -134,21 +134,27 @@ class NotificationService:
         if not notification.user_id:
             return
 
-        websocket_message = {
-            "type": event_type,
-            "notification": {
-                "id": str(notification.id),
-                "user_id": str(notification.user_id),
-                "message": notification.message,
-                "read": notification.read,
-                "type": notification.type,
-                "related_id": notification.related_id,
-                "created_at": notification.created_at.isoformat(),
-                "updated_at": notification.updated_at.isoformat() if notification.updated_at else None,
-            },
-            "timestamp": datetime.utcnow().isoformat()
-        }
-        await websocket_manager.send_to_user(str(notification.user_id), json.dumps(websocket_message))
+        # Lazy import to avoid circular import
+        try:
+            from routes.websockets import manager as websocket_manager
+            websocket_message = {
+                "type": event_type,
+                "notification": {
+                    "id": str(notification.id),
+                    "user_id": str(notification.user_id),
+                    "message": notification.message,
+                    "read": notification.read,
+                    "type": notification.type,
+                    "related_id": notification.related_id,
+                    "created_at": notification.created_at.isoformat(),
+                    "updated_at": notification.updated_at.isoformat() if notification.updated_at else None,
+                },
+                "timestamp": datetime.utcnow().isoformat()
+            }
+            await websocket_manager.send_to_user(str(notification.user_id), json.dumps(websocket_message))
+        except ImportError:
+            # WebSocket manager not available, skip websocket notification
+            pass
 
     async def _get_user_preferences(self, user_id: UUID) -> NotificationPreference:
         """Get user notification preferences, create default if not exists"""

@@ -8,7 +8,7 @@ import { toast } from 'react-hot-toast';
 
 // API Configuration
 export const API_CONFIG = {
-  baseURL: import.meta.env?.VITE_API_BASE_URL || 'http://localhost:8000/api/v1',
+  baseURL: import.meta.env?.VITE_API_BASE_URL || 'http://localhost:8000/v1',
   timeout: 30000,
   headers: {
     'Content-Type': 'application/json',
@@ -296,13 +296,13 @@ class APIClient {
   isPublicEndpoint(url) {
     // List of public endpoints that shouldn't show login prompts
     const publicEndpoints = [
-      '/api/v1/products/featured',
-      '/api/v1/products/popular',
-      '/api/v1/products',
-      '/api/v1/products/categories',
-      '/api/v1/auth/refresh',
-      '/api/v1/users/profile',
-      '/api/v1/orders/track/'  // Public order tracking
+      '/v1/products/featured',
+      '/v1/products/popular',
+      '/v1/products',
+      '/v1/products/categories',
+      '/v1/auth/refresh',
+      '/v1/users/profile',
+      '/v1/orders/track/'  // Public order tracking
     ];
 
     return publicEndpoints.some(endpoint => url.includes(endpoint));

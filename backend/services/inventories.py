@@ -8,22 +8,27 @@ from typing import Optional, List, Dict, Any
 from uuid import UUID
 from datetime import datetime, timedelta
 
-from models.inventories import Inventory, WarehouseLocation, StockAdjustment
+from models.inventories import Inventory, WarehouseLocation, StockAdjustment, InventoryReservation
 from models.product import ProductVariant
 from models.user import User
-from schemas.inventory import (
+from schemas.inventories import (
     WarehouseLocationCreate, WarehouseLocationUpdate,
     InventoryCreate, InventoryUpdate,
     StockAdjustmentCreate
 )
 from core.exceptions import APIException
+import asyncio
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class InventoryService:
-    """Consolidated inventory service with comprehensive inventory management"""
+    """Consolidated inventory service with comprehensive inventory management and distributed locking"""
     
-    def __init__(self, db: AsyncSession):
+    def __init__(self, db: AsyncSession, lock_service=None):
         self.db = db
+        self.lock_service = lock_service
 
     # --- WarehouseLocation CRUD ---
     async def create_warehouse_location(self, location_data: WarehouseLocationCreate) -> WarehouseLocation:
@@ -154,7 +159,8 @@ class InventoryService:
         await self.db.delete(inventory_item)
         await self.db.commit()
 
-    async def adjust_stock(self, adjustment_data: StockAdjustmentCreate, adjusted_by_user_id: Optional[UUID] = None) -> Inventory:
+    async def adjust_stock(self, adjustment_data: StockAdjustmentCreate, adjusted_by_user_id: Optional[UUID] = None, commit: bool = True) -> Inventory:
+        """Adjust stock levels with optional transaction control"""
         # Find the inventory item by variant_id and location_id
         if adjustment_data.variant_id and adjustment_data.location_id:
             inventory_item_query = select(Inventory).filter(
@@ -184,8 +190,9 @@ class InventoryService:
         else:
             inventory_item.quantity += adjustment_data.quantity_change
             inventory_item.updated_at = datetime.utcnow()
-            await self.db.commit()
-            await self.db.refresh(inventory_item)
+            if commit:
+                await self.db.commit()
+                await self.db.refresh(inventory_item)
 
         # Log the stock adjustment
         new_adjustment = StockAdjustment(
@@ -196,8 +203,9 @@ class InventoryService:
             notes=adjustment_data.notes
         )
         self.db.add(new_adjustment)
-        await self.db.commit()
-        await self.db.refresh(new_adjustment)
+        if commit:
+            await self.db.commit()
+            await self.db.refresh(new_adjustment)
         
         return inventory_item
 
@@ -386,11 +394,328 @@ class InventoryService:
         
         await self.db.commit()
         
-        return {
-            "updated_items": len(updated_items),
-            "errors": len(errors),
-            "details": {
-                "updated": updated_items,
-                "errors": errors
+    async def check_stock_availability(
+        self,
+        variant_id: UUID,
+        quantity: int,
+        location_id: Optional[UUID] = None
+    ) -> Dict[str, Any]:
+        """
+        Check if sufficient stock is available for purchase
+        Returns availability status and current stock levels
+        """
+        try:
+            # Find inventory item
+            query = select(Inventory).where(Inventory.variant_id == variant_id)
+            if location_id:
+                query = query.where(Inventory.location_id == location_id)
+            
+            result = await self.db.execute(query)
+            inventory = result.scalar_one_or_none()
+            
+            if not inventory:
+                return {
+                    "available": False,
+                    "current_stock": 0,
+                    "requested_quantity": quantity,
+                    "message": "Product not found in inventory"
+                }
+            
+            # Check if requested quantity is available
+            available = inventory.quantity >= quantity and inventory.quantity > 0
+            
+            return {
+                "available": available,
+                "current_stock": inventory.quantity,
+                "requested_quantity": quantity,
+                "inventory_id": str(inventory.id),
+                "location_id": str(inventory.location_id),
+                "is_low_stock": inventory.quantity <= inventory.low_stock_threshold,
+                "message": "Stock available" if available else f"Insufficient stock. Available: {inventory.quantity}, Requested: {quantity}"
             }
-        }
+            
+        except Exception as e:
+            logger.error(f"Error checking stock availability: {e}")
+            return {
+                "available": False,
+                "current_stock": 0,
+                "requested_quantity": quantity,
+                "message": f"Error checking stock: {str(e)}"
+            }
+
+    async def decrement_stock_on_purchase(
+        self,
+        variant_id: UUID,
+        quantity: int,
+        location_id: UUID,
+        order_id: Optional[UUID] = None,
+        user_id: Optional[UUID] = None
+    ) -> Dict[str, Any]:
+        """
+        Decrement stock immediately on successful purchase
+        Uses distributed locking to prevent race conditions across multiple instances
+        """
+        try:
+            # Use distributed lock for inventory operations if available
+            if self.lock_service:
+                async with self.lock_service.get_inventory_lock(variant_id, timeout=10) as lock:
+                    if not lock.acquired:
+                        raise APIException(
+                            status_code=409,
+                            message=f"Could not acquire inventory lock for variant {variant_id}. Please try again."
+                        )
+                    
+                    return await self._perform_stock_decrement(variant_id, quantity, location_id, order_id, user_id)
+            else:
+                # Fallback to database-only locking if Redis lock service not available
+                return await self._perform_stock_decrement(variant_id, quantity, location_id, order_id, user_id)
+                
+        except APIException:
+            raise
+        except Exception as e:
+            logger.error(f"Failed to decrement stock: {e}")
+            raise APIException(
+                status_code=500,
+                message=f"Failed to decrement stock: {str(e)}"
+            )
+    
+    async def _perform_stock_decrement(
+        self,
+        variant_id: UUID,
+        quantity: int,
+        location_id: UUID,
+        order_id: Optional[UUID] = None,
+        user_id: Optional[UUID] = None
+    ) -> Dict[str, Any]:
+        """Perform the actual stock decrement operation"""
+        async with self.db.begin():
+            # Additional pessimistic locking within the distributed lock
+            inventory_result = await self.db.execute(
+                select(Inventory)
+                .where(
+                    and_(
+                        Inventory.variant_id == variant_id,
+                        Inventory.location_id == location_id
+                    )
+                )
+                .with_for_update()  # Pessimistic lock prevents concurrent modifications
+            )
+            
+            inventory = inventory_result.scalar_one_or_none()
+            
+            if not inventory:
+                raise APIException(
+                    status_code=404,
+                    message=f"Inventory not found for variant {variant_id} at location {location_id}"
+                )
+            
+            # Check if sufficient stock is available
+            if inventory.quantity < quantity:
+                raise APIException(
+                    status_code=400,
+                    message=f"Insufficient stock. Available: {inventory.quantity}, Requested: {quantity}"
+                )
+            
+            # Decrement stock and increment version for optimistic locking
+            old_quantity = inventory.quantity
+            inventory.quantity -= quantity
+            inventory.version += 1
+            inventory.updated_at = datetime.utcnow()
+            
+            # Create stock adjustment record for audit trail
+            adjustment = StockAdjustment(
+                inventory_id=inventory.id,
+                quantity_change=-quantity,
+                reason="order_purchase",
+                adjusted_by_user_id=user_id,
+                notes=f"Stock decremented for order {order_id}" if order_id else "Stock decremented for purchase"
+                )
+                
+                self.db.add(adjustment)
+                await self.db.commit()
+                
+                # Log inventory change if logging is enabled
+                await self._log_inventory_change(
+                    action="stock_decremented",
+                    inventory_id=str(inventory.id),
+                    variant_id=str(variant_id),
+                    old_quantity=old_quantity,
+                    new_quantity=inventory.quantity,
+                    quantity_change=-quantity,
+                    reason="order_purchase",
+                    order_id=str(order_id) if order_id else None,
+                    user_id=str(user_id) if user_id else None
+                )
+                
+                logger.info(f"Decremented stock for variant {variant_id}: {old_quantity} -> {inventory.quantity}")
+                
+                return {
+                    "success": True,
+                    "old_quantity": old_quantity,
+                    "new_quantity": inventory.quantity,
+                    "quantity_decremented": quantity,
+                    "inventory_id": str(inventory.id),
+                    "is_now_out_of_stock": inventory.quantity == 0,
+                    "is_low_stock": inventory.quantity <= inventory.low_stock_threshold
+                }
+                
+        except APIException:
+            raise
+        except Exception as e:
+            logger.error(f"Failed to decrement stock: {e}")
+            raise APIException(
+                status_code=500,
+                message=f"Failed to decrement stock: {str(e)}"
+            )
+
+    async def increment_stock_on_cancellation(
+        self,
+        variant_id: UUID,
+        quantity: int,
+        location_id: UUID,
+        order_id: Optional[UUID] = None,
+        user_id: Optional[UUID] = None
+    ) -> Dict[str, Any]:
+        """
+        Increment stock when order is cancelled or refunded
+        Uses distributed locking for consistency across multiple instances
+        """
+        try:
+            # Use distributed lock for inventory operations if available
+            if self.lock_service:
+                async with self.lock_service.get_inventory_lock(variant_id, timeout=10) as lock:
+                    if not lock.acquired:
+                        raise APIException(
+                            status_code=409,
+                            message=f"Could not acquire inventory lock for variant {variant_id}. Please try again."
+                        )
+                    
+                    return await self._perform_stock_increment(variant_id, quantity, location_id, order_id, user_id)
+            else:
+                # Fallback to database-only locking if Redis lock service not available
+                return await self._perform_stock_increment(variant_id, quantity, location_id, order_id, user_id)
+                
+        except APIException:
+            raise
+        except Exception as e:
+            logger.error(f"Failed to increment stock: {e}")
+            raise APIException(
+                status_code=500,
+                message=f"Failed to increment stock: {str(e)}"
+            )
+    
+    async def _perform_stock_increment(
+        self,
+        variant_id: UUID,
+        quantity: int,
+        location_id: UUID,
+        order_id: Optional[UUID] = None,
+        user_id: Optional[UUID] = None
+    ) -> Dict[str, Any]:
+        """Perform the actual stock increment operation"""
+        async with self.db.begin():
+            # Lock inventory row for update
+            inventory_result = await self.db.execute(
+                select(Inventory)
+                .where(
+                    and_(
+                        Inventory.variant_id == variant_id,
+                        Inventory.location_id == location_id
+                    )
+                )
+                .with_for_update()
+            )
+            
+            inventory = inventory_result.scalar_one_or_none()
+            
+            if not inventory:
+                raise APIException(
+                    status_code=404,
+                    message=f"Inventory not found for variant {variant_id} at location {location_id}"
+                )
+            
+            # Increment stock
+            old_quantity = inventory.quantity
+            inventory.quantity += quantity
+            inventory.version += 1
+            inventory.updated_at = datetime.utcnow()
+            
+            # Create stock adjustment record
+            adjustment = StockAdjustment(
+                inventory_id=inventory.id,
+                quantity_change=quantity,
+                reason="order_cancelled",
+                adjusted_by_user_id=user_id,
+                notes=f"Stock restored from cancelled order {order_id}" if order_id else "Stock restored from cancellation"
+            )
+            
+            self.db.add(adjustment)
+            await self.db.commit()
+            
+            # Log inventory change
+            await self._log_inventory_change(
+                    action="stock_incremented",
+                    inventory_id=str(inventory.id),
+                    variant_id=str(variant_id),
+                    old_quantity=old_quantity,
+                    new_quantity=inventory.quantity,
+                    quantity_change=quantity,
+                    reason="order_cancelled",
+                    order_id=str(order_id) if order_id else None,
+                    user_id=str(user_id) if user_id else None
+                )
+                
+                logger.info(f"Incremented stock for variant {variant_id}: {old_quantity} -> {inventory.quantity}")
+                
+                return {
+                    "success": True,
+                    "old_quantity": old_quantity,
+                    "new_quantity": inventory.quantity,
+                    "quantity_incremented": quantity,
+                    "inventory_id": str(inventory.id)
+                }
+                
+        except APIException:
+            raise
+        except Exception as e:
+            logger.error(f"Failed to increment stock: {e}")
+            raise APIException(
+                status_code=500,
+                message=f"Failed to increment stock: {str(e)}"
+            )
+
+    async def _log_inventory_change(
+        self,
+        action: str,
+        inventory_id: str,
+        variant_id: str,
+        old_quantity: int,
+        new_quantity: int,
+        quantity_change: int,
+        reason: str,
+        order_id: Optional[str] = None,
+        user_id: Optional[str] = None
+    ):
+        """
+        Log inventory changes if logging is enabled
+        Uses unified logging system with settings check
+        """
+        try:
+            # Check if inventory logging is enabled
+            if hasattr(self, 'unified_logger') and await self.settings_service.is_inventory_logging_enabled():
+                await self.unified_logger.log_inventory_event(
+                    action=action,
+                    resource_id=inventory_id,
+                    details={
+                        "variant_id": variant_id,
+                        "old_quantity": old_quantity,
+                        "new_quantity": new_quantity,
+                        "quantity_change": quantity_change,
+                        "reason": reason,
+                        "order_id": order_id,
+                        "user_id": user_id
+                    }
+                )
+        except Exception as e:
+            logger.error(f"Failed to log inventory change: {e}")
+            # Don't raise exception as logging failures shouldn't break inventory operations

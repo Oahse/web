@@ -34,7 +34,7 @@ const StripePaymentForm = ({
       setLoading(true);
       try {
         const response = await axios.post(
-          "/api/v1/payments/create-payment-intent",
+          "/v1/payments/create-payment-intent",
           {
             order_id: orderId,
             amount: amount,

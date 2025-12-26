@@ -16,23 +16,21 @@ from typing import List
 from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy import select, func
 from sqlalchemy.orm import selectinload
-from core.database import AsyncSessionDB
+from core.database import db_manager, initialize_db
 from core.config import settings
 from core.utils.encryption import PasswordManager
 from core.database import Base
 from models.user import User, Address
 from models.product import Product, ProductVariant, ProductImage, Category
-from models.order import Order, OrderItem
+from models.orders import Order, OrderItem
 from models.blog import BlogPost
-from models.subscription import Subscription
+from models.subscriptions import Subscription
 from models.review import Review
-from models.payment import PaymentMethod
+from models.payments import PaymentMethod, Transaction
 from models.promocode import Promocode
 from models.shipping import ShippingMethod
-from models.transaction import Transaction
 from models.wishlist import Wishlist, WishlistItem
-from models.settings import SystemSettings  # Added SystemSettings import
-from models.notification import Notification  # Added Notification import
+from models.notifications import Notification  # Added Notification import
 
 # ---------------- Config ----------------
 FILTER_CATEGORIES = {
@@ -171,7 +169,7 @@ async def seed_sample_data(
 
     plaintext_passwords = {}  # email: plaintext_password for printing
 
-    async with AsyncSessionDB() as session:
+    async with db_manager.session_factory() as session:
         # -------- Categories --------
         categories = []
         for cat_id, cat_data in FILTER_CATEGORIES.items():
@@ -367,25 +365,6 @@ async def seed_sample_data(
             await session.commit()
         print(f"🎟️ Created {len(promocodes_batch)} promocodes.")
 
-        # -------- System Settings --------
-        # Create default system settings if they don't exist
-        existing_settings = await session.execute(select(SystemSettings))
-        if not existing_settings.scalar_one_or_none():
-            default_settings = SystemSettings(
-                maintenance_mode=False,
-                registration_enabled=True,
-                max_file_size=10,
-                allowed_file_types="jpg,jpeg,png,pdf",
-                email_notifications=True,
-                sms_notifications=False,
-            )
-            session.add(default_settings)
-            await session.commit()
-            await session.refresh(default_settings)
-            print("⚙️ Created default system settings.")
-        else:
-            print("⚙️ System settings already exist, skipping creation.")
-
         # -------- Products & Variants & Images --------
         # -------- Products & Variants & Images --------
         all_products_with_variants = []
@@ -422,10 +401,6 @@ async def seed_sample_data(
             dietary_tags = random.sample(
                 ["organic", "gluten-free", "vegan", "non-GMO", "fair-trade", "kosher", "halal"], 
                 k=random.randint(1, 3))
-            
-            seo_title = f"{product_name} from {origin_country} | Banwee"
-            seo_description = f"Buy authentic {product_name.lower()} from {origin_country}. {', '.join(dietary_tags).title()}. Direct from African farmers. Free shipping on orders over $50."
-            seo_keywords = [keyword.lower(), origin_country.lower(), chosen_category.name.lower()] + dietary_tags
 
             product = Product(
                 name=product_name,
@@ -438,11 +413,6 @@ async def seed_sample_data(
                 origin=origin_country,
                 dietary_tags=dietary_tags,
                 is_active=True,  # Ensure all products are active
-                # SEO fields
-                seo_title=seo_title[:60],  # Limit to 60 chars
-                seo_description=seo_description[:160],  # Limit to 160 chars
-                seo_keywords=seo_keywords,
-                slug=slug
             )
             session.add(product)
             await session.flush()  # Ensure product.id is populated
@@ -475,7 +445,6 @@ async def seed_sample_data(
                     name=variant_name,
                     base_price=base_price,
                     sale_price=sale_price,
-                    stock=random.randint(10, 200),  # Ensure stock availability
                     attributes={"size": variant_name,
                                 "weight": f"{v_idx * 500}g"},
                     is_active=True
@@ -627,17 +596,34 @@ async def seed_sample_data(
         print(
             f"❤️ Created {len(wishlist_items_batch)} wishlist items across various wishlists.")
 
+        # -------- Blog Tags --------
+        from models.blog import BlogTag, BlogPostTag
+        
+        tag_names = ["organic", "farming", "sustainability", "health", "recipes", "nutrition", "eco-friendly"]
+        blog_tags = []
+        for tag_name in tag_names:
+            tag = BlogTag(
+                id=uuid.uuid4(),
+                name=tag_name,
+                slug=tag_name.lower().replace(" ", "-")
+            )
+            blog_tags.append(tag)
+        
+        session.add_all(blog_tags)
+        await session.commit()
+        print(f"🏷️ Created {len(blog_tags)} blog tags.")
+
         # -------- Blog Posts --------
         blog_posts_batch = []
         for i in range(1, 11):  # Create 10 dummy blog posts
             chosen_admin = random.choice(admins)
+            title = f"Blog Post Title {i}"
             post = BlogPost(
                 id=uuid.uuid4(),
-                title=f"Blog Post Title {i}",
+                title=title,
+                slug=title.lower().replace(" ", "-").replace("#", ""),
                 content=f"This is the content for blog post number {i}. It discusses various organic farming techniques and sustainable practices.",
                 author_id=chosen_admin.id,
-                tags=random.sample(
-                    ["organic", "farming", "sustainability", "health", "recipes"], k=random.randint(1, 3)),
                 image_url=random.choice(image_urls),
                 is_published=True,
             )
@@ -649,6 +635,23 @@ async def seed_sample_data(
             for bp in blog_posts_batch:
                 await session.refresh(bp)
         print(f"📝 Created {len(blog_posts_batch)} blog posts.")
+
+        # -------- Blog Post Tags Associations --------
+        blog_post_tags_batch = []
+        for post in blog_posts_batch:
+            # Assign 1-3 random tags to each post
+            selected_tags = random.sample(blog_tags, k=random.randint(1, 3))
+            for tag in selected_tags:
+                blog_post_tag = BlogPostTag(
+                    blog_post_id=post.id,
+                    blog_tag_id=tag.id
+                )
+                blog_post_tags_batch.append(blog_post_tag)
+        
+        if blog_post_tags_batch:
+            session.add_all(blog_post_tags_batch)
+            await session.commit()
+        print(f"🏷️ Created {len(blog_post_tags_batch)} blog post tag associations.")
 
         # -------- Subscriptions --------
         subscriptions_batch = []
@@ -803,6 +806,9 @@ async def main():
     args = parser.parse_args()
 
     print("🚀 Initializing Banwee Database...")
+
+    # Initialize database connection
+    initialize_db(settings.SQLALCHEMY_DATABASE_URI, settings.ENVIRONMENT == "local")
 
     try:
         await create_tables()

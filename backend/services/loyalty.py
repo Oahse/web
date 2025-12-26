@@ -10,8 +10,8 @@ import json
 
 from models.loyalty import LoyaltyAccount, PointsTransaction
 from models.user import User
-from models.subscription import Subscription
-from models.order import Order
+from models.subscriptions import Subscription
+from models.orders import Order
 from schemas.loyalty import (
     LoyaltyAccountCreate, LoyaltyAccountUpdate, LoyaltyAccountResponse,
     PointsTransactionCreate, PointsTransactionResponse,

@@ -1,6 +1,6 @@
 services:
-  # PostgreSQL Database (Alpine)
-  # This service sets up the PostgreSQL database.
+  # PostgreSQL Database (Alpine) - Optimized Configuration
+  # This service sets up the PostgreSQL database with performance optimizations.
   # The 'environment' section configures the database name, user, and password for initial setup.
   # 'ports' maps the container's PostgreSQL port to the host machine.
   # 'volumes' ensures data persistence across container restarts.
@@ -10,10 +10,33 @@ services:
     container_name: banwee_postgres
     env_file:
       - ./.env
+    environment:
+      # Performance optimizations
+      POSTGRES_INITDB_ARGS: "--data-checksums --encoding=UTF8 --locale=C"
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./backend/scripts/postgres-init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    command: >
+      postgres
+      -c max_connections=100
+      -c shared_buffers=256MB
+      -c effective_cache_size=1GB
+      -c work_mem=4MB
+      -c maintenance_work_mem=64MB
+      -c checkpoint_completion_target=0.9
+      -c wal_buffers=16MB
+      -c random_page_cost=1.1
+      -c effective_io_concurrency=200
+      -c log_min_duration_statement=1000
+      -c log_checkpoints=on
+      -c log_connections=on
+      -c log_disconnections=on
+      -c autovacuum=on
+      -c autovacuum_max_workers=3
+      -c autovacuum_naptime=1min
+      -c shared_preload_libraries=pg_stat_statements
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U banwee"]
       interval: 10s
@@ -23,8 +46,9 @@ services:
       - banwee_network
     restart: unless-stopped
 
-  # Redis (Alpine)
-  # This service provides a Redis instance for caching, session management.
+  # Redis (Alpine) - Optimized for Cart Storage
+  # This service provides a Redis instance for caching, session management, and cart storage.
+  # Configured with persistence and memory optimization for cart data.
   redis:
     image: redis:7-alpine
     container_name: banwee_redis
@@ -32,7 +56,8 @@ services:
       - "6379:6379"
     volumes:
       - redis_data:/data
-    command: redis-server --appendonly yes
+      - ./backend/scripts/redis.conf:/usr/local/etc/redis/redis.conf:ro
+    command: redis-server /usr/local/etc/redis/redis.conf
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s

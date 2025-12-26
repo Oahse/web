@@ -11,8 +11,6 @@ from core.config import settings
 from models.user import User
 from schemas.auth import UserCreate, Token, UserResponse, AuthResponse
 from services.user import UserService
-# Added NotificationService import
-from services.notification import NotificationService
 from services.activity import ActivityService
 from core.database import get_db
 from core.utils.messages.email import send_email
@@ -25,8 +23,6 @@ class AuthService:
     def __init__(self, db: AsyncSession):
         self.db = db
         self.password_manager = PasswordManager()
-        self.notification_service = NotificationService(
-            db)  # Initialize NotificationService
 
     def verify_password(self, plain_password: str, hashed_password: str) -> bool:
         """Verify a password against its hash."""
@@ -95,7 +91,10 @@ class AuthService:
         admin_user_id = (await self.db.execute(admin_user_query)).scalar_one_or_none()
 
         if admin_user_id:
-            await self.notification_service.create_notification(
+            # Lazy import to avoid circular import
+            from services.notifications import NotificationService
+            notification_service = NotificationService(self.db)
+            await notification_service.create_notification(
                 user_id=str(admin_user_id),
                 message=f"New user registered: {new_user.email} ({new_user.firstname} {new_user.lastname}).",
                 type="info",

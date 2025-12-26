@@ -1,80 +1,26 @@
-import React, { useCallback, useEffect, useRef } from 'react';
+import React from 'react';
 import { motion } from 'framer-motion';
-import { ScanLineIcon, DownloadIcon, CopyIcon, XIcon } from 'lucide-react';
+import { XIcon } from 'lucide-react';
+import { BarcodeDisplay } from './BarcodeDisplay';
+import { ProductVariant } from '../../types';
 
-export const BarcodeModal = ({
-  code,
-  format = 'CODE128',
-  width = 300,
-  height = 100,
-  title = 'Product Barcode',
+interface BarcodeModalProps {
+  variant: ProductVariant;
+  isOpen: boolean;
+  onClose: () => void;
+  title?: string;
+  canGenerate?: boolean;
+  className?: string;
+}
+
+export const BarcodeModal: React.FC<BarcodeModalProps> = ({
+  variant,
   isOpen,
   onClose,
+  title = 'Product Barcode & QR Code',
+  canGenerate = false,
   className = '',
 }) => {
-  const canvasRef = useRef(null);
-
-  const generateBarcode = useCallback((text, canvas) => {
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    canvas.width = width;
-    canvas.height = height;
-
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, width, height);
-
-    ctx.fillStyle = '#000000';
-
-    const barWidth = width / (text.length * 8);
-    const barHeight = height * 0.7;
-    const startY = height * 0.1;
-
-    text.split('').forEach((char, index) => {
-      const charCode = char.charCodeAt(0);
-      const pattern = charCode % 8;
-
-      for (let i = 0; i < 8; i++) {
-        if ((pattern >> i) & 1) {
-          const x = (index * 8 + i) * barWidth;
-          ctx.fillRect(x, startY, barWidth * 0.8, barHeight);
-        }
-      }
-    });
-
-    ctx.fillStyle = '#000000';
-    ctx.font = '12px monospace';
-    ctx.textAlign = 'center';
-    ctx.fillText(text, width / 2, height * 0.9);
-
-    ctx.font = '10px sans-serif';
-    ctx.fillText(format, width / 2, height * 0.95);
-  }, [width, height, format]);
-
-  useEffect(() => {
-    if (isOpen && canvasRef.current && code) {
-      generateBarcode(code, canvasRef.current);
-    }
-  }, [code, format, width, height, isOpen, generateBarcode]);
-
-  const handleDownload = () => {
-    if (canvasRef.current) {
-      const link = document.createElement('a');
-      link.download = `barcode-${code}-${Date.now()}.png`;
-      link.href = canvasRef.current.toDataURL();
-      link.click();
-    }
-  };
-
-  const handleCopy = async () => {
-    try {
-      await navigator.clipboard.writeText(code);
-      alert('Barcode copied to clipboard!');
-    } catch (error) {
-      console.error('Error copying to clipboard:', error);
-    }
-  };
-
   if (!isOpen) return null;
 
   return (
@@ -89,66 +35,63 @@ export const BarcodeModal = ({
         initial={{ scale: 0.8, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         exit={{ scale: 0.8, opacity: 0 }}
-        className={`bg-white rounded-lg p-6 max-w-md w-full ${className}`}
-        onClick={(e) => e.stopPropagation()}
+        className={`bg-white rounded-lg p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto ${className}`}
+        onClick={(e: React.MouseEvent) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center space-x-2">
-            <ScanLineIcon size={24} className="text-primary" />
-            <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
-          </div>
+        <div className="flex items-center justify-between mb-6">
+          <h3 className="text-xl font-semibold text-gray-900">{title}</h3>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
+            className="text-gray-400 hover:text-gray-600 transition-colors p-1 rounded-md hover:bg-gray-100"
+            aria-label="Close modal"
           >
-            <XIcon size={20} />
+            <XIcon size={24} />
           </button>
         </div>
 
-        <div className="flex justify-center mb-4">
-          <div className="p-4 bg-white border-2 border-gray-200 rounded-lg">
-            <canvas
-              ref={canvasRef}
-              className="block"
-              style={{ width: width, height: height }}
-            />
+        {/* BarcodeDisplay Component */}
+        <div className="mb-6">
+          <BarcodeDisplay
+            variant={variant}
+            showBoth={true}
+            size="lg"
+            canGenerate={canGenerate}
+          />
+        </div>
+
+        {/* Additional Information */}
+        <div className="border-t pt-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+            <div>
+              <h4 className="font-medium text-gray-900 mb-2">Product Information</h4>
+              <div className="space-y-1 text-gray-600">
+                <p><span className="font-medium">Product:</span> {variant.product_name || 'N/A'}</p>
+                <p><span className="font-medium">Variant:</span> {variant.name}</p>
+                <p><span className="font-medium">SKU:</span> {variant.sku}</p>
+              </div>
+            </div>
+            <div>
+              <h4 className="font-medium text-gray-900 mb-2">Pricing & Stock</h4>
+              <div className="space-y-1 text-gray-600">
+                <p><span className="font-medium">Price:</span> ${variant.sale_price || variant.base_price}</p>
+                {variant.sale_price && (
+                  <p><span className="font-medium">Original:</span> <span className="line-through">${variant.base_price}</span></p>
+                )}
+                <p><span className="font-medium">Stock:</span> {variant.stock} units</p>
+              </div>
+            </div>
           </div>
         </div>
 
-        <div className="mb-4 space-y-2">
-          <div className="flex justify-between items-center">
-            <span className="text-sm text-gray-500">Format:</span>
-            <span className="text-sm font-medium text-gray-700">{format}</span>
-          </div>
-          <div className="flex justify-between items-center">
-            <span className="text-sm text-gray-500">Code:</span>
-            <span className="text-sm font-mono text-gray-700 bg-gray-50 px-2 py-1 rounded">
-              {code}
-            </span>
-          </div>
-        </div>
-
-        <div className="flex space-x-2">
-          <button
-            onClick={handleDownload}
-            className="flex-1 flex items-center justify-center space-x-2 bg-primary text-white px-4 py-2 rounded-md hover:bg-primary-dark transition-colors"
-          >
-            <DownloadIcon size={16} />
-            <span>Download</span>
-          </button>
-          <button
-            onClick={handleCopy}
-            className="flex-1 flex items-center justify-center space-x-2 bg-gray-100 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-200 transition-colors"
-          >
-            <CopyIcon size={16} />
-            <span>Copy Code</span>
-          </button>
-        </div>
-
-        <div className="mt-4 p-3 bg-info-50 rounded-lg">
-          <p className="text-xs text-info-700">
-            <strong>Tip:</strong> Use this barcode for inventory management, point-of-sale systems, or product tracking.
-          </p>
+        {/* Usage Tips */}
+        <div className="mt-6 p-4 bg-blue-50 rounded-lg">
+          <h4 className="font-medium text-blue-900 mb-2">Usage Tips</h4>
+          <ul className="text-sm text-blue-800 space-y-1">
+            <li>• Use the barcode for inventory management and point-of-sale systems</li>
+            <li>• Share the QR code for quick product access and mobile scanning</li>
+            <li>• Download codes for printing on labels or packaging</li>
+            <li>• Both codes contain the same product information for consistency</li>
+          </ul>
         </div>
       </motion.div>
     </motion.div>

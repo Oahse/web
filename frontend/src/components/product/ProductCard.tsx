@@ -384,16 +384,21 @@ export const ProductCard = ({
               {showBarcode && displayVariant.barcode && (
                 <div className="text-center">
                   <BarcodeDisplay
-                    barcode={displayVariant.barcode}
                     variant={{
                       id: displayVariant.id,
-                      name: displayVariant.name,
+                      product_id: product.id,
                       sku: displayVariant.sku,
-                      product_name: product.name
+                      name: displayVariant.name,
+                      base_price: displayVariant.base_price,
+                      sale_price: displayVariant.sale_price,
+                      stock: displayVariant.stock,
+                      images: displayVariant.images || [],
+                      product_name: product.name,
+                      barcode: displayVariant.barcode,
+                      qr_code: displayVariant.qr_code
                     }}
+                    showBoth={false}
                     size="sm"
-                    showControls={false}
-                    showSKU={false}
                   />
                 </div>
               )}
