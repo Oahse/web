@@ -8,7 +8,7 @@ from datetime import datetime, timezone, timedelta
 from typing import Dict, Any, List, Optional, Tuple
 from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, and_, or_, desc, asc, text
+from sqlalchemy import select, func, and_, or_, desc, asc, text, Integer, Integer
 from sqlalchemy.orm import selectinload
 from fastapi import HTTPException
 

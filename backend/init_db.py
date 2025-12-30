@@ -609,7 +609,7 @@ async def seed_sample_data(
                     guest_email=user.email if random.random() < 0.2 else None, # 20% chance of guest email
                     order_status=random.choice(["pending", "shipped", "delivered", "processing", "cancelled"]),
                     payment_status=random.choice(["pending", "paid", "refunded", "failed"]),
-                    fulfillment_status=random.choice(["unfulfilled", "fulfilled", "partially_fulfilled"]),
+                    fulfillment_status=random.choice(["unfulfilled", "fulfilled", "partial"]),
                     subtotal=0.0, # Will be updated
                     tax_amount=round(random.uniform(5.0, 20.0), 2),
                     shipping_amount=chosen_shipping_method.price,
