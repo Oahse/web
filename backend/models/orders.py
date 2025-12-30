@@ -2,10 +2,48 @@
 Optimized order models with hard delete only
 Includes: Order, OrderItem, TrackingEvent
 """
-from sqlalchemy import Column, String, ForeignKey, Float, Text, Integer, DateTime
+from sqlalchemy import Column, String, ForeignKey, Float, Text, Integer, DateTime, Enum as SQLEnum
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import relationship
 from core.database import BaseModel, CHAR_LENGTH, GUID, Index
+from enum import Enum
+
+
+class OrderStatus(str, Enum):
+    """Order status types"""
+    PENDING = "pending"
+    CONFIRMED = "confirmed"
+    PROCESSING = "processing"
+    SHIPPED = "shipped"
+    DELIVERED = "delivered"
+    CANCELLED = "cancelled"
+    REFUNDED = "refunded"
+
+
+class PaymentStatus(str, Enum):
+    """Payment status types"""
+    PENDING = "pending"
+    AUTHORIZED = "authorized"
+    PAID = "paid"
+    FAILED = "failed"
+    CANCELLED = "cancelled"
+    REFUNDED = "refunded"
+
+
+class FulfillmentStatus(str, Enum):
+    """Fulfillment status types"""
+    UNFULFILLED = "unfulfilled"
+    PARTIAL = "partial"
+    FULFILLED = "fulfilled"
+    CANCELLED = "cancelled"
+
+
+class OrderSource(str, Enum):
+    """Order source types"""
+    WEB = "web"
+    MOBILE = "mobile"
+    API = "api"
+    ADMIN = "admin"
 
 
 class Order(BaseModel):
@@ -33,9 +71,9 @@ class Order(BaseModel):
     guest_email = Column(String(CHAR_LENGTH), nullable=True)  # For guest orders
     
     # Status fields as columns for fast querying and indexing
-    order_status = Column(String(50), default="pending", nullable=False)
-    payment_status = Column(String(50), default="pending", nullable=False)
-    fulfillment_status = Column(String(50), default="unfulfilled", nullable=False)
+    order_status = Column(SQLEnum(OrderStatus), default=OrderStatus.PENDING, nullable=False)
+    payment_status = Column(SQLEnum(PaymentStatus), default=PaymentStatus.PENDING, nullable=False)
+    fulfillment_status = Column(SQLEnum(FulfillmentStatus), default=FulfillmentStatus.UNFULFILLED, nullable=False)
     
     # Financial information as columns for performance
     subtotal = Column(Float, nullable=False)
@@ -66,7 +104,7 @@ class Order(BaseModel):
     
     # Idempotency and source tracking
     idempotency_key = Column(String(255), unique=True, nullable=True)
-    source = Column(String(50), default="web", nullable=False)  # web, mobile, api
+    source = Column(SQLEnum(OrderSource), default=OrderSource.WEB, nullable=False)  # web, mobile, api
     
     # Legacy fields for backward compatibility
     status = Column(String(50), default="pending")  # Keep for existing code
@@ -83,6 +121,7 @@ class Order(BaseModel):
     tracking_events = relationship("TrackingEvent", back_populates="order", cascade="all, delete-orphan", lazy="select")
     transactions = relationship("Transaction", back_populates="order", lazy="select")
     payment_intents = relationship("PaymentIntent", back_populates="order", lazy="select")
+    refunds = relationship("Refund", back_populates="order", lazy="select")
 
     def to_dict(self) -> dict:
         """Convert order to dictionary for API responses"""

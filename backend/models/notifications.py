@@ -2,9 +2,34 @@
 Consolidated notification models
 Includes: Notification, NotificationPreference, NotificationHistory
 """
-from sqlalchemy import Column, String, Boolean, ForeignKey, Text, JSON, Index
+from sqlalchemy import Column, String, Boolean, ForeignKey, Text, JSON, Index, Integer, DateTime, Enum as SQLEnum
 from sqlalchemy.orm import relationship
 from core.database import BaseModel, CHAR_LENGTH, GUID
+from enum import Enum
+
+
+class NotificationType(str, Enum):
+    """Notification types"""
+    INFO = "info"
+    WARNING = "warning"
+    ERROR = "error"
+    SUCCESS = "success"
+
+
+class NotificationChannel(str, Enum):
+    """Notification delivery channels"""
+    EMAIL = "email"
+    SMS = "sms"
+    PUSH = "push"
+    INAPP = "inapp"
+
+
+class NotificationStatus(str, Enum):
+    """Notification delivery status"""
+    PENDING = "pending"
+    SENT = "sent"
+    DELIVERED = "delivered"
+    FAILED = "failed"
 
 
 class Notification(BaseModel):
@@ -26,14 +51,15 @@ class Notification(BaseModel):
     user_id = Column(GUID(), ForeignKey("users.id"), nullable=False)
     message = Column(Text, nullable=False)
     read = Column(Boolean, default=False)
-    # e.g., 'info', 'warning', 'error', 'success'
-    type = Column(String(CHAR_LENGTH), default="info")
+    # Notification type using enum
+    type = Column(SQLEnum(NotificationType), default=NotificationType.INFO)
     # e.g., order_id, product_id, subscription_id
     related_id = Column(String(CHAR_LENGTH), nullable=True)
     # Additional context data
     notification_details_metadata = Column(JSON, default=dict)
 
     user = relationship("User", back_populates="notifications")
+    notification_history = relationship("NotificationHistory", back_populates="notification", lazy="select")
 
     def to_dict(self) -> dict:
         return {
@@ -148,21 +174,21 @@ class NotificationHistory(BaseModel):
     notification_id = Column(GUID(), ForeignKey("notifications.id"), nullable=True)
     
     # Notification details
-    channel = Column(String(CHAR_LENGTH), nullable=False)  # email, sms, push, inapp
+    channel = Column(SQLEnum(NotificationChannel), nullable=False)  # email, sms, push, inapp
     notification_type = Column(String(CHAR_LENGTH), nullable=False)  # subscription_change, payment_confirmation, etc.
     subject = Column(String(CHAR_LENGTH), nullable=True)
     message = Column(Text, nullable=False)
     
     # Delivery status
-    status = Column(String(CHAR_LENGTH), default="pending")  # pending, sent, delivered, failed
-    delivery_attempts = Column(String, default="0")
+    status = Column(SQLEnum(NotificationStatus), default=NotificationStatus.PENDING)  # pending, sent, delivered, failed
+    delivery_attempts = Column(Integer, default=0)
     error_message = Column(Text, nullable=True)
     
     # Metadata for additional tracking
     history_metadata = Column(JSON, default=dict)
     
-    user = relationship("User")
-    notification = relationship("Notification")
+    user = relationship("User", back_populates="notification_history")
+    notification = relationship("Notification", back_populates="notification_history")
 
     def to_dict(self) -> dict:
         return {

@@ -52,6 +52,68 @@ async def check_stock_availability(
         )
 
 
+# --- Bulk Stock Check Endpoint for Express Checkout ---
+@router.post("/check-stock/bulk")
+async def check_bulk_stock_availability(
+    items: List[dict],
+    inventory_service: InventoryService = Depends(get_inventory_service)
+):
+    """Check stock availability for multiple items at once (Public endpoint for express checkout)."""
+    try:
+        results = []
+        
+        for item in items:
+            variant_id = item.get("variant_id")
+            quantity = item.get("quantity", 1)
+            
+            if not variant_id:
+                results.append({
+                    "variant_id": None,
+                    "available": False,
+                    "message": "Invalid variant ID",
+                    "stock_status": "error"
+                })
+                continue
+            
+            try:
+                stock_check = await inventory_service.check_stock_availability(
+                    UUID(variant_id), quantity
+                )
+                results.append({
+                    "variant_id": str(variant_id),
+                    "quantity_requested": quantity,
+                    **stock_check
+                })
+            except Exception as e:
+                results.append({
+                    "variant_id": str(variant_id),
+                    "quantity_requested": quantity,
+                    "available": False,
+                    "message": f"Stock check failed: {str(e)}",
+                    "stock_status": "error"
+                })
+        
+        # Calculate overall availability
+        all_available = all(result.get("available", False) for result in results)
+        unavailable_count = sum(1 for result in results if not result.get("available", False))
+        
+        return Response.success(
+            data={
+                "items": results,
+                "all_available": all_available,
+                "unavailable_count": unavailable_count,
+                "total_items": len(results)
+            },
+            message="Bulk stock check completed"
+        )
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to check bulk stock: {e}"
+        )
+
+
 # --- WarehouseLocation Endpoints ---
 @router.post("/locations")
 async def create_warehouse_location(

@@ -4,12 +4,40 @@
 
 import { apiClient, TokenManager } from './client';
 
+interface RegisterData {
+  email: string;
+  password: string;
+  firstname: string;
+  lastname: string;
+}
+
+interface LoginData {
+  email: string;
+  password: string;
+}
+
+interface ProfileData {
+  firstname?: string;
+  lastname?: string;
+  email?: string;
+}
+
+interface ChangePasswordData {
+  current_password: string;
+  new_password: string;
+}
+
+interface ResetPasswordData {
+  token: string;
+  password: string;
+}
+
 
 export class AuthAPI {
   /**
    * Register a new user
    */
-  static async register(data) {
+  static async register(data: RegisterData) {
     const response = await apiClient.post('/auth/register', data);
     
     if (response.data.access_token) {
@@ -26,7 +54,7 @@ export class AuthAPI {
   /**
    * Login user
    */
-  static async login(data) {
+  static async login(data: LoginData) {
     const response = await apiClient.post('/auth/login', data);
     
     if (response.data.access_token) {
@@ -65,7 +93,7 @@ export class AuthAPI {
   /**
    * Update user profile
    */
-  static async updateProfile(data) {
+  static async updateProfile(data: ProfileData) {
     const response = await apiClient.put('/auth/profile', data);
     
     // Update stored user data
@@ -79,21 +107,28 @@ export class AuthAPI {
   /**
    * Change password
    */
-  static async changePassword(data) {
+  static async changePassword(data: ChangePasswordData) {
     return await apiClient.put('/auth/change-password', data);
   }
 
   /**
    * Request password reset
    */
-  static async requestPasswordReset(email) {
+  static async requestPasswordReset(email: string) {
     return await apiClient.post('/auth/forgot-password', { email });
+  }
+
+  /**
+   * Forgot password - alias for requestPasswordReset
+   */
+  static async forgotPassword(email: string) {
+    return await this.requestPasswordReset(email);
   }
 
   /**
    * Reset password with token
    */
-  static async resetPassword(data) {
+  static async resetPassword(data: ResetPasswordData) {
     return await apiClient.post('/auth/reset-password', data);
   }
 

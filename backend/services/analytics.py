@@ -14,7 +14,7 @@ from fastapi import HTTPException
 
 from models.analytics import (
     UserSession, AnalyticsEvent, ConversionFunnel, CustomerLifecycleMetrics,
-    EventType, TrafficSource
+    EventType, TrafficSource 
 )
 from models.orders import Order
 from models.user import User

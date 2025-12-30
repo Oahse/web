@@ -223,6 +223,11 @@ class ProductVariant(BaseModel):
     cart_items = relationship("CartItem", back_populates="variant", lazy="select")
     order_items = relationship("OrderItem", back_populates="variant", lazy="select")
     inventory = relationship("Inventory", uselist=False, back_populates="variant", cascade="all, delete-orphan", lazy="selectin")
+    
+    # Variant tracking relationships
+    tracking_entries = relationship("VariantTrackingEntry", back_populates="variant", lazy="select")
+    price_history = relationship("VariantPriceHistory", back_populates="variant", lazy="select")
+    analytics = relationship("VariantAnalytics", back_populates="variant", lazy="select")
 
     @property
     def current_price(self) -> float:

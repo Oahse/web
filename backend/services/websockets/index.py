@@ -200,8 +200,8 @@ class ConnectionManager:
         # Event handlers
         self.event_handlers: Dict[MessageType, List[Callable]] = {}
         
-        # Start background health check
-        self._start_health_check()
+        # Health check task (will be started lazily)
+        self.health_check_task: Optional[asyncio.Task] = None
     
     def add_event_handler(self, message_type: MessageType, handler: Callable):
         """Add event handler for specific message type"""
@@ -239,6 +239,10 @@ class ConnectionManager:
                      connection_id: Optional[str] = None) -> str:
         """Connect a WebSocket with optional authentication"""
         await websocket.accept()
+        
+        # Start health check if this is the first connection
+        if self.health_check_task is None:
+            self._start_health_check()
         
         # Generate connection ID if not provided
         if connection_id is None:
@@ -607,6 +611,9 @@ class ConnectionManager:
     
     def _start_health_check(self):
         """Start global health check task"""
+        if self.health_check_task is not None:
+            return  # Already started
+            
         async def health_check():
             while True:
                 try:
@@ -629,7 +636,11 @@ class ConnectionManager:
                     logger.error(f"Error in health check: {e}")
                     await asyncio.sleep(60)  # Shorter retry on error
         
-        self.health_check_task = asyncio.create_task(health_check())
+        try:
+            self.health_check_task = asyncio.create_task(health_check())
+        except RuntimeError:
+            # No event loop running, will start later
+            pass
     
     # Business logic methods
     async def notify_user(self, user_id: str, notification_data: Dict[str, Any]):

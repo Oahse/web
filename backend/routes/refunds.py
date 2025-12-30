@@ -8,8 +8,8 @@ from typing import List, Optional
 from uuid import UUID
 
 from core.database import get_db
-from core.auth import get_current_auth_user
-from core.response import Response
+from core.dependencies import get_current_auth_user
+from core.utils.response import Response
 from models.user import User
 from models.refunds import RefundStatus
 from schemas.refunds import (

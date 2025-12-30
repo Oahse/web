@@ -59,6 +59,29 @@ export class CartAPI {
     return await apiClient.get(`/inventory/check-stock/${variantId}?quantity=${quantity}`);
   }
 
+  /**
+   * Check stock for multiple items at once (for express checkout)
+   */
+  static async checkBulkStock(items) {
+    // Validate items array
+    if (!Array.isArray(items) || items.length === 0) {
+      throw new Error('Invalid items array provided');
+    }
+    
+    // Validate each item
+    const validatedItems = items.map(item => {
+      if (!item.variant_id || !item.quantity) {
+        throw new Error('Each item must have variant_id and quantity');
+      }
+      return {
+        variant_id: item.variant_id,
+        quantity: item.quantity
+      };
+    });
+    
+    return await apiClient.post('/inventory/check-stock/bulk', validatedItems);
+  }
+
   static async getCartItemCount(access_token) {
     return await apiClient.get('/cart/count', {
       headers: { 'Authorization': `Bearer ${access_token}` },

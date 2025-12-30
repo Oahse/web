@@ -535,8 +535,6 @@ async def seed_sample_data(
                 variant_id=variant.id,
                 location_id=main_warehouse.id,
                 quantity_available=stock_quantity,
-                quantity_reserved=0,
-                quantity_committed=0,
                 low_stock_threshold=random.randint(5, 15),
                 reorder_point=random.randint(3, 10),
                 inventory_status="active",

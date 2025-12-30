@@ -8,7 +8,7 @@ from fastapi import HTTPException
 from models.payments import PaymentMethod, PaymentIntent, Transaction
 from models.orders import Order, OrderItem
 from models.subscriptions import Subscription
-from models.inventories import Inventory, InventoryReservation
+from models.inventories import Inventory
 from models.user import User
 from uuid import UUID, uuid4
 from datetime import datetime, timedelta

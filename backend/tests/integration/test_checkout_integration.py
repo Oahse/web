@@ -103,8 +103,7 @@ class TestCheckoutIntegration:
             id=uuid4(),
             variant_id=product_variant.id,
             location_id=uuid4(),
-            quantity_available=100,
-            quantity_reserved=0
+            quantity_available=100
         )
 
     @pytest.fixture

@@ -46,40 +46,14 @@ async def test_atomic_operations():
             )
             print(f"✓ Stock updated: {result['inventory']['quantity_available']}")
             
-            # Test 2: Atomic stock reservation
-            print("\n2. Testing atomic stock reservation...")
-            result = await atomic_stock_operation(
-                db=db,
+            # Test 2: Test stock availability check
+            print("\n2. Testing stock availability check...")
+            inventory_service = InventoryService(db)
+            availability = await inventory_service.check_stock_availability(
                 variant_id=variant_id,
-                operation="reserve",
-                quantity=2,
-                order_id=uuid4(),
-                expiry_minutes=15
+                quantity=2
             )
-            print(f"✓ Stock reserved: {result['reservation']['quantity']} units")
-            
-            # Test 3: Atomic reservation confirmation
-            print("\n3. Testing atomic reservation confirmation...")
-            reservation = result['reservation']
-            
-            # Get the reservation object for confirmation
-            from models.inventories import InventoryReservation
-            from sqlalchemy import select
-            
-            reservation_obj = await db.scalar(
-                select(InventoryReservation).where(
-                    InventoryReservation.id == reservation['id']
-                )
-            )
-            
-            if reservation_obj:
-                result = await atomic_stock_operation(
-                    db=db,
-                    variant_id=variant_id,
-                    operation="confirm",
-                    reservation=reservation_obj
-                )
-                print(f"✓ Reservation confirmed: {result['inventory']['quantity_committed']}")
+            print(f"✓ Stock availability checked: {availability['available']}, Status: {availability['stock_status']}")
             
             print("\n✅ All atomic operations completed successfully!")
             

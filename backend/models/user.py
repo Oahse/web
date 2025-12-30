@@ -85,10 +85,21 @@ class User(BaseModel):
     transactions = relationship("Transaction", back_populates="user", lazy="select")
     supplied_products = relationship("Product", back_populates="supplier", lazy="select")
     notifications = relationship("Notification", back_populates="user", lazy="select")
-    comments = relationship("Comment", back_populates="author", cascade="all, delete-orphan", lazy="select")
     payment_intents = relationship("PaymentIntent", back_populates="user", lazy="select")
     loyalty_account = relationship("LoyaltyAccount", back_populates="user", uselist=False, lazy="select")
     notification_preferences = relationship("NotificationPreference", back_populates="user", uselist=False, lazy="selectin")
+    sessions = relationship("UserSession", back_populates="user", lazy="select")
+    lifecycle_metrics = relationship("UserAnalytics", back_populates="user", lazy="select")
+    
+    # Refund relationships
+    created_refunds = relationship("Refund", foreign_keys="Refund.user_id", back_populates="user", lazy="select")
+    reviewed_refunds = relationship("Refund", foreign_keys="Refund.reviewed_by", back_populates="reviewer", lazy="select")
+    processed_refunds = relationship("Refund", foreign_keys="Refund.processed_by", back_populates="processor", lazy="select")
+    
+    # Inventory and tracking relationships
+    stock_adjustments = relationship("StockAdjustment", back_populates="adjusted_by", lazy="select")
+    variant_price_changes = relationship("VariantPriceHistory", back_populates="changed_by", lazy="select")
+    notification_history = relationship("NotificationHistory", back_populates="user", lazy="select")
 
     @property
     def full_name(self) -> str:

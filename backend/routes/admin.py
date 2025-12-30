@@ -14,7 +14,6 @@ from models.user import User
 from models.orders import Order
 from services.auth import AuthService
 from schemas.auth import UserCreate
-
 from fastapi.security import OAuth2PasswordBearer
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")

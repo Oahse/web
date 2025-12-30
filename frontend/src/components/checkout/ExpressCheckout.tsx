@@ -1,15 +1,11 @@
 /**
  * Express Checkout Component - One-click checkout for returning customers
- * Reduces friction by auto-selecting saved preferences and enabling quick purchase
+ * Optimized for performance and responsiveness
  */
-import React, { useState, useEffect } from 'react';
-import { useAuth } from '../../contexts/AuthContext';
-import { useCart } from '../../contexts/CartContext';
-import { OrdersAPI } from '../../apis/orders';
-import { AuthAPI } from '../../apis/auth';
-import { toast } from 'react-hot-toast';
+import React from 'react';
 import { Button } from '../ui/Button';
 import { CreditCard, Truck, MapPin } from 'lucide-react';
+import { useExpressCheckout } from '../../hooks/useExpressCheckout';
 
 interface ExpressCheckoutProps {
   onSuccess: (orderId: string) => void;
@@ -20,89 +16,12 @@ export const ExpressCheckout: React.FC<ExpressCheckoutProps> = ({
   onSuccess,
   onFallback
 }) => {
-  const { user } = useAuth();
-  const { cart, clearCart } = useCart();
-  const [loading, setLoading] = useState(false);
-  const [canUseExpress, setCanUseExpress] = useState(false);
-  const [expressData, setExpressData] = useState(null);
-
-  useEffect(() => {
-    checkExpressEligibility();
-  }, [user, cart]);
-
-  const checkExpressEligibility = async () => {
-    if (!user || !cart?.items?.length) {
-      setCanUseExpress(false);
-      return;
-    }
-
-    try {
-      // Check if user has saved preferences for express checkout
-      const [addresses, paymentMethods, shippingMethods] = await Promise.all([
-        AuthAPI.getAddresses(),
-        AuthAPI.getPaymentMethods(),
-        AuthAPI.getShippingMethods()
-      ]);
-
-      // Find default/last used options
-      const defaultAddress = addresses.data?.find(addr => addr.is_default) || addresses.data?.[0];
-      const defaultPayment = paymentMethods.data?.find(pm => pm.is_default) || paymentMethods.data?.[0];
-      const standardShipping = shippingMethods.data?.find(sm => sm.name.toLowerCase().includes('standard'));
-
-      if (defaultAddress && defaultPayment && standardShipping) {
-        setExpressData({
-          address: defaultAddress,
-          payment: defaultPayment,
-          shipping: standardShipping,
-          total: calculateTotal(cart, standardShipping)
-        });
-        setCanUseExpress(true);
-      } else {
-        setCanUseExpress(false);
-      }
-    } catch (error) {
-      console.error('Failed to check express eligibility:', error);
-      setCanUseExpress(false);
-    }
-  };
-
-  const calculateTotal = (cart, shippingMethod) => {
-    const subtotal = cart.subtotal || 0;
-    const shipping = shippingMethod?.price || 0;
-    const tax = cart.tax_amount || 0;
-    return subtotal + shipping + tax;
-  };
-
-  const handleExpressCheckout = async () => {
-    if (!expressData) return;
-
-    setLoading(true);
-    try {
-      const checkoutRequest = {
-        shipping_address_id: expressData.address.id,
-        shipping_method_id: expressData.shipping.id,
-        payment_method_id: expressData.payment.id,
-        notes: 'Express checkout order',
-        express_checkout: true
-      };
-
-      const response = await OrdersAPI.checkout(checkoutRequest);
-
-      if (response?.success && response?.data) {
-        toast.success('Order placed successfully! 🎉');
-        await clearCart();
-        onSuccess(response.data.id);
-      } else {
-        throw new Error('Failed to place order');
-      }
-    } catch (error) {
-      console.error('Express checkout failed:', error);
-      toast.error('Express checkout failed. Please try regular checkout.');
-      onFallback();
-    } finally {
-      setLoading(false);
-    }
-  };
+  const {
+    canUseExpress,
+    expressData,
+    loading,
+    handleExpressCheckout
+  } = useExpressCheckout(onSuccess, onFallback);
 
   if (!canUseExpress || !expressData) {
     return null;
@@ -119,6 +38,11 @@ export const ExpressCheckout: React.FC<ExpressCheckoutProps> = ({
           <span className="bg-green-100 text-green-800 text-xs font-medium px-2 py-1 rounded-full">
             One-Click
           </span>
+          {expressData.stockValidated && (
+            <span className="bg-blue-100 text-blue-800 text-xs font-medium px-2 py-1 rounded-full">
+              ✓ Stock Verified
+            </span>
+          )}
         </div>
         <div className="text-right">
           <div className="text-2xl font-bold text-gray-900">
@@ -177,7 +101,7 @@ export const ExpressCheckout: React.FC<ExpressCheckoutProps> = ({
         
         <Button
           onClick={handleExpressCheckout}
-          loading={loading}
+          isLoading={loading}
           className="bg-green-600 hover:bg-green-700 text-white px-8 py-3 text-lg font-semibold"
           size="lg"
         >

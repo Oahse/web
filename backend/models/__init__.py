@@ -6,16 +6,16 @@ from .review import Review
 from .promocode import Promocode
 from .shipping import ShippingMethod
 from .wishlist import Wishlist, WishlistItem
-from .notifications import Notification
+from .notifications import Notification, NotificationPreference, NotificationHistory
 from .loyalty import LoyaltyAccount, PointsTransaction
 from .variant_tracking import VariantTrackingEntry, VariantPriceHistory, VariantAnalytics, VariantSubstitution
+from .analytics import UserSession, AnalyticsEvent, ConversionFunnel, UserAnalytics 
 
 # Consolidated models - single source of truth
 from .orders import Order, OrderItem, TrackingEvent
 from .subscriptions import Subscription
 from .payments import PaymentMethod, PaymentIntent, Transaction
-from .notifications import Notification, NotificationPreference, NotificationHistory
-from .inventories import WarehouseLocation, Inventory, StockAdjustment, InventoryReservation
+from .inventories import WarehouseLocation, Inventory, StockAdjustment
 from .admin import PricingConfig, SubscriptionCostHistory, SubscriptionAnalytics, PaymentAnalytics
 
 # Import utils if they exist
@@ -61,7 +61,6 @@ __all__ = [
     "WarehouseLocation",
     "Inventory",
     "StockAdjustment",
-    "InventoryReservation",
 
     # Admin models (consolidated)
     "PricingConfig",
@@ -89,4 +88,10 @@ __all__ = [
     "VariantPriceHistory",
     "VariantAnalytics",
     "VariantSubstitution",
+    
+    # Analytics models
+    "UserSession",
+    "AnalyticsEvent",
+    "ConversionFunnel",
+    "UserAnalytics",
 ]

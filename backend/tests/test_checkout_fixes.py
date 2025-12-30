@@ -12,7 +12,7 @@ from services.orders import OrderService
 from services.inventories import InventoryService
 from services.payments import PaymentService
 from schemas.orders import CheckoutRequest
-from models.inventories import Inventory, InventoryReservation
+from models.inventories import Inventory
 from models.orders import Order
 from models.payments import PaymentMethod
 from core.exceptions import APIException
@@ -51,7 +51,6 @@ class TestCheckoutFixes:
         inventory.id = uuid4()
         inventory.variant_id = uuid4()
         inventory.quantity_available = 10
-        inventory.quantity_reserved = 0
         inventory.version = 1
         return inventory
     
@@ -76,7 +75,7 @@ class TestCheckoutFixes:
         )
         
         assert result["success"] is True
-        assert result["quantity_reserved"] == 5
+        assert result["new_quantity"] == 5  # 10 - 5 = 5
         
         # Verify SELECT ... FOR UPDATE was used
         mock_db_session.execute.assert_called()
@@ -282,7 +281,6 @@ class TestCheckoutFixes:
         # Simulate concurrent access to same inventory
         mock_inventory = AsyncMock()
         mock_inventory.quantity_available = 1  # Only 1 item left
-        mock_inventory.quantity_reserved = 0
         
         # First request should succeed
         mock_result1 = AsyncMock()
@@ -290,8 +288,7 @@ class TestCheckoutFixes:
         
         # Second request should see updated inventory (no stock left)
         mock_inventory_empty = AsyncMock()
-        mock_inventory_empty.quantity_available = 1
-        mock_inventory_empty.quantity_reserved = 1  # Reserved by first request
+        mock_inventory_empty.quantity_available = 0  # Out of stock
         
         mock_result2 = AsyncMock()
         mock_result2.scalar_one_or_none.return_value = mock_inventory_empty

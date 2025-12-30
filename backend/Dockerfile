@@ -48,6 +48,6 @@ ENV PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:$PATH"
 EXPOSE 8000
 
 # Command to run when the container starts:
-# 1. Execute database migrations (./migrate.sh).
-# 2. Start the Uvicorn server for the FastAPI application.
+# 1. Execute database migrations (./migrate.sh handles Alembic initialization)
+# 2. Start the Uvicorn server for the FastAPI application
 CMD ["sh", "-c", "./migrate.sh && python -m uvicorn main:app --host 0.0.0.0 --port 8000"]

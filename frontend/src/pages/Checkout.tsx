@@ -77,7 +77,7 @@ export const Checkout = () => {
     }
   }, [cart, cartLoading, navigate]);
 
-  // Real-time stock validation
+  // Real-time stock validation using bulk check
   useEffect(() => {
     const validateStock = async () => {
       if (!cart?.items || cart.items.length === 0) {
@@ -86,45 +86,23 @@ export const Checkout = () => {
       }
 
       try {
-        const stockChecks = await Promise.all(
-          cart.items.map(async (item) => {
-            try {
-              // Guard against undefined variant_id
-              if (!item.variant_id || !item.variant?.id) {
-                return {
-                  variant_id: item.variant_id || 'unknown',
-                  available: false,
-                  current_stock: 0,
-                  requested_quantity: item.quantity,
-                  message: 'Invalid product variant'
-                };
-              }
+        // Use bulk stock check for better performance
+        const stockCheckRes = await CartAPI.checkBulkStock(cart.items.map(item => ({
+          variant_id: item.variant_id || item.variant?.id,
+          quantity: item.quantity
+        })));
 
-              const variantId = item.variant_id || item.variant?.id;
-              const response = await CartAPI.checkStock(variantId, item.quantity);
-              return {
-                variant_id: variantId,
-                available: response?.available || false,
-                current_stock: response?.current_stock || 0,
-                requested_quantity: item.quantity,
-                message: response?.message || 'Stock check failed'
-              };
-            } catch (error) {
-              return {
-                variant_id: item.variant_id || item.variant?.id || 'unknown',
-                available: false,
-                current_stock: 0,
-                requested_quantity: item.quantity,
-                message: 'Unable to check stock availability'
-              };
-            }
-          })
-        );
+        const stockCheck = stockCheckRes.data;
+        const stockIssues = stockCheck?.items?.filter(item => !item.available) || [];
 
-        const stockIssues = stockChecks.filter(check => !check.available);
         setStockValidation({
-          valid: stockIssues.length === 0,
-          issues: stockIssues
+          valid: stockCheck?.all_available || false,
+          issues: stockIssues.map(issue => ({
+            variant_id: issue.variant_id,
+            message: issue.message || 'Out of stock',
+            current_stock: issue.current_stock || 0,
+            requested_quantity: issue.quantity_requested || 0
+          }))
         });
 
         // Show toast for stock issues

@@ -111,9 +111,9 @@ class Refund(BaseModel):
     
     # Relationships
     order = relationship("Order", back_populates="refunds")
-    user = relationship("User", foreign_keys=[user_id])
-    reviewer = relationship("User", foreign_keys=[reviewed_by])
-    processor = relationship("User", foreign_keys=[processed_by])
+    user = relationship("User", foreign_keys=[user_id], back_populates="created_refunds")
+    reviewer = relationship("User", foreign_keys=[reviewed_by], back_populates="reviewed_refunds")
+    processor = relationship("User", foreign_keys=[processed_by], back_populates="processed_refunds")
     refund_items = relationship("RefundItem", back_populates="refund", cascade="all, delete-orphan")
 
     def to_dict(self) -> Dict[str, Any]:

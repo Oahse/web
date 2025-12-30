@@ -3,12 +3,13 @@ import { Link } from 'react-router-dom';
 import { Input } from '../components/forms/Input';
 import { toast } from 'react-hot-toast';
 import { validation } from '../lib/validation';
+import { AuthAPI } from '../apis';
 
 export const ForgotPassword = () => {
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     // Enhanced validation using validation utility
@@ -21,15 +22,12 @@ export const ForgotPassword = () => {
     setLoading(true);
     
     try {
-      // TODO: Replace with actual API call
-      // await AuthAPI.forgotPassword(email.toLowerCase().trim());
-      
-      // Simulate API call for now
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Call the forgot password API
+      await AuthAPI.forgotPassword(email.toLowerCase().trim());
       
       toast.success(`Password reset link sent! If an account with ${email} exists, you will receive a password reset link.`);
       setEmail('');
-    } catch (error) {
+    } catch (error: any) {
       const errorMessage = error?.response?.data?.message || error?.message || 'Failed to send reset link. Please try again.';
       toast.error(errorMessage);
     } finally {
@@ -51,8 +49,10 @@ export const ForgotPassword = () => {
             type="email"
             placeholder="your@email.com"
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
             required
+            error=""
+            className=""
           />
           <button
             type="submit"

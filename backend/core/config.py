@@ -439,7 +439,7 @@ class Settings:
             self.KAFKA_TOPIC_EMAIL,
             self.KAFKA_TOPIC_NOTIFICATION,
             self.KAFKA_TOPIC_ORDER,
-            self.KAFKA_TOPIC_NEGOTIATION,
+            # self.KAFKA_TOPIC_NEGOTIATION,  # Disabled - not using negotiator for now
             self.KAFKA_TOPIC_PAYMENT
         ]
         

@@ -32,7 +32,6 @@ from routes import (
     health_router,
     inventories_router,
     loyalty_router,
-    negotiator_router,
     notifications_router,
     orders_router,
     payments_router,
@@ -205,7 +204,6 @@ v1_router.include_router(search_router)
 v1_router.include_router(inventories_router)
 v1_router.include_router(loyalty_router)
 v1_router.include_router(analytics_router)
-v1_router.include_router(negotiator_router)
 v1_router.include_router(refunds_router)
 v1_router.include_router(webhooks_router)
 

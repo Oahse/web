@@ -1,9 +1,24 @@
-from sqlalchemy import Column, String, Integer, Float, DateTime, ForeignKey, JSON, Text, Boolean, Index
+from sqlalchemy import Column, String, Integer, Float, DateTime, ForeignKey, JSON, Text, Boolean, Index, Enum as SQLEnum
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from core.database import BaseModel, GUID
 from typing import Dict, Any, List
 from datetime import datetime
+from enum import Enum
+
+
+class TrackingActionType(str, Enum):
+    """Variant tracking action types"""
+    ADDED = "added"
+    REMOVED = "removed"
+    PRICE_CHANGED = "price_changed"
+
+
+class AnalyticsPeriodType(str, Enum):
+    """Analytics period types"""
+    DAILY = "daily"
+    WEEKLY = "weekly"
+    MONTHLY = "monthly"
 
 
 class VariantTrackingEntry(BaseModel):
@@ -31,15 +46,15 @@ class VariantTrackingEntry(BaseModel):
     currency = Column(String(3), nullable=False, default="USD")
     
     # Tracking metadata
-    action_type = Column(String(50), nullable=False, default="added")  # "added", "removed", "price_changed"
+    action_type = Column(SQLEnum(TrackingActionType), nullable=False, default=TrackingActionType.ADDED)  # "added", "removed", "price_changed"
     tracking_timestamp = Column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
     
     # Additional context
     entry_metadata = Column(JSON, nullable=True)
     
     # Relationships
-    variant = relationship("ProductVariant", backref="tracking_entries")
-    subscription = relationship("Subscription", backref="variant_tracking_entries")
+    variant = relationship("ProductVariant", back_populates="tracking_entries")
+    subscription = relationship("Subscription", back_populates="variant_tracking_entries")
     
     def to_dict(self) -> Dict[str, Any]:
         """Convert tracking entry to dictionary"""
@@ -94,8 +109,8 @@ class VariantPriceHistory(BaseModel):
     price_metadata = Column(JSON, nullable=True)
     
     # Relationships
-    variant = relationship("ProductVariant", backref="price_history")
-    changed_by = relationship("User", backref="variant_price_changes")
+    variant = relationship("ProductVariant", back_populates="price_history")
+    changed_by = relationship("User", back_populates="variant_price_changes")
     
     def to_dict(self) -> Dict[str, Any]:
         """Convert price history to dictionary"""
@@ -139,7 +154,7 @@ class VariantAnalytics(BaseModel):
     
     # Time period for analytics
     date = Column(DateTime(timezone=True), nullable=False, index=True)
-    period_type = Column(String(20), nullable=False, default="daily")  # "daily", "weekly", "monthly"
+    period_type = Column(SQLEnum(AnalyticsPeriodType), nullable=False, default=AnalyticsPeriodType.DAILY)  # "daily", "weekly", "monthly"
     
     # Subscription metrics
     total_subscriptions = Column(Integer, nullable=False, default=0)
@@ -162,7 +177,7 @@ class VariantAnalytics(BaseModel):
     additional_metrics = Column(JSON, nullable=True)
     
     # Relationships
-    variant = relationship("ProductVariant", backref="analytics")
+    variant = relationship("ProductVariant", back_populates="analytics")
     
     def to_dict(self) -> Dict[str, Any]:
         """Convert variant analytics to dictionary"""

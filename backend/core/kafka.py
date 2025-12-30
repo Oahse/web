@@ -43,7 +43,7 @@ async def consume_messages_with_deduplication():
         settings.KAFKA_TOPIC_WEBSOCKET,
         settings.KAFKA_TOPIC_REAL_TIME,
         settings.KAFKA_TOPIC_INVENTORY,
-        settings.KAFKA_TOPIC_NEGOTIATION,
+        # settings.KAFKA_TOPIC_NEGOTIATION,  # Disabled - not using negotiator for now
         bootstrap_servers=settings.KAFKA_BOOTSTRAP_SERVERS,
         group_id=settings.KAFKA_CONSUMER_GROUP_BACKEND,
         value_deserializer=lambda m: json.loads(m.decode('utf-8')),

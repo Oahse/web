@@ -89,7 +89,7 @@ async def get_conversion_rates(
     end_date: Optional[datetime] = Query(None, description="End date (ISO format)"),
     traffic_source: Optional[TrafficSource] = Query(None, description="Filter by traffic source"),
     days: Optional[int] = Query(30, description="Number of days back from today (if dates not provided)"),
-    current_user: User = Depends(get_current_admin_user),
+    current_user: User = Depends(require_admin),
     analytics_service: AnalyticsService = Depends(get_analytics_service)
 ):
     """
@@ -128,7 +128,7 @@ async def get_cart_abandonment(
     start_date: Optional[datetime] = Query(None, description="Start date (ISO format)"),
     end_date: Optional[datetime] = Query(None, description="End date (ISO format)"),
     days: Optional[int] = Query(30, description="Number of days back from today"),
-    current_user: User = Depends(get_current_admin_user),
+    current_user: User = Depends(require_admin),
     analytics_service: AnalyticsService = Depends(get_analytics_service)
 ):
     """
@@ -166,7 +166,7 @@ async def get_time_to_purchase(
     start_date: Optional[datetime] = Query(None, description="Start date (ISO format)"),
     end_date: Optional[datetime] = Query(None, description="End date (ISO format)"),
     days: Optional[int] = Query(30, description="Number of days back from today"),
-    current_user: User = Depends(get_current_admin_user),
+    current_user: User = Depends(require_admin),
     analytics_service: AnalyticsService = Depends(get_analytics_service)
 ):
     """
@@ -204,7 +204,7 @@ async def get_refund_rates(
     start_date: Optional[datetime] = Query(None, description="Start date (ISO format)"),
     end_date: Optional[datetime] = Query(None, description="End date (ISO format)"),
     days: Optional[int] = Query(30, description="Number of days back from today"),
-    current_user: User = Depends(get_current_admin_user),
+    current_user: User = Depends(require_admin),
     analytics_service: AnalyticsService = Depends(get_analytics_service)
 ):
     """
@@ -242,7 +242,7 @@ async def get_repeat_customers(
     start_date: Optional[datetime] = Query(None, description="Start date (ISO format)"),
     end_date: Optional[datetime] = Query(None, description="End date (ISO format)"),
     days: Optional[int] = Query(30, description="Number of days back from today"),
-    current_user: User = Depends(get_current_admin_user),
+    current_user: User = Depends(require_admin),
     analytics_service: AnalyticsService = Depends(get_analytics_service)
 ):
     """
@@ -280,7 +280,7 @@ async def get_dashboard_data(
     start_date: Optional[datetime] = Query(None, description="Start date (ISO format)"),
     end_date: Optional[datetime] = Query(None, description="End date (ISO format)"),
     days: Optional[int] = Query(30, description="Number of days back from today"),
-    current_user: User = Depends(get_current_admin_user),
+    current_user: User = Depends(require_admin),
     analytics_service: AnalyticsService = Depends(get_analytics_service)
 ):
     """
@@ -316,7 +316,7 @@ async def get_dashboard_data(
 @router.get("/sales-trend")
 async def get_sales_trend(
     days: int = Query(30, description="Number of days to analyze"),
-    current_user: User = Depends(get_current_admin_user),
+    current_user: User = Depends(require_admin),
     analytics_service: AnalyticsService = Depends(get_analytics_service)
 ):
     """
@@ -352,7 +352,7 @@ async def get_key_performance_indicators(
     end_date: Optional[datetime] = Query(None, description="End date (ISO format)"),
     days: Optional[int] = Query(7, description="Number of days back from today"),
     compare_previous: bool = Query(True, description="Include comparison with previous period"),
-    current_user: User = Depends(get_current_admin_user),
+    current_user: User = Depends(require_admin),
     analytics_service: AnalyticsService = Depends(get_analytics_service)
 ):
     """

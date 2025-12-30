@@ -250,61 +250,58 @@ class OrderService:
                 if price_updates:
                     await self._send_price_update_notification(user_id, price_updates)
                 
-                # STEP 3: ATOMIC INVENTORY RESERVATION
-                inventory_reservations = []
-                try:
-                    for item in active_items:
-                        reservation_result = await self.inventory_service.reserve_stock_for_order(
-                            variant_id=item.variant_id,
-                            quantity=item.quantity,
-                            user_id=user_id,
-                            expires_in_minutes=15  # 15 minute reservation
-                        )
-                        
-                        if not reservation_result.get("success", False):
-                            # Rollback all previous reservations
-                            for prev_reservation in inventory_reservations:
-                                await self.inventory_service.cancel_stock_reservation(
-                                    prev_reservation["reservation_id"]
-                                )
-                            
-                            raise HTTPException(
-                                status_code=400,
-                                detail=f"Insufficient stock for item {item.variant.product.name}: {reservation_result.get('message', 'Unknown error')}"
-                            )
-                        
-                        inventory_reservations.append(reservation_result)
+                # STEP 3: CHECK STOCK AVAILABILITY (optimized for express checkout)
+                stock_validation_results = []
+                for item in active_items:
+                    stock_check = await self.inventory_service.check_stock_availability(
+                        variant_id=item.variant_id,
+                        quantity=item.quantity
+                    )
+                    
+                    if not stock_check.get("available", False):
+                        stock_validation_results.append({
+                            "variant_id": item.variant_id,
+                            "product_name": item.variant.product.name if item.variant and item.variant.product else "Unknown Product",
+                            "requested": item.quantity,
+                            "available": stock_check.get("current_stock", 0),
+                            "status": stock_check.get("stock_status", "out_of_stock"),
+                            "message": stock_check.get("message", "Out of stock")
+                        })
                 
-                    # STEP 4: VALIDATE CHECKOUT DEPENDENCIES
-                    # Verify shipping address exists
-                    shipping_address = await self.db.execute(
-                        select(Address).where(
-                            and_(Address.id == request.shipping_address_id, Address.user_id == user_id))
+                # If any stock issues, return detailed error
+                if stock_validation_results:
+                    raise HTTPException(
+                        status_code=400,
+                        detail={
+                            "message": "Stock validation failed",
+                            "stock_issues": stock_validation_results,
+                            "error_type": "STOCK_UNAVAILABLE"
+                        }
                     )
-                    shipping_address = shipping_address.scalar_one_or_none()
-                    if not shipping_address:
-                        raise HTTPException(status_code=404, detail="Shipping address not found")
+                
+                # STEP 4: VALIDATE CHECKOUT DEPENDENCIES
+                # Verify shipping address exists
+                shipping_address = await self.db.execute(
+                    select(Address).where(
+                        and_(Address.id == request.shipping_address_id, Address.user_id == user_id))
+                )
+                shipping_address = shipping_address.scalar_one_or_none()
+                if not shipping_address:
+                    raise HTTPException(status_code=404, detail="Shipping address not found")
 
-                    # Verify shipping method exists and get its cost
-                    shipping_method = await self.db.execute(
-                        select(ShippingMethod).where(ShippingMethod.id == request.shipping_method_id)
-                    )
-                    shipping_method = shipping_method.scalar_one_or_none()
-                    if not shipping_method:
-                        raise HTTPException(status_code=404, detail="Shipping method not found")
+                # Verify shipping method exists and get its cost
+                shipping_method = await self.db.execute(
+                    select(ShippingMethod).where(ShippingMethod.id == request.shipping_method_id)
+                )
+                shipping_method = shipping_method.scalar_one_or_none()
+                if not shipping_method:
+                    raise HTTPException(status_code=404, detail="Shipping method not found")
 
-                    # Verify payment method exists
-                    payment_method = await self.db.execute(
-                        select(PaymentMethod).where(and_(PaymentMethod.id == request.payment_method_id, PaymentMethod.user_id == user_id))
-                    )
-                    payment_method = payment_method.scalar_one_or_none()
-                except HTTPException:
-                    # On any validation failure, release all inventory reservations
-                    for reservation in inventory_reservations:
-                        await self.inventory_service.cancel_stock_reservation(
-                            reservation["reservation_id"]
-                        )
-                    raise 
+                # Verify payment method exists
+                payment_method = await self.db.execute(
+                    select(PaymentMethod).where(and_(PaymentMethod.id == request.payment_method_id, PaymentMethod.user_id == user_id))
+                )
+                payment_method = payment_method.scalar_one_or_none() 
             except HTTPException:
                 # Re-raise HTTP exceptions to be handled by outer transaction
                 raise
@@ -1128,18 +1125,6 @@ class OrderService:
                     payment_method="card",
                     correlation_id=correlation_id
                 )
-            
-            # Publish inventory reservation events for each item
-            for item in validated_cart_items:
-                reservation_id = str(uuid4())
-                expires_at = (datetime.utcnow() + timedelta(minutes=15)).isoformat()
-                
-                # Note: Inventory reservation removed - implement as needed
-                # quantity=item["quantity"],
-                # order_id=str(order.id),
-                # reservation_id=reservation_id,
-                # expires_at=expires_at,
-                # correlation_id=correlation_id
             
             import logging
             logger = logging.getLogger(__name__)

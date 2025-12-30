@@ -8,6 +8,7 @@ from .consumer import EventConsumer
 from .topics import TopicManager
 from .handlers import EventHandler, DeadLetterHandler
 from .replay import EventReplayService
+from .publisher import EventPublisher, event_publisher, publish_payment_event, publish_order_event
 
 __all__ = [
     'EventProducer',
@@ -15,5 +16,9 @@ __all__ = [
     'TopicManager',
     'EventHandler',
     'DeadLetterHandler',
-    'EventReplayService'
+    'EventReplayService',
+    'EventPublisher',
+    'event_publisher',
+    'publish_payment_event',
+    'publish_order_event'
 ]

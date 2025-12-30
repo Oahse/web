@@ -10,7 +10,7 @@ from datetime import datetime, timedelta
 import asyncio
 import logging
 
-from models.inventories import Inventory, WarehouseLocation, StockAdjustment, InventoryReservation
+from models.inventories import Inventory, WarehouseLocation, StockAdjustment
 from models.product import ProductVariant
 from models.user import User
 from schemas.inventories import (
@@ -396,20 +396,21 @@ class InventoryService:
                     "available": False,
                     "current_stock": 0,
                     "requested_quantity": quantity,
-                    "message": "Product not found in inventory"
+                    "message": "Product not found in inventory",
+                    "stock_status": "out_of_stock"
                 }
             
             # Check if requested quantity is available
-            available = inventory.quantity >= quantity and inventory.quantity > 0
+            available = inventory.quantity_available >= quantity and inventory.quantity_available > 0
             
             return {
                 "available": available,
-                "current_stock": inventory.quantity,
+                "current_stock": inventory.quantity_available,
                 "requested_quantity": quantity,
                 "inventory_id": str(inventory.id),
                 "location_id": str(inventory.location_id),
-                "is_low_stock": inventory.quantity <= inventory.low_stock_threshold,
-                "message": "Stock available" if available else f"Insufficient stock. Available: {inventory.quantity}, Requested: {quantity}"
+                "stock_status": inventory.stock_status,
+                "message": "Stock available" if available else f"Out of stock" if inventory.quantity_available <= 0 else f"Insufficient stock. Available: {inventory.quantity_available}, Requested: {quantity}"
             }
             
         except Exception as e:
@@ -418,6 +419,7 @@ class InventoryService:
                 "available": False,
                 "current_stock": 0,
                 "requested_quantity": quantity,
+                "stock_status": "out_of_stock",
                 "message": f"Error checking stock: {str(e)}"
             }
 
@@ -444,7 +446,7 @@ class InventoryService:
                 # Find first available inventory for this variant
                 inventory = await self.db.execute(
                     select(Inventory).where(
-                        and_(Inventory.variant_id == variant_id, Inventory.quantity >= quantity)
+                        and_(Inventory.variant_id == variant_id, Inventory.quantity_available >= quantity)
                     ).with_for_update().limit(1)
                 )
             
@@ -457,12 +459,13 @@ class InventoryService:
                 }
             
             # Check if sufficient stock available
-            if inventory.quantity < quantity:
+            if inventory.quantity_available < quantity:
                 return {
                     "success": False,
-                    "message": f"Insufficient stock. Available: {inventory.quantity}, Requested: {quantity}",
-                    "available_quantity": inventory.quantity,
-                    "requested_quantity": quantity
+                    "message": f"Out of stock" if inventory.quantity_available <= 0 else f"Insufficient stock. Available: {inventory.quantity_available}, Requested: {quantity}",
+                    "available_quantity": inventory.quantity_available,
+                    "requested_quantity": quantity,
+                    "stock_status": inventory.stock_status
                 }
             
             # Perform atomic stock update
@@ -480,13 +483,12 @@ class InventoryService:
             
             return {
                 "success": True,
-                "old_quantity": inventory.quantity + quantity,
-                "new_quantity": inventory.quantity,
+                "old_quantity": inventory.quantity_available + quantity,
+                "new_quantity": inventory.quantity_available,
                 "quantity_decremented": quantity,
                 "inventory_id": str(inventory.id),
                 "location_id": str(inventory.location_id),
-                "is_now_out_of_stock": inventory.quantity == 0,
-                "is_low_stock": inventory.quantity <= inventory.low_stock_threshold,
+                "stock_status": inventory.stock_status,
                 "adjustment_id": str(adjustment.id)
             }
             
@@ -555,251 +557,6 @@ class InventoryService:
             raise APIException(
                 status_code=500,
                 message=f"Failed to increment stock: {str(e)}"
-            )
-
-    async def reserve_stock_for_order(
-        self,
-        variant_id: UUID,
-        quantity: int,
-        order_id: Optional[UUID] = None,
-        expiry_minutes: int = 15,
-        user_id: Optional[UUID] = None
-    ) -> Dict[str, Any]:
-        """
-        Atomically reserve stock for an order with deadlock prevention and retry logic
-        """
-        max_retries = 3
-        
-        for attempt in range(max_retries):
-            try:
-                # Get inventory with atomic lock (NOWAIT to prevent deadlocks)
-                inventory_query = select(Inventory).where(
-                    Inventory.variant_id == variant_id
-                ).with_for_update(nowait=True)
-                
-                result = await self.db.execute(inventory_query)
-                inventory = result.scalar_one_or_none()
-                
-                if not inventory:
-                    return {
-                        "success": False,
-                        "message": f"Inventory not found for variant {variant_id}",
-                        "error_code": "INVENTORY_NOT_FOUND"
-                    }
-                
-                # Check available stock (available - reserved)
-                available_stock = inventory.quantity_available - inventory.quantity_reserved
-                
-                if available_stock < quantity:
-                    return {
-                        "success": False,
-                        "message": f"Insufficient stock. Available: {available_stock}, Requested: {quantity}",
-                        "available_quantity": available_stock,
-                        "requested_quantity": quantity,
-                        "error_code": "INSUFFICIENT_STOCK"
-                    }
-                
-                # Create reservation record
-                expiry_time = datetime.utcnow() + timedelta(minutes=expiry_minutes)
-                
-                reservation = InventoryReservation(
-                    inventory_id=inventory.id,
-                    variant_id=variant_id,
-                    quantity=quantity,
-                    user_id=user_id,
-                    order_id=order_id,
-                    expires_at=expiry_time,
-                    status="active"
-                )
-                
-                # Atomically update inventory reserved quantity
-                inventory.quantity_reserved += quantity
-                inventory.version += 1  # Optimistic locking
-                
-                self.db.add(reservation)
-                await self.db.flush()  # Get reservation ID
-                await self.db.refresh(reservation)
-                
-                logger.info(f"Reserved {quantity} units of variant {variant_id} for order {order_id}")
-                
-                return {
-                    "success": True,
-                    "reservation_id": str(reservation.id),
-                    "quantity_reserved": quantity,
-                    "expires_at": expiry_time.isoformat(),
-                    "available_after_reservation": available_stock - quantity,
-                    "inventory_id": str(inventory.id)
-                }
-                
-            except Exception as e:
-                error_str = str(e).lower()
-                
-                # Check if it's a lock-related error that we can retry
-                if any(keyword in error_str for keyword in ["could not obtain lock", "deadlock", "lock timeout"]):
-                    if attempt < max_retries - 1:
-                        # Wait with exponential backoff before retry
-                        wait_time = 0.1 * (2 ** attempt)
-                        logger.warning(f"Lock conflict on attempt {attempt + 1}, retrying in {wait_time}s: {e}")
-                        await asyncio.sleep(wait_time)
-                        continue
-                    else:
-                        logger.error(f"Failed to reserve stock after {max_retries} attempts due to lock conflicts")
-                        return {
-                            "success": False,
-                            "message": "Stock reservation temporarily unavailable due to high demand. Please try again.",
-                            "error_code": "LOCK_TIMEOUT",
-                            "retry_suggested": True
-                        }
-                else:
-                    # Non-retryable error
-                    logger.error(f"Failed to reserve stock for variant {variant_id}: {e}")
-                    return {
-                        "success": False,
-                        "message": f"Failed to reserve stock: {str(e)}",
-                        "error_code": "RESERVATION_ERROR"
-                    }
-        
-        # Should never reach here
-        return {
-            "success": False,
-            "message": "Stock reservation failed after all retry attempts",
-            "error_code": "MAX_RETRIES_EXCEEDED"
-        }
-
-    async def confirm_stock_reservation(
-        self,
-        reservation_id: UUID,
-        user_id: Optional[UUID] = None
-    ) -> Dict[str, Any]:
-        """
-        Atomically confirm a stock reservation using SELECT ... FOR UPDATE
-        """
-        try:
-            # Get reservation
-            reservation_query = select(InventoryReservation).where(
-                InventoryReservation.id == reservation_id
-            )
-            result = await self.db.execute(reservation_query)
-            reservation = result.scalar_one_or_none()
-            
-            if not reservation:
-                raise APIException(
-                    status_code=404,
-                    message=f"Reservation {reservation_id} not found"
-                )
-            
-            # Get inventory with atomic lock
-            inventory = await Inventory.get_with_lock(self.db, reservation.inventory_id)
-            
-            if not inventory:
-                raise APIException(
-                    status_code=404,
-                    message=f"Inventory not found for reservation {reservation_id}"
-                )
-            
-            # Perform atomic confirmation
-            adjustment = await inventory.atomic_confirm_reservation(
-                db=self.db,
-                reservation=reservation,
-                user_id=user_id
-            )
-            
-            await self.db.commit()
-            
-            logger.info(f"Atomically confirmed reservation {reservation_id}")
-            
-            return {
-                "success": True,
-                "reservation": reservation.to_dict(),
-                "inventory": inventory.to_dict(),
-                "adjustment_id": str(adjustment.id)
-            }
-            
-        except APIException:
-            await self.db.rollback()
-            raise
-        except Exception as e:
-            await self.db.rollback()
-            logger.error(f"Failed to confirm reservation atomically: {e}")
-            raise APIException(
-                status_code=500,
-                message=f"Failed to confirm reservation: {str(e)}"
-            )
-
-    async def cancel_stock_reservation(
-        self,
-        reservation_id: UUID
-    ) -> Dict[str, Any]:
-        """
-        Atomically cancel a stock reservation using SELECT ... FOR UPDATE
-        """
-        try:
-            # Get reservation
-            reservation_query = select(InventoryReservation).where(
-                InventoryReservation.id == reservation_id
-            )
-            result = await self.db.execute(reservation_query)
-            reservation = result.scalar_one_or_none()
-            
-            if not reservation:
-                raise APIException(
-                    status_code=404,
-                    message=f"Reservation {reservation_id} not found"
-                )
-            
-            # Get inventory with atomic lock
-            inventory = await Inventory.get_with_lock(self.db, reservation.inventory_id)
-            
-            if not inventory:
-                raise APIException(
-                    status_code=404,
-                    message=f"Inventory not found for reservation {reservation_id}"
-                )
-            
-            # Perform atomic cancellation
-            await inventory.atomic_cancel_reservation(self.db, reservation)
-            
-            await self.db.commit()
-            
-            logger.info(f"Atomically cancelled reservation {reservation_id}")
-            
-            return {
-                "success": True,
-                "reservation": reservation.to_dict(),
-                "inventory": inventory.to_dict()
-            }
-            
-        except APIException:
-            await self.db.rollback()
-            raise
-        except Exception as e:
-            await self.db.rollback()
-            logger.error(f"Failed to cancel reservation atomically: {e}")
-            raise APIException(
-                status_code=500,
-                message=f"Failed to cancel reservation: {str(e)}"
-            )
-
-    async def cleanup_expired_reservations(self) -> Dict[str, Any]:
-        """
-        Clean up expired reservations atomically
-        """
-        try:
-            cleaned_count = await InventoryReservation.cleanup_expired(self.db)
-            await self.db.commit()
-            
-            return {
-                "success": True,
-                "cleaned_count": cleaned_count,
-                "message": f"Cleaned up {cleaned_count} expired reservations"
-            }
-            
-        except Exception as e:
-            await self.db.rollback()
-            logger.error(f"Failed to cleanup expired reservations: {e}")
-            raise APIException(
-                status_code=500,
-                message=f"Failed to cleanup expired reservations: {str(e)}"
             )
 
     async def bulk_stock_update(

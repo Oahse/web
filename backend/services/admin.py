@@ -940,14 +940,14 @@ class AdminService:
             # Get revenue data
             total_revenue = await self.db.scalar(
                 select(func.coalesce(func.sum(Order.total_amount), 0)).where(
-                    Order.status == "completed"
+                    Order.order_status == "completed"
                 )
             ) or 0
             
             revenue_today = await self.db.scalar(
                 select(func.coalesce(func.sum(Order.total_amount), 0)).where(
                     and_(
-                        Order.status == "completed",
+                        Order.order_status == "completed",
                         func.date(Order.created_at) == today
                     )
                 )
@@ -956,7 +956,7 @@ class AdminService:
             revenue_this_month = await self.db.scalar(
                 select(func.coalesce(func.sum(Order.total_amount), 0)).where(
                     and_(
-                        Order.status == "completed",
+                        Order.order_status == "completed",
                         Order.created_at >= last_month
                     )
                 )
@@ -1005,7 +1005,7 @@ class AdminService:
                         "id": str(order.id),
                         "user_email": order.user.email if order.user else "Unknown",
                         "total_amount": float(order.total_amount),
-                        "status": order.status,
+                        "status": order.order_status,
                         "created_at": order.created_at.isoformat() if order.created_at else None
                     }
                     for order in recent_orders
@@ -1052,8 +1052,8 @@ class AdminService:
             
             # Order status distribution
             order_statuses = await self.db.execute(
-                select(Order.status, func.count(Order.id).label('count'))
-                .group_by(Order.status)
+                select(Order.order_status, func.count(Order.id).label('count'))
+                .group_by(Order.order_status)
             )
             status_distribution = {status: count for status, count in order_statuses.all()}
             
@@ -1106,7 +1106,7 @@ class AdminService:
             conditions = []
             
             if order_status:
-                conditions.append(Order.status == order_status)
+                conditions.append(Order.order_status == order_status)
             
             if q:
                 conditions.append(
@@ -1153,7 +1153,7 @@ class AdminService:
                         "id": str(order.id),
                         "user_email": order.user.email if order.user else "Unknown",
                         "total_amount": float(order.total_amount),
-                        "status": order.status,
+                        "status": order.order_status,
                         "created_at": order.created_at.isoformat() if order.created_at else None,
                         "updated_at": order.updated_at.isoformat() if order.updated_at else None
                     }
@@ -1193,7 +1193,7 @@ class AdminService:
                 "id": str(order.id),
                 "user_email": order.user.email if order.user else "Unknown",
                 "total_amount": float(order.total_amount),
-                "status": order.status,
+                "status": order.order_status,
                 "created_at": order.created_at.isoformat() if order.created_at else None,
                 "updated_at": order.updated_at.isoformat() if order.updated_at else None
             }

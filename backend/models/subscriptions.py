@@ -85,6 +85,7 @@ class Subscription(BaseModel):
         backref="subscriptions_containing",
         lazy="selectin"
     )
+    variant_tracking_entries = relationship("VariantTrackingEntry", back_populates="subscription", lazy="select")
     
     def to_dict(self, include_products=False) -> Dict[str, Any]:
         """Convert subscription to dictionary for API responses"""
