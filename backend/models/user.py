@@ -89,7 +89,7 @@ class User(BaseModel):
     loyalty_account = relationship("LoyaltyAccount", back_populates="user", uselist=False, lazy="select")
     notification_preferences = relationship("NotificationPreference", back_populates="user", uselist=False, lazy="selectin")
     sessions = relationship("UserSession", back_populates="user", lazy="select")
-    lifecycle_metrics = relationship("UserAnalytics", back_populates="user", lazy="select")
+    lifecycle_metrics = relationship("CustomerLifecycleMetrics", back_populates="user", lazy="select")
     
     # Refund relationships
     created_refunds = relationship("Refund", foreign_keys="Refund.user_id", back_populates="user", lazy="select")
