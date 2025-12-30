@@ -8,7 +8,7 @@ from datetime import datetime, timezone, timedelta
 from typing import Dict, Any, List, Optional, Tuple
 from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, and_, or_, desc, asc, text, Integer, Integer
+from sqlalchemy import select, func, and_, or_, desc, asc, text, Integer
 from sqlalchemy.orm import selectinload
 from fastapi import HTTPException
 
@@ -18,7 +18,7 @@ from models.analytics import (
 )
 from models.orders import Order
 from models.user import User
-from models.refunds import Refund
+from models.refunds import Refund, RefundStatus
 from core.config import settings
 
 logger = logging.getLogger(__name__)
@@ -376,7 +376,7 @@ class AnalyticsService:
                     and_(
                         Order.created_at >= start_date,
                         Order.created_at <= end_date,
-                        Refund.status.in_(['completed', 'processing'])
+                        Refund.status.in_([RefundStatus.COMPLETED, RefundStatus.PROCESSING])
                     )
                 )
             )
@@ -398,7 +398,7 @@ class AnalyticsService:
                     and_(
                         Order.created_at >= start_date,
                         Order.created_at <= end_date,
-                        Refund.status.in_(['completed', 'processing'])
+                        Refund.status.in_([RefundStatus.COMPLETED, RefundStatus.PROCESSING])
                     )
                 ).group_by(Refund.reason)
             )
