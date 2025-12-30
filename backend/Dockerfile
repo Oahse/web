@@ -38,9 +38,6 @@ COPY . .
 # Make the migration script executable
 RUN chmod +x migrate.sh
 
-# Make the start script executable
-RUN chmod +x start_without_migrations.sh
-
 # Set Python path to include the /app directory, allowing Python to find modules
 ENV PYTHONPATH=/app
 
