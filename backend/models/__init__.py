@@ -9,7 +9,8 @@ from .wishlist import Wishlist, WishlistItem
 from .notifications import Notification, NotificationPreference, NotificationHistory
 from .loyalty import LoyaltyAccount, PointsTransaction
 from .variant_tracking import VariantTrackingEntry, VariantPriceHistory, VariantAnalytics, VariantSubstitution
-from .analytics import UserSession, AnalyticsEvent, ConversionFunnel, CustomerLifecycleMetrics 
+from .analytics import UserSession, AnalyticsEvent, ConversionFunnel, CustomerLifecycleMetrics
+from .refunds import Refund, RefundItem 
 
 # Consolidated models - single source of truth
 from .orders import Order, OrderItem, TrackingEvent
@@ -94,4 +95,8 @@ __all__ = [
     "AnalyticsEvent",
     "ConversionFunnel",
     "CustomerLifecycleMetrics",
+    
+    # Refund models
+    "Refund",
+    "RefundItem",
 ]

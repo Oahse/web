@@ -91,10 +91,10 @@ class User(BaseModel):
     sessions = relationship("UserSession", back_populates="user", lazy="select")
     lifecycle_metrics = relationship("CustomerLifecycleMetrics", back_populates="user", lazy="select")
     
-    # Refund relationships
-    created_refunds = relationship("Refund", foreign_keys="Refund.user_id", back_populates="user", lazy="select")
-    reviewed_refunds = relationship("Refund", foreign_keys="Refund.reviewed_by", back_populates="reviewer", lazy="select")
-    processed_refunds = relationship("Refund", foreign_keys="Refund.processed_by", back_populates="processor", lazy="select")
+    # Refund relationships - using string references to avoid circular imports
+    created_refunds = relationship("Refund", foreign_keys="[Refund.user_id]", back_populates="user", lazy="select")
+    reviewed_refunds = relationship("Refund", foreign_keys="[Refund.reviewed_by]", back_populates="reviewer", lazy="select")
+    processed_refunds = relationship("Refund", foreign_keys="[Refund.processed_by]", back_populates="processor", lazy="select")
     
     # Inventory and tracking relationships
     stock_adjustments = relationship("StockAdjustment", back_populates="adjusted_by", lazy="select")

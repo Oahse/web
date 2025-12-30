@@ -168,10 +168,50 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-# Remove any existing problematic migration files
-if [ -d "alembic/versions" ] && [ "$(ls -A alembic/versions 2>/dev/null)" ]; then
-    echo "🧹 Cleaning up existing migration files..."
-    rm -f alembic/versions/*.py
+# Check if alembic version table exists and has data
+HAS_ALEMBIC_VERSION=$(python -c "
+import asyncio
+from sqlalchemy.ext.asyncio import create_async_engine
+from sqlalchemy import text
+from core.config import settings
+
+async def check_alembic_version():
+    engine = create_async_engine(settings.SQLALCHEMY_DATABASE_URI)
+    try:
+        async with engine.connect() as conn:
+            result = await conn.execute(text('SELECT version_num FROM banwee.alembic_version LIMIT 1'))
+            version = result.scalar()
+            print(version if version else '')
+    except:
+        print('')
+    finally:
+        await engine.dispose()
+
+asyncio.run(check_alembic_version())
+" 2>/dev/null)
+
+# If database has alembic version but no migration files, clear the version
+if [ -n "$HAS_ALEMBIC_VERSION" ] && [ ! -f "alembic/versions/${HAS_ALEMBIC_VERSION}_*.py" ]; then
+    echo "🧹 Clearing orphaned alembic version from database..."
+    python -c "
+import asyncio
+from sqlalchemy.ext.asyncio import create_async_engine
+from sqlalchemy import text
+from core.config import settings
+
+async def clear_version():
+    engine = create_async_engine(settings.SQLALCHEMY_DATABASE_URI)
+    try:
+        async with engine.connect() as conn:
+            await conn.execute(text('DELETE FROM banwee.alembic_version'))
+            await conn.commit()
+    except Exception as e:
+        print(f'Warning: Could not clear alembic version: {e}')
+    finally:
+        await engine.dispose()
+
+asyncio.run(clear_version())
+"
 fi
 
 # Create initial migration if no migrations exist

@@ -31,6 +31,7 @@ from models.shipping import ShippingMethod
 from models.wishlist import Wishlist, WishlistItem
 from models.notifications import Notification  # Added Notification import
 from models.inventories import WarehouseLocation, Inventory  # Added inventory imports
+from models.refunds import Refund, RefundItem  # Added refund imports
 
 # ---------------- Config ----------------
 FILTER_CATEGORIES = {

@@ -58,9 +58,9 @@ export const Footer = () => {
         </div>
 
         {/* Main Footer */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-8 lg:gap-12">
+        <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-6 gap-6 md:gap-8 lg:gap-12">
           {/* Company Info */}
-          <div className="lg:col-span-2">
+          <div className="col-span-2 md:col-span-2 lg:col-span-2">
             <Link to="/" className="inline-block mb-4">
               <div className="flex items-center">
                 <img src="/banwee_logo_text_green.png" alt="Banwee" className="h-6" />
