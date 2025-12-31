@@ -91,10 +91,13 @@ def parse_cors(value: str) -> List[str]:
         return [
             "http://localhost:5173",
             "http://127.0.0.1:5173",
-            "http://localhost:5173",
+            "http://0.0.0.0:5173",
             "http://localhost:3000",
             "http://www.banwee.com",
             "https://www.banwee.com",
+            "https://www.banwee.ca",
+            "https://www.banwee.co.uk",
+            "https://www.banwee.ng",
             "https://banwee.com"
         ]
     
@@ -318,9 +321,9 @@ class Settings:
         
         # --- Redis Configuration ---
         self.REDIS_URL: str = os.getenv('REDIS_URL')
-        self.REDIS_CART_TTL_GUEST: int = int(os.getenv('REDIS_CART_TTL_GUEST', '1800'))
-        self.REDIS_CART_TTL_USER: int = int(os.getenv('REDIS_CART_TTL_USER', '259200'))
-        self.REDIS_CART_EXTEND_ON_ADD: bool = os.getenv('REDIS_CART_EXTEND_ON_ADD', 'true').lower() == 'true'
+        self.REDIS_CACHE_ENABLED: bool = os.getenv('REDIS_CACHE_ENABLED', 'true').lower() == 'true'
+        self.REDIS_RATELIMIT_ENABLED: bool = os.getenv('REDIS_RATELIMIT_ENABLED', 'true').lower() == 'true'
+        self.REDIS_CACHE_TTL: int = int(os.getenv('REDIS_CACHE_TTL', '3600'))
         
         # --- Kafka Configuration ---
         self.KAFKA_BOOTSTRAP_SERVERS: str = os.getenv('KAFKA_BOOTSTRAP_SERVERS')

@@ -13,6 +13,7 @@ from models.user import User
 from schemas.auth import UserCreate, Token, UserResponse, AuthResponse
 from services.user import UserService
 from core.database import get_db
+from core.redis import RedisService, RedisKeyManager
 from core.utils.messages.email import send_email
 from core.utils.encryption import PasswordManager
 
@@ -23,6 +24,7 @@ class AuthService:
     def __init__(self, db: AsyncSession):
         self.db = db
         self.password_manager = PasswordManager()
+        self.redis_service = RedisService() # Initialize RedisService
 
     def verify_password(self, plain_password: str, hashed_password: str) -> bool:
         """Verify a password against its hash."""
@@ -68,7 +70,44 @@ class AuthService:
         
         encoded_jwt = jwt.encode(
             to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+        
+        # Store refresh token in Redis
+        if settings.REDIS_RATELIMIT_ENABLED: # Use this flag for now, need a specific one for auth
+            await self._store_refresh_token_in_redis(to_encode["jti"], str(data["sub"]), to_encode["exp"])
+            
         return encoded_jwt
+
+    async def _store_refresh_token_in_redis(self, jti: str, user_id: str, expiration_timestamp: int) -> bool:
+        """Stores a refresh token's JTI and user_id in Redis."""
+        key = RedisKeyManager.session_key(f"refresh:{jti}")
+        data = {
+            "user_id": user_id,
+            "exp": expiration_timestamp
+        }
+        # TTL should be based on the token's expiration
+        ttl = expiration_timestamp - int(datetime.utcnow().timestamp())
+        if ttl > 0:
+            return await self.redis_service.set_with_expiry(key, data, ttl, data_type="json")
+        return False
+        
+    async def _get_refresh_token_from_redis(self, jti: str) -> Optional[Dict[str, Any]]:
+        """Retrieves a refresh token's data from Redis."""
+        key = RedisKeyManager.session_key(f"refresh:{jti}")
+        return await self.redis_service.get_data(key, data_type="json")
+
+    async def _blacklist_token_in_redis(self, jti: str, expiration_timestamp: int) -> bool:
+        """Blacklists a JWT (access or refresh) by its JTI in Redis."""
+        key = RedisKeyManager.session_key(f"blacklist:{jti}")
+        # Store a dummy value, expiration is what matters
+        ttl = expiration_timestamp - int(datetime.utcnow().timestamp())
+        if ttl > 0:
+            return await self.redis_service.set_with_expiry(key, {"blacklisted": True}, ttl, data_type="json")
+        return False
+        
+    async def _is_token_blacklisted(self, jti: str) -> bool:
+        """Checks if a JWT's JTI is in the Redis blacklist."""
+        key = RedisKeyManager.session_key(f"blacklist:{jti}")
+        return await self.redis_service.exists(key)
 
     def verify_token(self, token: str, token_type: str = "access") -> Dict[str, Any]:
         """Verify and decode JWT token."""
@@ -106,17 +145,32 @@ class AuthService:
         try:
             # Verify refresh token
             payload = self.verify_token(refresh_token, "refresh")
-            
-            # Get user from token
-            user_id = payload.get("sub")
-            if user_id is None:
+            jti = payload.get("jti")
+            user_id_from_token = payload.get("sub")
+
+            if not jti or not user_id_from_token:
                 raise HTTPException(
                     status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail="Invalid token payload"
+                    detail="Invalid refresh token payload"
                 )
             
-            # Verify user still exists and is active
-            user = await self.get_user_by_id(user_id)
+            # Check if refresh token is blacklisted
+            if await self._is_token_blacklisted(jti):
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Refresh token has been blacklisted"
+                )
+            
+            # Check if refresh token exists in Redis
+            redis_token_data = await self._get_refresh_token_from_redis(jti)
+            if not redis_token_data or str(redis_token_data.get("user_id")) != user_id_from_token:
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Refresh token not found or invalid"
+                )
+            
+            # Get user from token
+            user = await self.get_user_by_id(user_id_from_token)
             if not user or not user.is_active:
                 raise HTTPException(
                     status_code=status.HTTP_401_UNAUTHORIZED,
@@ -153,13 +207,18 @@ class AuthService:
             jti = payload.get("jti")
             
             if jti:
-                # In a production system, you would store revoked tokens in Redis or database
-                # For now, we'll just validate the token structure
-                return True
-                
-        except HTTPException:
-            return False
-        
+                # Blacklist the refresh token's JTI in Redis
+                # The token's expiration is in the payload, use it for Redis TTL
+                expiration_timestamp = payload.get("exp")
+                if expiration_timestamp:
+                    return await self._blacklist_token_in_redis(jti, expiration_timestamp)
+        return False
+            
+    except HTTPException:
+        return False
+    except Exception as e:
+        # Log the error
+        print(f"Error revoking refresh token: {e}")
         return False
 
     async def get_user_by_id(self, user_id: str) -> Optional[User]:
@@ -304,10 +363,9 @@ class AuthService:
         
         return auth_response
 
-    @staticmethod
     async def get_current_user(
-        token: str = Depends(oauth2_scheme),
-        db: AsyncSession = Depends(get_db)
+        self,
+        token: str = Depends(oauth2_scheme)
     ) -> User:
         """Get current authenticated user using enhanced JWT verification."""
         credentials_exception = HTTPException(
@@ -329,6 +387,15 @@ class AuthService:
                     headers={"WWW-Authenticate": "Bearer"},
                 )
             
+            # Get JTI from payload
+            jti: str = payload.get("jti")
+            if jti and await self._is_token_blacklisted(jti):
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Token has been blacklisted",
+                    headers={"WWW-Authenticate": "Bearer"},
+                )
+                
             # Get user ID from token
             user_id: str = payload.get("sub")
             if user_id is None:
@@ -347,7 +414,7 @@ class AuthService:
             raise credentials_exception
 
         # Get user from database
-        result = await db.execute(select(User).where(User.id == user_id))
+        result = await self.db.execute(select(User).where(User.id == user_id))
         user = result.scalar_one_or_none()
         
         if user is None:

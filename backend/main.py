@@ -11,7 +11,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from core.database import AsyncSessionDB, initialize_db, db_manager, DatabaseOptimizer
 # Import configuration and middleware
 from core.config import settings, validate_startup_environment, get_setup_instructions
-from core.middleware import SessionMiddleware, RateLimitMiddleware, CacheMiddleware, MaintenanceModeMiddleware
+from core.middleware import RateLimitMiddleware, CacheMiddleware, MaintenanceModeMiddleware, SessionMiddleware
 # Import exceptions and handlers
 from core.exceptions import (
     APIException,
@@ -180,9 +180,9 @@ if hasattr(settings, 'ALLOWED_HOSTS'):
 
 # Middleware Stack (order matters - last added is executed first)
 app.add_middleware(MaintenanceModeMiddleware)
+app.add_middleware(SessionMiddleware)
 app.add_middleware(CacheMiddleware)
 app.add_middleware(RateLimitMiddleware)
-app.add_middleware(SessionMiddleware)
 
 # API v1 Router
 v1_router = APIRouter(prefix="/v1")

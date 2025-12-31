@@ -227,6 +227,10 @@ async def get_redis_lock_service() -> RedisDistributedLockService:
     """Get Redis distributed lock service instance"""
     return RedisDistributedLockService()
 
+async def get_auth_service(db: AsyncSession = Depends(get_db)) -> AuthService:
+    """Get AuthService instance with database session."""
+    return AuthService(db)
+
 
 async def get_inventory_service(
     db: AsyncSession = Depends(get_db),
@@ -246,10 +250,13 @@ async def get_order_service(
     return OrderService(db, lock_service)
 
 
-async def get_current_auth_user(token: str = Depends(oauth2_scheme), db: AsyncSession = Depends(get_db)) -> User:
+async def get_current_auth_user(
+    auth_service: AuthService = Depends(get_auth_service),
+    token: str = Depends(oauth2_scheme)
+) -> User:
     """Get current authenticated user with proper error handling"""
     try:
-        user = await AuthService.get_current_user(token, db)
+        user = await auth_service.get_current_user(token)
         if not user:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
