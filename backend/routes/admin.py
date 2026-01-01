@@ -19,7 +19,8 @@ from fastapi.security import OAuth2PasswordBearer
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 async def get_current_auth_user(token: str = Depends(oauth2_scheme), db: AsyncSession = Depends(get_db)) -> User:
-    return await AuthService.get_current_user(token, db)
+    auth_service = AuthService(db)
+    return await auth_service.get_current_user(token)
 
 router = APIRouter(prefix="/admin", tags=["Admin"])
 

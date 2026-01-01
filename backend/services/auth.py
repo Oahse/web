@@ -366,7 +366,7 @@ class AuthService:
 
     async def get_current_user(
         self,
-        token: str = Depends(oauth2_scheme)
+        token: str
     ) -> User:
         """Get current authenticated user using enhanced JWT verification."""
         credentials_exception = HTTPException(
@@ -431,7 +431,87 @@ class AuthService:
             
         return user
 
-    async def send_password_reset(self, email: str, background_tasks: BackgroundTasks):
+    async def extend_session(self, token: str) -> Dict[str, Any]:
+        """Extend user session by issuing a new access token."""
+        try:
+            # Verify current token
+            payload = self.verify_token(token, "access")
+            user_id = payload.get("sub")
+            
+            if not user_id:
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Invalid token payload"
+                )
+            
+            # Get user to ensure they're still active
+            user = await self.get_user_by_id(user_id)
+            if not user or not user.is_active:
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="User not found or inactive"
+                )
+            
+            # Create new access token with extended expiration
+            token_data = {
+                "sub": str(user.id),
+                "email": user.email,
+                "role": user.role,
+                "is_active": user.is_active
+            }
+            
+            # Extend by the standard access token duration
+            new_access_token = self.create_access_token(token_data)
+            
+            return {
+                "access_token": new_access_token,
+                "token_type": "bearer",
+                "expires_in": settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+                "message": "Session extended successfully"
+            }
+            
+        except HTTPException:
+            raise
+        except Exception as e:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Could not extend session"
+            )
+
+    async def get_session_info(self, token: str) -> Dict[str, Any]:
+        """Get session information for the current token."""
+        try:
+            payload = self.verify_token(token, "access")
+            
+            issued_at = payload.get("iat")
+            expires_at = payload.get("exp")
+            
+            if not issued_at or not expires_at:
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Invalid token timestamps"
+                )
+            
+            current_time = datetime.utcnow().timestamp()
+            time_until_expiry = expires_at - current_time
+            
+            return {
+                "issued_at": issued_at,
+                "expires_at": expires_at,
+                "time_until_expiry": max(0, int(time_until_expiry)),
+                "is_valid": time_until_expiry > 0,
+                "user_id": payload.get("sub"),
+                "email": payload.get("email"),
+                "role": payload.get("role")
+            }
+            
+        except HTTPException:
+            raise
+        except Exception as e:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Could not get session info"
+            )
         """Send password reset email."""
         user = await self.get_user_by_email(email)
         if not user:
