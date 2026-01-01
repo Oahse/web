@@ -3,7 +3,7 @@ import {
   notificationService,
   browserNotificationService 
 } from '../lib/notifications';
-import NotificationAPI from '../apis/notification';
+import { NotificationAPI } from '../apis/notification';
 import { useAuth } from './AuthContext';
 import { toast } from 'react-hot-toast';
 
@@ -27,9 +27,13 @@ export const NotificationProvider = ({ children }) => {
     try {
       setLoading(true);
       const response = await NotificationAPI.getUserNotifications({ limit: 50 });
-      setNotifications(response.data.data || []);
+      setNotifications(response.data?.data || []);
     } catch (error) {
       console.error('Failed to fetch notifications:', error);
+      // Don't show error toast for auth failures to avoid spam
+      if (error.response?.status !== 401) {
+        toast.error('Failed to load notifications');
+      }
     } finally {
       setLoading(false);
     }

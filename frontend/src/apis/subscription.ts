@@ -30,4 +30,5 @@ class SubscriptionAPI {
   }
 }
 
-export default SubscriptionAPI;
+// Export an instance instead of the class
+export default new SubscriptionAPI();

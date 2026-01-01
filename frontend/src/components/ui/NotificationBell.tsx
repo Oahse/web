@@ -26,6 +26,10 @@ export const NotificationBell = () => {
       }
     } catch (error) {
       console.error('Failed to fetch notifications:', error);
+      // Don't show error for auth failures to avoid spam
+      if (error.response?.status !== 401) {
+        console.error('Failed to fetch notifications:', error);
+      }
     } finally {
       setLoading(false);
     }
@@ -40,6 +44,10 @@ export const NotificationBell = () => {
       setUnreadCount(count);
     } catch (error) {
       console.error('Failed to fetch unread count:', error);
+      // Don't show error for auth failures to avoid spam
+      if (error.response?.status !== 401) {
+        console.error('Failed to fetch unread count:', error);
+      }
     }
   }, [isAuthenticated]);
 

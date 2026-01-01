@@ -77,7 +77,7 @@ export const Login = ({ isInitialLoading = false }) => {
         setIntendedDestination(null);
       }
     }
-  }, [getRedirectPath, isAuthenticated, navigate, redirectPath, setRedirectPath, isAdmin, isSupplier, intendedDestination, setIntendedDestination]);
+  }, [isAuthenticated]); // Simplified dependencies to prevent infinite loop
 
   /**
    * Handles the form submission for user login.
