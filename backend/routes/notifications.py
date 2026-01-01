@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/notifications", tags=["notifications"])
 
 
-@router.get("/", response_model=Response[NotificationListResponse])
+@router.get("/")
 async def get_user_notifications(
     request: Request,
     current_user: User = Depends(get_current_user),

@@ -30,7 +30,7 @@ def get_refund_service(db: AsyncSession = Depends(get_db)) -> RefundService:
     return RefundService(db)
 
 
-@router.post("/orders/{order_id}/request", response_model=RefundResponse)
+@router.post("/orders/{order_id}/request")
 async def request_refund(
     order_id: UUID,
     refund_request: RefundRequest,
@@ -68,7 +68,7 @@ async def request_refund(
         )
 
 
-@router.get("/orders/{order_id}/eligibility", response_model=RefundEligibilityResponse)
+@router.get("/orders/{order_id}/eligibility")
 async def check_refund_eligibility(
     order_id: UUID,
     current_user: User = Depends(get_current_auth_user),
@@ -100,7 +100,7 @@ async def check_refund_eligibility(
         )
 
 
-@router.get("/", response_model=RefundListResponse)
+@router.get("/")
 async def get_user_refunds(
     status: Optional[RefundStatus] = Query(None, description="Filter by refund status"),
     page: int = Query(1, ge=1, description="Page number"),
@@ -145,7 +145,7 @@ async def get_user_refunds(
         )
 
 
-@router.get("/{refund_id}", response_model=RefundResponse)
+@router.get("/{refund_id}")
 async def get_refund_details(
     refund_id: UUID,
     current_user: User = Depends(get_current_auth_user),
@@ -176,7 +176,7 @@ async def get_refund_details(
         )
 
 
-@router.put("/{refund_id}/cancel", response_model=RefundResponse)
+@router.put("/{refund_id}/cancel")
 async def cancel_refund(
     refund_id: UUID,
     current_user: User = Depends(get_current_auth_user),
@@ -208,7 +208,7 @@ async def cancel_refund(
         )
 
 
-@router.get("/stats/summary", response_model=RefundStatsResponse)
+@router.get("/stats/summary")
 async def get_refund_stats(
     current_user: User = Depends(get_current_auth_user),
     refund_service: RefundService = Depends(get_refund_service)
