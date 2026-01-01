@@ -11,17 +11,12 @@ from services.search import SearchService
 from schemas.user import UserCreate, UserUpdate, AddressResponse
 from schemas.user import AddressCreate, AddressUpdate
 # Import AuthService and oauth2_scheme
-from services.auth import AuthService, oauth2_scheme
+from services.auth import AuthService
+from routes.auth import get_current_auth_user
 from models.user import User  # Import User model
 
 router = APIRouter(prefix="/users", tags=["Users & Addresses"])
 
-# Dependency to get current authenticated user
-
-
-async def get_current_auth_user(token: str = Depends(oauth2_scheme), db: AsyncSession = Depends(get_db)) -> User:
-    auth_service = AuthService(db)
-    return await auth_service.get_current_user(token)
 
 # ==========================================================
 # USER ENDPOINTS
@@ -151,7 +146,7 @@ async def delete_user(user_id: UUID, db: AsyncSession = Depends(get_db)):
 # Add response_model
 @router.get("/me/addresses")
 async def list_my_addresses(
-    current_user: User = Depends(get_current_authenticated_user),
+    current_user: User = Depends(get_current_auth_user),
     db: AsyncSession = Depends(get_db)
 ):
     service = AddressService(db)
