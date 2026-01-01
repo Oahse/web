@@ -1,4 +1,4 @@
-from fastapi import Depends, HTTPException, status, Request
+from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 from core.database import get_db
@@ -251,23 +251,10 @@ async def get_order_service(
 
 
 async def get_current_auth_user(
-    request: Request, # Add Request as a dependency
     auth_service: AuthService = Depends(get_auth_service),
-    db: AsyncSession = Depends(get_db) # Add db dependency
+    token: str = Depends(oauth2_scheme)
 ) -> User:
-    """Get current authenticated user with proper error handling, checking cookie first."""
-    token = request.cookies.get("access_token") # Try to get token from cookie
-
-    if not token:
-        # If not in cookie, try to get from Authorization header
-        token = await oauth2_scheme(request) # oauth2_scheme expects the Request object
-        if not token: # If still no token, raise exception
-             raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Not authenticated",
-                headers={"WWW-Authenticate": "Bearer"},
-            )
-
+    """Get current authenticated user with proper error handling"""
     try:
         user = await auth_service.get_current_user(token)
         if not user:
