@@ -3,9 +3,12 @@ import { ShoppingCartIcon, UsersIcon, DollarSignIcon, ArrowUpIcon, ArrowDownIcon
 import { Link } from 'react-router-dom';
 import { useApi } from '../../hooks/useApi';
 import { AdminAPI } from '../../apis';
-import { SalesChart } from '../../components/admin/SalesChart';
+import { SalesOverview } from '../../components/admin/sales/SalesOverview';
+import { SalesFilters, SalesData, SalesMetrics } from '../../components/admin/sales/types';
+import AnalyticsAPI from '../../apis/analytics';
 import { themeClasses } from '../../lib/theme';
 import ErrorMessage from '../../components/common/ErrorMessage';
+import { apiClient } from '../../apis/client';
 
 interface StatCardProps {
   title: string;
@@ -176,19 +179,91 @@ export const AdminDashboard = () => {
     execute: executeOrders,
   } = useApi();
 
+  const {
+    data: salesData,
+    loading: salesLoading,
+    error: salesError,
+    execute: fetchSalesData,
+  } = useApi<{
+    data: SalesData[];
+    metrics: SalesMetrics;
+  }>();
+
+  const { data: categoriesData, loading: categoriesLoading, error: categoriesError, execute: fetchCategories } = useApi<{
+    categories: { id: string; name: string }[];
+  }>();
+
+  const [salesFilters, setSalesFilters] = useState<SalesFilters>({
+    dateRange: '30d',
+    startDate: '',
+    endDate: '',
+    categories: [],
+    regions: [],
+    salesChannels: ['online', 'instore'],
+    granularity: 'daily'
+  });
+
+  // Fetch categories on component mount
+  useEffect(() => {
+    fetchCategories(apiClient.getCategories);
+  }, [fetchCategories]);
+
+  const availableCategories = categoriesData?.categories || [];
+
+  const availableRegions = [
+    { id: 'north-america', name: 'North America' },
+    { id: 'europe', name: 'Europe' },
+    { id: 'asia-pacific', name: 'Asia Pacific' },
+    { id: 'africa', name: 'Africa' }
+  ];
+
+  const fetchSales = async () => {
+    const response = await AnalyticsAPI.getSalesOverview({
+      days: salesFilters.dateRange === '7d' ? 7 : 
+            salesFilters.dateRange === '30d' ? 30 : 
+            salesFilters.dateRange === '3m' ? 90 : 
+            salesFilters.dateRange === '12m' ? 365 : 30,
+      granularity: salesFilters.granularity,
+      categories: salesFilters.categories.length > 0 ? salesFilters.categories : undefined,
+      regions: salesFilters.regions.length > 0 ? salesFilters.regions : undefined,
+      sales_channels: salesFilters.salesChannels.length > 0 ? salesFilters.salesChannels : undefined,
+      start_date: salesFilters.dateRange === 'custom' && salesFilters.startDate ? salesFilters.startDate : undefined,
+      end_date: salesFilters.dateRange === 'custom' && salesFilters.endDate ? salesFilters.endDate : undefined
+    });
+    
+    return response.data;
+  };
+
+  // Log data to console for verification
+  useEffect(() => {
+    if (salesData) {
+      console.log('Sales Data from API:', salesData);
+    }
+    if (categoriesData) {
+      console.log('Categories Data from API:', categoriesData);
+    }
+  }, [salesData, categoriesData]);
+
   // Initial data fetch
   useEffect(() => {
     executeStats(AdminAPI.getAdminStats);
     executeOverview(AdminAPI.getPlatformOverview);
     executeOrders(() => AdminAPI.getAllOrders({ page: 1, limit: 10 }));
-  }, []);
+    fetchSalesData(fetchSales);
+  }, [executeStats, executeOverview, executeOrders, fetchSalesData, salesFilters]);
 
   const handleRefresh = () => {
     setIsRefreshing(true);
     executeStats(AdminAPI.getAdminStats);
     executeOverview(AdminAPI.getPlatformOverview);
     executeOrders(() => AdminAPI.getAllOrders({ page: 1, limit: 10 }));
+    fetchSalesData(fetchSales);
+    fetchCategories(apiClient.getCategories);
     setTimeout(() => setIsRefreshing(false), 1000);
+  };
+
+  const handleSalesFiltersChange = (newFilters: SalesFilters) => {
+    setSalesFilters(newFilters);
   };
 
   // Extract real data from API responses
@@ -286,11 +361,18 @@ export const AdminDashboard = () => {
         ))}
       </div>
 
-      {/* Sales Chart */}
-      <div className={`${themeClasses.card.base} p-6`}>
-        <h2 className={`${themeClasses.text.heading} text-lg font-semibold mb-4`}>Sales Overview</h2>
-        <SalesChart />
-      </div>
+      {/* Sales Overview */}
+      <SalesOverview
+        salesData={salesData || undefined}
+        loading={salesLoading}
+        error={salesError}
+        onFiltersChange={handleSalesFiltersChange}
+        onRefresh={fetchSales}
+        availableCategories={availableCategories}
+        availableRegions={availableRegions}
+        title="Sales Overview"
+        subtitle="A quick overview of your sales performance"
+      />
 
       {/* Recent Orders and Top Products */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

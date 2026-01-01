@@ -48,12 +48,6 @@ api.interceptors.response.use(
     if (config.debugMode) {
       console.log('API Response:', response.status, response.config.url, response.data);
     }
-// Response interceptor for error handling and token refresh
-api.interceptors.response.use(
-  (response) => {
-    if (config.debugMode) {
-      console.log('API Response:', response.status, response.config.url, response.data);
-    }
     return response;
   },
   async (error) => {
@@ -105,6 +99,7 @@ api.interceptors.response.use(
     return Promise.reject(error);
   }
 );
+
 
 // Generate session ID for guest users
 function generateSessionId() {

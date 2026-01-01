@@ -316,8 +316,19 @@ class Settings:
         self.STRIPE_SECRET_KEY: str = os.getenv('STRIPE_SECRET_KEY')
         self.STRIPE_WEBHOOK_SECRET: str = os.getenv('STRIPE_WEBHOOK_SECRET')
         self.ALGORITHM: str = os.getenv('ALGORITHM', "HS256")
+        
+        # Session and Token Configuration
         self.ACCESS_TOKEN_EXPIRE_MINUTES: int = int(os.getenv('ACCESS_TOKEN_EXPIRE_MINUTES', 30))
         self.REFRESH_TOKEN_EXPIRE_DAYS: int = int(os.getenv('REFRESH_TOKEN_EXPIRE_DAYS', 7))
+        self.SESSION_WARNING_THRESHOLD_MINUTES: int = int(os.getenv('SESSION_WARNING_THRESHOLD_MINUTES', 5))
+        self.SESSION_EXTENSION_MINUTES: int = int(os.getenv('SESSION_EXTENSION_MINUTES', 30))
+        
+        # Remember Me Configuration
+        self.REMEMBER_ME_TOKEN_EXPIRE_DAYS: int = int(os.getenv('REMEMBER_ME_TOKEN_EXPIRE_DAYS', 30))
+        
+        # Session Security
+        self.MAX_CONCURRENT_SESSIONS: int = int(os.getenv('MAX_CONCURRENT_SESSIONS', 5))
+        self.FORCE_LOGOUT_ON_PASSWORD_CHANGE: bool = os.getenv('FORCE_LOGOUT_ON_PASSWORD_CHANGE', 'true').lower() == 'true'
         
         # --- Redis Configuration ---
         self.REDIS_URL: str = os.getenv('REDIS_URL')

@@ -77,9 +77,6 @@ const AdminOrders = lazy(() =>
 const AdminAnalytics = lazy(() =>
   import('./pages/admin/AdminAnalytics').then((module) => ({ default: module.AdminAnalytics }))
 );
-const AdminSalesOverview = lazy(() =>
-  import('./pages/admin/AdminSalesOverview').then((module) => ({ default: module.AdminSalesOverview }))
-);
 const AdminNotifications = lazy(() =>
   import('./pages/admin/AdminNotifications').then((module) => ({ default: module.AdminNotifications }))
 );
@@ -311,16 +308,6 @@ export const App: React.FC = () => {
                                   <ProtectedRoute requiredRole={['Admin']}>
                                     <AdminLayout>
                                       <AdminAnalytics />
-                                    </AdminLayout>
-                                  </ProtectedRoute>
-                                }
-                              />
-                              <Route
-                                path="/admin/sales-overview"
-                                element={
-                                  <ProtectedRoute requiredRole={['Admin']}>
-                                    <AdminLayout>
-                                      <AdminSalesOverview />
                                     </AdminLayout>
                                   </ProtectedRoute>
                                 }

@@ -35,6 +35,10 @@ class Token(BaseModel):
     user: UserResponse
 
 
+class RefreshTokenRequest(BaseModel):
+    refresh_token: str
+
+
 class AuthResponse(BaseModel):
     access_token: str
     token_type: str

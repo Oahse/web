@@ -327,40 +327,8 @@ async def update_profile(
         )
 
 
-@router.post("/extend-session")
-async def extend_session(
-    current_user: User = Depends(get_current_auth_user),
-    token: str = Depends(oauth2_scheme),
-    db: AsyncSession = Depends(get_db)
-):
-    """Extend the current user session."""
-    try:
-        auth_service = AuthService(db)
-        token_data = await auth_service.extend_session(token)
-        return Response.success(data=token_data, message="Session extended successfully")
-    except Exception as e:
-        raise APIException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            message=f"Failed to extend session - {str(e)}"
-        )
 
 
-@router.get("/session-info")
-async def get_session_info(
-    current_user: User = Depends(get_current_auth_user),
-    token: str = Depends(oauth2_scheme),
-    db: AsyncSession = Depends(get_db)
-):
-    """Get current session information."""
-    try:
-        auth_service = AuthService(db)
-        session_info = await auth_service.get_session_info(token)
-        return Response.success(data=session_info)
-    except Exception as e:
-        raise APIException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            message=f"Failed to get session info - {str(e)}"
-        )
 
 
 @router.put("/change-password")

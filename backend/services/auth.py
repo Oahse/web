@@ -17,8 +17,6 @@ from core.utils.messages.email import send_email
 from core.utils.encryption import PasswordManager
 
 
-
-
 class AuthService:
     def __init__(self, db: AsyncSession):
         self.db = db
@@ -97,7 +95,7 @@ class AuthService:
             
             return payload
             
-        except JWTError as e:
+        except JWTError:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Could not validate credentials",
@@ -125,15 +123,6 @@ class AuthService:
                     status_code=status.HTTP_401_UNAUTHORIZED,
                     detail="User not found or inactive"
                 )
-            
-            # Create new access token
-            access_token_data = {
-                "sub": str(user.id),
-                "email": user.email,
-                "role": user.role,
-                "is_active": user.is_active
-            }
-            
             new_access_token = self.create_access_token(access_token_data)
             
             return {
@@ -321,15 +310,7 @@ class AuthService:
                     headers={"WWW-Authenticate": "Bearer"},
                 )
             
-            # Get JTI from payload
-            jti: str = payload.get("jti")
-            if jti and await self._is_token_blacklisted(jti):
-                raise HTTPException(
-                    status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail="Token has been blacklisted",
-                    headers={"WWW-Authenticate": "Bearer"},
-                )
-                
+
             # Get user ID from token
             user_id: str = payload.get("sub")
             if user_id is None:
@@ -364,144 +345,4 @@ class AuthService:
             
         return user
 
-    async def extend_session(self, token: str) -> Dict[str, Any]:
-        """Extend user session by issuing a new access token."""
-        try:
-            # Verify current token
-            payload = self.verify_token(token, "access")
-            user_id = payload.get("sub")
-            
-            if not user_id:
-                raise HTTPException(
-                    status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail="Invalid token payload"
-                )
-            
-            # Get user to ensure they're still active
-            user = await self.get_user_by_id(user_id)
-            if not user or not user.is_active:
-                raise HTTPException(
-                    status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail="User not found or inactive"
-                )
-            
-            # Create new access token with extended expiration
-            token_data = {
-                "sub": str(user.id),
-                "email": user.email,
-                "role": user.role,
-                "is_active": user.is_active
-            }
-            
-            # Extend by the standard access token duration
-            new_access_token = self.create_access_token(token_data)
-            
-            return {
-                "access_token": new_access_token,
-                "token_type": "bearer",
-                "expires_in": settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-                "message": "Session extended successfully"
-            }
-            
-        except HTTPException:
-            raise
-        except Exception as e:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Could not extend session"
-            )
 
-    async def get_session_info(self, token: str) -> Dict[str, Any]:
-        """Get session information for the current token."""
-        try:
-            payload = self.verify_token(token, "access")
-            
-            issued_at = payload.get("iat")
-            expires_at = payload.get("exp")
-            
-            if not issued_at or not expires_at:
-                raise HTTPException(
-                    status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail="Invalid token timestamps"
-                )
-            
-            current_time = datetime.utcnow().timestamp()
-            time_until_expiry = expires_at - current_time
-            
-            return {
-                "issued_at": issued_at,
-                "expires_at": expires_at,
-                "time_until_expiry": max(0, int(time_until_expiry)),
-                "is_valid": time_until_expiry > 0,
-                "user_id": payload.get("sub"),
-                "email": payload.get("email"),
-                "role": payload.get("role")
-            }
-            
-        except HTTPException:
-            raise
-        except Exception as e:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Could not get session info"
-            )
-        """Send password reset email."""
-        user = await self.get_user_by_email(email)
-        if not user:
-            # Don't reveal if email exists for security
-            return
-
-        # Generate reset token
-        reset_token = self.create_access_token(
-            data={"sub": user.email, "type": "password_reset"},
-            expires_delta=timedelta(hours=1)  # Reset tokens expire in 1 hour
-        )
-
-        # Send reset email
-        context = {
-            "customer_name": user.firstname,
-            "reset_link": f"{settings.FRONTEND_URL}/reset-password?token={reset_token}",
-            "company_name": "Banwee",
-        }
-
-        try:
-            background_tasks.add_task(
-                send_email,
-                to_email=user.email,
-                mail_type='password_reset',
-                context=context
-            )
-        except Exception as e:
-            print(f"Failed to send password reset email: {e}")
-
-    async def reset_password(self, token: str, new_password: str):
-        """Reset password using reset token."""
-        try:
-            payload = jwt.decode(token, settings.SECRET_KEY,
-                                 algorithms=[settings.ALGORITHM])
-            email: str = payload.get("sub")
-            token_type: str = payload.get("type")
-
-            if email is None or token_type != "password_reset":
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Invalid reset token"
-                )
-        except JWTError:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Invalid or expired reset token"
-            )
-
-        # Get user and update password
-        user = await self.get_user_by_email(email)
-        if not user:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="User not found"
-            )
-
-        # Update password
-        user_service = UserService(self.db)
-        hashed_password = self.get_password_hash(new_password)
-        await user_service.update_user(user.id, {"hashed_password": hashed_password})

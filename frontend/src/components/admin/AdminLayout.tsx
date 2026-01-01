@@ -44,7 +44,6 @@ export const AdminLayout = ({ children }: AdminLayoutProps) => {
 
   const menuItems = [
     { title: 'Dashboard', path: '/admin', icon: <LayoutDashboardIcon size={20} /> },
-    { title: 'Sales Overview', path: '/admin/sales-overview', icon: <TrendingUpIcon size={20} /> },
     { title: 'Analytics', path: '/admin/analytics', icon: <BarChart3Icon size={20} /> },
     { title: 'Orders', path: '/admin/orders', icon: <ShoppingCartIcon size={20} /> },
     { title: 'Products', path: '/admin/products', icon: <PackageIcon size={20} /> },

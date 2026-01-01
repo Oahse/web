@@ -40,13 +40,8 @@ export class AuthAPI {
   static async register(data: RegisterData) {
     const response = await apiClient.post('/auth/register', data);
     
-    if (response.data.access_token) {
-      TokenManager.setToken(response.data.access_token);
-      if (response.data.refresh_token) {
-        TokenManager.setRefreshToken(response.data.refresh_token);
-      }
-      TokenManager.setUser(response.data.user);
-    }
+    // Don't set tokens here - let the AuthContext handle it
+    // The response structure from backend is: { success: true, data: { access_token, refresh_token, user } }
     
     return response;
   }
@@ -57,13 +52,8 @@ export class AuthAPI {
   static async login(data: LoginData) {
     const response = await apiClient.post('/auth/login', data);
     
-    if (response.data.access_token) {
-      TokenManager.setToken(response.data.access_token);
-      if (response.data.refresh_token) {
-        TokenManager.setRefreshToken(response.data.refresh_token);
-      }
-      TokenManager.setUser(response.data.user);
-    }
+    // Don't set tokens here - let the AuthContext handle it
+    // The response structure from backend is: { success: true, data: { access_token, refresh_token, user } }
     
     return response;
   }
@@ -284,6 +274,20 @@ export class AuthAPI {
    */
   static async setDefaultPaymentMethod(paymentMethodId) {
     return await apiClient.put(`/users/payment-methods/${paymentMethodId}/default`);
+  }
+
+  /**
+   * Extend current session
+   */
+  static async extendSession() {
+    return await apiClient.post('/auth/extend-session');
+  }
+
+  /**
+   * Get current session information
+   */
+  static async getSessionInfo() {
+    return await apiClient.get('/auth/session-info');
   }
 
   /**

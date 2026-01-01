@@ -1,4 +1,6 @@
-import React, { useState, useEffect, useCallback } from 'react';
+// frontend/src/components/admin/sales/SalesOverview.tsx
+
+import React, { useState } from 'react';
 import { 
   TrendingUpIcon, 
   DollarSignIcon, 
@@ -7,7 +9,6 @@ import {
   CalendarIcon,
   FilterIcon,
   XIcon,
-  ChevronDownIcon,
   BarChart3Icon,
   LineChartIcon,
   RefreshCwIcon
@@ -26,49 +27,21 @@ import {
   Area,
   AreaChart
 } from 'recharts';
-import { useApi } from '../../hooks/useApi';
-import { AdminAPI } from '../../apis';
-import AnalyticsAPI from '../../apis/analytics';
-import { SkeletonDashboard } from '../../components/ui/SkeletonDashboard';
 import { motion, AnimatePresence } from 'framer-motion';
+import { SalesOverviewProps, SalesFilters } from './types';
+import { CHART_COLORS, formatCurrency, formatNumber } from './utils';
+import { SkeletonDashboard } from '../../ui/SkeletonDashboard';
 
-interface SalesFilters {
-  dateRange: string;
-  startDate: string;
-  endDate: string;
-  categories: string[];
-  regions: string[];
-  salesChannels: string[];
-  granularity: 'daily' | 'weekly' | 'monthly';
-}
-
-interface SalesData {
-  date: string;
-  revenue: number;
-  orders: number;
-  averageOrderValue: number;
-  onlineRevenue: number;
-  instoreRevenue: number;
-}
-
-interface SalesMetrics {
-  totalRevenue: number;
-  totalOrders: number;
-  averageOrderValue: number;
-  conversionRate: number;
-  revenueGrowth: number;
-  ordersGrowth: number;
-}
-
-const CHART_COLORS = {
-  primary: '#3B82F6',
-  secondary: '#10B981',
-  accent: '#F59E0B',
-  danger: '#EF4444',
-  purple: '#8B5CF6'
-};
-
-export const AdminSalesOverview = () => {
+export const SalesOverview: React.FC<SalesOverviewProps> = ({
+  salesData,
+  loading,
+  onFiltersChange,
+  onRefresh,
+  availableCategories,
+  availableRegions,
+  title = "Sales Overview",
+  subtitle = "Track your revenue performance and sales metrics"
+}) => {
   const [filters, setFilters] = useState<SalesFilters>({
     dateRange: '30d',
     startDate: '',
@@ -85,90 +58,37 @@ export const AdminSalesOverview = () => {
   const [selectedMetrics, setSelectedMetrics] = useState<string[]>(['revenue', 'orders']);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const { data: salesData, loading, error, execute: fetchSalesData } = useApi<{
-    data: SalesData[];
-    metrics: SalesMetrics;
-  }>();
-
-  // Mock categories and regions - in real app, these would come from API
-  const availableCategories = [
-    { id: 'cereal-crops', name: 'Cereal Crops' },
-    { id: 'legumes', name: 'Legumes' },
-    { id: 'fruits-vegetables', name: 'Fruits & Vegetables' },
-    { id: 'herbs-spices', name: 'Herbs & Spices' }
-  ];
-
-  const availableRegions = [
-    { id: 'north-america', name: 'North America' },
-    { id: 'europe', name: 'Europe' },
-    { id: 'asia-pacific', name: 'Asia Pacific' },
-    { id: 'africa', name: 'Africa' }
-  ];
-
-  const fetchData = useCallback(async () => {
-    try {
-      // Call the actual API endpoint
-      const response = await AnalyticsAPI.getSalesOverview({
-        days: filters.dateRange === '7d' ? 7 : 
-              filters.dateRange === '30d' ? 30 : 
-              filters.dateRange === '3m' ? 90 : 
-              filters.dateRange === '12m' ? 365 : 30,
-        granularity: filters.granularity,
-        categories: filters.categories.length > 0 ? filters.categories : undefined,
-        regions: filters.regions.length > 0 ? filters.regions : undefined,
-        sales_channels: filters.salesChannels.length > 0 ? filters.salesChannels : undefined,
-        start_date: filters.dateRange === 'custom' && filters.startDate ? filters.startDate : undefined,
-        end_date: filters.dateRange === 'custom' && filters.endDate ? filters.endDate : undefined
-      });
-      
-      return response.data;
-    } catch (error) {
-      console.error('Error fetching sales data:', error);
-      // Fallback to mock data if API fails
-      const mockData = generateMockSalesData(filters);
-      return { data: mockData.chartData, metrics: mockData.metrics };
-    }
-  }, [filters]);
-
-  useEffect(() => {
-    fetchSalesData(fetchData);
-  }, [fetchSalesData, fetchData]);
-
   const handleRefresh = async () => {
     setIsRefreshing(true);
-    await fetchSalesData(fetchData);
+    await onRefresh();
     setTimeout(() => setIsRefreshing(false), 500);
   };
 
   const handleFilterChange = (key: keyof SalesFilters, value: any) => {
-    setFilters(prev => ({ ...prev, [key]: value }));
+    const newFilters = { ...filters, [key]: value };
+    setFilters(newFilters);
+    onFiltersChange(newFilters);
   };
-
+  
   const handleCategoryToggle = (categoryId: string) => {
-    setFilters(prev => ({
-      ...prev,
-      categories: prev.categories.includes(categoryId)
-        ? prev.categories.filter(id => id !== categoryId)
-        : [...prev.categories, categoryId]
-    }));
+    const newCategories = filters.categories.includes(categoryId)
+      ? filters.categories.filter(id => id !== categoryId)
+      : [...filters.categories, categoryId];
+    handleFilterChange('categories', newCategories);
   };
 
   const handleRegionToggle = (regionId: string) => {
-    setFilters(prev => ({
-      ...prev,
-      regions: prev.regions.includes(regionId)
-        ? prev.regions.filter(id => id !== regionId)
-        : [...prev.regions, regionId]
-    }));
+    const newRegions = filters.regions.includes(regionId)
+      ? filters.regions.filter(id => id !== regionId)
+      : [...filters.regions, regionId];
+    handleFilterChange('regions', newRegions);
   };
 
   const handleSalesChannelToggle = (channel: string) => {
-    setFilters(prev => ({
-      ...prev,
-      salesChannels: prev.salesChannels.includes(channel)
-        ? prev.salesChannels.filter(c => c !== channel)
-        : [...prev.salesChannels, channel]
-    }));
+    const newSalesChannels = filters.salesChannels.includes(channel)
+      ? filters.salesChannels.filter(c => c !== channel)
+      : [...filters.salesChannels, channel];
+    handleFilterChange('salesChannels', newSalesChannels);
   };
 
   const handleMetricToggle = (metric: string) => {
@@ -180,7 +100,7 @@ export const AdminSalesOverview = () => {
   };
 
   const resetFilters = () => {
-    setFilters({
+    const defaultFilters: SalesFilters = {
       dateRange: '30d',
       startDate: '',
       endDate: '',
@@ -188,7 +108,9 @@ export const AdminSalesOverview = () => {
       regions: [],
       salesChannels: ['online', 'instore'],
       granularity: 'daily'
-    });
+    };
+    setFilters(defaultFilters);
+    onFiltersChange(defaultFilters);
     setShowCustomDatePicker(false);
   };
 
@@ -196,19 +118,6 @@ export const AdminSalesOverview = () => {
                           filters.regions.length > 0 || 
                           filters.salesChannels.length !== 2 ||
                           filters.dateRange === 'custom';
-
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0
-    }).format(value);
-  };
-
-  const formatNumber = (value: number) => {
-    return new Intl.NumberFormat('en-US').format(value);
-  };
 
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
@@ -411,8 +320,8 @@ export const AdminSalesOverview = () => {
     return (
       <div className="p-6">
         <div className="mb-6">
-          <h1 className="text-2xl font-bold text-main mb-2">Sales Overview</h1>
-          <p className="text-copy-lighter">Monitor sales performance and analytics.</p>
+          <h1 className="text-2xl font-bold text-main mb-2">{title}</h1>
+          <p className="text-copy-lighter">{subtitle}</p>
         </div>
         <SkeletonDashboard />
       </div>
@@ -424,10 +333,8 @@ export const AdminSalesOverview = () => {
       {/* Header */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-main mb-2">Sales Overview</h1>
-          <p className="text-copy-lighter">
-            Track your revenue performance and sales metrics
-          </p>
+          <h1 className="text-3xl font-bold text-main mb-2">{title}</h1>
+          <p className="text-copy-lighter">{subtitle}</p>
         </div>
         
         <div className="flex items-center space-x-3 mt-4 lg:mt-0">
@@ -721,7 +628,7 @@ export const AdminSalesOverview = () => {
                     <Icon size={16} />
                   </button>
                 ))}
-              </div>
+.              </div>
 
               {/* Metrics Selector */}
               <div className="flex items-center space-x-2">
@@ -773,50 +680,3 @@ export const AdminSalesOverview = () => {
     </div>
   );
 };
-
-// Mock data generator
-function generateMockSalesData(filters: SalesFilters) {
-  const days = filters.dateRange === '7d' ? 7 : 
-               filters.dateRange === '30d' ? 30 : 
-               filters.dateRange === '3m' ? 90 : 
-               filters.dateRange === '12m' ? 365 : 30;
-
-  const chartData: SalesData[] = [];
-  const baseRevenue = 50000;
-  
-  for (let i = 0; i < days; i++) {
-    const date = new Date();
-    date.setDate(date.getDate() - (days - i - 1));
-    
-    const revenue = baseRevenue + (Math.random() - 0.5) * 20000;
-    const orders = Math.floor(revenue / 150 + (Math.random() - 0.5) * 50);
-    const onlineRevenue = revenue * (0.6 + Math.random() * 0.2);
-    const instoreRevenue = revenue - onlineRevenue;
-    
-    chartData.push({
-      date: date.toLocaleDateString('en-US', { 
-        month: 'short', 
-        day: 'numeric' 
-      }),
-      revenue: Math.round(revenue),
-      orders,
-      averageOrderValue: Math.round(revenue / orders),
-      onlineRevenue: Math.round(onlineRevenue),
-      instoreRevenue: Math.round(instoreRevenue)
-    });
-  }
-
-  const totalRevenue = chartData.reduce((sum, day) => sum + day.revenue, 0);
-  const totalOrders = chartData.reduce((sum, day) => sum + day.orders, 0);
-
-  const metrics: SalesMetrics = {
-    totalRevenue,
-    totalOrders,
-    averageOrderValue: Math.round(totalRevenue / totalOrders),
-    conversionRate: 2.4 + Math.random() * 2,
-    revenueGrowth: (Math.random() - 0.3) * 20,
-    ordersGrowth: (Math.random() - 0.3) * 15
-  };
-
-  return { chartData, metrics };
-}

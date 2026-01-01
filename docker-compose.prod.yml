@@ -47,8 +47,7 @@ services:
     restart: unless-stopped
 
   # Redis (Alpine) - Optimized for Cart Storage
-  # This service provides a Redis instance for caching, session management, and cart storage.
-  # Configured with persistence and memory optimization for cart data.
+  # This service provides a Redis instance for caching,
   redis:
     image: redis:7-alpine
     container_name: banwee_redis

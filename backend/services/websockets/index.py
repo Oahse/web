@@ -20,10 +20,8 @@ from enum import Enum
 
 from fastapi import WebSocket, HTTPException, status
 from core.config import settings
-from core.utils.auth.jwt_auth import JWTManager
-
-logger = logging.getLogger(__name__)
-jwt_manager = JWTManager(secret_key=settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+from services.auth import AuthService # New import
+from core.database import get_db # New import
 
 
 class ConnectionStatus(Enum):
@@ -221,15 +219,18 @@ class ConnectionManager:
     async def authenticate_connection(self, token: str) -> Optional[str]:
         """Authenticate WebSocket connection using JWT token"""
         try:
-            payload = jwt_manager.verify_token(token)
-            user_id = payload.get("sub")
-            if user_id:
-                logger.info(f"WebSocket authentication successful for user: {user_id}")
-                return user_id
-            else:
-                logger.warning("WebSocket authentication failed: No user ID in token")
-                self.stats["failed_authentications"] += 1
-                return None
+            # Manually get a database session for AuthService
+            async for db in get_db(): # This is how get_db is used as a dependency
+                auth_service = AuthService(db)
+                payload = await auth_service.verify_token(token)
+                user_id = payload.get("sub")
+                if user_id:
+                    logger.info(f"WebSocket authentication successful for user: {user_id}")
+                    return user_id
+                else:
+                    logger.warning("WebSocket authentication failed: No user ID in token")
+                    self.stats["failed_authentications"] += 1
+                    return None
         except Exception as e:
             logger.error(f"WebSocket authentication error: {str(e)}")
             self.stats["failed_authentications"] += 1

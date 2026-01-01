@@ -1,497 +1,94 @@
-import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { BarChart3Icon, TrendingUpIcon, UsersIcon, ShoppingCartIcon, DollarSignIcon, CalendarIcon, ArrowUpIcon, ArrowDownIcon, ArrowRightIcon, PackageIcon, FilterIcon, XIcon, DownloadIcon, ChevronDownIcon } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useApi } from '../../hooks/useApi';
-import { AnalyticsAPI } from '../../apis';
-import { toast } from 'react-hot-toast';
-
-import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
-
-interface AnalyticsFilters {
-  startDate: string;
-  endDate: string;
-  category?: string;
-  product?: string;
-  userSegment?: string;
-  orderStatus?: string;
-}
+import AnalyticsAPI from '../../apis/analytics';
+import { SalesOverview } from '../../components/admin/sales/SalesOverview';
+import { SalesFilters, SalesData, SalesMetrics } from '../../components/admin/sales/types';
+import { apiClient } from '../../apis/client'; // Import apiClient
 
 export const AdminAnalytics = () => {
-  const [timeRange, setTimeRange] = useState('30d');
-  const [chartView, setChartView] = useState('revenue');
-  const [showCustomDatePicker, setShowCustomDatePicker] = useState(false);
-  const [showFilters, setShowFilters] = useState(false);
-  const [showExportDropdown, setShowExportDropdown] = useState(false);
-  const [isExporting, setIsExporting] = useState(false);
-  const [filters, setFilters] = useState<AnalyticsFilters>({
+  const [filters, setFilters] = useState<SalesFilters>({
+    dateRange: '30d',
     startDate: '',
     endDate: '',
-    category: '',
-    product: '',
-    userSegment: '',
-    orderStatus: ''
+    categories: [],
+    regions: [],
+    salesChannels: ['online', 'instore'],
+    granularity: 'daily'
   });
-  const { data: dashboardData, loading, error, execute: fetchDashboardData } = useApi();
 
-  // Close export dropdown when clicking outside
+  const { data: salesData, loading, error, execute: fetchSalesData } = useApi<{
+    data: SalesData[];
+    metrics: SalesMetrics;
+  }>();
+
+  const { data: categoriesData, loading: categoriesLoading, error: categoriesError, execute: fetchCategories } = useApi<{
+    categories: { id: string; name: string }[];
+  }>();
+
+  // Fetch categories on component mount
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      const target = event.target as HTMLElement;
-      if (showExportDropdown && !target.closest('.export-dropdown-container')) {
-        setShowExportDropdown(false);
-      }
-    };
+    fetchCategories(apiClient.getCategories);
+  }, [fetchCategories]);
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [showExportDropdown]);
+  const availableCategories = categoriesData?.categories || [];
 
-  useEffect(() => {
-    const days = timeRange === '7d' ? 7 : timeRange === '30d' ? 30 : timeRange === '3m' ? 90 : timeRange === '12m' ? 365 : 30;
-    
-    const apiParams: any = { days };
-    
-    // Handle custom dates
-    if (timeRange === 'custom' && filters.startDate && filters.endDate) {
-      apiParams.start_date = filters.startDate;
-      apiParams.end_date = filters.endDate;
-      delete apiParams.days;
-    }
-    
-    fetchDashboardData(() => AnalyticsAPI.getDashboardData(apiParams));
-  }, [fetchDashboardData, timeRange, filters]);
+  const availableRegions = [
+    { id: 'north-america', name: 'North America' },
+    { id: 'europe', name: 'Europe' },
+    { id: 'asia-pacific', name: 'Asia Pacific' },
+    { id: 'africa', name: 'Africa' }
+  ];
 
-  const analyticsData = dashboardData?.data;
-  
-  const overviewStats = analyticsData ? [
-    {
-      title: 'Total Revenue',
-      value: `$${(analyticsData.conversion?.overall?.total_revenue || 0).toLocaleString()}`,
-      previousValue: '$0',
-      change: '+12.5%',
-      increasing: true,
-      icon: <DollarSignIcon size={20} />,
-      color: 'bg-info'
-    },
-    {
-      title: 'Orders',
-      value: (analyticsData.refunds?.overall?.total_orders || 0).toLocaleString(),
-      previousValue: '0',
-      change: '+8.2%',
-      increasing: true,
-      icon: <ShoppingCartIcon size={20} />,
-      color: 'bg-success'
-    },
-    {
-      title: 'Customers',
-      value: (analyticsData.repeat_customers?.overall?.total_customers || 0).toLocaleString(),
-      previousValue: '0',
-      change: '+15.3%',
-      increasing: true,
-      icon: <UsersIcon size={20} />,
-      color: 'bg-secondary'
-    },
-    {
-      title: 'Conversion Rate',
-      value: `${(analyticsData.conversion?.overall?.conversion_rate || 0).toFixed(2)}%`,
-      previousValue: '0%',
-      change: '-2.1%',
-      increasing: false,
-      icon: <TrendingUpIcon size={20} />,
-      color: 'bg-warning'
-    }
-  ] : [];
-
-  if (loading) {
-    return <div>Loading...</div>
-  }
-
-  if (error) {
-    return <div>Error: {error.message}</div>
-  }
-
-  const handleFilterChange = (key: keyof AnalyticsFilters, value: string) => {
-    setFilters(prev => ({ ...prev, [key]: value }));
-  };
-
-  const handleResetFilters = () => {
-    setFilters({
-      startDate: '',
-      endDate: '',
-      category: '',
-      product: '',
-      userSegment: '',
-      orderStatus: ''
+  const fetchData = useCallback(async () => {
+    const response = await AnalyticsAPI.getSalesOverview({
+      days: filters.dateRange === '7d' ? 7 : 
+            filters.dateRange === '30d' ? 30 : 
+            filters.dateRange === '3m' ? 90 : 
+            filters.dateRange === '12m' ? 365 : 30,
+      granularity: filters.granularity,
+      categories: filters.categories.length > 0 ? filters.categories : undefined,
+      regions: filters.regions.length > 0 ? filters.regions : undefined,
+      sales_channels: filters.salesChannels.length > 0 ? filters.salesChannels : undefined,
+      start_date: filters.dateRange === 'custom' && filters.startDate ? filters.startDate : undefined,
+      end_date: filters.dateRange === 'custom' && filters.endDate ? filters.endDate : undefined
     });
-    setTimeRange('30d');
-    setShowCustomDatePicker(false);
-  };
-
-  const hasActiveFilters = filters.category || filters.product || filters.userSegment || filters.orderStatus || timeRange === 'custom';
-
-  const handleExport = async (format: 'csv' | 'xlsx') => {
-    setIsExporting(true);
-    setShowExportDropdown(false);
     
-    try {
-      const exportFilters: any = {};
-      
-      // Handle time range or custom dates
-      if (timeRange === 'custom' && filters.startDate && filters.endDate) {
-        exportFilters.date_range = {
-          start: filters.startDate,
-          end: filters.endDate
-        };
-      } else if (timeRange !== 'custom') {
-        exportFilters.date_range = timeRange;
-      }
-      
-      // Add other filters
-      if (filters.category) exportFilters.category = filters.category;
-      if (filters.product) exportFilters.product = filters.product;
-      if (filters.userSegment) exportFilters.userSegment = filters.userSegment;
-      if (filters.orderStatus) exportFilters.orderStatus = filters.orderStatus;
-      
-      await AnalyticsAPI.exportAnalytics({
-        type: 'dashboard',
-        format,
-        filters: exportFilters
-      });
-      
-      toast.success(`Analytics exported successfully as ${format.toUpperCase()}`);
-    } catch (error: any) {
-      console.error('Export error:', error);
-      toast.error(error?.message || 'Failed to export analytics data');
-    } finally {
-      setIsExporting(false);
+    return response.data;
+  }, [filters]);
+
+  useEffect(() => {
+    if (salesData) {
+      console.log('Sales Data from API:', salesData);
     }
+    if (categoriesData) {
+      console.log('Categories Data from API:', categoriesData);
+    }
+  }, [salesData, categoriesData]);
+
+  useEffect(() => {
+    fetchSalesData(fetchData);
+  }, [fetchSalesData, fetchData]);
+
+  const handleRefresh = () => {
+    fetchSalesData(fetchData);
+    fetchCategories(apiClient.getCategories);
   };
 
-  return <div>
-      <div className="mb-6 flex flex-col md:flex-row md:items-center md:justify-between">
-        <h1 className="text-2xl font-bold text-main mb-2 md:mb-0">Analytics</h1>
-        <div className="flex items-center space-x-2 flex-wrap gap-2">
-          <div className="bg-surface border border-border rounded-md overflow-hidden flex">
-            <button className={`px-3 py-1.5 text-sm ${timeRange === '7d' ? 'bg-primary text-white' : 'bg-surface text-copy'}`} onClick={() => { setTimeRange('7d'); setShowCustomDatePicker(false); }}>
-              7D
-            </button>
-            <button className={`px-3 py-1.5 text-sm ${timeRange === '30d' ? 'bg-primary text-white' : 'bg-surface text-copy'}`} onClick={() => { setTimeRange('30d'); setShowCustomDatePicker(false); }}>
-              30D
-            </button>
-            <button className={`px-3 py-1.5 text-sm ${timeRange === '3m' ? 'bg-primary text-white' : 'bg-surface text-copy'}`} onClick={() => { setTimeRange('3m'); setShowCustomDatePicker(false); }}>
-              3M
-            </button>
-            <button className={`px-3 py-1.5 text-sm ${timeRange === '12m' ? 'bg-primary text-white' : 'bg-surface text-copy'}`} onClick={() => { setTimeRange('12m'); setShowCustomDatePicker(false); }}>
-              12M
-            </button>
-          </div>
-          <button 
-            className={`flex items-center px-3 py-1.5 border rounded-md text-sm ${timeRange === 'custom' ? 'bg-primary text-white border-primary' : 'bg-surface border-border text-copy'}`}
-            onClick={() => {
-              setShowCustomDatePicker(!showCustomDatePicker);
-              setTimeRange('custom');
-            }}
-          >
-            <CalendarIcon size={16} className="mr-2" />
-            Custom
-          </button>
-          <button 
-            className={`flex items-center px-3 py-1.5 border rounded-md text-sm ${showFilters ? 'bg-primary text-white border-primary' : 'bg-surface border-border text-copy'}`}
-            onClick={() => setShowFilters(!showFilters)}
-          >
-            <FilterIcon size={16} className="mr-2" />
-            Filters
-            {hasActiveFilters && <span className="ml-1 bg-white text-primary rounded-full w-4 h-4 text-xs flex items-center justify-center">!</span>}
-          </button>
-          <div className="relative export-dropdown-container">
-            <button 
-              className="flex items-center px-3 py-1.5 bg-primary text-white rounded-md text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-              onClick={() => setShowExportDropdown(!showExportDropdown)}
-              disabled={isExporting}
-            >
-              {isExporting ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                  Exporting...
-                </>
-              ) : (
-                <>
-                  <DownloadIcon size={16} className="mr-2" />
-                  Export
-                  <ChevronDownIcon size={16} className="ml-1" />
-                </>
-              )}
-            </button>
-            {showExportDropdown && !isExporting && (
-              <div className="absolute right-0 mt-2 w-32 bg-surface border border-border rounded-md shadow-lg z-10">
-                <button
-                  className="w-full text-left px-4 py-2 text-sm text-copy hover:bg-surface-hover"
-                  onClick={() => handleExport('csv')}
-                >
-                  Export as CSV
-                </button>
-                <button
-                  className="w-full text-left px-4 py-2 text-sm text-copy hover:bg-surface-hover"
-                  onClick={() => handleExport('xlsx')}
-                >
-                  Export as Excel
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
+  const handleFiltersChange = (newFilters: SalesFilters) => {
+    setFilters(newFilters);
+  };
 
-      {/* Custom Date Picker */}
-      {showCustomDatePicker && (
-        <div className="mb-4 p-4 bg-surface border border-border rounded-lg">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-semibold text-main">Custom Date Range</h3>
-            <button onClick={() => setShowCustomDatePicker(false)} className="text-copy-light hover:text-main">
-              <XIcon size={16} />
-            </button>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm text-copy-light mb-1">Start Date</label>
-              <input
-                type="date"
-                value={filters.startDate}
-                onChange={(e) => handleFilterChange('startDate', e.target.value)}
-                className="w-full px-3 py-2 border border-border rounded-md bg-background text-copy"
-              />
-            </div>
-            <div>
-              <label className="block text-sm text-copy-light mb-1">End Date</label>
-              <input
-                type="date"
-                value={filters.endDate}
-                onChange={(e) => handleFilterChange('endDate', e.target.value)}
-                className="w-full px-3 py-2 border border-border rounded-md bg-background text-copy"
-              />
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Filters Panel */}
-      {showFilters && (
-        <div className="mb-4 p-4 bg-surface border border-border rounded-lg">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-semibold text-main">Filters</h3>
-            <div className="flex items-center space-x-2">
-              <button 
-                onClick={handleResetFilters}
-                className="text-sm text-primary hover:underline"
-              >
-                Reset All
-              </button>
-              <button onClick={() => setShowFilters(false)} className="text-copy-light hover:text-main">
-                <XIcon size={16} />
-              </button>
-            </div>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div>
-              <label className="block text-sm text-copy-light mb-1">Category</label>
-              <select
-                value={filters.category}
-                onChange={(e) => handleFilterChange('category', e.target.value)}
-                className="w-full px-3 py-2 border border-border rounded-md bg-background text-copy"
-              >
-                <option value="">All Categories</option>
-                <option value="supplements">Supplements</option>
-                <option value="herbs">Herbs</option>
-                <option value="oils">Oils</option>
-                <option value="teas">Teas</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm text-copy-light mb-1">Product</label>
-              <input
-                type="text"
-                placeholder="Search product..."
-                value={filters.product}
-                onChange={(e) => handleFilterChange('product', e.target.value)}
-                className="w-full px-3 py-2 border border-border rounded-md bg-background text-copy"
-              />
-            </div>
-            <div>
-              <label className="block text-sm text-copy-light mb-1">User Segment</label>
-              <select
-                value={filters.userSegment}
-                onChange={(e) => handleFilterChange('userSegment', e.target.value)}
-                className="w-full px-3 py-2 border border-border rounded-md bg-background text-copy"
-              >
-                <option value="">All Users</option>
-                <option value="new">New Customers</option>
-                <option value="returning">Returning Customers</option>
-                <option value="vip">VIP Customers</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm text-copy-light mb-1">Order Status</label>
-              <select
-                value={filters.orderStatus}
-                onChange={(e) => handleFilterChange('orderStatus', e.target.value)}
-                className="w-full px-3 py-2 border border-border rounded-md bg-background text-copy"
-              >
-                <option value="">All Statuses</option>
-                <option value="pending">Pending</option>
-                <option value="processing">Processing</option>
-                <option value="confirmed">Confirmed</option>
-                <option value="shipped">Shipped</option>
-                <option value="delivered">Delivered</option>
-                <option value="cancelled">Cancelled</option>
-              </select>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Overview Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        {overviewStats.map((stat, index) => <div key={index} className="bg-surface rounded-lg shadow-sm p-6 border border-border-light">
-            <div className="flex items-center justify-between mb-4">
-              <div className={`w-10 h-10 rounded-lg ${stat.color} text-white flex items-center justify-center`}>
-                {stat.icon}
-              </div>
-              <div className={`flex items-center text-sm ${stat.increasing ? 'text-success' : 'text-error'}`}>
-                {stat.increasing ? <ArrowUpIcon size={16} className="mr-1" /> : <ArrowDownIcon size={16} className="mr-1" />}
-                {stat.change}
-              </div>
-            </div>
-            <h3 className="text-copy-light text-sm mb-1">{stat.title}</h3>
-            <div className="text-2xl font-bold text-main mb-2">
-              {stat.value}
-            </div>
-            <div className="text-xs text-copy-light">
-              vs. {stat.previousValue} previous period
-            </div>
-          </div>)}
-      </div>
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-        {/* Revenue Chart */}
-        <div className="lg:col-span-2 bg-surface rounded-lg shadow-sm p-6 border border-border-light">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-main">
-              Revenue Overview
-            </h2>
-            <div className="flex space-x-2">
-              <button className={`px-3 py-1 rounded-md text-sm ${chartView === 'revenue' ? 'bg-primary/10 text-primary' : 'bg-surface-hover text-copy'}`} onClick={() => setChartView('revenue')}>
-                Revenue
-              </button>
-              <button className={`px-3 py-1 rounded-md text-sm ${chartView === 'orders' ? 'bg-primary/10 text-primary' : 'bg-surface-hover text-copy'}`} onClick={() => setChartView('orders')}>
-                Orders
-              </button>
-            </div>
-          </div>
-          <div className="h-64">
-            {analyticsData ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={[
-                  { date: 'Week 1', revenue: (analyticsData.conversion?.overall?.total_revenue || 0) * 0.2, orders: (analyticsData.refunds?.overall?.total_orders || 0) * 0.2 },
-                  { date: 'Week 2', revenue: (analyticsData.conversion?.overall?.total_revenue || 0) * 0.25, orders: (analyticsData.refunds?.overall?.total_orders || 0) * 0.25 },
-                  { date: 'Week 3', revenue: (analyticsData.conversion?.overall?.total_revenue || 0) * 0.3, orders: (analyticsData.refunds?.overall?.total_orders || 0) * 0.3 },
-                  { date: 'Week 4', revenue: (analyticsData.conversion?.overall?.total_revenue || 0) * 0.25, orders: (analyticsData.refunds?.overall?.total_orders || 0) * 0.25 }
-                ]}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
-                  <XAxis dataKey="date" stroke="var(--color-copy-lighter)" fontSize={12} />
-                  <YAxis stroke="var(--color-copy-lighter)" fontSize={12} />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: 'var(--color-surface-elevated)',
-                      borderColor: 'var(--color-border)',
-                      color: 'var(--color-copy)',
-                    }}
-                  />
-                  <Legend />
-                  <Bar dataKey={chartView === 'revenue' ? 'revenue' : 'orders'} fill="var(--color-primary)" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="h-full flex items-center justify-center bg-background rounded-md border border-border">
-                <div className="text-center">
-                  <BarChart3Icon size={48} className="mx-auto text-copy-lighter mb-2" />
-                  <p className="text-copy-light">No data available for the selected period</p>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-        {/* Sales by Category */}
-        <div className="bg-surface rounded-lg shadow-sm p-6 border border-border-light">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-main">
-              Sales by Category
-            </h2>
-          </div>
-          <div className="space-y-4">
-            {analyticsData ? [
-              { status: 'Delivered', count: Math.floor((analyticsData.refunds?.overall?.total_orders || 0) * 0.4) },
-              { status: 'Shipped', count: Math.floor((analyticsData.refunds?.overall?.total_orders || 0) * 0.3) },
-              { status: 'Processing', count: Math.floor((analyticsData.refunds?.overall?.total_orders || 0) * 0.2) },
-              { status: 'Pending', count: Math.floor((analyticsData.refunds?.overall?.total_orders || 0) * 0.1) }
-            ].map(({ status, count }, index) => {
-              const colors = ['bg-success', 'bg-warning', 'bg-info', 'bg-error', 'bg-secondary'];
-              const color = colors[index % colors.length];
-              return (
-                <div key={index}>
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-sm text-copy-light">
-                      {status}
-                    </span>
-                    <span className="text-sm font-medium text-main">
-                      {count}
-                    </span>
-                  </div>
-                  <div className="w-full h-2 bg-surface-hover rounded-full overflow-hidden">
-                    <div className={`h-full ${color}`} style={{
-                      width: `${(count / (analyticsData.refunds?.overall?.total_orders || 1)) * 100}%`
-                    }}></div>
-                  </div>
-                </div>
-              )
-            }) : []}
-          </div>
-        </div>
-      </div>
-      <div className="grid grid-cols-1 lg:grid-cols-1 gap-6">
-        {/* Top Selling Products */}
-        <div className="bg-surface rounded-lg shadow-sm p-6 border border-border-light">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-main">
-              Top Selling Products
-            </h2>
-            <Link to="/admin/products" className="text-primary hover:underline text-sm flex items-center">
-              View All <ArrowRightIcon size={16} className="ml-1" />
-            </Link>
-          </div>
-          <div className="space-y-4">
-            {analyticsData ? [
-              { id: 1, name: 'Organic Quinoa', sales: 45, revenue: 1250.50, image_url: 'https://images.unsplash.com/photo-1586201375761-83865001e31c?w=100' },
-              { id: 2, name: 'Premium Wheat', sales: 38, revenue: 980.25, image_url: 'https://images.unsplash.com/photo-1574323347407-f5e1ad6d020b?w=100' },
-              { id: 3, name: 'Wild Rice', sales: 32, revenue: 850.75, image_url: 'https://images.unsplash.com/photo-1536304993881-ff6e9eefa2a6?w=100' },
-              { id: 4, name: 'Brown Rice', sales: 28, revenue: 720.00, image_url: 'https://images.unsplash.com/photo-1586201375761-83865001e31c?w=100' },
-              { id: 5, name: 'Barley', sales: 25, revenue: 650.25, image_url: 'https://images.unsplash.com/photo-1574323347407-f5e1ad6d020b?w=100' }
-            ].map((product: any) => <div key={product.id} className="flex items-center">
-                <img src={product.image_url} alt={product.name} className="w-10 h-10 rounded-md object-cover mr-3" />
-                <div className="flex-grow">
-                  <h3 className="font-medium text-main text-sm">
-                    {product.name}
-                  </h3>
-                  <p className="text-copy-light text-xs">
-                    {product.sales} units sold
-                  </p>
-                </div>
-                <div className="text-right">
-                  <p className="font-medium text-main">
-                    ${product.revenue.toFixed(2)}
-                  </p>
-                </div>
-              </div>) : []}
-          </div>
-        </div>
-      </div>
-    </div>;
+  return (
+    <SalesOverview
+      salesData={salesData || undefined}
+      loading={loading}
+      error={error}
+      onFiltersChange={handleFiltersChange}
+      onRefresh={handleRefresh}
+      availableCategories={availableCategories}
+      availableRegions={availableRegions}
+      title="Sales Analytics"
+      subtitle="Detailed sales performance and analytics"
+    />
+  );
 };

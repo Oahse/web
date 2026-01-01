@@ -84,7 +84,7 @@ export const Login = ({ isInitialLoading = false }) => {
    * Performs client-side validation before attempting to log in the user
    * via the authentication context.
    */
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault(); // Prevent default form submission behavior
 
     // Client-side validation checks
@@ -95,8 +95,8 @@ export const Login = ({ isInitialLoading = false }) => {
 
     try {
       setLoading(true); // Show loading indicator
-      // Attempt to log in the user through the AuthContext
-      const user = await login(email, password);
+      // Attempt to log in the user through the AuthContext with remember me preference
+      const user = await login(email, password, rememberMe);
       // Navigate to intended destination or default path
       const path = getRedirectPath(user);
       navigate(path, { replace: true });
@@ -178,6 +178,8 @@ export const Login = ({ isInitialLoading = false }) => {
             id="remember"
             checked={rememberMe}
             onChange={() => setRememberMe(!rememberMe)}
+            error={null}
+            className=""
           />
           {/* Submit Button */}
           <button
@@ -216,7 +218,20 @@ export const Login = ({ isInitialLoading = false }) => {
           <span className="bg-surface px-3 text-sm text-copy-light absolute">Or continue with</span>
         </div>
 
-        <SocialAuth mode="login" />
+        <SocialAuth 
+          mode="login" 
+          onSuccess={(user) => {
+            // Handle successful social login
+            const path = getRedirectPath(user);
+            navigate(path, { replace: true });
+            if (intendedDestination) {
+              setIntendedDestination(null);
+            }
+          }}
+          onError={(error) => {
+            toast.error('Social login failed. Please try again.');
+          }}
+        />
         {/* Register Link */}
         <p className="text-center mt-6 text-sm text-copy-light">
           Don&apos;t have an account? <Link to="/register" className="text-primary hover:underline">Register</Link>
