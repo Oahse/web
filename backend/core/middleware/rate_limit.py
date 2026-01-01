@@ -325,7 +325,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                                     status_code=429,
                                     content=APIResponse.error(
                                         message=abuse_result["message"],
-                                        error_code=abuse_result["reason"].upper()
+                                        errors=[abuse_result["reason"].upper()]
                                     ).dict()
                                 )
             except Exception as e:
@@ -340,7 +340,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                         status_code=429,
                         content=APIResponse.error(
                             message=abuse_result["message"],
-                            error_code=abuse_result["reason"].upper()
+                            errors=[abuse_result["reason"].upper()]
                         ).dict()
                     )
         
@@ -383,10 +383,14 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                     status_code=429,
                     content=APIResponse.error(
                         message=f"Rate limit exceeded. Try again in {rate_limit_result.get('retry_after', 60)} seconds.",
-                        error_code="RATE_LIMIT_EXCEEDED",
-                        details={
+                        errors=["RATE_LIMIT_EXCEEDED"],
+                        data={
                             "limit": rate_limit_result.get("limit"),
-                            "reset_time": rate_limit_result.get("reset_time")
+                            "reset_time": rate_limit_result.get("reset_time"),
+                            "details": {
+                                "limit": rate_limit_result.get("limit"),
+                                "reset_time": rate_limit_result.get("reset_time")
+                            }
                         }
                     ).dict(),
                     headers={
@@ -409,5 +413,11 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             
         except Exception as e:
             logger.error(f"Rate limiting error: {e}")
-            # On error, allow the request (fail open)
-            return await call_next(request)
+            # On error in rate limiting, return a generic 500 error
+            return JSONResponse(
+                status_code=500,
+                content=APIResponse.error(
+                    message="Internal server error during rate limiting.",
+                    errors=[f"Rate limiting internal error: {e}"]
+                ).dict()
+            )

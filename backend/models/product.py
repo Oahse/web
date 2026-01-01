@@ -112,6 +112,7 @@ class Product(BaseModel):
     variants = relationship("ProductVariant", back_populates="product", cascade="all, delete-orphan", lazy="selectin")
     reviews = relationship("Review", back_populates="product", lazy="select")
     wishlist_items = relationship("WishlistItem", back_populates="product", lazy="select")
+    cart_items = relationship("CartItem", back_populates="product", lazy="select")
 
     @property
     def primary_variant(self):

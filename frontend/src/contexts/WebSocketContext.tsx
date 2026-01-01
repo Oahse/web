@@ -1,4 +1,4 @@
-import React, { createContext, useEffect, useState, useCallback } from 'react';
+import React, { createContext, useEffect, useState, useCallback, useContext } from 'react';
 import {
   createWebSocketService,
   WebSocketStatus,
@@ -41,7 +41,8 @@ interface WebSocketProviderProps {
   autoConnect?: boolean;
 }
 
-export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({
+// RawWebSocketProvider: Provides the WebSocket service and basic connection.
+export const RawWebSocketProvider: React.FC<WebSocketProviderProps> = ({
   children,
   autoConnect = true,
 }) => {
@@ -54,9 +55,8 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({
     queuedMessages: 0
   });
   
-  const { info, warning, error, removeNotification: removeToast } = useNotifications();
-  const { user, isAuthenticated, token } = useAuth();
-  
+  const { user, isAuthenticated, token } = useAuth(); // useAuth still here for wsService config
+
   // Create WebSocket service instance
   const [wsService] = useState(() => {
     const baseUrl = import.meta.env.VITE_WS_URL || 'ws://localhost:8000/v1/ws';
@@ -85,6 +85,66 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({
     }
   }, [user?.id, token, wsService]);
 
+  // Auto-connect on mount
+  useEffect(() => {
+    if (autoConnect) {
+      wsService.connect().catch(err => {
+        console.error('Failed to connect WebSocket:', err);
+      });
+    }
+
+    return () => {
+      wsService.disconnect();
+    };
+  }, [wsService, autoConnect]);
+
+  // Context value - Only expose the wsService methods here
+  const contextValue: WebSocketContextType = {
+    // Connection status
+    status,
+    stats,
+    isConnected: status === WebSocketStatus.CONNECTED,
+    
+    // Connection management
+    connect: useCallback(() => wsService.connect(), [wsService]),
+    disconnect: useCallback(() => wsService.disconnect(), [wsService]),
+    
+    // Subscription methods
+    subscribe: useCallback((events: string[]) => wsService.subscribe(events), [wsService]),
+    unsubscribe: useCallback((events: string[]) => wsService.unsubscribe(events), [wsService]),
+    
+    // Business-specific subscriptions
+    subscribeToOrder: useCallback((orderId: string, handler: Function) => 
+      wsService.subscribeToOrder(orderId, handler), [wsService]),
+    subscribeToProduct: useCallback((productId: string, handler: Function) => 
+      wsService.subscribeToProduct(productId, handler), [wsService]),
+    subscribeToNotifications: useCallback((handler: Function) => 
+      wsService.subscribeToNotifications(handler), [wsService]),
+    subscribeToCart: useCallback((handler: Function) => 
+      wsService.subscribeToCart(handler), [wsService]),
+    
+    // Message sending
+    sendMessage: useCallback((message: Partial<WebSocketMessage>) => 
+      wsService.sendMessage(message), [wsService])
+  };
+
+  return (
+    <WebSocketContext.Provider value={contextValue}>
+      {children}
+      <WebSocketNotifier setStatus={setStatus} setStats={setStats} wsService={wsService} />
+    </WebSocketContext.Provider>
+  );
+};
+
+// WebSocketNotifier: Handles notifications and status updates, consuming NotificationContext
+const WebSocketNotifier: React.FC<{
+  setStatus: React.Dispatch<React.SetStateAction<WebSocketStatus>>;
+  setStats: React.Dispatch<React.SetStateAction<ConnectionStats>>;
+  wsService: ReturnType<typeof createWebSocketService>;
+}> = ({ setStatus, setStats, wsService }) => {
+  const { info, warning, error, removeNotification: removeToast } = useNotifications();
+  const { user, isAuthenticated } = useAuth(); // useAuth here to conditionally subscribe to NOTIFICATION type
+
   // Status change handler
   useEffect(() => {
     const unsubscribe = wsService.onStatusChange((newStatus: WebSocketStatus) => {
@@ -109,20 +169,7 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({
     });
 
     return unsubscribe;
-  }, [wsService, info, warning, error]);
-
-  // Auto-connect on mount
-  useEffect(() => {
-    if (autoConnect) {
-      wsService.connect().catch(err => {
-        console.error('Failed to connect WebSocket:', err);
-      });
-    }
-
-    return () => {
-      wsService.disconnect();
-    };
-  }, [wsService, autoConnect]);
+  }, [wsService, info, warning, error, setStatus, setStats]); // Added setStatus, setStats to dependencies
 
   // Set up global event handlers
   useEffect(() => {
@@ -296,39 +343,26 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({
     };
   }, [wsService, info, warning, error, removeToast, user?.id, isAuthenticated]);
 
-  // Context value
-  const contextValue: WebSocketContextType = {
-    // Connection status
-    status,
-    stats,
-    isConnected: status === WebSocketStatus.CONNECTED,
-    
-    // Connection management
-    connect: useCallback(() => wsService.connect(), [wsService]),
-    disconnect: useCallback(() => wsService.disconnect(), [wsService]),
-    
-    // Subscription methods
-    subscribe: useCallback((events: string[]) => wsService.subscribe(events), [wsService]),
-    unsubscribe: useCallback((events: string[]) => wsService.unsubscribe(events), [wsService]),
-    
-    // Business-specific subscriptions
-    subscribeToOrder: useCallback((orderId: string, handler: Function) => 
-      wsService.subscribeToOrder(orderId, handler), [wsService]),
-    subscribeToProduct: useCallback((productId: string, handler: Function) => 
-      wsService.subscribeToProduct(productId, handler), [wsService]),
-    subscribeToNotifications: useCallback((handler: Function) => 
-      wsService.subscribeToNotifications(handler), [wsService]),
-    subscribeToCart: useCallback((handler: Function) => 
-      wsService.subscribeToCart(handler), [wsService]),
-    
-    // Message sending
-    sendMessage: useCallback((message: Partial<WebSocketMessage>) => 
-      wsService.sendMessage(message), [wsService])
-  };
+  return null; // This component doesn't render anything directly
+};
 
+// WebSocketProvider: The public facing provider that consumers will use
+export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children, autoConnect = true }) => {
+  const context = useContext(WebSocketContext);
+  if (context === undefined) {
+    // This will only happen if RawWebSocketProvider is not in the tree
+    throw new Error('useWebSocket must be used within a WebSocketProvider');
+  }
   return (
-    <WebSocketContext.Provider value={contextValue}>
-      {children}
-    </WebSocketContext.Provider>
-  );
+    // Re-export the RawWebSocketProvider's context to its children
+    <>{children}</>
+  )
+}
+
+export const useWebSocket = () => {
+  const context = useContext(WebSocketContext);
+  if (context === undefined) {
+    throw new Error('useWebSocket must be used within a WebSocketProvider');
+  }
+  return context;
 };

@@ -153,14 +153,28 @@ export const ProductCard = ({
         if (isInCart) {
           toast.success('This item is already in your cart.');
         } else {
-          await executeWithAuth(async () => {
-            await addToCart({
-              variant_id: String(displayVariant.id),
-              quantity: 1,
-            });
-            toast.success('Item added to cart!');
-            return true;
-          }, 'cart');
+          try {
+            await executeWithAuth(async () => {
+              console.log('Adding to cart:', {
+                variant_id: String(displayVariant.id),
+                quantity: 1,
+                product_name: product.name
+              });
+              
+              const success = await addToCart({
+                variant_id: String(displayVariant.id),
+                quantity: 1,
+              });
+              
+              if (success) {
+                toast.success('Item added to cart!');
+              }
+              return success;
+            }, 'cart');
+          } catch (error) {
+            console.error('Add to cart error:', error);
+            toast.error(error?.message || 'Failed to add item to cart. Please try again.');
+          }
         }
       };
 

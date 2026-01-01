@@ -10,13 +10,17 @@ import { SkeletonHeader } from '../ui/SkeletonNavigation';
 import { getCountryByCode } from '../../lib/countries';
 import { NotificationBell } from '../ui/NotificationBell';
 
-
-
 const TopHeaderAds = [
   'Free shipping on orders over $50',
-  'Summer sale! Up to 50% off',
-  'New arrivals every week',
+  'Authentic African spices delivered to your door',
+  'Fresh produce sourced from local farmers',
+  'New arrivals every week – don’t miss out',
+  'Buy 2, get 1 free on popular snacks',
+  'Discover African ingredients online',
+  'Shop now for authentic sauces and condiments',
+  'Join our loyalty program for exclusive deals',
 ];
+
 
 export const Header = ({
   onSearchClick,
@@ -26,7 +30,7 @@ export const Header = ({
   isScrolled = false
 }) => {
   const { isAuthenticated, user, isAdmin, isSupplier } = useAuth();
-  const { totalItems } = useCart();
+  const { totalItems, cart } = useCart();
   const { defaultWishlist } = useWishlist();
 
   const [currentAdIndex, setCurrentAdIndex] = useState(0);
@@ -279,7 +283,7 @@ export const Header = ({
                 <div className="hidden md:flex flex-col ml-1 text-xs">
                   <span>Your Cart</span>
                   <span className="font-semibold">
-                    ${totalItems > 0 ? '0.00' : '0.00'}
+                    ${cart?.total_amount?.toFixed(2) || '0.00'}
                   </span>
                 </div>
               </Link>

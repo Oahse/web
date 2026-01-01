@@ -13,7 +13,6 @@ from sqlalchemy.orm import selectinload
 from models.product import ProductVariant, Product
 from models.promocode import Promocode
 from schemas.cart import CartResponse, CartItemResponse, AddToCartRequest, UpdateCartItemRequest
-from core.redis import RedisService, RedisKeyManager
 from core.config import settings
 from core.kafka import get_kafka_producer_service
 import logging
@@ -21,15 +20,13 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-class CartService(RedisService):
+class CartService:
     """
     Cart service using Redis for performance with PostgreSQL as source of truth
     """
     
     def __init__(self, db: AsyncSession):
-        super().__init__()
         self.db = db
-        self.cart_expiry = 7 * 24 * 3600  # 7 days in seconds
 
     async def add_to_cart(self, user_id: UUID, variant_id: UUID, quantity: int, session_id: Optional[str] = None) -> CartResponse:
         """Add item to cart in Redis"""
@@ -120,12 +117,13 @@ class CartService(RedisService):
             cart_data["updated_at"] = datetime.utcnow().isoformat()
             
             # Save to Redis
-            await self.set_hash(cart_key, cart_data, self.cart_expiry)
+            await self.set_hash(cart_key, cart_data)
             
             # Send cart update notification
-            await self._send_cart_update_notification(user_id, "item_added")
+            formatted_cart = await self._format_cart_response(cart_data)
+            await self._send_cart_update_notification(user_id, "item_added", formatted_cart.dict())
             
-            return await self._format_cart_response(cart_data)
+            return formatted_cart
             
         except HTTPException:
             raise
@@ -150,9 +148,6 @@ class CartService(RedisService):
             if variant_key not in cart_data["items"]:
                 raise HTTPException(status_code=404, detail="Item not found in cart")
             
-            # Remove item
-            del cart_data["items"][variant_key]
-            
             # Update totals
             cart_data["total_items"] = sum(item["quantity"] for item in cart_data["items"].values())
             cart_data["subtotal"] = sum(item["total_price"] for item in cart_data["items"].values())
@@ -160,12 +155,15 @@ class CartService(RedisService):
             
             # Save updated cart
             if cart_data["items"]:
-                await self.set_hash(cart_key, cart_data, self.cart_expiry)
+                await self.set_hash(cart_key, cart_data)
             else:
                 # Delete empty cart
                 await self.delete_key(cart_key)
+
+            formatted_cart = await self._format_cart_response(cart_data)
+            await self._send_cart_update_notification(user_id, "item_removed", formatted_cart.dict())
             
-            return await self._format_cart_response(cart_data)
+            return formatted_cart
             
         except HTTPException:
             raise
@@ -211,19 +209,13 @@ class CartService(RedisService):
             
             # Update quantity and price
             current_price = float(variant.sale_price or variant.base_price)
-            cart_data["items"][variant_key]["quantity"] = request.quantity
-            cart_data["items"][variant_key]["price_per_unit"] = current_price
-            cart_data["items"][variant_key]["total_price"] = request.quantity * current_price
-            
-            # Update totals
-            cart_data["total_items"] = sum(item["quantity"] for item in cart_data["items"].values())
-            cart_data["subtotal"] = sum(item["total_price"] for item in cart_data["items"].values())
-            cart_data["updated_at"] = datetime.utcnow().isoformat()
-            
             # Save to Redis
-            await self.set_hash(cart_key, cart_data, self.cart_expiry)
+            await self.set_hash(cart_key, cart_data)
             
-            return await self._format_cart_response(cart_data)
+            formatted_cart = await self._format_cart_response(cart_data)
+            await self._send_cart_update_notification(user_id, "item_updated", formatted_cart.dict())
+            
+            return formatted_cart
             
         except HTTPException:
             raise
@@ -292,9 +284,12 @@ class CartService(RedisService):
             cart_data["updated_at"] = datetime.utcnow().isoformat()
             
             # Save to Redis
-            await self.set_hash(cart_key, cart_data, self.cart_expiry)
+            await self.set_hash(cart_key, cart_data)
             
-            return await self._format_cart_response(cart_data)
+            formatted_cart = await self._format_cart_response(cart_data)
+            await self._send_cart_update_notification(user_id, "quantity_updated", formatted_cart.dict())
+            
+            return formatted_cart
             
         except HTTPException:
             raise
@@ -335,12 +330,15 @@ class CartService(RedisService):
             
             # Save updated cart
             if cart_data["items"]:
-                await self.set_hash(cart_key, cart_data, self.cart_expiry)
+                await self.set_hash(cart_key, cart_data)
             else:
                 # Delete empty cart
                 await self.delete_key(cart_key)
+
+            formatted_cart = await self._format_cart_response(cart_data)
+            await self._send_cart_update_notification(user_id, "item_removed", formatted_cart.dict())
             
-            return await self._format_cart_response(cart_data)
+            return formatted_cart
             
         except HTTPException:
             raise
@@ -391,6 +389,17 @@ class CartService(RedisService):
         try:
             cart_key = RedisKeyManager.cart_key(str(user_id))
             await self.delete_key(cart_key)
+
+            # Send notification of cleared cart
+            cleared_cart_data = {
+                "user_id": str(user_id),
+                "items": {},
+                "total_items": 0,
+                "subtotal": 0.0,
+                "updated_at": datetime.utcnow().isoformat()
+            }
+            formatted_cart = await self._format_cart_response(cleared_cart_data)
+            await self._send_cart_update_notification(user_id, "cart_cleared", formatted_cart.dict())
             
             return {"message": "Cart cleared successfully"}
             
@@ -538,9 +547,13 @@ class CartService(RedisService):
                 # Save updated cart
                 cart_key = RedisKeyManager.cart_key(str(user_id))
                 if updated_items:
-                    await self.set_hash(cart_key, cart_data, self.cart_expiry)
+                    await self.set_hash(cart_key, cart_data)
                 else:
                     await self.delete_key(cart_key)
+
+                # Send notification on cart update from validation
+                formatted_cart = await self._format_cart_response(cart_data)
+                await self._send_cart_update_notification(user_id, "cart_validated", formatted_cart.dict())
             
             # Prepare validation summary
             validation_summary = {
@@ -627,14 +640,17 @@ class CartService(RedisService):
             await self._recalculate_cart_with_promocode(cart_data)
             
             # Save updated cart
-            await self.set_hash(cart_key, cart_data, self.cart_expiry)
+            await self.set_hash(cart_key, cart_data)
+            
+            formatted_cart = await self._format_cart_response(cart_data)
+            await self._send_cart_update_notification(user_id, "promocode_applied", formatted_cart.dict())
             
             return {
                 "message": f"Promocode '{code}' applied successfully",
                 "promocode": cart_data["promocode"],
                 "new_subtotal": cart_data["subtotal"],
                 "discount_amount": promocode_info["discount_amount"],
-                "cart": await self._format_cart_response(cart_data)
+                "cart": formatted_cart
             }
             
         except HTTPException:
@@ -671,11 +687,14 @@ class CartService(RedisService):
             cart_data["updated_at"] = datetime.utcnow().isoformat()
             
             # Save updated cart
-            await self.set_hash(cart_key, cart_data, self.cart_expiry)
+            await self.set_hash(cart_key, cart_data)
+
+            formatted_cart = await self._format_cart_response(cart_data)
+            await self._send_cart_update_notification(user_id, "promocode_removed", formatted_cart.dict())
             
             return {
                 "message": f"Promocode '{removed_code}' removed successfully",
-                "cart": await self._format_cart_response(cart_data)
+                "cart": formatted_cart
             }
             
         except HTTPException:
@@ -881,10 +900,13 @@ class CartService(RedisService):
             user_cart_data["updated_at"] = datetime.utcnow().isoformat()
             
             # Save merged cart
-            await self.set_hash(user_cart_key, user_cart_data, self.cart_expiry)
+            await self.set_hash(user_cart_key, user_cart_data)
             
             # Delete guest cart
             await self.delete_key(guest_cart_key)
+
+            formatted_cart = await self._format_cart_response(user_cart_data)
+            await self._send_cart_update_notification(user_id, "cart_merged", formatted_cart.dict())
             
             return {
                 "message": f"Cart merged successfully. Added {merged_items} new items, updated {updated_items} existing items.",
@@ -893,7 +915,7 @@ class CartService(RedisService):
                     "existing_items_updated": updated_items,
                     "total_items_in_cart": user_cart_data["total_items"]
                 },
-                "cart": await self._format_cart_response(user_cart_data)
+                "cart": formatted_cart
             }
             
         except Exception as e:
@@ -1119,15 +1141,23 @@ class CartService(RedisService):
                 currency="USD"
             )
 
-    async def _send_cart_update_notification(self, user_id: UUID, action: str):
+    async def _send_cart_update_notification(self, user_id: UUID, action: str, cart_data: dict):
         """Send cart update notification via Kafka"""
         try:
             producer_service = await get_kafka_producer_service()
             
+            # Enrich cart data for the notification
+            notification_payload = {
+                "action": action,
+                "user_id": str(user_id),
+                "cart": cart_data,
+                "timestamp": datetime.utcnow().isoformat()
+            }
+            
             await producer_service.send_cart_notification(
                 str(user_id),
                 action,
-                {"timestamp": datetime.utcnow().isoformat()}
+                notification_payload
             )
         except Exception as e:
             logger.error(f"Failed to send cart update notification: {e}")

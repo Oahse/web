@@ -42,6 +42,7 @@ export const WishlistProvider = ({ children }: { children: ReactNode }) => {
 
     try {
       const response = await WishlistAPI.getWishlists(userId);
+      // The API client returns the response data directly, which includes success, data, message
       if (response.success) {
         setWishlists(response.data);
         setDefaultWishlist(response.data.find((wl: Wishlist) => wl.is_default) || response.data[0]);

@@ -1,3 +1,4 @@
+from fastapi import HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, delete
 from sqlalchemy.orm import selectinload
@@ -117,6 +118,23 @@ class WishlistService:
     async def add_item_to_wishlist(self, wishlist_id: UUID, payload: WishlistItemCreate) -> WishlistItem:
         try:
             logger.info(f"Adding item to wishlist {wishlist_id}: product_id={payload.product_id}, variant_id={payload.variant_id}")
+
+            # Validate product exists
+            product_exists = await self.db.execute(
+                select(Product).filter(Product.id == payload.product_id)
+            )
+            if not product_exists.scalar_one_or_none():
+                logger.warning(f"Attempted to add non-existent product {payload.product_id} to wishlist {wishlist_id}")
+                raise HTTPException(status_code=404, detail="Product not found")
+
+            # Validate variant exists
+            variant_exists = await self.db.execute(
+                select(ProductVariant).filter(ProductVariant.id == payload.variant_id)
+            )
+            if not variant_exists.scalar_one_or_none():
+                logger.warning(f"Attempted to add non-existent variant {payload.variant_id} to wishlist {wishlist_id}")
+                raise HTTPException(status_code=404, detail="Variant not found")
+
             new_item = WishlistItem(
                 wishlist_id=wishlist_id,
                 product_id=payload.product_id,
@@ -130,23 +148,25 @@ class WishlistService:
             # Re-fetch the wishlist item with product and variant eagerly loaded
             query = select(WishlistItem).where(WishlistItem.id == new_item.id).options(
                 selectinload(WishlistItem.product),
-                selectinload(WishlistItem.variant).selectinload(
-                    ProductVariant.images)
+                selectinload(WishlistItem.variant).selectinload(ProductVariant.images)
             )
             refetched_item = await self.db.execute(query)
             refetched_item = refetched_item.scalar_one_or_none()
 
             if not refetched_item:
                 logger.error(f"Failed to retrieve newly created wishlist item {new_item.id}")
-                raise Exception(
-                    "Failed to retrieve newly created wishlist item with relationships.")
+                raise Exception("Failed to retrieve newly created wishlist item with relationships.")
 
             logger.info(f"Successfully added item {refetched_item.id} to wishlist {wishlist_id}")
             return refetched_item
+        except HTTPException as http_exc:
+            # Re-raise HTTPException to be handled by the framework
+            raise http_exc
         except Exception as e:
             logger.error(f"Error in add_item_to_wishlist for wishlist_id {wishlist_id}: {str(e)}", exc_info=True)
             await self.db.rollback()
-            raise
+            # Wrap other exceptions in a generic 500 error
+            raise HTTPException(status_code=500, detail="An unexpected error occurred while adding the item.")
 
     async def remove_item_from_wishlist(self, wishlist_id: UUID, item_id: UUID) -> bool:
         try:

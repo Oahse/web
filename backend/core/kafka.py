@@ -394,16 +394,18 @@ async def send_cart_real_time_update(message_data: dict):
         if user_id:
             from services.websockets import websocket_integration
             
+            # The full cart data is now expected in the 'data' field from the Kafka message
+            cart_payload = message_data.get('data', {})
+            
             cart_update = {
                 'type': 'cart_real_time_update',
                 'action': message_data.get('action'),
-                'cart_count': message_data.get('cart_count', 0),
-                'cart_total': message_data.get('cart_total', 0.0),
+                'cart': cart_payload.get('cart', {}), # Pass the full cart object
                 'timestamp': message_data.get('timestamp')
             }
             
             await websocket_integration.broadcast_cart_update(user_id, cart_update)
-            logger.info(f"Sent real-time cart update to user {user_id}")
+            logger.info(f"Sent real-time cart update to user {user_id} with action {cart_update['action']}")
             
     except Exception as e:
         logger.error(f"Error sending cart real-time update: {e}")

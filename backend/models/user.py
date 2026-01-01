@@ -77,6 +77,7 @@ class User(BaseModel):
 
     # Relationships with optimized lazy loading
     addresses = relationship("Address", back_populates="user", cascade="all, delete-orphan", lazy="selectin")
+    cart = relationship("Cart", back_populates="user", uselist=False, cascade="all, delete-orphan", lazy="select")
     orders = relationship("Order", back_populates="user", lazy="select")  # Don't eager load orders
     reviews = relationship("Review", back_populates="user", lazy="select")
     wishlists = relationship("Wishlist", back_populates="user", lazy="select")

@@ -7,7 +7,7 @@ import { AuthProvider } from './contexts/AuthContext';
 import { CartProvider } from './contexts/CartContext';
 import { WishlistProvider } from './contexts/WishlistContext';
 import { ThemeProvider } from './contexts/ThemeContext';
-import { WebSocketProvider } from './contexts/WebSocketContext';
+import { RawWebSocketProvider } from './contexts/WebSocketContext';
 import { FontLoader } from './components/ui/FontLoader';
 import { Toaster, toast } from 'react-hot-toast';
 import { XIcon } from 'lucide-react';
@@ -98,6 +98,9 @@ const AdminVariants = lazy(() =>
 const AdminNewUser = lazy(() =>
   import('./pages/admin/AdminNewUser').then((module) => ({ default: module.AdminNewUser }))
 );
+const AdminUserEdit = lazy(() =>
+  import('./pages/admin/AdminUserEdit').then((module) => ({ default: module.AdminUserEdit }))
+);
 const AdminNewProduct = lazy(() =>
   import('./pages/admin/AdminNewProduct').then((module) => ({ default: module.AdminNewProduct }))
 );
@@ -143,7 +146,7 @@ export const App: React.FC = () => {
               <CartProvider>
                 <WishlistProvider>
                   <NotificationProvider>
-                    <WebSocketProvider autoConnect={false}>
+                  <RawWebSocketProvider autoConnect={false}>
                       <CategoryProvider>
                       <FontLoader />
                       <OfflineIndicator />
@@ -253,6 +256,16 @@ export const App: React.FC = () => {
                                   <ProtectedRoute requiredRole={['Admin']}>
                                     <AdminLayout>
                                       <AdminUserDetail />
+                                    </AdminLayout>
+                                  </ProtectedRoute>
+                                }
+                              />
+                              <Route
+                                path="/admin/users/:id/edit"
+                                element={
+                                  <ProtectedRoute requiredRole={['Admin']}>
+                                    <AdminLayout>
+                                      <AdminUserEdit />
                                     </AdminLayout>
                                   </ProtectedRoute>
                                 }

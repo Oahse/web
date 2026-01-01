@@ -410,7 +410,7 @@ export class AdminAPI {
    * Adjust stock
    */
   static async adjustStock(adjustmentData: any) {
-    return await apiClient.post('/inventories/adjustments', adjustmentData, {});
+    return await apiClient.post('/inventory/adjustments', adjustmentData, {});
   }
 
   /**

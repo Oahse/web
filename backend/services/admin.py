@@ -359,6 +359,8 @@ class AdminService:
     ) -> Dict[str, Any]:
         """Get all orders with filtering and pagination"""
         try:
+
+
             from models.orders import Order
             
             offset = (page - 1) * limit
@@ -372,6 +374,7 @@ class AdminService:
                 conditions.append(Order.order_status == order_status)
             
             if q:
+                logger.debug(f"DEBUG: Processing 'q' filter. q type: {type(q)}, q value: {q}")
                 conditions.append(
                     or_(
                         Order.id.cast(String).ilike(f"%{q}%"),
@@ -436,6 +439,9 @@ class AdminService:
             }
             
         except Exception as e:
+            import traceback
+            traceback.print_exc()
+            logger.error(f"DEBUG: Exception in get_all_orders: {type(e).__name__} - {e}")
             return {
                 "data": [],
                 "pagination": {"page": page, "limit": limit, "total": 0, "pages": 0},

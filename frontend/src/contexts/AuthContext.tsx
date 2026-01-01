@@ -54,6 +54,7 @@ export const AuthProvider = ({ children }) => {
   const login = async (email, password) => {
     setIsLoading(true);
     try {
+      console.log('AuthContext: Attempting login...');
       const response = await AuthAPI.login({ email, password });
 
       // Save tokens if provided by backend
@@ -65,6 +66,7 @@ export const AuthProvider = ({ children }) => {
       setUser(transformedUser);
       setIsAuthenticated(true);
       toast.success('Login successful!');
+      console.log('AuthContext: Login successful, isAuthenticated set to true.');
       
       // Return the user so the login component can handle navigation
       return transformedUser;

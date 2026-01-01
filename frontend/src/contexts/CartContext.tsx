@@ -33,11 +33,15 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
 
     try {
       setLoading(true);
+      console.log('CartContext: Fetching cart...');
       const response = await CartAPI.getCart(token);
+      console.log('CartContext: Fetch cart response:', response);
+      
       // Backend returns { success: true, data: cart }
-      // apiClient returns response.data, so we get { success: true, data: cart }
-      // We need to access response.data to get the actual cart
-      const cartData = response?.data || response;
+      // apiClient already extracts response.data, so we get { success: true, data: cart }
+      // We need to access response.data to get the actual cart object
+      const cartData = response?.data;
+      console.log('CartContext: Setting cart data from fetch:', cartData);
       setCart(cartData);
     } catch (error) {
       console.error('Failed to fetch cart:', error);
@@ -66,8 +70,15 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
 
     try {
       setLoading(true);
+      console.log('CartContext: Adding item to cart:', item);
       const response = await CartAPI.addToCart(item, token);
-      const cartData = response?.data || response;
+      console.log('CartContext: Add to cart response:', response);
+      
+      // Backend returns { success: true, data: cart }
+      // apiClient already extracts response.data, so we get { success: true, data: cart }
+      // We need to access response.data to get the actual cart object
+      const cartData = response?.data;
+      console.log('CartContext: Setting cart data:', cartData);
       setCart(cartData);
       return true;
     } catch (error) {
@@ -89,7 +100,7 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
     try {
       setLoading(true);
       const response = await CartAPI.removeFromCart(itemId, token);
-      const cartData = response?.data || response;
+      const cartData = response?.data;
       setCart(cartData);
     } catch (error) {
       console.error('Failed to remove item from cart:', error);
@@ -110,7 +121,7 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
     try {
       setLoading(true);
       const response = await CartAPI.updateCartItem(itemId, quantity, token);
-      const cartData = response?.data || response;
+      const cartData = response?.data;
       setCart(cartData);
     } catch (error) {
       console.error('Failed to update cart item:', error);

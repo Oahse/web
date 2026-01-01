@@ -130,6 +130,7 @@ class DatabaseOptimizer:
             pool_timeout = 30
             pool_recycle = 3600
         
+
         return create_async_engine(
             database_uri,
             # Connection pool settings for high performance

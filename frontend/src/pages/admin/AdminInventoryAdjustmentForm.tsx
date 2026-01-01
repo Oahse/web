@@ -9,7 +9,6 @@ import { Input } from '../../components/forms/Input';
 import { Select } from '../../components/forms/Select';
 import { Textarea } from '../../components/forms/Textarea';
 import { SkeletonForm } from '../../components/ui/SkeletonForm';
-import { useAuth } from '../../contexts/AuthContext';
 
 interface ProductVariant {
   id: string;
@@ -23,7 +22,6 @@ interface ProductVariant {
 
 export const AdminInventoryAdjustmentForm = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
   
   const [formData, setFormData] = useState<StockAdjustmentCreate>({
     variant_id: '',
@@ -213,7 +211,7 @@ export const AdminInventoryAdjustmentForm = () => {
           <h1 className="text-2xl font-bold text-main mb-2">Adjust Inventory Stock</h1>
           <p className="text-copy-lighter">Make adjustments to product inventory levels across different warehouse locations.</p>
         </div>
-        <SkeletonForm fields={6} layout="grid" />
+        <SkeletonForm fields={6} layout="grid" className="bg-surface rounded-lg shadow-sm p-6 border border-border-light" />
       </div>
     );
   }

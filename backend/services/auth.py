@@ -53,7 +53,7 @@ class AuthService:
             to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
         return encoded_jwt
 
-    def create_refresh_token(self, data: dict, expires_delta: Optional[timedelta] = None) -> str:
+    async def create_refresh_token(self, data: dict, expires_delta: Optional[timedelta] = None) -> str:
         """Create a JWT refresh token."""
         to_encode = data.copy()
         if expires_delta:
@@ -340,7 +340,7 @@ class AuthService:
 
         # Create access and refresh tokens
         access_token = self.create_access_token(token_data)
-        refresh_token = self.create_refresh_token(token_data)
+        refresh_token = await self.create_refresh_token(token_data)
         
         print(f"Generated tokens for user {user.email}")
 
