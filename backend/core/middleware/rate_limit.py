@@ -321,13 +321,11 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                         if coupon_code:
                             abuse_result = await self.security_service.detect_coupon_abuse(identifier, coupon_code)
                             if abuse_result.get("blocked"):
-                                return JSONResponse(
-                                    status_code=429,
-                                    content=APIResponse.error(
-                                        message=abuse_result["message"],
-                                        errors=[abuse_result["reason"].upper()]
-                                    ).dict()
-                                )
+                            content={
+                                "success": False,
+                                "message": abuse_result["message"],
+                                "errors": [abuse_result["reason"].upper()]
+                            }
             except Exception as e:
                 logger.error(f"Error checking coupon abuse: {e}")
         
@@ -338,11 +336,11 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                 if abuse_result.get("blocked"):
                     return JSONResponse(
                         status_code=429,
-                        content=APIResponse.error(
-                            message=abuse_result["message"],
-                            errors=[abuse_result["reason"].upper()]
-                        ).dict()
-                    )
+                                            content={
+                                                "success": False,
+                                                "message": abuse_result["message"],
+                                                "errors": [abuse_result["reason"].upper()]
+                                            }                    )
         
         return None
     
@@ -381,10 +379,11 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                 
                 return JSONResponse(
                     status_code=429,
-                    content=APIResponse.error(
-                        message=f"Rate limit exceeded. Try again in {rate_limit_result.get('retry_after', 60)} seconds.",
-                        errors=["RATE_LIMIT_EXCEEDED"],
-                        data={
+                    content={
+                        "success": False,
+                        "message": f"Rate limit exceeded. Try again in {rate_limit_result.get('retry_after', 60)} seconds.",
+                        "errors": ["RATE_LIMIT_EXCEEDED"],
+                        "data": {
                             "limit": rate_limit_result.get("limit"),
                             "reset_time": rate_limit_result.get("reset_time"),
                             "details": {
@@ -392,7 +391,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                                 "reset_time": rate_limit_result.get("reset_time")
                             }
                         }
-                    ).dict(),
+                    },
                     headers={
                         "X-RateLimit-Limit": str(rate_limit_result.get("limit", 100)),
                         "X-RateLimit-Remaining": str(rate_limit_result.get("remaining", 0)),
@@ -416,8 +415,9 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             # On error in rate limiting, return a generic 500 error
             return JSONResponse(
                 status_code=500,
-                content=APIResponse.error(
-                    message="Internal server error during rate limiting.",
-                    errors=[f"Rate limiting internal error: {e}"]
-                ).dict()
+                content={
+                    "success": False,
+                    "message": "Internal server error during rate limiting.",
+                    "errors": [f"Rate limiting internal error: {e}"]
+                }
             )
