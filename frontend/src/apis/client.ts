@@ -26,7 +26,7 @@ class TokenManager {
     return localStorage.getItem(this.TOKEN_KEY);
   }
 
-  static setToken(token) {
+  static setToken(token: string) {
     localStorage.setItem(this.TOKEN_KEY, token);
   }
 
@@ -34,7 +34,7 @@ class TokenManager {
     return localStorage.getItem(this.REFRESH_TOKEN_KEY);
   }
 
-  static setRefreshToken(token) {
+  static setRefreshToken(token: string) {
     localStorage.setItem(this.REFRESH_TOKEN_KEY, token);
   }
 
@@ -43,8 +43,17 @@ class TokenManager {
     return user ? JSON.parse(user) : null;
   }
 
-  static setUser(user) {
+  static setUser(user: any) {
     localStorage.setItem(this.USER_KEY, JSON.stringify(user));
+  }
+
+  static setTokens(tokens: { access_token?: string; refresh_token?: string; }) {
+    if (tokens.access_token) {
+      this.setToken(tokens.access_token);
+    }
+    if (tokens.refresh_token) {
+      this.setRefreshToken(tokens.refresh_token);
+    }
   }
 
   static clearTokens() {
@@ -53,7 +62,7 @@ class TokenManager {
     localStorage.removeItem(this.USER_KEY);
   }
 
-  static isAuthenticated() {
+  static isAuthenticated(): boolean {
     return !!this.getToken();
   }
 }

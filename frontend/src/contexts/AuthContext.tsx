@@ -2,9 +2,55 @@ import React, { useEffect, useState, createContext, useContext } from 'react';
 import { TokenManager, AuthAPI } from '../apis';
 import { toast } from 'react-hot-toast';
 
-export const AuthContext = createContext(undefined);
+// Define proper types for the context
+interface User {
+  id: string;
+  created_at: string;
+  updated_at: string;
+  email: string;
+  firstname: string;
+  lastname: string;
+  full_name: string;
+  role: string;
+  verified: boolean;
+  is_active: boolean;
+  phone?: string;
+  avatar_url?: string;
+  preferences: Record<string, any>;
+  active: boolean;
+}
 
-export const AuthProvider = ({ children }) => {
+interface IntendedDestination {
+  path: string;
+  action?: string | null;
+}
+
+interface AuthContextType {
+  user: User | null;
+  isAuthenticated: boolean;
+  isLoading: boolean;
+  login: (email: string, password: string) => Promise<User>;
+  register: (firstname: string, lastname: string, email: string, password: string, phone?: string) => Promise<void>;
+  logout: () => Promise<void>;
+  verifyEmail: (code: string) => Promise<void>;
+  isAdmin: boolean;
+  isSupplier: boolean;
+  isCustomer: boolean;
+  redirectPath: string | null;
+  setRedirectPath: (path: string | null) => void;
+  intendedDestination: IntendedDestination | null;
+  setIntendedDestination: (destination: IntendedDestination | null) => void;
+  updateUserPreferences: (preferences: Record<string, any>) => Promise<void>;
+  updateUser: (updatedUserData: any) => void;
+}
+
+export const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+interface AuthProviderProps {
+  children: React.ReactNode;
+}
+
+export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -12,7 +58,7 @@ export const AuthProvider = ({ children }) => {
   const [intendedDestination, setIntendedDestination] = useState(null);
 
   // Transform API user to local user format
-  const transformUser = (apiUser: any) => ({
+  const transformUser = (apiUser: any): User => ({
     id: apiUser.id,
     created_at: apiUser.created_at,
     updated_at: apiUser.updated_at,
@@ -51,16 +97,14 @@ export const AuthProvider = ({ children }) => {
     checkAuth();
   }, []);
 
-  const login = async (email, password) => {
+  const login = async (email: string, password: string): Promise<User> => {
     setIsLoading(true);
     try {
       console.log('AuthContext: Attempting login...');
       const response = await AuthAPI.login({ email, password });
 
-      // Save tokens if provided by backend
-      if (response.data?.tokens) {
-        TokenManager.setTokens(response.data.tokens);
-      }
+      // Save tokens if provided by backend (TokenManager expects tokens directly in response.data)
+      TokenManager.setTokens(response.data);
 
       const transformedUser = transformUser(response.data.user);
       setUser(transformedUser);
@@ -80,14 +124,13 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const register = async (firstname, lastname, email, password, phone) => {
+  const register = async (firstname: string, lastname: string, email: string, password: string, phone?: string): Promise<void> => {
     setIsLoading(true);
     try {
       const response = await AuthAPI.register({ firstname, lastname, email, password, phone });
 
-      if (response.data?.tokens) {
-        TokenManager.setTokens(response.data.tokens);
-      }
+      // Save tokens if provided by backend (TokenManager expects tokens directly in response.data)
+      TokenManager.setTokens(response.data);
 
       const transformedUser = transformUser(response.data.user);
       setUser(transformedUser);
@@ -129,12 +172,11 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const updateUserPreferences = async (preferences) => {
+  const updateUserPreferences = async (preferences: Record<string, any>): Promise<void> => {
     if (!user) return;
 
     try {
       // Optimistic update
-      // const previousUser = user;
       setUser({
         ...user,
         preferences: { ...user.preferences, ...preferences },
@@ -153,7 +195,7 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const updateUser = (updatedUserData) => {
+  const updateUser = (updatedUserData: any): void => {
     if (!user) return;
 
     // Update user state with new data
@@ -162,7 +204,7 @@ export const AuthProvider = ({ children }) => {
     TokenManager.setUser(transformedUser);
   };
 
-  const setIntendedDestinationWithAction = (path, action = null) => {
+  const setIntendedDestinationWithAction = (path: string, action: string | null = null): void => {
     // Don't store login page as intended destination
     if (path === '/login' || path === '/register') {
       return;
