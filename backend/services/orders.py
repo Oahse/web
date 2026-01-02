@@ -250,7 +250,7 @@ class OrderService:
                 if price_updates:
                     await self._send_price_update_notification(user_id, price_updates)
                 
-                # STEP 3: CHECK STOCK AVAILABILITY (optimized for express checkout)
+                # STEP 3: CHECK STOCK AVAILABILITY (optimized for Checkout)
                 stock_validation_results = []
                 for item in active_items:
                     stock_check = await self.inventory_service.check_stock_availability(

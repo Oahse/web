@@ -223,9 +223,17 @@ class RedisDistributedLockService(RedisService):
                 "error": str(e)
             }
 
-async def get_redis_lock_service() -> RedisDistributedLockService:
-    """Get Redis distributed lock service instance"""
-    return RedisDistributedLockService()
+async def get_redis_lock_service() -> Optional[RedisDistributedLockService]:
+    """Get Redis distributed lock service instance (returns None if Redis unavailable)"""
+    try:
+        service = RedisDistributedLockService()
+        # Test Redis connection
+        redis_client = await service._get_redis()
+        await redis_client.ping()
+        return service
+    except Exception as e:
+        logger.warning(f"Redis not available, distributed locking disabled: {e}")
+        return None
 
 async def get_auth_service(db: AsyncSession = Depends(get_db)) -> AuthService:
     """Get AuthService instance with database session."""
@@ -234,18 +242,18 @@ async def get_auth_service(db: AsyncSession = Depends(get_db)) -> AuthService:
 
 async def get_inventory_service(
     db: AsyncSession = Depends(get_db),
-    lock_service: RedisDistributedLockService = Depends(get_redis_lock_service)
+    lock_service: Optional[RedisDistributedLockService] = Depends(get_redis_lock_service)
 ):
-    """Get inventory service with Redis distributed lock service"""
+    """Get inventory service with optional Redis distributed lock service"""
     from services.inventories import InventoryService
     return InventoryService(db, lock_service)
 
 
 async def get_order_service(
     db: AsyncSession = Depends(get_db),
-    lock_service: RedisDistributedLockService = Depends(get_redis_lock_service)
+    lock_service: Optional[RedisDistributedLockService] = Depends(get_redis_lock_service)
 ):
-    """Get order service with Redis distributed lock service"""
+    """Get order service with optional Redis distributed lock service"""
     from services.orders import OrderService
     return OrderService(db, lock_service)
 

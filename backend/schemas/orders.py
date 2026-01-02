@@ -19,7 +19,7 @@ class AddressCreate(BaseModel):
 
 class CheckoutRequest(BaseModel):
     shipping_address_id: UUID
-    shipping_method_id: UUID
+    shipping_method_id: UUID  # Reverted back to UUID since we're using database shipping methods
     payment_method_id: UUID
     notes: Optional[str] = None
 

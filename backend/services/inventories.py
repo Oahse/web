@@ -2,7 +2,7 @@
 # This file includes all inventory-related functionality including enhanced features
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, and_
+from sqlalchemy import select, func, and_, or_
 from sqlalchemy.orm import selectinload, joinedload
 from typing import Optional, List, Dict, Any
 from uuid import UUID
@@ -84,142 +84,284 @@ class InventoryService:
     async def get_inventory_item_by_id(self, inventory_id: UUID) -> Optional[Inventory]:
         result = await self.db.execute(select(Inventory).filter(Inventory.id == inventory_id).options(
             joinedload(Inventory.variant).joinedload(ProductVariant.product),
+            joinedload(Inventory.variant).joinedload(ProductVariant.images),
             joinedload(Inventory.location)
         ))
-        return result.scalars().first()
+        return result.scalars().unique().first()
+
+    async def get_inventory_item_by_id_serialized(self, inventory_id: UUID) -> Optional[dict]:
+        """Get inventory item by ID and return serialized data"""
+        result = await self.db.execute(select(Inventory).filter(Inventory.id == inventory_id).options(
+            joinedload(Inventory.variant).joinedload(ProductVariant.product),
+            joinedload(Inventory.variant).joinedload(ProductVariant.images),
+            joinedload(Inventory.location)
+        ))
+        item = result.scalars().unique().first()
+        
+        if not item:
+            return None
+            
+        try:
+            # Safely serialize variant data
+            variant_data = None
+            if item.variant:
+                # Get primary image safely
+                primary_image = None
+                if item.variant.images:
+                    primary_image = next(
+                        (img for img in item.variant.images if img.is_primary),
+                        item.variant.images[0] if len(item.variant.images) > 0 else None
+                    )
+                
+                # Safely serialize product info
+                product_info = None
+                if item.variant.product:
+                    product_info = {
+                        "id": str(item.variant.product.id),
+                        "name": item.variant.product.name or "",
+                        "slug": item.variant.product.slug or "",
+                        "description": item.variant.product.description or "",
+                        "is_active": getattr(item.variant.product, 'is_active', True)
+                    }
+
+                variant_data = {
+                    "id": str(item.variant.id),
+                    "name": item.variant.name or "",
+                    "sku": item.variant.sku or "",
+                    "base_price": float(item.variant.base_price) if item.variant.base_price else 0.0,
+                    "sale_price": float(item.variant.sale_price) if item.variant.sale_price else None,
+                    "is_active": getattr(item.variant, 'is_active', True),
+                    "product": product_info,
+                    "primary_image": {
+                        "id": str(primary_image.id),
+                        "url": primary_image.url or "",
+                        "alt_text": primary_image.alt_text or "",
+                        "is_primary": primary_image.is_primary
+                    } if primary_image else None,
+                    "images": [
+                        {
+                            "id": str(img.id),
+                            "url": img.url or "",
+                            "alt_text": img.alt_text or "",
+                            "is_primary": img.is_primary,
+                            "sort_order": img.sort_order or 0
+                        }
+                        for img in (item.variant.images or [])
+                    ]
+                }
+
+            # Safely serialize location info
+            location_info = None
+            if item.location:
+                location_info = {
+                    "id": str(item.location.id),
+                    "name": item.location.name or "",
+                    "address": item.location.address or "",
+                    "description": item.location.description or "",
+                    "created_at": item.location.created_at.isoformat() if item.location.created_at else None,
+                    "updated_at": item.location.updated_at.isoformat() if item.location.updated_at else None
+                }
+
+            item_dict = {
+                "id": str(item.id),
+                "variant_id": str(item.variant_id),
+                "location_id": str(item.location_id),
+                "quantity": item.quantity or 0,
+                "quantity_available": getattr(item, 'quantity_available', item.quantity or 0),
+                "low_stock_threshold": item.low_stock_threshold or 0,
+                "reorder_point": getattr(item, 'reorder_point', 0),
+                "inventory_status": getattr(item, 'inventory_status', 'active'),
+                "last_restocked_at": item.last_restocked_at.isoformat() if getattr(item, 'last_restocked_at', None) else None,
+                "last_sold_at": item.last_sold_at.isoformat() if getattr(item, 'last_sold_at', None) else None,
+                "version": getattr(item, 'version', 1),
+                "created_at": item.created_at.isoformat() if item.created_at else None,
+                "updated_at": item.updated_at.isoformat() if item.updated_at else None,
+                "variant": variant_data,
+                "location": location_info
+            }
+            
+            return item_dict
+            
+        except Exception as e:
+            logger.error(f"Error serializing inventory item {item.id}: {e}", exc_info=True)
+            return None
 
     async def get_inventory_item_by_variant_id(self, variant_id: UUID) -> Optional[Inventory]:
         result = await self.db.execute(select(Inventory).filter(Inventory.variant_id == variant_id).options(
             joinedload(Inventory.variant).joinedload(ProductVariant.product),
             joinedload(Inventory.location)
         ))
-        return result.scalars().first()
+        return result.scalars().unique().first()
 
-    async def get_all_inventory_items(self, page: int = 1, limit: int = 10, product_id: Optional[UUID] = None, location_id: Optional[UUID] = None, low_stock: Optional[bool] = None) -> dict:
-        offset = (page - 1) * limit
-        query = select(Inventory).options(
-            joinedload(Inventory.variant).joinedload(ProductVariant.product),
-            joinedload(Inventory.variant).joinedload(ProductVariant.images),
-            joinedload(Inventory.location)
-        )
-        count_query = select(func.count(Inventory.id))
+    async def get_all_inventory_items(self, page: int = 1, limit: int = 10, product_id: Optional[UUID] = None, location_id: Optional[UUID] = None, low_stock: Optional[bool] = None, search: Optional[str] = None) -> dict:
+        try:
+            offset = (page - 1) * limit
+            
+            # Build query with proper eager loading
+            query = select(Inventory).options(
+                joinedload(Inventory.variant).joinedload(ProductVariant.product),
+                joinedload(Inventory.variant).joinedload(ProductVariant.images),
+                joinedload(Inventory.location)
+            )
+            count_query = select(func.count(Inventory.id))
 
-        conditions = []
-        if product_id:
-            conditions.append(Inventory.variant.has(product_id=product_id))
-        if location_id:
-            conditions.append(Inventory.location_id == location_id)
-        if low_stock is not None:
-            if low_stock:
-                conditions.append(Inventory.quantity <= Inventory.low_stock_threshold)
-            else:
-                conditions.append(Inventory.quantity > Inventory.low_stock_threshold)
-        
-        if conditions:
-            query = query.filter(and_(*conditions))
-            count_query = count_query.filter(and_(*conditions))
+            conditions = []
+            if product_id:
+                conditions.append(Inventory.variant.has(ProductVariant.product_id == product_id))
+            if location_id:
+                conditions.append(Inventory.location_id == location_id)
+            if low_stock is not None:
+                if low_stock:
+                    conditions.append(Inventory.quantity_available <= Inventory.low_stock_threshold)
+                else:
+                    conditions.append(Inventory.quantity_available > Inventory.low_stock_threshold)
+            if search:
+                # Search in product name, variant name, variant SKU, and location name
+                search_term = f"%{search.lower()}%"
+                search_conditions = [
+                    Inventory.variant.has(ProductVariant.product.has(Product.name.ilike(search_term))),
+                    Inventory.variant.has(ProductVariant.name.ilike(search_term)),
+                    Inventory.variant.has(ProductVariant.sku.ilike(search_term)),
+                    Inventory.location.has(WarehouseLocation.name.ilike(search_term))
+                ]
+                conditions.append(or_(*search_conditions))
+            
+            if conditions:
+                query = query.filter(and_(*conditions))
+                count_query = count_query.filter(and_(*conditions))
 
-        query = query.order_by(Inventory.updated_at.desc()).offset(offset).limit(limit)
+            query = query.order_by(Inventory.updated_at.desc()).offset(offset).limit(limit)
 
-        total = await self.db.scalar(count_query)
-        items = (await self.db.execute(query)).scalars().all()
+            # Execute queries
+            total = await self.db.scalar(count_query) or 0
+            result = await self.db.execute(query)
+            items = result.scalars().unique().all()  # Add .unique() to handle joined eager loads
 
-        # Convert to dictionaries with complete variant and product information
-        items_data = []
-        for item in items:
-            try:
-                # Get variant data with product and images
-                variant_data = None
-                if item.variant:
-                    # Get primary image
-                    primary_image = next(
-                        (img for img in item.variant.images if img.is_primary),
-                        item.variant.images[0] if item.variant.images and len(item.variant.images) > 0 else None
-                    )
-                    
-                    # Ensure product exists before accessing its properties
-                    product_info = None
-                    if item.variant.product:
-                        product_info = {
-                            "id": str(item.variant.product.id),
-                            "name": item.variant.product.name,
-                            "slug": item.variant.product.slug,
-                            "description": item.variant.product.description,
-                            "is_active": item.variant.product.is_active
+            # Convert to dictionaries with safe serialization
+            items_data = []
+            for item in items:
+                try:
+                    # Safely serialize variant data
+                    variant_data = None
+                    if item.variant:
+                        # Get primary image safely
+                        primary_image = None
+                        if item.variant.images:
+                            primary_image = next(
+                                (img for img in item.variant.images if img.is_primary),
+                                item.variant.images[0] if len(item.variant.images) > 0 else None
+                            )
+                        
+                        # Safely serialize product info
+                        product_info = None
+                        if item.variant.product:
+                            product_info = {
+                                "id": str(item.variant.product.id),
+                                "name": item.variant.product.name or "",
+                                "slug": item.variant.product.slug or "",
+                                "description": item.variant.product.description or "",
+                                "is_active": getattr(item.variant.product, 'is_active', True)
+                            }
+
+                        variant_data = {
+                            "id": str(item.variant.id),
+                            "name": item.variant.name or "",
+                            "sku": item.variant.sku or "",
+                            "base_price": float(item.variant.base_price) if item.variant.base_price else 0.0,
+                            "sale_price": float(item.variant.sale_price) if item.variant.sale_price else None,
+                            "is_active": getattr(item.variant, 'is_active', True),
+                            "product": product_info,
+                            "primary_image": {
+                                "id": str(primary_image.id),
+                                "url": primary_image.url or "",
+                                "alt_text": primary_image.alt_text or "",
+                                "is_primary": primary_image.is_primary
+                            } if primary_image else None,
+                            "images": [
+                                {
+                                    "id": str(img.id),
+                                    "url": img.url or "",
+                                    "alt_text": img.alt_text or "",
+                                    "is_primary": img.is_primary,
+                                    "sort_order": img.sort_order or 0
+                                }
+                                for img in (item.variant.images or [])
+                            ]
                         }
 
-                    variant_data = {
-                        "id": str(item.variant.id),
-                        "name": item.variant.name,
-                        "sku": item.variant.sku,
-                        "base_price": item.variant.base_price,
-                        "sale_price": item.variant.sale_price,
-                        "is_active": item.variant.is_active,
-                        "product": product_info,
-                        "primary_image": {
-                            "id": str(primary_image.id),
-                            "url": primary_image.url,
-                            "alt_text": primary_image.alt_text,
-                            "is_primary": primary_image.is_primary
-                        } if primary_image else None,
-                        "images": [
-                            {
-                                "id": str(img.id),
-                                "url": img.url,
-                                "alt_text": img.alt_text,
-                                "is_primary": img.is_primary,
-                                "sort_order": img.sort_order
-                            }
-                            for img in item.variant.images
-                        ] if item.variant.images else []
+                    # Safely serialize location info
+                    location_info = None
+                    if item.location:
+                        location_info = {
+                            "id": str(item.location.id),
+                            "name": item.location.name or "",
+                            "address": item.location.address or "",
+                            "description": item.location.description or "",
+                            "created_at": item.location.created_at.isoformat() if item.location.created_at else None,
+                            "updated_at": item.location.updated_at.isoformat() if item.location.updated_at else None
+                        }
+
+                    item_dict = {
+                        "id": str(item.id),
+                        "variant_id": str(item.variant_id),
+                        "location_id": str(item.location_id),
+                        "quantity": item.quantity or 0,
+                        "quantity_available": getattr(item, 'quantity_available', item.quantity or 0),
+                        "low_stock_threshold": item.low_stock_threshold or 0,
+                        "reorder_point": getattr(item, 'reorder_point', 0),
+                        "inventory_status": getattr(item, 'inventory_status', 'active'),
+                        "last_restocked_at": item.last_restocked_at.isoformat() if getattr(item, 'last_restocked_at', None) else None,
+                        "last_sold_at": item.last_sold_at.isoformat() if getattr(item, 'last_sold_at', None) else None,
+                        "version": getattr(item, 'version', 1),
+                        "created_at": item.created_at.isoformat() if item.created_at else None,
+                        "updated_at": item.updated_at.isoformat() if item.updated_at else None,
+                        "variant": variant_data,
+                        "location": location_info
                     }
-
-                # Ensure location exists before accessing its properties
-                location_info = None
-                if item.location:
-                    location_info = {
-                        "id": str(item.location.id),
-                        "name": item.location.name,
-                        "address": item.location.address,
-                        "description": item.location.description,
-                        "created_at": item.location.created_at.isoformat(),
-                        "updated_at": item.location.updated_at.isoformat() if item.location.updated_at else None
+                    items_data.append(item_dict)
+                    
+                except Exception as e:
+                    logger.error(f"Error serializing inventory item {getattr(item, 'id', 'unknown')}: {e}", exc_info=True)
+                    # Create a minimal safe item to prevent complete failure
+                    safe_item = {
+                        "id": str(getattr(item, 'id', '')),
+                        "variant_id": str(getattr(item, 'variant_id', '')),
+                        "location_id": str(getattr(item, 'location_id', '')),
+                        "quantity": getattr(item, 'quantity', 0),
+                        "quantity_available": getattr(item, 'quantity_available', 0),
+                        "low_stock_threshold": getattr(item, 'low_stock_threshold', 0),
+                        "reorder_point": 0,
+                        "inventory_status": "error",
+                        "last_restocked_at": None,
+                        "last_sold_at": None,
+                        "version": 1,
+                        "created_at": getattr(item, 'created_at', datetime.utcnow()).isoformat() if hasattr(item, 'created_at') else None,
+                        "updated_at": None,
+                        "variant": None,
+                        "location": None,
+                        "error": f"Serialization error: {str(e)}"
                     }
+                    items_data.append(safe_item)
 
-                item_dict = {
-                    "id": str(item.id),
-                    "variant_id": str(item.variant_id),
-                    "location_id": str(item.location_id),
-                    "quantity": item.quantity,
-                    "quantity_available": item.quantity_available,
-                    "low_stock_threshold": item.low_stock_threshold,
-                    "reorder_point": item.reorder_point,
-                    "inventory_status": item.inventory_status,
-                    "last_restocked_at": item.last_restocked_at.isoformat() if item.last_restocked_at else None,
-                    "last_sold_at": item.last_sold_at.isoformat() if item.last_sold_at else None,
-                    "version": item.version,
-                    "created_at": item.created_at.isoformat(),
-                    "updated_at": item.updated_at.isoformat() if item.updated_at else None,
-                    "variant": variant_data,
-                    "location": location_info
-                }
-                items_data.append(item_dict)
-            except Exception as e:
-                logger.error(f"Error serializing inventory item {item.id if hasattr(item, 'id') else 'unknown'}: {e}", exc_info=True)
-                # Depending on desired behavior, you might:
-                # 1. Continue and exclude this item from the results.
-                # 2. Re-raise a more specific APIException.
-                # For now, we'll just log and let the outer try/except handle it if it's critical.
-                # To prevent a full 500 for one bad item, you could append a placeholder or skip.
-                continue
-
-        return {
-            "data": items_data,
-            "total": total,
-            "page": page,
-            "limit": limit,
-            "pages": (total + limit - 1) // limit
-        }
+            return {
+                "data": items_data,
+                "total": total,
+                "page": page,
+                "limit": limit,
+                "pages": (total + limit - 1) // limit if total > 0 else 0
+            }
+            
+        except Exception as e:
+            logger.error(f"Error in get_all_inventory_items: {e}", exc_info=True)
+            # Return empty result instead of raising exception
+            return {
+                "data": [],
+                "total": 0,
+                "page": page,
+                "limit": limit,
+                "pages": 0,
+                "error": f"Database error: {str(e)}"
+            }
 
     async def create_inventory_item(self, inventory_data: InventoryCreate) -> InventoryResponse:
         existing_inventory = await self.get_inventory_item_by_variant_id(inventory_data.variant_id)

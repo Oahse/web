@@ -1,5 +1,5 @@
 /**
- * Express Checkout Component - One-click checkout for returning customers
+ * Checkout Component - One-click checkout for returning customers
  * Optimized for performance and responsiveness
  */
 import React from 'react';
@@ -34,7 +34,7 @@ export const ExpressCheckout: React.FC<ExpressCheckoutProps> = ({
           <div className="w-8 h-8 bg-success/20 rounded-full flex items-center justify-center">
             <span className="text-success font-bold text-sm">⚡</span>
           </div>
-          <h3 className="text-lg font-semibold text-copy">Express Checkout</h3>
+          <h3 className="text-lg font-semibold text-copy">Checkout</h3>
           <span className="bg-success/20 text-success text-xs font-medium px-2 py-1 rounded-full">
             One-Click
           </span>
@@ -52,7 +52,7 @@ export const ExpressCheckout: React.FC<ExpressCheckoutProps> = ({
         </div>
       </div>
 
-      {/* Express checkout preview */}
+      {/* Checkout preview */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         {/* Shipping Address */}
         <div className="flex items-start space-x-3">
@@ -91,14 +91,7 @@ export const ExpressCheckout: React.FC<ExpressCheckoutProps> = ({
       </div>
 
       {/* Action buttons */}
-      <div className="flex items-center justify-between">
-        <button
-          onClick={onFallback}
-          className="text-sm text-copy-light hover:text-copy underline"
-        >
-          Use regular checkout instead
-        </button>
-        
+      <div className="flex items-center justify-end">
         <Button
           onClick={handleExpressCheckout}
           isLoading={loading}

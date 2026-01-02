@@ -21,9 +21,17 @@ const SocialAuthButtons = ({
   const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
   const isHttps = window.location.protocol === 'https:';
 
+  // Check if we have valid (non-placeholder) credentials
+  const hasValidGoogleClientId = googleClientId && 
+    googleClientId !== 'your_google_client_id' && 
+    googleClientId !== 'placeholder_google_client_id';
+  const hasValidFacebookAppId = facebookAppId && 
+    facebookAppId !== 'your_facebook_app_id' && 
+    facebookAppId !== 'placeholder_facebook_app_id';
+
   // Initialize Facebook SDK
   useEffect(() => {
-    if (!facebookAppId || !isHttps) return;
+    if (!hasValidFacebookAppId || !isHttps) return;
 
     // Load Facebook SDK
     window.fbAsyncInit = function() {
@@ -44,7 +52,7 @@ const SocialAuthButtons = ({
       js.src = "https://connect.facebook.net/en_US/sdk.js";
       fjs.parentNode.insertBefore(js, fjs);
     }(document, 'script', 'facebook-jssdk'));
-  }, [facebookAppId, isHttps]);
+  }, [hasValidFacebookAppId, isHttps]);
 
   // Google OAuth Success Handler
   const handleGoogleSuccess = async (credentialResponse) => {
@@ -155,7 +163,7 @@ const SocialAuthButtons = ({
       )}
 
       {/* Google OAuth */}
-      {googleClientId && (
+      {hasValidGoogleClientId && (
         <GoogleLogin
           onSuccess={handleGoogleSuccess}
           onError={handleGoogleError}
@@ -168,7 +176,7 @@ const SocialAuthButtons = ({
       )}
 
       {/* Facebook OAuth */}
-      {facebookAppId && (
+      {hasValidFacebookAppId && (
         <FacebookLogin
           appId={facebookAppId}
           onSuccess={handleFacebookSuccess}

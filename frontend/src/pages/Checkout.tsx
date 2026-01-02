@@ -1,5 +1,5 @@
 /**
- * Express Checkout Page - Simplified one-click checkout
+ * Checkout Page - Simplified one-click checkout
  */
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -130,7 +130,7 @@ export const Checkout = () => {
 
       try {
         setLoading(true);
-        // Pre-load data needed for express checkout
+        // Pre-load data needed for Checkout
         await Promise.all([
           AuthAPI.getAddresses(),
           AuthAPI.getPaymentMethods(),
@@ -147,13 +147,13 @@ export const Checkout = () => {
     fetchCheckoutData();
   }, [isAuthenticated]);
 
-  // Express checkout handlers
+  // Checkout handlers
   const handleExpressSuccess = (orderId: string) => {
     navigate(`/account/orders/${orderId}`);
   };
 
   const handleExpressFallback = () => {
-    toast.error('Express checkout failed. Please try again or contact support.');
+    toast.error('Checkout failed. Please try again or contact support.');
   };
 
   const handleSmartCheckoutSuccess = (orderId: string) => {
@@ -175,7 +175,7 @@ export const Checkout = () => {
     <div className="min-h-screen bg-background py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-copy">Express Checkout</h1>
+          <h1 className="text-3xl font-bold text-copy">Checkout</h1>
           <p className="mt-2 text-copy-light">
             Complete your purchase quickly and securely with one-click checkout
           </p>
@@ -216,7 +216,7 @@ export const Checkout = () => {
           </div>
         )}
 
-        {/* Express Checkout */}
+        {/* Checkout */}
         {stockValidation.valid && (
           <>
             <ExpressCheckout

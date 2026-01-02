@@ -1,4 +1,4 @@
-
+import React from 'react';
 import { cn } from '../../lib/utils';
 
 
@@ -16,7 +16,7 @@ export const Radio = ({
         type="radio"
         id={id}
         className={cn(
-          'h-4 w-4 text-primary focus:ring-primary border-border rounded-full bg-transparent',
+          'h-4 w-4 text-primary focus:ring-primary/50 border-border rounded-full bg-surface transition-colors',
           className
         )}
         {...props}
@@ -26,7 +26,7 @@ export const Radio = ({
           {label}
         </label>
       )}
-      {error && <p className="text-sm text-red-500 mt-1">{error}</p>}
+      {error && <p className="text-sm text-error mt-1">{error}</p>}
     </div>
   );
 };

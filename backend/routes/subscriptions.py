@@ -1,13 +1,16 @@
+from datetime import datetime
 from fastapi import APIRouter, Depends, Query, status, BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select, and_
 from uuid import UUID
 from typing import List
-from core.database import get_db
+from core.database import get_db,logger
 from core.utils.response import Response
 from core.exceptions import APIException
-from schemas.subscriptions import SubscriptionCreate, SubscriptionUpdate
+from schemas.subscriptions import SubscriptionCreate, SubscriptionUpdate,SubscriptionCostCalculationRequest
 from services.subscriptions import SubscriptionService, SubscriptionSchedulerService
 from models.user import User
+from models.product import Product, ProductVariant, Category, ProductImage
 from services.auth import AuthService
 from tasks.subscription_tasks import (
     process_subscription_renewal,
@@ -194,7 +197,7 @@ async def create_subscription(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Failed to create subscription: {str(e)}"
         )
-        )
+        
         return Response.success(data=subscription, message="Subscription created successfully")
     except APIException:
         raise

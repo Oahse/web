@@ -97,26 +97,36 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.warning(f"Database optimization warning: {e}")
 
-    # Initialize new event system
-    try:
-        await initialize_event_system()
-        logger.info("Event system initialized successfully")
-    except Exception as e:
-        logger.error(f"Failed to initialize event system: {e}")
-        # Continue without event system for backward compatibility
-    
-    # Start new event consumer
-    try:
-        await start_event_consumer()
-        logger.info("New event consumer started successfully")
-    except Exception as e:
-        logger.error(f"Failed to start new event consumer: {e}")
+    # Initialize new event system (skip in development if Kafka is not available)
+    kafka_enabled = os.getenv("ENABLE_KAFKA", "true").lower() == "true"
+    if kafka_enabled:
+        try:
+            await initialize_event_system()
+            logger.info("Event system initialized successfully")
+        except Exception as e:
+            logger.error(f"Failed to initialize event system: {e}")
+            # Continue without event system for backward compatibility
+        
+        # Start new event consumer
+        try:
+            await start_event_consumer()
+            logger.info("New event consumer started successfully")
+        except Exception as e:
+            logger.error(f"Failed to start new event consumer: {e}")
 
-    # Start Kafka Producer (legacy)
-    kafka_producer_service = await get_kafka_producer_service()
-
-    # Start Kafka Consumer as a background task (legacy)
-    consumer_task = asyncio.create_task(consume_messages())
+        # Start Kafka Producer (legacy)
+        try:
+            kafka_producer_service = await get_kafka_producer_service()
+            # Start Kafka Consumer as a background task (legacy)
+            consumer_task = asyncio.create_task(consume_messages())
+        except Exception as e:
+            logger.error(f"Failed to start Kafka services: {e}")
+            kafka_producer_service = None
+            consumer_task = None
+    else:
+        logger.info("Kafka disabled via ENABLE_KAFKA=false")
+        kafka_producer_service = None
+        consumer_task = None
 
     # Start WebSocket Kafka Consumer
     try:
@@ -158,12 +168,13 @@ async def lifespan(app: FastAPI):
         await kafka_producer_service.stop()
 
     # Cancel Kafka Consumer background task
-    consumer_task.cancel()
-    try:
-        await consumer_task
-    except asyncio.CancelledError:
-        # Log or handle the cancellation, as it's expected during shutdown
-        logger.info("Kafka consumer task cancelled successfully during shutdown.")
+    if consumer_task:
+        consumer_task.cancel()
+        try:
+            await consumer_task
+        except asyncio.CancelledError:
+            # Log or handle the cancellation, as it's expected during shutdown
+            logger.info("Kafka consumer task cancelled successfully during shutdown.")
 
 
 app = FastAPI(

@@ -20,7 +20,8 @@ import {
   BoxesIcon,
   MapPinIcon,
   ArrowUpDownIcon,
-  TrendingUpIcon
+  TrendingUpIcon,
+  TruckIcon
 } from 'lucide-react';
 
 interface AdminLayoutProps {
@@ -49,6 +50,7 @@ export const AdminLayout = ({ children }: AdminLayoutProps) => {
     { title: 'Products', path: '/admin/products', icon: <PackageIcon size={20} /> },
     { title: 'Variants', path: '/admin/variants', icon: <TagIcon size={20} /> },
     { title: 'Users', path: '/admin/users', icon: <UsersIcon size={20} /> },
+    { title: 'Shipping Methods', path: '/admin/shipping-methods', icon: <TruckIcon size={20} /> },
     { title: 'Notifications', path: '/admin/notifications', icon: <BellIcon size={20} /> },
     { title: 'Inventory', path: '/admin/inventory', icon: <BoxesIcon size={20} /> },
     { title: 'Locations', path: '/admin/inventory/locations', icon: <MapPinIcon size={20} /> },

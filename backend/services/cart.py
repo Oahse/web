@@ -706,62 +706,53 @@ class CartService(RedisService):
             raise HTTPException(status_code=500, detail="Failed to remove promocode")
 
     async def get_shipping_options(self, user_id: UUID, address: dict, session_id: Optional[str] = None) -> Dict[str, Any]:
-        """Get shipping options based on cart contents and address"""
+        """Get shipping options from database based on cart contents and address"""
         try:
             # Get cart to calculate shipping based on weight/value
             cart = await self.get_cart(user_id, session_id)
             
-            # Base shipping options
-            shipping_options = []
+            # Query shipping methods from database
+            from sqlalchemy import select
+            from models.shipping import ShippingMethod
             
-            # Calculate shipping cost based on cart total
+            result = await self.db.execute(
+                select(ShippingMethod).where(ShippingMethod.is_active == True).order_by(ShippingMethod.price)
+            )
+            shipping_methods = result.scalars().all()
+            
+            # Convert to response format - use database values directly
+            shipping_options = []
             subtotal = cart.subtotal if cart else 0
             
-            # Standard shipping
-            standard_price = 10.0 if subtotal < 50.0 else 0.0  # Free shipping over $50
-            shipping_options.append({
-                "id": "standard",
-                "name": "Standard Shipping",
-                "price": standard_price,
-                "delivery_days": "5-7",
-                "description": "Free shipping on orders over $50"
-            })
-            
-            # Express shipping
-            express_price = 25.0 if subtotal < 100.0 else 15.0  # Discounted express for large orders
-            shipping_options.append({
-                "id": "express", 
-                "name": "Express Shipping",
-                "price": express_price,
-                "delivery_days": "2-3",
-                "description": "Fast delivery in 2-3 business days"
-            })
-            
-            # Overnight shipping for premium orders
-            if subtotal > 25.0:
-                overnight_price = 35.0 if subtotal < 100.0 else 25.0
+            for method in shipping_methods:
+                # Use the exact price from database - no hardcoded rules
+                price = method.price
+                
+                # Only apply business rules that are configurable, not hardcoded
+                # For now, we'll use the database price as-is
+                # Future: Add a business rules engine or configuration table
+                
                 shipping_options.append({
-                    "id": "overnight",
-                    "name": "Overnight Shipping", 
-                    "price": overnight_price,
-                    "delivery_days": "1",
-                    "description": "Next business day delivery"
+                    "id": method.id,
+                    "name": method.name,
+                    "price": price,
+                    "delivery_days": str(method.estimated_days),
+                    "description": method.description or f"Delivery in {method.estimated_days} business day{'s' if method.estimated_days != 1 else ''}"
                 })
             
             return {
                 "shipping_options": shipping_options,
                 "cart_subtotal": subtotal,
-                "free_shipping_threshold": 50.0
+                "free_shipping_threshold": 50.0  # This could also be moved to database config
             }
             
         except Exception as e:
             logger.error(f"Error getting shipping options: {e}")
-            # Return default options on error
+            # Return empty options on error - no hardcoded fallbacks
             return {
-                "shipping_options": [
-                    {"id": "standard", "name": "Standard Shipping", "price": 10.0, "delivery_days": "5-7", "description": "Standard delivery"},
-                    {"id": "express", "name": "Express Shipping", "price": 25.0, "delivery_days": "2-3", "description": "Fast delivery"}
-                ]
+                "shipping_options": [],
+                "cart_subtotal": 0,
+                "free_shipping_threshold": 50.0
             }
 
     async def calculate_totals(self, user_id: UUID, data: dict, session_id: Optional[str] = None) -> Dict[str, Any]:

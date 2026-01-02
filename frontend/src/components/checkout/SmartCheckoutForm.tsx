@@ -9,6 +9,7 @@ import { useLocale } from '../../contexts/LocaleContext';
 import { OrdersAPI } from '../../apis/orders';
 import { AuthAPI } from '../../apis/auth';
 import { CartAPI } from '../../apis/cart';
+import { TokenManager } from '../../apis/client';
 import { toast } from 'react-hot-toast';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
@@ -50,7 +51,7 @@ export const SmartCheckoutForm: React.FC<SmartCheckoutFormProps> = ({ onSuccess 
     notes: ''
   });
   
-  // Data state
+  // Data state - Initialize with empty arrays to prevent map errors
   const [addresses, setAddresses] = useState<any[]>([]);
   const [shippingMethods, setShippingMethods] = useState<any[]>([]);
   const [paymentMethods, setPaymentMethods] = useState<any[]>([]);
@@ -110,6 +111,48 @@ export const SmartCheckoutForm: React.FC<SmartCheckoutFormProps> = ({ onSuccess 
     localStorage.setItem('checkout_form_data', JSON.stringify(formData));
   }, [formData]);
 
+  // Load shipping methods when address changes
+  const loadShippingMethods = useCallback(async (addressId: string) => {
+    if (!addressId) {
+      setShippingMethods([]);
+      return;
+    }
+
+    try {
+      const accessToken = TokenManager.getToken();
+      if (!accessToken) {
+        console.error('No access token available');
+        return;
+      }
+
+      const selectedAddress = addresses.find(addr => addr.id === addressId);
+      if (!selectedAddress) {
+        console.error('Selected address not found');
+        return;
+      }
+
+      const response = await CartAPI.getShippingOptions(selectedAddress, accessToken);
+      const shippingMethodsData = Array.isArray(response.data?.shipping_options) ? response.data.shipping_options : [];
+      setShippingMethods(shippingMethodsData);
+
+      // Auto-select the first shipping method if none is selected
+      if (shippingMethodsData.length > 0 && !formData.shipping_method_id) {
+        const firstShipping = shippingMethodsData[0];
+        setFormData(prev => ({ ...prev, shipping_method_id: firstShipping?.id || '' }));
+      }
+    } catch (error) {
+      console.error('Failed to load shipping methods:', error);
+      setShippingMethods([]);
+    }
+  }, [addresses, formData.shipping_method_id]);
+
+  // Load shipping methods when address selection changes
+  useEffect(() => {
+    if (formData.shipping_address_id) {
+      loadShippingMethods(formData.shipping_address_id);
+    }
+  }, [formData.shipping_address_id, loadShippingMethods]);
+
   // Load initial data
   useEffect(() => {
     loadCheckoutData();
@@ -145,30 +188,49 @@ export const SmartCheckoutForm: React.FC<SmartCheckoutFormProps> = ({ onSuccess 
 
       const defaultAddress = addressesRes.data?.find((addr: any) => addr.is_default) || addressesRes.data?.[0];
 
-      let shippingMethodsRes = { data: [] };
+      let shippingMethodsRes = { data: { shipping_options: [] } };
       if (defaultAddress) {
-        // Fetch shipping methods using the default address
-        shippingMethodsRes = await CartAPI.getShippingOptions(defaultAddress);
+        try {
+          // Get access token from TokenManager
+          const accessToken = TokenManager.getToken();
+          
+          if (accessToken) {
+            // Fetch shipping methods using the default address
+            shippingMethodsRes = await CartAPI.getShippingOptions(defaultAddress, accessToken);
+          }
+        } catch (shippingError) {
+          console.error('Failed to load shipping options:', shippingError);
+          // Continue with empty shipping methods array
+        }
       }
       
-      setAddresses(addressesRes.data || []);
-      setShippingMethods(shippingMethodsRes.data || []);
-      setPaymentMethods(paymentsRes.data || []);
+      // Ensure we always have arrays - extract shipping_options from the response
+      const addressesData = Array.isArray(addressesRes.data) ? addressesRes.data : [];
+      const shippingMethodsData = Array.isArray(shippingMethodsRes.data?.shipping_options) ? shippingMethodsRes.data.shipping_options : [];
+      const paymentMethodsData = Array.isArray(paymentsRes.data) ? paymentsRes.data : [];
+      
+      setAddresses(addressesData);
+      setShippingMethods(shippingMethodsData);
+      setPaymentMethods(paymentMethodsData);
 
-      // Auto-select defaults
-      const standardShipping = shippingMethodsRes.data?.find((sm: any) => sm.name?.toLowerCase().includes('standard')) || shippingMethodsRes.data?.[0];
-      const defaultPayment = paymentsRes.data?.find((pm: any) => pm.is_default) || paymentsRes.data?.[0];
+      // Auto-select defaults - use first available options, not hardcoded names
+      const firstShipping = shippingMethodsData[0];
+      const defaultPayment = paymentMethodsData.find((pm: any) => pm.is_default) || paymentMethodsData[0];
 
       setFormData((prev: any) => ({
         ...prev,
         shipping_address_id: prev.shipping_address_id || defaultAddress?.id || '',
-        shipping_method_id: prev.shipping_method_id || standardShipping?.id || '',
+        shipping_method_id: prev.shipping_method_id || firstShipping?.id || '',
         payment_method_id: prev.payment_method_id || defaultPayment?.id || ''
       }));
 
     } catch (error) {
       console.error('Failed to load checkout data:', error);
       toast.error('Failed to load checkout options');
+      // Set empty arrays as fallback
+      setAddresses([]);
+      setShippingMethods([]);
+      setPaymentMethods([]);
     } finally {
       setLoading(false);
     }
@@ -177,7 +239,8 @@ export const SmartCheckoutForm: React.FC<SmartCheckoutFormProps> = ({ onSuccess 
   const updateOrderSummary = useCallback(() => {
     if (!cart || !formData.shipping_method_id) return;
 
-    const selectedShipping = shippingMethods.find(sm => sm.id === formData.shipping_method_id);
+    const safeShippingMethods = Array.isArray(shippingMethods) ? shippingMethods : [];
+    const selectedShipping = safeShippingMethods.find(sm => sm.id === formData.shipping_method_id);
     if (!selectedShipping) return;
 
     const subtotal = cart.subtotal || 0;
@@ -424,26 +487,31 @@ export const SmartCheckoutForm: React.FC<SmartCheckoutFormProps> = ({ onSuccess 
     );
   }
 
+  // Safety check to ensure arrays are properly initialized
+  const safeAddresses = Array.isArray(addresses) ? addresses : [];
+  const safeShippingMethods = Array.isArray(shippingMethods) ? shippingMethods : [];
+  const safePaymentMethods = Array.isArray(paymentMethods) ? paymentMethods : [];
+
   return (
     <div className="max-w-4xl mx-auto">
       {/* Progress Steps */}
-      <div className="mb-8">
-        <div className="flex items-center justify-between">
+      <div className="mb-6 lg:mb-8">
+        <div className="flex items-center justify-between overflow-x-auto pb-2">
           {steps.map((step, index) => (
-            <div key={step.number} className="flex items-center">
-              <div className={`flex items-center justify-center w-10 h-10 rounded-full border-2 ${
+            <div key={step.number} className="flex items-center min-w-0 flex-shrink-0">
+              <div className={`flex items-center justify-center w-8 h-8 lg:w-10 lg:h-10 rounded-full border-2 ${
                 currentStep >= step.number
                   ? 'bg-primary border-primary text-copy-inverse'
                   : 'border text-copy-lighter'
               }`}>
                 {currentStep > step.number ? (
-                  <CheckCircle className="w-6 h-6" />
+                  <CheckCircle className="w-4 h-4 lg:w-6 lg:h-6" />
                 ) : (
-                  <span className="text-lg">{step.icon}</span>
+                  <span className="text-sm lg:text-lg">{step.icon}</span>
                 )}
               </div>
-              <div className="ml-3">
-                <div className={`text-sm font-medium ${
+              <div className="ml-2 lg:ml-3 hidden sm:block">
+                <div className={`text-xs lg:text-sm font-medium ${
                   currentStep >= step.number ? 'text-primary' : 'text-copy-lighter'
                 }`}>
                   Step {step.number}
@@ -455,7 +523,7 @@ export const SmartCheckoutForm: React.FC<SmartCheckoutFormProps> = ({ onSuccess 
                 </div>
               </div>
               {index < steps.length - 1 && (
-                <div className={`flex-1 h-0.5 mx-4 ${
+                <div className={`flex-1 h-0.5 mx-2 lg:mx-4 min-w-4 lg:min-w-8 ${
                   currentStep > step.number ? 'bg-primary' : 'bg-border-light'
                 }`} />
               )}
@@ -464,16 +532,16 @@ export const SmartCheckoutForm: React.FC<SmartCheckoutFormProps> = ({ onSuccess 
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-8">
         {/* Main Form */}
         <div className="lg:col-span-2">
-          <div className="bg-surface rounded-lg shadow-sm border border-border p-6">
+          <div className="bg-surface rounded-lg shadow-sm border border-border p-4 lg:p-6">
             {/* Step 1: Shipping Address */}
             {currentStep === 1 && (
               <div>
                 <h3 className="text-lg font-semibold mb-4 text-copy">Shipping Address</h3>
                 <div className="space-y-4">
-                  {addresses.map((address) => (
+                  {safeAddresses.map((address) => (
                     <label
                       key={address.id}
                       className={`block p-4 border border-border rounded-lg cursor-pointer transition-colors ${
@@ -487,7 +555,11 @@ export const SmartCheckoutForm: React.FC<SmartCheckoutFormProps> = ({ onSuccess 
                         name="shipping_address"
                         value={address.id}
                         checked={formData.shipping_address_id === address.id}
-                        onChange={(e) => setFormData(prev => ({ ...prev, shipping_address_id: e.target.value }))}
+                        onChange={(e) => {
+                          setFormData(prev => ({ ...prev, shipping_address_id: e.target.value }));
+                          // Clear shipping method selection when address changes
+                          setFormData(prev => ({ ...prev, shipping_method_id: '' }));
+                        }}
                         className="sr-only"
                       />
                       <div className="flex items-start justify-between">
@@ -511,7 +583,7 @@ export const SmartCheckoutForm: React.FC<SmartCheckoutFormProps> = ({ onSuccess 
                     </label>
                   ))}
                   
-                  {addresses.length === 0 && (
+                  {(!Array.isArray(addresses) || safeAddresses.length === 0) && (
                     <div className="text-center py-8 text-copy-light">
                       <div className="bg-surface rounded-lg p-6 border border-border">
                         <div className="text-copy-light mb-4">
@@ -548,38 +620,58 @@ export const SmartCheckoutForm: React.FC<SmartCheckoutFormProps> = ({ onSuccess 
               <div>
                 <h3 className="text-lg font-semibold mb-4">Shipping Method</h3>
                 <div className="space-y-3">
-                  {shippingMethods.map((method) => (
-                    <label
-                      key={method.id}
-                      className={`block p-4 border rounded-lg cursor-pointer transition-colors ${
-                        formData.shipping_method_id === method.id
-                          ? 'border-primary bg-primary/10'
-                          : 'border hover:border-strong'
-                      }`}
-                    >
-                      <input
-                        type="radio"
-                        name="shipping_method"
-                        value={method.id}
-                        checked={formData.shipping_method_id === method.id}
-                        onChange={(e) => setFormData(prev => ({ ...prev, shipping_method_id: e.target.value }))}
-                        className="sr-only"
-                      />
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <div className="font-medium text-copy">
-                            {method.name}
+                  {safeShippingMethods.length > 0 ? (
+                    safeShippingMethods.map((method) => (
+                      <label
+                        key={method.id}
+                        className={`block p-4 border rounded-lg cursor-pointer transition-colors ${
+                          formData.shipping_method_id === method.id
+                            ? 'border-primary bg-primary/10'
+                            : 'border hover:border-strong'
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          name="shipping_method"
+                          value={method.id}
+                          checked={formData.shipping_method_id === method.id}
+                          onChange={(e) => setFormData(prev => ({ ...prev, shipping_method_id: e.target.value }))}
+                          className="sr-only"
+                        />
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <div className="font-medium text-copy">
+                              {method.name}
+                            </div>
+                            <div className="text-sm text-copy-light">
+                              {method.delivery_days || method.estimated_days} business days
+                            </div>
                           </div>
-                          <div className="text-sm text-copy-light">
-                            {method.estimated_days} business days
+                          <div className="text-lg font-semibold text-copy">
+                            {formatCurrency(method.price)}
                           </div>
                         </div>
-                        <div className="text-lg font-semibold text-copy">
-                          {formatCurrency(method.price)}
+                      </label>
+                    ))
+                  ) : (
+                    <div className="text-center py-8">
+                      <div className="bg-surface rounded-lg p-6 border border-border">
+                        <div className="text-copy-light mb-4">
+                          <svg className="w-12 h-12 mx-auto mb-3 text-copy-lighter" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                          </svg>
+                          <p className="text-copy">No shipping methods available</p>
+                          <p className="text-copy-light text-sm">Please select a shipping address first or try refreshing the page.</p>
                         </div>
+                        <Button
+                          onClick={() => setCurrentStep(1)}
+                          variant="outline"
+                        >
+                          Go Back to Address
+                        </Button>
                       </div>
-                    </label>
-                  ))}
+                    </div>
+                  )}
                 </div>
                 
                 {validationErrors.shipping_method_id && (
@@ -596,7 +688,7 @@ export const SmartCheckoutForm: React.FC<SmartCheckoutFormProps> = ({ onSuccess 
               <div>
                 <h3 className="text-lg font-semibold mb-4">Payment Method</h3>
                 <div className="space-y-3">
-                  {paymentMethods.map((method) => (
+                  {safePaymentMethods.map((method) => (
                     <label
                       key={method.id}
                       className={`block p-4 border rounded-lg cursor-pointer transition-colors ${
@@ -676,7 +768,7 @@ export const SmartCheckoutForm: React.FC<SmartCheckoutFormProps> = ({ onSuccess 
                     </div>
                   )}
 
-                  {(paymentMethods.length === 0 && !showNewCardForm) && (
+                  {safePaymentMethods.length === 0 && !showNewCardForm && (
                     <div className="text-center py-8">
                       <div className="bg-surface rounded-lg p-6 border border-border">
                         <div className="text-copy-light mb-4">
@@ -755,11 +847,12 @@ export const SmartCheckoutForm: React.FC<SmartCheckoutFormProps> = ({ onSuccess 
             )}
 
             {/* Navigation Buttons */}
-            <div className="flex items-center justify-between mt-8 pt-6 border-t">
+            <div className="flex flex-col sm:flex-row items-center justify-between mt-6 lg:mt-8 pt-4 lg:pt-6 border-t gap-4 sm:gap-0">
               <Button
                 onClick={handlePrevious}
                 variant="outline"
                 disabled={currentStep === 1}
+                className="w-full sm:w-auto order-2 sm:order-1"
               >
                 Previous
               </Button>
@@ -770,6 +863,7 @@ export const SmartCheckoutForm: React.FC<SmartCheckoutFormProps> = ({ onSuccess 
                   disabled={!formData.shipping_address_id && currentStep === 1 ||
                            !formData.shipping_method_id && currentStep === 2 ||
                            !formData.payment_method_id && currentStep === 3}
+                  className="w-full sm:w-auto order-1 sm:order-2"
                 >
                   Next
                 </Button>
@@ -777,7 +871,7 @@ export const SmartCheckoutForm: React.FC<SmartCheckoutFormProps> = ({ onSuccess 
                 <Button
                   onClick={handleSubmit}
                   isLoading={processingPayment}
-                  className="bg-success hover:bg-success-dark"
+                  className="bg-success hover:bg-success-dark w-full sm:w-auto order-1 sm:order-2"
                   size="lg"
                 >
                   {processingPayment ? 'Processing...' : `Place Order - ${formatCurrency(orderSummary?.total || 0)}`}
@@ -788,8 +882,8 @@ export const SmartCheckoutForm: React.FC<SmartCheckoutFormProps> = ({ onSuccess 
         </div>
 
         {/* Order Summary Sidebar */}
-        <div className="lg:col-span-1">
-          <div className="bg-surface rounded-lg shadow-sm border border-border p-6 sticky top-6">
+        <div className="lg:col-span-1 order-first lg:order-last">
+          <div className="bg-surface rounded-lg shadow-sm border border-border p-4 lg:p-6 lg:sticky lg:top-6">
             <h3 className="text-lg font-semibold mb-4 text-copy">Order Summary</h3>
             
             {orderSummary && (

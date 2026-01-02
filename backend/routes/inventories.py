@@ -52,13 +52,13 @@ async def check_stock_availability(
         )
 
 
-# --- Bulk Stock Check Endpoint for Express Checkout ---
+# --- Bulk Stock Check Endpoint for Checkout ---
 @router.post("/check-stock/bulk")
 async def check_bulk_stock_availability(
     items: List[dict],
     inventory_service: InventoryService = Depends(get_inventory_service)
 ):
-    """Check stock availability for multiple items at once (Public endpoint for express checkout)."""
+    """Check stock availability for multiple items at once (Public endpoint for Checkout)."""
     try:
         results = []
         
@@ -226,6 +226,7 @@ async def get_all_inventory_items(
     product_id: Optional[UUID] = Query(None),
     location_id: Optional[UUID] = Query(None),
     low_stock: Optional[bool] = Query(None),
+    search: Optional[str] = Query(None),
     current_user: User = Depends(require_admin_or_supplier),
     inventory_service: InventoryService = Depends(get_inventory_service)
 ):
@@ -236,7 +237,8 @@ async def get_all_inventory_items(
             limit=limit,
             product_id=product_id,
             location_id=location_id,
-            low_stock=low_stock
+            low_stock=low_stock,
+            search=search
         )
         return Response.success(data=items)
     except APIException:
@@ -255,7 +257,7 @@ async def get_inventory_item(
 ):
     """Get a specific inventory item by ID (Admin/Supplier access)."""
     try:
-        item = await inventory_service.get_inventory_item_by_id(inventory_id)
+        item = await inventory_service.get_inventory_item_by_id_serialized(inventory_id)
         if not item:
             raise APIException(status_code=status.HTTP_404_NOT_FOUND, message="Inventory item not found")
         return Response.success(data=item)

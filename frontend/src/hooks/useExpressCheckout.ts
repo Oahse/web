@@ -1,5 +1,5 @@
 /**
- * Express Checkout Hook - Optimized for performance and responsiveness
+ * Checkout Hook - Optimized for performance and responsiveness
  */
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
@@ -7,6 +7,7 @@ import { useCart } from '../contexts/CartContext';
 import { AuthAPI } from '../apis/auth';
 import { CartAPI } from '../apis/cart';
 import { OrdersAPI } from '../apis/orders';
+import { TokenManager } from '../apis/client';
 import { toast } from 'react-hot-toast';
 
 interface ExpressCheckoutData {
@@ -71,13 +72,27 @@ export const useExpressCheckout = (
         AuthAPI.getPaymentMethods()
       ]);
 
+      // Get shipping methods from database using the first available address
+      let shippingMethods: any[] = [];
+      const defaultAddress = addressesRes.data?.find((addr: any) => addr.is_default) || addressesRes.data?.[0];
+      
+      if (defaultAddress) {
+        try {
+          const accessToken = TokenManager.getToken();
+          if (accessToken) {
+            const shippingRes = await CartAPI.getShippingOptions(defaultAddress, accessToken);
+            shippingMethods = Array.isArray(shippingRes.data?.shipping_options) ? shippingRes.data.shipping_options : [];
+          }
+        } catch (shippingError) {
+          console.error('Failed to load shipping options for express checkout:', shippingError);
+          // Continue with empty array - express checkout will be disabled
+        }
+      }
+
       const preferences = {
         addresses: addressesRes.data || [],
         paymentMethods: paymentMethodsRes.data || [],
-        shippingMethods: [
-          { id: '1', name: 'Standard Shipping', price: 5.99 },
-          { id: '2', name: 'Express Shipping', price: 12.99 }
-        ], // Mock shipping methods for now
+        shippingMethods: shippingMethods,
         timestamp: now
       };
 
@@ -87,7 +102,7 @@ export const useExpressCheckout = (
       console.error('Failed to load user preferences:', error);
       return null;
     }
-  }, [cachedPreferences]);
+  }, [cachedPreferences, user]);
 
   const checkExpressEligibility = useCallback(async () => {
     if (!user || !cart?.items?.length) {
@@ -112,7 +127,7 @@ export const useExpressCheckout = (
         return;
       }
 
-      // Check stock availability first - if not available, no express checkout
+      // Check stock availability first - if not available, no Checkout
       const stockCheck = stockCheckRes.data;
       if (!stockCheck?.all_available) {
         setCanUseExpress(false);
@@ -123,16 +138,15 @@ export const useExpressCheckout = (
       // Find default/preferred options
       const defaultAddress = preferences.addresses?.find((addr: any) => addr.is_default) || preferences.addresses?.[0];
       const defaultPayment = preferences.paymentMethods?.find((pm: any) => pm.is_default) || preferences.paymentMethods?.[0];
-      const standardShipping = preferences.shippingMethods?.find((sm: any) => 
-        sm.name.toLowerCase().includes('standard') || sm.name.toLowerCase().includes('regular')
-      ) || preferences.shippingMethods?.[0];
+      // Select the cheapest shipping method for express checkout (usually the first one since they're ordered by price)
+      const cheapestShipping = preferences.shippingMethods?.[0];
 
-      if (defaultAddress && defaultPayment && standardShipping) {
+      if (defaultAddress && defaultPayment && cheapestShipping) {
         const expressCheckoutData: ExpressCheckoutData = {
           address: defaultAddress,
           payment: defaultPayment,
-          shipping: standardShipping,
-          total: calculateTotal(cart, standardShipping),
+          shipping: cheapestShipping,
+          total: calculateTotal(cart, cheapestShipping),
           stockValidated: true
         };
 
@@ -172,13 +186,13 @@ export const useExpressCheckout = (
       }
 
       // Generate idempotency key to prevent duplicate orders
-      const idempotencyKey = `express_${(user as any)?.id || 'anonymous'}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      const idempotencyKey = `express_${(user as any)?.id || 'anonymous'}_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
 
       const checkoutRequest = {
         shipping_address_id: expressData.address?.id,
         shipping_method_id: expressData.shipping?.id,
         payment_method_id: expressData.payment?.id,
-        notes: 'Express checkout order',
+        notes: 'Checkout order',
         express_checkout: true,
         idempotency_key: idempotencyKey
       };
@@ -201,7 +215,7 @@ export const useExpressCheckout = (
         throw new Error(response?.message || 'Failed to place order');
       }
     } catch (error) {
-      console.error('Express checkout failed:', error);
+      console.error('Checkout failed:', error);
       
       // Handle specific error types with user-friendly messages
       const errorDetail = (error as any)?.response?.data?.detail;
@@ -213,7 +227,7 @@ export const useExpressCheckout = (
       } else if ((error as any)?.response?.status === 429) {
         toast.error('Too many requests. Please wait a moment and try again.');
       } else {
-        toast.error('Express checkout failed. Please try regular checkout.');
+        toast.error('Checkout failed. Please try regular checkout.');
       }
       
       onFallback();

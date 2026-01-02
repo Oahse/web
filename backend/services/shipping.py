@@ -52,15 +52,19 @@ class ShippingService:
 
     async def calculate_shipping_cost(self, cart_subtotal: float, address: dict, shipping_method_id: Optional[UUID] = None) -> float:
         """Calculates shipping cost based on cart subtotal, address, and selected method.
-        For demonstration, this is simplified. In a real app, this would involve complex logic
-        and potentially external API calls.
+        Uses database shipping methods instead of hardcoded values.
         """
         if shipping_method_id:
             method = await self.get_shipping_method_by_id(shipping_method_id)
             if method and method.is_active:
                 return method.price
 
-        # Default logic if no specific method is chosen or found
-        if cart_subtotal >= 50:
-            return 0.0  # Free shipping for orders over $50
-        return 5.99  # Standard shipping cost
+        # If no specific method is chosen, return the cheapest active shipping method
+        active_methods = await self.get_all_active_shipping_methods()
+        if active_methods:
+            # Return the cheapest shipping method price
+            cheapest_method = min(active_methods, key=lambda m: m.price)
+            return cheapest_method.price
+        
+        # Fallback if no shipping methods are configured (should not happen in production)
+        return 0.0

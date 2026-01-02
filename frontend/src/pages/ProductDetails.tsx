@@ -17,7 +17,6 @@ import {
 
 import { ProductImageGallery } from '../components/product/ProductImageGallery';
 import { VariantSelector } from '../components/product/VariantSelector';
-import { SubscriptionSelector } from '../components/subscription/SubscriptionSelector';
 import { QRCodeModal } from '../components/product/QRCodeModal';
 import { BarcodeModal } from '../components/product/BarcodeModal';
 import { ProductCard } from '../components/product/ProductCard';
@@ -581,15 +580,6 @@ export const ProductDetails = () => {
                 <span className="text-sm">Share Product</span>
               </div>
             </div>
-
-            {/* Subscription Selector */}
-            {selectedVariant && (
-              <SubscriptionSelector
-                variantId={selectedVariant.id}
-                productName={product.name}
-                className="mt-6"
-              />
-            )}
           </div>
         </div>
 

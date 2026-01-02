@@ -86,7 +86,7 @@ class CartValidationResponse(BaseModel):
 class CheckoutValidationRequest(BaseModel):
     """Request for checkout validation"""
     shipping_address_id: UUID
-    shipping_method_id: UUID
+    shipping_method_id: UUID  # Reverted back to UUID since we're using database shipping methods
     payment_method_id: UUID
     notes: Optional[str] = None
 

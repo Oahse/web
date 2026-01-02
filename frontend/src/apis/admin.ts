@@ -365,6 +365,7 @@ export class AdminAPI {
     product_id?: string;
     location_id?: string;
     low_stock?: boolean;
+    search?: string;
   }) {
     const queryParams = new URLSearchParams();
     
@@ -373,9 +374,17 @@ export class AdminAPI {
     if (params?.product_id) queryParams.append('product_id', params.product_id);
     if (params?.location_id) queryParams.append('location_id', params.location_id);
     if (params?.low_stock !== undefined) queryParams.append('low_stock', params.low_stock.toString());
+    if (params?.search) queryParams.append('search', params.search);
 
     const url = `/inventory${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
     return await apiClient.get(url, {});
+  }
+
+  /**
+   * Get inventory item by ID
+   */
+  static async getInventoryItem(inventoryId: string) {
+    return await apiClient.get(`/inventory/${inventoryId}`, {});
   }
 
   /**
@@ -453,6 +462,42 @@ export class AdminAPI {
    */
   static async getAllStockAdjustments() {
     return await apiClient.get(`/inventory/adjustments/all`, {});
+  }
+
+  // Shipping Methods Management
+  /**
+   * Get all shipping methods
+   */
+  static async getShippingMethods() {
+    return await apiClient.get('/admin/shipping-methods', {});
+  }
+
+  /**
+   * Get shipping method by ID
+   */
+  static async getShippingMethod(methodId: string) {
+    return await apiClient.get(`/admin/shipping-methods/${methodId}`, {});
+  }
+
+  /**
+   * Create shipping method
+   */
+  static async createShippingMethod(methodData: any) {
+    return await apiClient.post('/admin/shipping-methods', methodData, {});
+  }
+
+  /**
+   * Update shipping method
+   */
+  static async updateShippingMethod(methodId: string, methodData: any) {
+    return await apiClient.put(`/admin/shipping-methods/${methodId}`, methodData, {});
+  }
+
+  /**
+   * Delete shipping method
+   */
+  static async deleteShippingMethod(methodId: string) {
+    return await apiClient.delete(`/admin/shipping-methods/${methodId}`, {});
   }
 }
 

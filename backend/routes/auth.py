@@ -32,7 +32,7 @@ async def register(
     try:
         auth_service = AuthService(db)
         user = await auth_service.create_user(user_data, background_tasks)
-        return Response(success=True, data=user, message="User registered successfully")
+        return APIResponse(success=True, data=user, message="User registered successfully")
     except Exception as e:
         raise APIException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -86,7 +86,7 @@ async def revoke_refresh_token(
         auth_service = AuthService(db)
         success = await auth_service.revoke_refresh_token(refresh_token)
         if success:
-            return Response.success(message="Refresh token revoked successfully")
+            return APIResponse.success(message="Refresh token revoked successfully")
         else:
             raise APIException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -131,7 +131,7 @@ async def get_profile(
             "created_at": current_user.created_at.isoformat(),
             "updated_at": current_user.updated_at.isoformat() if current_user.updated_at else None
         }
-        return Response.success(data=user_data)
+        return APIResponse.success(data=user_data)
     except Exception as e:
         import traceback
         traceback.print_exc()
@@ -171,7 +171,7 @@ async def create_address(
             user_id=current_user.id,
             **address_data.dict()
         )
-        return Response.success(data=AddressResponse.from_orm(address), message="Address created successfully")
+        return APIResponse.success(data=AddressResponse.from_orm(address), message="Address created successfully")
     except Exception as e:
         raise APIException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -197,7 +197,7 @@ async def update_address(
         if not address:
             raise APIException(status_code=status.HTTP_404_NOT_FOUND,
                                message="Address not found or not owned by user")
-        return Response.success(data=AddressResponse.from_orm(address), message="Address updated successfully")
+        return APIResponse.success(data=AddressResponse.from_orm(address), message="Address updated successfully")
     except APIException:
         raise
     except Exception as e:
@@ -221,7 +221,7 @@ async def delete_address(
         if not deleted:
             raise APIException(status_code=status.HTTP_404_NOT_FOUND,
                                message="Address not found or not owned by user")
-        return Response.success(message="Address deleted successfully")
+        return APIResponse.success(message="Address deleted successfully")
     except APIException:
         raise
     except Exception as e:
@@ -241,7 +241,7 @@ async def verify_email(
     try:
         user_service = UserService(db)
         await user_service.verify_email(token, background_tasks)
-        return Response(success=True, message="Email verified successfully")
+        return APIResponse(success=True, message="Email verified successfully")
     except APIException:
         raise
     except Exception as e:
@@ -261,10 +261,10 @@ async def forgot_password(
     try:
         auth_service = AuthService(db)
         await auth_service.send_password_reset(email, background_tasks)
-        return Response(success=True, message="Password reset email sent")
+        return APIResponse(success=True, message="Password reset email sent")
     except Exception as e:
         # Always return success for security
-        return Response(success=True, message="If the email exists, a reset link has been sent")
+        return APIResponse(success=True, message="If the email exists, a reset link has been sent")
 
 
 @router.post("/reset-password")
@@ -277,7 +277,7 @@ async def reset_password(
     try:
         auth_service = AuthService(db)
         await auth_service.reset_password(token, new_password)
-        return Response(success=True, message="Password reset successfully")
+        return APIResponse(success=True, message="Password reset successfully")
     except Exception as e:
         raise APIException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -321,7 +321,7 @@ async def update_profile(
             "updated_at": current_user.updated_at.isoformat() if current_user.updated_at else None
         }
         
-        return Response(success=True, data=user_response, message="Profile updated successfully")
+        return APIResponse(success=True, data=user_response, message="Profile updated successfully")
     except Exception as e:
         raise APIException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -355,7 +355,7 @@ async def change_password(
         hashed_password = auth_service.get_password_hash(new_password)
         await user_service.update_user(current_user.id, {"hashed_password": hashed_password})
 
-        return Response(success=True, message="Password changed successfully")
+        return APIResponse(success=True, message="Password changed successfully")
     except APIException:
         raise
     except Exception as e:

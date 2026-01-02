@@ -60,7 +60,7 @@ export class CartAPI {
   }
 
   /**
-   * Check stock for multiple items at once (for express checkout)
+   * Check stock for multiple items at once (for Checkout)
    */
   static async checkBulkStock(items) {
     // Validate items array

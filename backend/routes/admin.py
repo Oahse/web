@@ -10,10 +10,12 @@ from core.utils.response import Response
 from core.exceptions import APIException
 from services.admin import AdminService
 from services.orders import OrderService
+from services.shipping import ShippingService
 from models.user import User
 from models.orders import Order
 from services.auth import AuthService
 from schemas.auth import UserCreate
+from schemas.shipping import ShippingMethodCreate, ShippingMethodUpdate
 from fastapi.security import OAuth2PasswordBearer
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
@@ -544,4 +546,168 @@ async def export_orders(
         raise APIException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             message=f"Failed to export orders: {str(e)}"
+        )
+
+# Shipping Methods Management Routes
+@router.get("/shipping-methods")
+async def get_all_shipping_methods(
+    current_user: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db)
+):
+    """Get all shipping methods (admin only)."""
+    try:
+        shipping_service = ShippingService(db)
+        methods = await shipping_service.get_all_active_shipping_methods()
+        
+        # Convert to dict format for API response
+        methods_data = []
+        for method in methods:
+            methods_data.append({
+                "id": str(method.id),
+                "name": method.name,
+                "description": method.description,
+                "price": float(method.price),
+                "estimated_days": method.estimated_days,
+                "is_active": method.is_active,
+                "created_at": method.created_at.isoformat() if method.created_at else None,
+                "updated_at": method.updated_at.isoformat() if method.updated_at else None
+            })
+        
+        return Response.success(data=methods_data)
+    except Exception as e:
+        raise APIException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            message=f"Failed to fetch shipping methods: {str(e)}"
+        )
+
+@router.get("/shipping-methods/{method_id}")
+async def get_shipping_method(
+    method_id: UUID,
+    current_user: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db)
+):
+    """Get a single shipping method by ID (admin only)."""
+    try:
+        shipping_service = ShippingService(db)
+        method = await shipping_service.get_shipping_method_by_id(method_id)
+        
+        if not method:
+            raise APIException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                message="Shipping method not found"
+            )
+        
+        method_data = {
+            "id": str(method.id),
+            "name": method.name,
+            "description": method.description,
+            "price": float(method.price),
+            "estimated_days": method.estimated_days,
+            "is_active": method.is_active,
+            "created_at": method.created_at.isoformat() if method.created_at else None,
+            "updated_at": method.updated_at.isoformat() if method.updated_at else None
+        }
+        
+        return Response.success(data=method_data)
+    except APIException:
+        raise
+    except Exception as e:
+        raise APIException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            message=f"Failed to fetch shipping method: {str(e)}"
+        )
+
+@router.post("/shipping-methods")
+async def create_shipping_method(
+    method_data: ShippingMethodCreate,
+    current_user: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db)
+):
+    """Create a new shipping method (admin only)."""
+    try:
+        shipping_service = ShippingService(db)
+        method = await shipping_service.create_shipping_method(method_data)
+        
+        method_response = {
+            "id": str(method.id),
+            "name": method.name,
+            "description": method.description,
+            "price": float(method.price),
+            "estimated_days": method.estimated_days,
+            "is_active": method.is_active,
+            "created_at": method.created_at.isoformat() if method.created_at else None,
+            "updated_at": method.updated_at.isoformat() if method.updated_at else None
+        }
+        
+        return Response.success(data=method_response, message="Shipping method created successfully")
+    except APIException:
+        raise
+    except Exception as e:
+        raise APIException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            message=f"Failed to create shipping method: {str(e)}"
+        )
+
+@router.put("/shipping-methods/{method_id}")
+async def update_shipping_method(
+    method_id: UUID,
+    method_data: ShippingMethodUpdate,
+    current_user: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db)
+):
+    """Update a shipping method (admin only)."""
+    try:
+        shipping_service = ShippingService(db)
+        method = await shipping_service.update_shipping_method(method_id, method_data)
+        
+        if not method:
+            raise APIException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                message="Shipping method not found"
+            )
+        
+        method_response = {
+            "id": str(method.id),
+            "name": method.name,
+            "description": method.description,
+            "price": float(method.price),
+            "estimated_days": method.estimated_days,
+            "is_active": method.is_active,
+            "created_at": method.created_at.isoformat() if method.created_at else None,
+            "updated_at": method.updated_at.isoformat() if method.updated_at else None
+        }
+        
+        return Response.success(data=method_response, message="Shipping method updated successfully")
+    except APIException:
+        raise
+    except Exception as e:
+        raise APIException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            message=f"Failed to update shipping method: {str(e)}"
+        )
+
+@router.delete("/shipping-methods/{method_id}")
+async def delete_shipping_method(
+    method_id: UUID,
+    current_user: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db)
+):
+    """Delete a shipping method (admin only)."""
+    try:
+        shipping_service = ShippingService(db)
+        success = await shipping_service.delete_shipping_method(method_id)
+        
+        if not success:
+            raise APIException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                message="Shipping method not found"
+            )
+        
+        return Response.success(message="Shipping method deleted successfully")
+    except APIException:
+        raise
+    except Exception as e:
+        raise APIException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            message=f"Failed to delete shipping method: {str(e)}"
         )

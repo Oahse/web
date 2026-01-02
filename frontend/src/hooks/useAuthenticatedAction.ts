@@ -13,7 +13,7 @@ export const useAuthenticatedAction = () => {
   const executeWithAuth = async (action: () => Promise<boolean>, actionType: 'cart' | 'wishlist' = 'cart') => {
     if (!isAuthenticated) {
       // Store the intended destination with action type
-      setIntendedDestination(location.pathname, actionType);
+      setIntendedDestination({ path: location.pathname, action: actionType });
       navigate('/login');
       return false;
     }
@@ -23,7 +23,7 @@ export const useAuthenticatedAction = () => {
     } catch (error) {
       // If authentication error occurs during action, redirect to login
       if (error instanceof Error && error.message.includes('authenticated')) {
-        setIntendedDestination(location.pathname, actionType);
+        setIntendedDestination({ path: location.pathname, action: actionType });
         navigate('/login');
         return false;
       }

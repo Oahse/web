@@ -204,12 +204,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     TokenManager.setUser(transformedUser);
   }, [user, transformUser]);
 
-  const setIntendedDestinationWithAction = useCallback((path: string, action: string | null = null): void => {
+  const setIntendedDestinationWithAction = useCallback((destination: IntendedDestination | null): void => {
     // Don't store login page as intended destination
-    if (path === '/login' || path === '/register') {
+    if (destination?.path === '/login' || destination?.path === '/register') {
       return;
     }
-    setIntendedDestination({ path, action });
+    setIntendedDestination(destination);
   }, []);
 
   // Derived roles

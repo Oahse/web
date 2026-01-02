@@ -43,9 +43,6 @@ const About = lazy(() => import('./pages/About').then((module) => ({ default: mo
 const Contact = lazy(() => import('./pages/Contact').then((module) => ({ default: module.Contact })));
 const FAQ = lazy(() => import('./pages/FAQ').then((module) => ({ default: module.FAQ })));
 const Wishlist = lazy(() => import('./pages/Wishlist').then((module) => ({ default: module.Wishlist })));
-const Subscription = lazy(() =>
-  import('./pages/Subscription').then((module) => ({ default: module.Subscription }))
-);
 const SubscriptionManagement = lazy(() =>
   import('./pages/SubscriptionManagement').then((module) => ({ default: module.SubscriptionManagement }))
 );
@@ -107,12 +104,15 @@ const AdminNewProduct = lazy(() =>
 
 // New Inventory Admin Pages
 const AdminInventory = lazy(() => import('./pages/admin/AdminInventory').then((module) => ({ default: module.AdminInventory })));
+const AdminInventoryAdjustments = lazy(() => import('./pages/admin/AdminInventoryAdjustments').then((module) => ({ default: module.AdminInventoryAdjustments })));
 const AdminWarehouseLocations = lazy(() => import('./pages/admin/AdminWarehouseLocations').then((module) => ({ default: module.AdminWarehouseLocations })));
 const AdminWarehouseLocationForm = lazy(() => import('./pages/admin/AdminWarehouseLocationForm').then((module) => ({ default: module.AdminWarehouseLocationForm })));
 const AdminInventoryAdjustmentForm = lazy(() => import('./pages/admin/AdminInventoryAdjustmentForm').then((module) => ({ default: module.AdminInventoryAdjustmentForm })));
 const AdminStockAdjustments = lazy(() => import('./pages/admin/AdminStockAdjustments').then((module) => ({ default: module.AdminStockAdjustments })));
 const AdminInventoryItemForm = lazy(() => import('./pages/admin/AdminInventoryItemForm').then((module) => ({ default: module.AdminInventoryItemForm })));
 const AdminComments = lazy(() => import('./pages/admin/AdminComments').then((module) => ({ default: module.AdminComments })));
+const AdminShippingMethods = lazy(() => import('./pages/admin/AdminShippingMethods').then((module) => ({ default: module.AdminShippingMethods })));
+const AdminShippingMethodForm = lazy(() => import('./pages/admin/AdminShippingMethodForm').then((module) => ({ default: module.AdminShippingMethodForm })));
 const Notifications = lazy(() =>
   import('./pages/account/Notifications').then((module) => ({ default: module.Notifications }))
 );
@@ -337,6 +337,16 @@ export const App: React.FC = () => {
                                   }
                               />
                               <Route
+                                  path="/admin/inventory/:inventoryId/adjustments"
+                                  element={
+                                      <ProtectedRoute requiredRole={['Admin', 'Supplier']}>
+                                          <AdminLayout>
+                                              <AdminInventoryAdjustments />
+                                          </AdminLayout>
+                                      </ProtectedRoute>
+                                  }
+                              />
+                              <Route
                                   path="/admin/inventory/locations"
                                   element={
                                       <ProtectedRoute requiredRole={['Admin', 'Supplier']}>
@@ -406,6 +416,37 @@ export const App: React.FC = () => {
                                       </ProtectedRoute>
                                   }
                               />
+                              {/* Shipping Methods Management Routes */}
+                              <Route
+                                  path="/admin/shipping-methods"
+                                  element={
+                                      <ProtectedRoute requiredRole={['Admin']}>
+                                          <AdminLayout>
+                                              <AdminShippingMethods />
+                                          </AdminLayout>
+                                      </ProtectedRoute>
+                                  }
+                              />
+                              <Route
+                                  path="/admin/shipping-methods/new"
+                                  element={
+                                      <ProtectedRoute requiredRole={['Admin']}>
+                                          <AdminLayout>
+                                              <AdminShippingMethodForm />
+                                          </AdminLayout>
+                                      </ProtectedRoute>
+                                  }
+                              />
+                              <Route
+                                  path="/admin/shipping-methods/edit/:methodId"
+                                  element={
+                                      <ProtectedRoute requiredRole={['Admin']}>
+                                          <AdminLayout>
+                                              <AdminShippingMethodForm />
+                                          </AdminLayout>
+                                      </ProtectedRoute>
+                                  }
+                              />
                               <Route path="/admin/register" element={<AuthLayout><AdminRegister /></AuthLayout>} />
                               <Route path="/admin/login" element={<AuthLayout><Login /></AuthLayout>} />
 
@@ -453,14 +494,6 @@ export const App: React.FC = () => {
                               <Route path="/support" element={<Layout><Support /></Layout>} />
                               <Route path="/faq" element={<Layout><FAQ /></Layout>} />
                               <Route path="/account/wishlist" element={<ProtectedRoute><Layout><Wishlist /></Layout></ProtectedRoute>} />
-                              <Route
-                                path="/subscription"
-                                element={
-                                  <Layout>
-                                    <Subscription />
-                                  </Layout>
-                                }
-                              />
                               <Route
                                 path="/subscription/:subscriptionId/manage"
                                 element={

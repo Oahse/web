@@ -223,12 +223,41 @@ async def seed_sample_data(
         # -------- Shipping Methods --------
         shipping_methods_batch = []
         shipping_methods_data = [
-            {"name": "Standard Shipping", "price": 4.99,
-                "estimated_days": 5, "is_active": True},
-            {"name": "Express Shipping", "price": 9.99,
-                "estimated_days": 2, "is_active": True},
-            {"name": "Next-Day Shipping", "price": 19.99,
-                "estimated_days": 1, "is_active": True},
+            {
+                "name": "Economy Shipping",
+                "description": "Budget-friendly option. Delivery in 7-10 business days.",
+                "price": 4.99,
+                "estimated_days": 8,
+                "is_active": True
+            },
+            {
+                "name": "Standard Shipping",
+                "description": "Free shipping on orders over $50. Delivery in 5-7 business days.",
+                "price": 9.99,
+                "estimated_days": 6,
+                "is_active": True
+            },
+            {
+                "name": "Express Shipping",
+                "description": "Fast delivery in 2-3 business days.",
+                "price": 19.99,
+                "estimated_days": 3,
+                "is_active": True
+            },
+            {
+                "name": "Overnight Shipping",
+                "description": "Next business day delivery by 6 PM.",
+                "price": 29.99,
+                "estimated_days": 1,
+                "is_active": True
+            },
+            {
+                "name": "Same Day Delivery",
+                "description": "Same day delivery for orders placed before 2 PM.",
+                "price": 39.99,
+                "estimated_days": 0,
+                "is_active": True
+            }
         ]
         for data in shipping_methods_data:
             method = ShippingMethod(**data)

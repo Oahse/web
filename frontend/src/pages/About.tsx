@@ -239,9 +239,9 @@ export const About = () => {
             Shop Our Products
           </Link>
           <Link
-            to="/subscription"
+            to="/account/subscriptions"
             className="bg-surface border border-primary text-primary hover:bg-primary/5 px-6 py-3 rounded-md transition-colors">
-            Subscribe Monthly
+            Manage Subscriptions
           </Link>
         </div>
       </div>

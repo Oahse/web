@@ -12,7 +12,7 @@ export const Checkbox = ({
       <input
         type="checkbox"
         id={id}
-        className={`h-4 w-4 text-primary focus:ring-primary border-border rounded bg-transparent ${className || ''}`}
+        className={`h-4 w-4 text-primary focus:ring-primary/50 border-border rounded bg-surface transition-colors ${className || ''}`}
         {...props}
       />
       {label && (
@@ -20,7 +20,7 @@ export const Checkbox = ({
           {label}
         </label>
       )}
-      {error && <p className="text-sm text-red-500 mt-1">{error}</p>}
+      {error && <p className="text-sm text-error mt-1">{error}</p>}
     </div>
   );
 };

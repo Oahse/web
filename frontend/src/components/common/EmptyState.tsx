@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { ShoppingCartIcon, HeartIcon, PackageIcon, SearchIcon } from 'lucide-react';
+import { themeClasses, getButtonClasses } from '../../lib/themeClasses';
 
 /**
  * Reusable Empty State component for displaying when no data is available
@@ -24,35 +25,35 @@ export const EmptyState = ({
   // Default configurations for different types
   const configs = {
     cart: {
-      icon: <ShoppingCartIcon size={48} className="text-gray-400" />,
+      icon: <ShoppingCartIcon size={48} className={themeClasses.text.muted} />,
       title: 'Your cart is empty',
       description: "Looks like you haven't added any products to your cart yet.",
       actionText: 'Continue Shopping',
       actionLink: '/products',
     },
     wishlist: {
-      icon: <HeartIcon size={48} className="text-gray-400" />,
+      icon: <HeartIcon size={48} className={themeClasses.text.muted} />,
       title: 'Your wishlist is empty',
       description: 'Add items you love to your wishlist to easily find them later.',
       actionText: 'Start Shopping',
       actionLink: '/products',
     },
     products: {
-      icon: <PackageIcon size={48} className="text-gray-400" />,
+      icon: <PackageIcon size={48} className={themeClasses.text.muted} />,
       title: 'No products found',
       description: 'Try adjusting your search or filter criteria.',
       actionText: 'Clear Filters',
       actionLink: null, // Will be handled by parent
     },
     orders: {
-      icon: <PackageIcon size={48} className="text-gray-400" />,
+      icon: <PackageIcon size={48} className={themeClasses.text.muted} />,
       title: 'No orders yet',
       description: "You haven't placed any orders yet.",
       actionText: 'Start Shopping',
       actionLink: '/products',
     },
     search: {
-      icon: <SearchIcon size={48} className="text-gray-400" />,
+      icon: <SearchIcon size={48} className={themeClasses.text.muted} />,
       title: 'No results found',
       description: 'Try different keywords or check your spelling.',
       actionText: 'Clear Search',
@@ -70,19 +71,19 @@ export const EmptyState = ({
   return (
     <div className={`text-center py-12 ${className}`}>
       <div className="max-w-md mx-auto">
-        <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+        <div className={`w-16 h-16 mx-auto mb-4 rounded-full ${themeClasses.background.elevated} flex items-center justify-center`}>
           {displayIcon}
         </div>
-        <h2 className="text-xl font-medium text-gray-900 dark:text-gray-100 mb-2">
+        <h2 className={`text-xl font-medium ${themeClasses.text.primary} mb-2`}>
           {displayTitle}
         </h2>
-        <p className="text-gray-600 dark:text-gray-400 mb-6">
+        <p className={`${themeClasses.text.secondary} mb-6`}>
           {displayDescription}
         </p>
         {displayActionText && displayActionLink && (
           <Link
             to={displayActionLink}
-            className="inline-flex items-center bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-md transition-colors"
+            className={getButtonClasses('primary')}
           >
             {displayActionText}
           </Link>
@@ -92,7 +93,7 @@ export const EmptyState = ({
             onClick={() => {
               // This will be handled by parent component
             }}
-            className="inline-flex items-center bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-md transition-colors"
+            className={getButtonClasses('primary')}
           >
             {displayActionText}
           </button>
