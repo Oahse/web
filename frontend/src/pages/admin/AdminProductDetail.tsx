@@ -22,6 +22,24 @@ export const AdminProductDetail = () => {
     }
   }, [id, execute]);
 
+  // Extract the actual product data from the API response
+  const product = apiResponse?.data || apiResponse;
+
+  // Set initial variant when product loads - moved before early returns
+  useEffect(() => {
+    if (product && product.variants && product.variants.length > 0 && !selectedVariant) {
+      setSelectedVariant(product.variants[0]);
+    }
+  }, [product, selectedVariant]);
+
+  const handleCodesGenerated = (codes: any) => {
+    toast.success('Barcode and QR code generated successfully!');
+    // Refresh the product data to get updated codes
+    if (id) {
+      execute(ProductsAPI.getProduct, id);
+    }
+  };
+
   if (error) {
     return (
       <div className="p-6">
@@ -55,15 +73,27 @@ export const AdminProductDetail = () => {
     );
   }
 
-  // Extract the actual product data from the API response
-  const product = apiResponse?.data || apiResponse;
-
-  // Set initial variant when product loads
-  useEffect(() => {
-    if (product && product.variants && product.variants.length > 0 && !selectedVariant) {
-      setSelectedVariant(product.variants[0]);
-    }
-  }, [product, selectedVariant]);
+  // Don't render the main content if product is not loaded yet
+  if (!product) {
+    return (
+      <div className="p-6">
+        <div className="animate-pulse">
+          <div className="h-8 bg-surface-hover rounded w-1/3 mb-6"></div>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2 space-y-6">
+              <div className="bg-surface rounded-lg p-6 border border-border-light">
+                <div className="h-6 bg-surface-hover rounded w-1/4 mb-4"></div>
+                <div className="space-y-3">
+                  <div className="h-4 bg-surface-hover rounded"></div>
+                  <div className="h-4 bg-surface-hover rounded w-5/6"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const totalStock = Array.isArray(product.variants)
     ? product.variants.reduce((sum: number, variant: any) => sum + (variant.stock || 0), 0)
