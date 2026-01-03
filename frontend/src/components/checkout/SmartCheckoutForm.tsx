@@ -51,9 +51,9 @@ export const SmartCheckoutForm: React.FC<SmartCheckoutFormProps> = ({ onSuccess 
   // Form state
   const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData] = useState<any>({
-    shipping_address_id: '',
-    shipping_method_id: '',
-    payment_method_id: '',
+    shipping_address_id: null,
+    shipping_method_id: null,
+    payment_method_id: null,
     notes: ''
   });
   
@@ -168,17 +168,32 @@ export const SmartCheckoutForm: React.FC<SmartCheckoutFormProps> = ({ onSuccess 
   const debouncedValidation = useCallback(
     debounce(async (data) => {
       try {
+        // Validate that all required fields are present and not empty
+        if (!data.shipping_address_id || !data.shipping_method_id || !data.payment_method_id) {
+          return; // Skip validation if required fields are missing
+        }
+        
         const response = await OrdersAPI.validateCheckout(data);
         setRealTimeValidation(response.data || {});
       } catch (error) {
         console.error('Real-time validation failed:', error);
+        // Don't show validation errors for incomplete forms
+        if (data.shipping_address_id && data.shipping_method_id && data.payment_method_id) {
+          setRealTimeValidation({ 
+            can_proceed: false, 
+            validation_errors: ['Validation failed. Please check your selections.'] 
+          });
+        }
       }
     }, 500),
     []
   );
 
   useEffect(() => {
-    if (formData.shipping_address_id && formData.shipping_method_id && formData.payment_method_id) {
+    // Only validate if all required fields have valid values
+    if (formData.shipping_address_id && 
+        formData.shipping_method_id && 
+        formData.payment_method_id) {
       debouncedValidation(formData);
     }
   }, [formData, debouncedValidation]);

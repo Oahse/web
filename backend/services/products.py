@@ -5,6 +5,7 @@ from typing import Optional, List, Dict, Any
 from fastapi import HTTPException
 from uuid import UUID
 from models.product import Product, ProductVariant, Category, ProductImage
+from models.inventories import Inventory
 from models.cart import CartItem
 from models.user import User
 from schemas.product import (
@@ -65,7 +66,7 @@ class ProductService:
                 current_price=getattr(variant, 'sale_price', None) or getattr(
                     variant, 'base_price', 0.0),
                 discount_percentage=0,
-                stock=getattr(variant, 'stock', 0),
+                stock=getattr(variant.inventory, 'quantity_available', 0) if hasattr(variant, 'inventory') and variant.inventory else 0,
                 attributes=getattr(variant, 'attributes', {}),
                 is_active=getattr(variant, 'is_active', True),
                 images=[],
@@ -228,9 +229,22 @@ class ProductService:
             
             if filters.get("availability") is not None:
                 if filters["availability"]:
-                    price_filters.append(ProductVariant.stock > 0)
+                    # Join with inventory and check quantity_available > 0
+                    price_filters.append(
+                        ProductVariant.inventory.has(
+                            Inventory.quantity_available > 0
+                        )
+                    )
                 else:
-                    price_filters.append(ProductVariant.stock == 0)
+                    # Join with inventory and check quantity_available == 0 or no inventory
+                    price_filters.append(
+                        or_(
+                            ~ProductVariant.inventory.has(),
+                            ProductVariant.inventory.has(
+                                Inventory.quantity_available == 0
+                            )
+                        )
+                    )
             
             if filters.get("sale"):
                 price_filters.append(ProductVariant.sale_price.isnot(None))
@@ -765,11 +779,38 @@ class ProductService:
                 name=variant_data.name,
                 base_price=variant_data.base_price,
                 sale_price=variant_data.sale_price,
-                stock=variant_data.stock,
                 attributes=variant_data.attributes or {}
             )
             self.db.add(db_variant)
             await self.db.flush()  # Get variant ID
+            
+            # Create inventory record for the variant
+            if hasattr(variant_data, 'stock') and variant_data.stock is not None:
+                from models.inventories import Inventory, WarehouseLocation
+                
+                # Get or create default warehouse location
+                default_location_result = await self.db.execute(
+                    select(WarehouseLocation).where(WarehouseLocation.name == "Default")
+                )
+                default_location = default_location_result.scalar_one_or_none()
+                
+                if not default_location:
+                    default_location = WarehouseLocation(
+                        name="Default",
+                        description="Default warehouse location"
+                    )
+                    self.db.add(default_location)
+                    await self.db.flush()
+                
+                # Create inventory record
+                inventory = Inventory(
+                    variant_id=db_variant.id,
+                    location_id=default_location.id,
+                    quantity_available=variant_data.stock,
+                    quantity_reserved=0,
+                    low_stock_threshold=10
+                )
+                self.db.add(inventory)
             
             # Create variant images from CDN URLs
             if variant_data.image_urls:

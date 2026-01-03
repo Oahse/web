@@ -43,7 +43,7 @@ export const Header = ({
   useEffect(() => {
     const adInterval = setInterval(() => {
       setCurrentAdIndex((prevIndex) => (prevIndex + 1) % TopHeaderAds.length);
-    }, 5000); // Change ad every 5 seconds
+    }, 15000); // Change ad every 15 seconds instead of 5 seconds
     return () => clearInterval(adInterval);
   }, []);
 

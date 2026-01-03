@@ -159,7 +159,8 @@ export const AdminOrders = () => {
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = Math.min(startIndex + itemsPerPage, totalOrders || orders.length);
 
-  return <div>
+  return (
+    <div className="p-4 sm:p-6 max-w-full">
       <div className="mb-6 flex flex-col md:flex-row md:items-center md:justify-between">
         <h1 className="text-2xl font-bold text-main mb-2 md:mb-0">Orders</h1>
         <div className="flex items-center space-x-2">
@@ -508,5 +509,7 @@ export const AdminOrders = () => {
         itemName="orders"
         className="mt-6"
       />
-    </div>;
+    </div>
+  );
+};
 };

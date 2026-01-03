@@ -54,8 +54,8 @@ export const NotificationBell = () => {
   useEffect(() => {
     if (isAuthenticated) {
       fetchUnreadCount();
-      // Poll for new notifications every 30 seconds
-      const interval = setInterval(fetchUnreadCount, 30000);
+      // Poll for new notifications every 5 minutes (further reduced frequency)
+      const interval = setInterval(fetchUnreadCount, 300000); // 5 minutes instead of 30 seconds
       return () => clearInterval(interval);
     }
   }, [isAuthenticated, fetchUnreadCount]);

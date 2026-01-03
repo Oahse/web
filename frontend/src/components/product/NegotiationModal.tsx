@@ -144,10 +144,10 @@ export const NegotiationModal: React.FC<NegotiationModalProps> = ({
       clearInterval(pollingIntervalRef.current);
     }
 
-    // Start new polling interval
+    // Start new polling interval - reduced frequency
     pollingIntervalRef.current = setInterval(async () => {
       await pollNegotiationStatus(id);
-    }, 2000);
+    }, 10000); // 10 seconds instead of 2 seconds
 
     // Also poll immediately
     pollNegotiationStatus(id);

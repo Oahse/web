@@ -53,7 +53,7 @@ export const PerformanceMonitor = () => {
     fetchPerformanceStats();
     
     if (autoRefresh) {
-      const interval = setInterval(fetchPerformanceStats, 30000); // Refresh every 30 seconds
+      const interval = setInterval(fetchPerformanceStats, 300000); // Refresh every 5 minutes instead of 30 seconds
       return () => clearInterval(interval);
     }
   }, [autoRefresh]);

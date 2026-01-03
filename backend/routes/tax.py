@@ -10,7 +10,7 @@ from decimal import Decimal
 from enum import Enum
 
 from core.database import get_db
-from core.auth import get_current_auth_user
+from core.dependencies import get_current_user
 from core.utils.response import Response
 from models.user import User
 from services.tax import TaxService
@@ -220,7 +220,7 @@ class TaxCalculationResponse(BaseModel):
 @router.post("/calculate")
 async def calculate_tax(
     request: TaxCalculationRequest,
-    current_user: User = Depends(get_current_auth_user),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
     """

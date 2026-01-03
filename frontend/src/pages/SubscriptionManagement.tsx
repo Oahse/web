@@ -14,6 +14,7 @@ export const SubscriptionManagement = () => {
   const [subscription, setSubscription] = useState(null);
   const [availableProducts, setAvailableProducts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [subscriptionLoading, setSubscriptionLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedProducts, setSelectedProducts] = useState(new Set());
   const [isAddingProducts, setIsAddingProducts] = useState(false);
@@ -34,11 +35,14 @@ export const SubscriptionManagement = () => {
 
   const loadSubscriptionData = async () => {
     try {
+      setSubscriptionLoading(true);
       const response = await SubscriptionAPI.getSubscription(subscriptionId);
       setSubscription(response.data);
     } catch (error) {
       console.error('Failed to load subscription:', error);
       toast.error('Failed to load subscription details');
+    } finally {
+      setSubscriptionLoading(false);
     }
   };
 
@@ -125,7 +129,7 @@ export const SubscriptionManagement = () => {
     return (product.variants || []).filter(v => !subscriptionVariantIds.includes(v.id));
   };
 
-  if (loading) {
+  if (loading || subscriptionLoading || !subscription) {
     return (
       <div className="container mx-auto px-4 py-8">
         {/* Skeleton for Subscription Header */}

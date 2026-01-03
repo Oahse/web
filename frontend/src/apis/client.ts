@@ -16,6 +16,35 @@ export const API_CONFIG = {
   },
 };
 
+// Simple request cache to prevent duplicate API calls
+class RequestCache {
+  private cache = new Map<string, { data: any; timestamp: number }>();
+  private readonly CACHE_DURATION = 30000; // 30 seconds
+
+  getCacheKey(method: string, url: string, params?: any): string {
+    return `${method}:${url}:${JSON.stringify(params || {})}`;
+  }
+
+  get(key: string): any | null {
+    const cached = this.cache.get(key);
+    if (cached && Date.now() - cached.timestamp < this.CACHE_DURATION) {
+      return cached.data;
+    }
+    this.cache.delete(key);
+    return null;
+  }
+
+  set(key: string, data: any): void {
+    this.cache.set(key, { data, timestamp: Date.now() });
+  }
+
+  clear(): void {
+    this.cache.clear();
+  }
+}
+
+const requestCache = new RequestCache();
+
 // Token management
 class TokenManager {
   static TOKEN_KEY = 'banwee_access_token';
@@ -329,7 +358,21 @@ class APIClient {
 
   // HTTP Methods
   async get(url, config) {
+    // Check cache for GET requests to reduce API calls
+    const cacheKey = requestCache.getCacheKey('GET', url, config?.params);
+    const cachedData = requestCache.get(cacheKey);
+    
+    if (cachedData) {
+      return cachedData;
+    }
+    
     const response = await this.client.get(url, config);
+    
+    // Cache successful GET responses
+    if (response.status === 200) {
+      requestCache.set(cacheKey, response.data);
+    }
+    
     return response.data;
   }
 

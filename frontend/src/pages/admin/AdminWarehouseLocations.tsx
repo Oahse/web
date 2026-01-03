@@ -78,7 +78,7 @@ export const AdminWarehouseLocations = () => {
   const endIndex = Math.min(startIndex + itemsPerPage, totalLocations || locations.length);
 
   return (
-    <div>
+    <div className="p-4 sm:p-6 max-w-full">
       <div className="mb-6 flex flex-col md:flex-row md:items-center md:justify-between">
         <h1 className="text-2xl font-bold text-main mb-2 md:mb-0">Warehouse Locations</h1>
         <Link to="/admin/inventory/locations/new" className="inline-flex items-center bg-primary hover:bg-primary-dark text-white px-4 py-2 rounded-md transition-colors">

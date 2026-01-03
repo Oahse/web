@@ -116,9 +116,9 @@ export const Checkout = () => {
       }
     };
 
-    // Validate stock when cart changes or every 30 seconds
+    // Validate stock when cart changes or every 5 minutes (further reduced frequency)
     validateStock();
-    const interval = setInterval(validateStock, 30000);
+    const interval = setInterval(validateStock, 300000); // 5 minutes instead of 30 seconds
 
     return () => clearInterval(interval);
   }, [cart?.items]);

@@ -105,7 +105,7 @@ export const RealTimeWidget = ({
     
     poll();
     
-    intervalRef.current = setInterval(poll, updateInterval);
+    intervalRef.current = setInterval(poll, updateInterval * 2); // Double the update interval to reduce API calls
   };
 
   const connectWebSocket = () => {

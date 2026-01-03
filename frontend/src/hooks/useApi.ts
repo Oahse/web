@@ -160,7 +160,12 @@ export const usePaginatedApi = <T = any>(
 
   useEffect(() => {
     if (options.autoFetch !== false && apiCall) {
-      execute();
+      // Add a small delay to prevent rapid successive API calls
+      const timeoutId = setTimeout(() => {
+        execute();
+      }, 100);
+      
+      return () => clearTimeout(timeoutId);
     }
   }, [page, limit, execute, options.autoFetch, apiCall]);
 

@@ -136,7 +136,7 @@ class Product(BaseModel):
     @property
     def in_stock(self) -> bool:
         """Check if any variant is in stock"""
-        return any(v.inventory and v.inventory.quantity > 0 for v in self.variants if v.is_active)
+        return any(v.inventory and v.inventory.quantity_available > 0 for v in self.variants if v.is_active)
 
     def to_dict(self, include_variants=False, include_seo=False) -> dict:
         """Convert product to dictionary for API responses"""
@@ -259,7 +259,7 @@ class ProductVariant(BaseModel):
             "sale_price": self.sale_price,
             "current_price": self.current_price,
             "discount_percentage": self.discount_percentage,
-            "stock": self.inventory.quantity if self.inventory else 0,
+            "stock": self.inventory.quantity_available if self.inventory else 0,
             "attributes": self.attributes,
             "is_active": self.is_active,
             "barcode": self.barcode,

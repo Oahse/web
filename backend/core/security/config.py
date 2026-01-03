@@ -17,14 +17,14 @@ class RateLimitConfig:
     AUTH_EMAIL_VERIFY = 5    # Email verification attempts
     
     # E-commerce endpoints (per minute)
-    CART_OPERATIONS = 50     # Cart add/update/remove
-    CHECKOUT = 3             # Checkout attempts
-    COUPON_VALIDATION = 10   # Coupon code attempts
+    CART_OPERATIONS = 120     # Cart add/update/remove (increased for polling)
+    CHECKOUT = 5             # Checkout attempts
+    COUPON_VALIDATION = 20   # Coupon code attempts
     
     # General API endpoints (per minute)
-    API_GENERAL = 100        # General API calls
-    SEARCH = 30              # Search requests
-    UPLOAD = 10              # File uploads
+    API_GENERAL = 300        # General API calls (increased for polling)
+    SEARCH = 60              # Search requests
+    UPLOAD = 20              # File uploads
     
     # Security thresholds
     COUPON_ABUSE_DAILY = 3   # Max coupon attempts per day
@@ -83,6 +83,14 @@ class SecuritySettings:
         # Checkout
         "/orders/checkout": "checkout",
         "/orders/": "checkout",
+        
+        # Inventory and stock endpoints
+        "/inventory/check-stock": "api_general",
+        "/inventory/check-stock/bulk": "api_general",
+        
+        # Address and payment endpoints  
+        "/auth/addresses": "api_general",
+        "/payments/methods": "api_general",
         
         # General
         "/search": "search",

@@ -38,7 +38,7 @@ export const ProductSearch = ({
     
     const timeout = setTimeout(() => {
       onSearch(newFilters);
-    }, 300);
+    }, 500); // Increased debounce delay from 300ms to 500ms
     
     setSearchTimeout(timeout);
   };

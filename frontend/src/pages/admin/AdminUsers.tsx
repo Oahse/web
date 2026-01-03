@@ -79,7 +79,8 @@ export const AdminUsers = () => {
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = Math.min(startIndex + itemsPerPage, totalUsers || users.length);
 
-  return <div>
+  return (
+    <div className="p-4 sm:p-6 max-w-full">
       <div className="mb-6 flex flex-col md:flex-row md:items-center md:justify-between">
         <h1 className="text-2xl font-bold text-main mb-2 md:mb-0">Users</h1>
         <Link to="/admin/users/new" className="inline-flex items-center bg-primary hover:bg-primary-dark text-white px-4 py-2 rounded-md transition-colors">
@@ -363,5 +364,6 @@ export const AdminUsers = () => {
         itemName="users"
         className="mt-6"
       />
-    </div>;
+    </div>
+  );
 };

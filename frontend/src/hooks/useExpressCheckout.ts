@@ -46,7 +46,7 @@ export const useExpressCheckout = (
     timestamp?: number;
   }>({});
 
-  const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+  const CACHE_DURATION = 10 * 60 * 1000; // 10 minutes - increased cache duration
 
   const calculateTotal = useCallback((cart: any, shippingMethod: any) => {
     const subtotal = cart?.subtotal || 0;
