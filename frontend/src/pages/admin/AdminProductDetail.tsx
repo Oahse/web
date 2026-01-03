@@ -99,14 +99,6 @@ export const AdminProductDetail = () => {
     ? product.variants.reduce((sum: number, variant: any) => sum + (variant.stock || 0), 0)
     : 0;
 
-  const handleCodesGenerated = (codes: any) => {
-    toast.success('Barcode and QR code generated successfully!');
-    // Refresh the product data to get updated codes
-    if (id) {
-      execute(ProductsAPI.getProduct, id);
-    }
-  };
-
   return (
     <div className="p-6">
       {/* Header */}
