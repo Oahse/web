@@ -677,10 +677,14 @@ class AdminService:
         """Get all product variants with filtering"""
         try:
             from models.product import ProductVariant, Product
+            from services.barcode import BarcodeService
             
             offset = (page - 1) * limit
             
-            query = select(ProductVariant).options(selectinload(ProductVariant.product))
+            query = select(ProductVariant).options(
+                selectinload(ProductVariant.product),
+                selectinload(ProductVariant.inventory)
+            )
             count_query = select(func.count(ProductVariant.id))
             
             conditions = []
@@ -707,6 +711,8 @@ class AdminService:
             
             total = await self.db.scalar(count_query) or 0
             
+            barcode_service = BarcodeService(self.db)
+            
             return {
                 "data": [
                     {
@@ -716,7 +722,10 @@ class AdminService:
                         "name": variant.name,
                         "base_price": variant.base_price,
                         "sale_price": variant.sale_price,
+                        "stock": variant.inventory.quantity_available if variant.inventory else 0,
                         "is_active": variant.is_active,
+                        "barcode": barcode_service.generate_barcode(variant.sku),
+                        "qr_code": barcode_service.generate_qr_code(str(variant.id)),
                         "product": {
                             "id": str(variant.product.id),
                             "name": variant.product.name

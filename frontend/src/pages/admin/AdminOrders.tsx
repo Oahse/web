@@ -512,4 +512,3 @@ export const AdminOrders = () => {
     </div>
   );
 };
-};

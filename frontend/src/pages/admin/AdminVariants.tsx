@@ -1,6 +1,6 @@
-import React, { useState, useCallback } from 'react';
-import { Link } from 'react-router-dom';
-import { SearchIcon, FilterIcon, EditIcon, TrashIcon, PlusIcon, EyeIcon } from 'lucide-react';
+import React, { useState, useCallback, useEffect } from 'react';
+import { Link, useParams } from 'react-router-dom';
+import { SearchIcon, FilterIcon, EditIcon, TrashIcon, PlusIcon, EyeIcon, ArrowLeftIcon } from 'lucide-react';
 import { usePaginatedApi } from '../../hooks/useApi';
 import { AdminAPI } from '../../apis';
 import ErrorMessage from '../../components/common/ErrorMessage';
@@ -9,19 +9,30 @@ import { Pagination } from '../../components/ui/Pagination';
 import { PLACEHOLDER_IMAGES } from '../../utils/placeholderImage';
 
 export const AdminVariants = () => {
+  const { id: productIdFromRoute } = useParams<{ id: string }>();
   const [searchTerm, setSearchTerm] = useState('');
   const [submittedSearchTerm, setSubmittedSearchTerm] = useState('');
   const [showMoreFilters, setShowMoreFilters] = useState(false);
   const [productId, setProductId] = useState('');
 
+  // If we have a product ID from the route, use it and hide the filter
+  const isProductSpecific = !!productIdFromRoute;
+  const effectiveProductId = productIdFromRoute || productId;
+
+  useEffect(() => {
+    if (productIdFromRoute) {
+      setProductId(productIdFromRoute);
+    }
+  }, [productIdFromRoute]);
+
   const apiCall = useCallback((page: number, limit: number) => {
     return AdminAPI.getAllVariants({
       search: submittedSearchTerm || undefined,
-      product_id: productId || undefined,
+      product_id: effectiveProductId || undefined,
       page,
       limit,
     });
-  }, [submittedSearchTerm, productId]);
+  }, [submittedSearchTerm, effectiveProductId]);
 
   const {
     data: variants,
@@ -64,7 +75,19 @@ export const AdminVariants = () => {
   return (
     <div>
       <div className="mb-6 flex flex-col md:flex-row md:items-center md:justify-between">
-        <h1 className="text-2xl font-bold text-main mb-2 md:mb-0">Product Variants</h1>
+        <div className="flex items-center mb-2 md:mb-0">
+          {isProductSpecific && (
+            <Link
+              to={`/admin/products/${productIdFromRoute}`}
+              className="mr-4 p-2 hover:bg-surface-hover rounded-md"
+            >
+              <ArrowLeftIcon size={20} />
+            </Link>
+          )}
+          <h1 className="text-2xl font-bold text-main">
+            {isProductSpecific ? 'Product Variants' : 'All Product Variants'}
+          </h1>
+        </div>
         <Link to="/admin/variants/new" className="inline-flex items-center bg-primary hover:bg-primary-dark text-white px-4 py-2 rounded-md transition-colors">
           <PlusIcon size={18} className="mr-2" />
           Add Variant

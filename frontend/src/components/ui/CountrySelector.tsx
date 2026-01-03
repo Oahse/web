@@ -241,7 +241,7 @@ export const CountrySelector = ({
       {isOpen && (
         <div className="absolute z-50 w-full mt-1 bg-surface border border-border rounded-md shadow-lg max-h-60 overflow-hidden">
           {searchable && (
-            <div className="p-2 border-b border-gray-200">
+            <div className="p-2 border-b border-border">
               <div className="relative">
                 <SearchIcon size={16} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-copy-muted" />
                 <input
@@ -250,7 +250,7 @@ export const CountrySelector = ({
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search countries..."
-                  className="w-full pl-9 pr-3 py-2 text-sm border border-border rounded focus:outline-none focus:ring-1 focus:ring-primary focus:border-transparent"
+                  className="w-full pl-9 pr-3 py-2 text-sm border border-border rounded focus:outline-none focus:ring-1 focus:ring-primary focus:border-transparent bg-surface text-copy"
                   autoFocus
                 />
               </div>

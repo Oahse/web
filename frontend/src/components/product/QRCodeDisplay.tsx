@@ -50,10 +50,12 @@ export const QRCodeDisplay = ({
                 font-family: Arial, sans-serif; 
                 text-align: center; 
                 padding: 20px; 
+                background: white;
+                color: black;
               }
               .qr-container { 
                 display: inline-block; 
-  border: '1px solid var(--color-border)'; 
+                border: 1px solid #e2e8f0; 
                 padding: 20px; 
                 margin: 20px; 
               }
@@ -68,11 +70,11 @@ export const QRCodeDisplay = ({
             </style>
           </head>
           <body>
-            <div className="qr-container">
+            <div class="qr-container">
               <h2>${variant.product_name || 'Product'}</h2>
               <h3>${variant.name}</h3>
               <img src="data:image/png;base64,${qrCode}" alt="QR Code" />
-              <div className="qr-info">
+              <div class="qr-info">
                 <p><strong>SKU:</strong> ${variant.sku}</p>
                 <p><strong>Variant ID:</strong> ${variant.id}</p>
               </div>
@@ -112,10 +114,10 @@ export const QRCodeDisplay = ({
 
   if (!qrCode) {
     return (
-      <div className={`flex items-center justify-center bg-gray-100 rounded-lg border-2 border-dashed border-gray-300 ${sizeClasses[size]} ${className || ''}`}>
+      <div className={`flex items-center justify-center bg-surface-hover rounded-lg border-2 border-dashed border-border ${sizeClasses[size]} ${className || ''}`}>
         <div className="text-center">
-          <QrCodeIcon size={24} className="text-gray-400 mx-auto mb-2" />
-          <span className="text-xs text-gray-500">No QR Code</span>
+          <QrCodeIcon size={24} className="text-copy-lighter mx-auto mb-2" />
+          <span className="text-xs text-copy-light">No QR Code</span>
         </div>
       </div>
     );
@@ -128,12 +130,12 @@ export const QRCodeDisplay = ({
         <img
           src={`data:image/png;base64,${qrCode}`}
           alt={`QR Code for ${variant.name}`}
-          className={`border border-gray-200 rounded-lg shadow-sm bg-white p-2 ${sizeClasses[size]}`}
+          className={`border border-border rounded-lg shadow-sm bg-surface p-2 ${sizeClasses[size]}`}
         />
         
         {/* Hover overlay with info */}
-        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center">
-          <div className="text-white text-center text-xs">
+        <div className="absolute inset-0 bg-copy/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center">
+          <div className="text-copy-inverse text-center text-xs">
             <QrCodeIcon size={16} className="mx-auto mb-1" />
             <div>QR Code</div>
             <div className="font-mono">{variant.sku}</div>
@@ -146,7 +148,7 @@ export const QRCodeDisplay = ({
         <div className="flex items-center justify-center space-x-2">
           <button
             onClick={downloadQRCode}
-            className="p-2 text-gray-600 hover:text-primary hover:bg-gray-100 rounded-md transition-colors"
+            className="p-2 text-copy-light hover:text-primary hover:bg-surface-hover rounded-md transition-colors"
             title="Download QR Code"
           >
             <DownloadIcon size={16} />
@@ -154,7 +156,7 @@ export const QRCodeDisplay = ({
           
           <button
             onClick={printQRCode}
-            className="p-2 text-gray-600 hover:text-primary hover:bg-gray-100 rounded-md transition-colors"
+            className="p-2 text-copy-light hover:text-primary hover:bg-surface-hover rounded-md transition-colors"
             title="Print QR Code"
           >
             <PrinterIcon size={16} />
@@ -162,7 +164,7 @@ export const QRCodeDisplay = ({
           
           <button
             onClick={copyToClipboard}
-            className={`p-2 rounded-md transition-colors ${copied ? 'text-green-600 bg-green-100' : 'text-gray-600 hover:text-primary hover:bg-gray-100'}`}
+            className={`p-2 rounded-md transition-colors ${copied ? 'text-success bg-success/10' : 'text-copy-light hover:text-primary hover:bg-surface-hover'}`}
             title="Copy QR Code"
           >
             {copied ? <CheckIcon size={16} /> : <CopyIcon size={16} />}
@@ -172,9 +174,9 @@ export const QRCodeDisplay = ({
 
       {/* Variant Info */}
       {size !== 'sm' && (
-        <div className="text-center text-xs text-gray-600 space-y-1">
+        <div className="text-center text-xs text-copy-light space-y-1">
           <div className="font-medium">{variant.name}</div>
-          <div className="font-mono text-gray-500">{variant.sku}</div>
+          <div className="font-mono text-copy-lighter">{variant.sku}</div>
         </div>
       )}
     </div>

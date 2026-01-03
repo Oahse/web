@@ -26,9 +26,9 @@ export const BarcodeDisplay: React.FC<BarcodeDisplayProps> = ({
   });
 
   const sizeClasses = {
-    sm: 'w-24 h-16',
-    md: 'w-32 h-20',
-    lg: 'w-48 h-32'
+    sm: 'w-20 h-12 sm:w-24 sm:h-16',
+    md: 'w-24 h-16 sm:w-32 sm:h-20',
+    lg: 'w-32 h-20 sm:w-48 sm:h-32'
   };
 
   const handleGenerateCodes = async () => {
@@ -64,7 +64,7 @@ export const BarcodeDisplay: React.FC<BarcodeDisplayProps> = ({
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <h3 className="text-lg font-semibold text-main">
           {variant.name} - Codes
         </h3>
@@ -72,18 +72,18 @@ export const BarcodeDisplay: React.FC<BarcodeDisplayProps> = ({
           <button
             onClick={handleGenerateCodes}
             disabled={isGenerating}
-            className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-dark disabled:opacity-50 transition-colors"
+            className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-dark disabled:opacity-50 transition-colors w-full sm:w-auto"
           >
             {isGenerating ? 'Generating...' : 'Generate Codes'}
           </button>
         )}
       </div>
 
-      <div className={`grid ${showBoth ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1'} gap-6`}>
+      <div className={`grid ${showBoth ? 'grid-cols-1 lg:grid-cols-2' : 'grid-cols-1'} gap-4 lg:gap-6`}>
         {/* Barcode */}
         {(showBoth || !codes.qr_code) && (
           <div className="border border-border-light rounded-lg p-4 bg-surface">
-            <div className="flex items-center justify-between mb-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-3 gap-2">
               <h4 className="font-medium text-main flex items-center">
                 <ScanLineIcon size={16} className="mr-2 text-primary" />
                 Barcode
@@ -91,36 +91,36 @@ export const BarcodeDisplay: React.FC<BarcodeDisplayProps> = ({
               {codes.barcode && (
                 <button
                   onClick={() => downloadCode(codes.barcode!, `barcode-${variant.sku}.png`)}
-                  className="text-sm text-primary hover:text-primary-dark transition-colors"
+                  className="text-sm text-primary hover:text-primary-dark transition-colors w-full sm:w-auto text-left sm:text-right"
                 >
                   Download
                 </button>
               )}
             </div>
             {codes.barcode ? (
-              <div className="flex justify-center bg-white p-4 rounded border">
+              <div className="flex justify-center bg-surface p-4 rounded border border-border">
                 <img
                   src={codes.barcode}
                   alt={`Barcode for ${variant.sku}`}
-                  className={`${sizeClasses[size]} object-contain`}
+                  className={`${sizeClasses[size]} object-contain max-w-full h-auto`}
                 />
               </div>
             ) : (
-              <div className={`${sizeClasses[size]} border-2 border-dashed border-border flex items-center justify-center text-copy-light bg-surface-hover rounded`}>
+              <div className={`${sizeClasses[size]} border-2 border-dashed border-border flex items-center justify-center text-copy-light bg-surface-hover rounded min-h-[4rem]`}>
                 <div className="text-center">
                   <ScanLineIcon size={24} className="mx-auto mb-2 text-copy-light" />
                   <p className="text-sm">No barcode available</p>
                 </div>
               </div>
             )}
-            <p className="text-xs text-copy-light mt-2 text-center font-mono">SKU: {variant.sku}</p>
+            <p className="text-xs text-copy-light mt-2 text-center font-mono break-all">SKU: {variant.sku}</p>
           </div>
         )}
 
         {/* QR Code */}
         {(showBoth || !codes.barcode) && (
           <div className="border border-border-light rounded-lg p-4 bg-surface">
-            <div className="flex items-center justify-between mb-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-3 gap-2">
               <h4 className="font-medium text-main flex items-center">
                 <QrCodeIcon size={16} className="mr-2 text-primary" />
                 QR Code
@@ -128,43 +128,43 @@ export const BarcodeDisplay: React.FC<BarcodeDisplayProps> = ({
               {codes.qr_code && (
                 <button
                   onClick={() => downloadCode(codes.qr_code!, `qrcode-${variant.sku}.png`)}
-                  className="text-sm text-primary hover:text-primary-dark transition-colors"
+                  className="text-sm text-primary hover:text-primary-dark transition-colors w-full sm:w-auto text-left sm:text-right"
                 >
                   Download
                 </button>
               )}
             </div>
             {codes.qr_code ? (
-              <div className="flex justify-center bg-white p-4 rounded border">
+              <div className="flex justify-center bg-surface p-4 rounded border border-border">
                 <img
                   src={codes.qr_code}
                   alt={`QR Code for ${variant.name}`}
-                  className={`${sizeClasses[size]} object-contain`}
+                  className={`${sizeClasses[size]} object-contain max-w-full h-auto`}
                 />
               </div>
             ) : (
-              <div className={`${sizeClasses[size]} border-2 border-dashed border-border flex items-center justify-center text-copy-light bg-surface-hover rounded`}>
+              <div className={`${sizeClasses[size]} border-2 border-dashed border-border flex items-center justify-center text-copy-light bg-surface-hover rounded min-h-[4rem]`}>
                 <div className="text-center">
                   <QrCodeIcon size={24} className="mx-auto mb-2 text-copy-light" />
                   <p className="text-sm">No QR code available</p>
                 </div>
               </div>
             )}
-            <p className="text-xs text-copy-light mt-2 text-center">{variant.name}</p>
+            <p className="text-xs text-copy-light mt-2 text-center break-words">{variant.name}</p>
           </div>
         )}
       </div>
 
       {/* Product Info */}
       <div className="bg-surface-hover rounded-lg p-4 text-sm text-copy space-y-2">
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <span className="font-medium text-main">Product:</span>
-            <p className="text-copy-light">{variant.product_name || 'N/A'}</p>
+            <p className="text-copy-light break-words">{variant.product_name || 'N/A'}</p>
           </div>
           <div>
             <span className="font-medium text-main">Variant:</span>
-            <p className="text-copy-light">{variant.name}</p>
+            <p className="text-copy-light break-words">{variant.name}</p>
           </div>
           <div>
             <span className="font-medium text-main">Price:</span>

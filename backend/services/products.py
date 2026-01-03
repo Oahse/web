@@ -772,17 +772,40 @@ class ProductService:
             # Format: First 3 chars of product name + first 8 chars of product ID + variant index
             product_prefix = db_product.name[:3].upper().replace(' ', '')
             auto_sku = f"{product_prefix}-{str(db_product.id)[:8]}-{v_idx}"
+            final_sku = variant_data.sku if variant_data.sku else auto_sku
             
+            # Create variant first to get the ID
             db_variant = ProductVariant(
                 product_id=db_product.id,
-                sku=variant_data.sku if variant_data.sku else auto_sku,  # Use provided SKU or auto-generate
+                sku=final_sku,
                 name=variant_data.name,
+                barcode=None,  # Will be set after generation
+                qr_code=None,  # Will be set after generation
                 base_price=variant_data.base_price,
                 sale_price=variant_data.sale_price,
                 attributes=variant_data.attributes or {}
             )
             self.db.add(db_variant)
             await self.db.flush()  # Get variant ID
+            
+            # Now generate barcode and QR code with the actual variant ID
+            from services.barcode import BarcodeService
+            barcode_service = BarcodeService(self.db)
+            
+            # Generate QR code data for this specific variant
+            qr_data = f"https://banwee.com/products/variant/{db_variant.id}"
+            
+            try:
+                barcode_b64 = barcode_service.generate_barcode(final_sku)
+                qr_code_b64 = barcode_service.generate_qr_code(qr_data)
+                
+                # Update the variant with generated codes
+                db_variant.barcode = barcode_b64
+                db_variant.qr_code = qr_code_b64
+                
+            except Exception as e:
+                print(f"Warning: Failed to generate codes for variant {final_sku}: {e}")
+                # Leave as None if generation fails
             
             # Create inventory record for the variant
             if hasattr(variant_data, 'stock') and variant_data.stock is not None:

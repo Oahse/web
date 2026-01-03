@@ -84,17 +84,12 @@ class Product(BaseModel):
     rating = Column(Float, default=0.0)  # Legacy field
     is_active = Column(Boolean, default=True)  # Legacy field
 
-    # SEO fields as columns (frequently accessed)
-    meta_title = Column(String(255), nullable=True)
-    meta_description = Column(String(500), nullable=True)
-
     # Use JSONB only for complex, queryable data
     specifications = Column(JSONB, nullable=True)  # Technical specs that need filtering
-    dietary_tags = Column(JSONB, nullable=True)  # Dietary information for filtering
+    dietary_tags = Column(JSONB, nullable=False)  # Dietary information for filtering
 
     # Simple tags as text for better performance (comma-separated)
     tags = Column(Text, nullable=True)  # "organic,gluten-free,vegan"
-    keywords = Column(Text, nullable=True)  # SEO keywords as text
 
     # Dates for lifecycle management
     published_at = Column(DateTime(timezone=True), nullable=True)

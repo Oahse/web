@@ -101,6 +101,9 @@ const AdminUserEdit = lazy(() =>
 const AdminNewProduct = lazy(() =>
   import('./pages/admin/AdminNewProduct').then((module) => ({ default: module.AdminNewProduct }))
 );
+const AdminProductEdit = lazy(() =>
+  import('./pages/admin/AdminProductEdit').then((module) => ({ default: module.AdminProductEdit }))
+);
 
 // New Inventory Admin Pages
 const AdminInventory = lazy(() => import('./pages/admin/AdminInventory').then((module) => ({ default: module.AdminInventory })));
@@ -230,6 +233,26 @@ export const App: React.FC = () => {
                                   <ProtectedRoute requiredRole={['Admin', 'Supplier']}>
                                     <AdminLayout>
                                       <AdminProductDetail />
+                                    </AdminLayout>
+                                  </ProtectedRoute>
+                                }
+                              />
+                              <Route
+                                path="/admin/products/:id/edit"
+                                element={
+                                  <ProtectedRoute requiredRole={['Admin', 'Supplier']}>
+                                    <AdminLayout>
+                                      <AdminProductEdit />
+                                    </AdminLayout>
+                                  </ProtectedRoute>
+                                }
+                              />
+                              <Route
+                                path="/admin/products/:id/variants"
+                                element={
+                                  <ProtectedRoute requiredRole={['Admin', 'Supplier']}>
+                                    <AdminLayout>
+                                      <AdminVariants />
                                     </AdminLayout>
                                   </ProtectedRoute>
                                 }

@@ -102,7 +102,7 @@ export const AdminProductDetail = () => {
   return (
     <div className="p-6">
       {/* Header */}
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center">
           <button
             onClick={() => navigate('/admin/products')}
@@ -111,19 +111,19 @@ export const AdminProductDetail = () => {
             <ArrowLeftIcon size={20} />
           </button>
           <div>
-            <h1 className="text-2xl font-bold text-main">{product.name}</h1>
-            <p className="text-sm text-copy-light">Product ID: {product.id}</p>
+            <h1 className="text-2xl font-bold text-main break-words">{product.name}</h1>
+            <p className="text-sm text-copy-light break-all">Product ID: {product.id}</p>
           </div>
         </div>
-        <div className="flex items-center space-x-3">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center space-y-2 sm:space-y-0 sm:space-x-3">
           <Link
             to={`/admin/products/${product.id}/edit`}
-            className="flex items-center px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-dark"
+            className="flex items-center justify-center px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-dark"
           >
             <EditIcon size={18} className="mr-2" />
             Edit Product
           </Link>
-          <button className="flex items-center px-4 py-2 border border-error text-error rounded-md hover:bg-error/10">
+          <button className="flex items-center justify-center px-4 py-2 border border-error text-error rounded-md hover:bg-error/10">
             <TrashIcon size={18} className="mr-2" />
             Delete
           </button>
@@ -136,10 +136,10 @@ export const AdminProductDetail = () => {
           {/* Product Information */}
           <div className="bg-surface rounded-lg p-6 border border-border-light">
             <h2 className="text-lg font-semibold text-main mb-4">Product Information</h2>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <p className="text-sm text-copy-light mb-1">Name</p>
-                <p className="text-copy font-medium">{product.name}</p>
+                <p className="text-copy font-medium break-words">{product.name}</p>
               </div>
               <div>
                 <p className="text-sm text-copy-light mb-1">Category</p>
@@ -147,7 +147,7 @@ export const AdminProductDetail = () => {
               </div>
               <div>
                 <p className="text-sm text-copy-light mb-1">Supplier</p>
-                <p className="text-copy font-medium">
+                <p className="text-copy font-medium break-words">
                   {product.supplier 
                     ? (typeof product.supplier === 'string' 
                         ? product.supplier 
@@ -159,16 +159,16 @@ export const AdminProductDetail = () => {
                 <p className="text-sm text-copy-light mb-1">Rating</p>
                 <p className="text-copy font-medium">{product.rating?.toFixed(1) || 'N/A'} ({product.review_count || 0} reviews)</p>
               </div>
-              <div className="col-span-2">
+              <div className="sm:col-span-2">
                 <p className="text-sm text-copy-light mb-1">Description</p>
-                <p className="text-copy">{product.description || 'No description available'}</p>
+                <p className="text-copy break-words">{product.description || 'No description available'}</p>
               </div>
             </div>
           </div>
 
           {/* Variants */}
           <div className="bg-surface rounded-lg p-6 border border-border-light">
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-3">
               <h2 className="text-lg font-semibold text-main">Variants ({product.variants?.length || 0})</h2>
               <Link
                 to={`/admin/products/${product.id}/variants`}
@@ -179,22 +179,22 @@ export const AdminProductDetail = () => {
             </div>
             <div className="space-y-3">
               {product.variants?.map((variant: any) => (
-                <div key={variant.id} className="flex items-center justify-between p-4 border border-border-light rounded-md">
-                  <div className="flex items-center space-x-4">
+                <div key={variant.id} className="flex flex-col lg:flex-row lg:items-center justify-between p-4 border border-border-light rounded-md gap-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center space-y-3 sm:space-y-0 sm:space-x-4">
                     <img
                       src={variant.images?.[0]?.url || PLACEHOLDER_IMAGES.small}
                       alt={variant.name}
-                      className="w-16 h-16 rounded-md object-cover"
+                      className="w-16 h-16 rounded-md object-cover mx-auto sm:mx-0"
                     />
-                    <div>
-                      <p className="font-medium text-main">{variant.name}</p>
-                      <p className="text-sm text-copy-light">SKU: {variant.sku}</p>
+                    <div className="text-center sm:text-left">
+                      <p className="font-medium text-main break-words">{variant.name}</p>
+                      <p className="text-sm text-copy-light break-all">SKU: {variant.sku}</p>
                       {variant.attributes && (
-                        <p className="text-xs text-copy-light mt-1">
+                        <p className="text-xs text-copy-light mt-1 break-words">
                           {Object.entries(variant.attributes).map(([key, value]) => `${key}: ${value}`).join(', ')}
                         </p>
                       )}
-                      <div className="flex items-center space-x-3 mt-2">
+                      <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 mt-2">
                         <div className="flex items-center space-x-2">
                           {variant.barcode ? (
                             <span className="flex items-center text-xs bg-success/10 text-success px-2 py-1 rounded-full">
@@ -202,7 +202,7 @@ export const AdminProductDetail = () => {
                               Barcode ✓
                             </span>
                           ) : (
-                            <span className="flex items-center text-xs bg-gray-100 text-gray-500 px-2 py-1 rounded-full">
+                            <span className="flex items-center text-xs bg-surface-hover text-copy-light px-2 py-1 rounded-full">
                               <ScanLineIcon size={12} className="mr-1" />
                               No Barcode
                             </span>
@@ -213,7 +213,7 @@ export const AdminProductDetail = () => {
                               QR Code ✓
                             </span>
                           ) : (
-                            <span className="flex items-center text-xs bg-gray-100 text-gray-500 px-2 py-1 rounded-full">
+                            <span className="flex items-center text-xs bg-surface-hover text-copy-light px-2 py-1 rounded-full">
                               <QrCodeIcon size={12} className="mr-1" />
                               No QR Code
                             </span>
@@ -232,7 +232,7 @@ export const AdminProductDetail = () => {
                       </div>
                     </div>
                   </div>
-                  <div className="text-right">
+                  <div className="text-center lg:text-right">
                     <p className="font-medium text-main">
                       ${variant.sale_price ? variant.sale_price.toFixed(2) : variant.base_price.toFixed(2)}
                     </p>
@@ -256,7 +256,7 @@ export const AdminProductDetail = () => {
           {/* Barcode/QR Code Section - Always show for first variant or selected variant */}
           {(selectedVariant || (product.variants && product.variants.length > 0)) && (
             <div className="bg-surface rounded-lg p-6 border border-border-light">
-              <div className="flex items-center justify-between mb-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-3">
                 <h2 className="text-lg font-semibold text-main">Product Codes</h2>
                 {product.variants && product.variants.length > 1 && (
                   <select
@@ -265,7 +265,7 @@ export const AdminProductDetail = () => {
                       const variant = product.variants.find((v: any) => v.id === e.target.value);
                       setSelectedVariant(variant);
                     }}
-                    className="px-3 py-1 border border-border rounded-md text-sm"
+                    className="px-3 py-1 border border-border rounded-md text-sm w-full sm:w-auto bg-surface text-copy focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
                   >
                     {product.variants.map((variant: any) => (
                       <option key={variant.id} value={variant.id}>

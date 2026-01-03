@@ -6,6 +6,7 @@ import { useLocale } from '../../contexts/LocaleContext';
 import { validatePriceInput, validateSalePrice, formatPriceForInput } from '../../lib/price-utils';
 import { toast } from 'react-hot-toast';
 import { uploadMultipleFiles } from '../../lib/github';
+import { VariantCodeGenerator } from '../../components/product/VariantCodeGenerator';
 
 interface ProductFormData {
   name: string;
@@ -23,6 +24,9 @@ interface VariantFormData {
   images: File[];
   imagePreviewUrls: string[];
   imageUrls: string[]; // jsDelivr CDN URLs
+  tempId?: string; // Temporary ID for tracking before creation
+  createdVariantId?: string; // Actual variant ID after creation
+  hasCodes?: boolean; // Track if codes have been generated
 }
 
 interface Category {
@@ -73,9 +77,13 @@ export const AdminNewProduct = () => {
       images: [],
       imagePreviewUrls: [],
       imageUrls: [],
+      tempId: 'temp-1',
+      hasCodes: false,
     },
   ]);
   const [uploadingImages, setUploadingImages] = useState(false);
+  const [createdProduct, setCreatedProduct] = useState<any>(null);
+  const [generatingCodes, setGeneratingCodes] = useState(false);
 
   const handleProductChange = (field: keyof ProductFormData, value: any) => {
     setProductData(prev => ({ ...prev, [field]: value }));
@@ -99,6 +107,8 @@ export const AdminNewProduct = () => {
         images: [],
         imagePreviewUrls: [],
         imageUrls: [],
+        tempId: `temp-${Date.now()}`,
+        hasCodes: false,
       },
     ]);
   };
@@ -204,10 +214,48 @@ export const AdminNewProduct = () => {
         })),
       };
 
-      await ProductsAPI.createProduct(formattedData);
+      const response = await ProductsAPI.createProduct(formattedData);
+      const product = response.data || response;
+      setCreatedProduct(product);
       
       toast.success('Product created successfully!');
-      navigate('/admin/products');
+      
+      // Generate codes for all variants
+      if (product.variants && product.variants.length > 0) {
+        setGeneratingCodes(true);
+        toast.loading('Generating barcodes and QR codes...', { id: 'code-generation' });
+        
+        try {
+          const codePromises = product.variants.map(async (variant: any) => {
+            try {
+              await ProductsAPI.generateVariantCodes(variant.id);
+              return { success: true, variantId: variant.id };
+            } catch (error) {
+              console.error(`Failed to generate codes for variant ${variant.id}:`, error);
+              return { success: false, variantId: variant.id };
+            }
+          });
+          
+          const results = await Promise.all(codePromises);
+          const successCount = results.filter(r => r.success).length;
+          
+          if (successCount === product.variants.length) {
+            toast.success('All barcodes and QR codes generated successfully!', { id: 'code-generation' });
+          } else if (successCount > 0) {
+            toast.success(`${successCount}/${product.variants.length} codes generated successfully`, { id: 'code-generation' });
+          } else {
+            toast.error('Failed to generate codes. You can generate them later from the product detail page.', { id: 'code-generation' });
+          }
+        } catch (error) {
+          console.error('Error generating codes:', error);
+          toast.error('Failed to generate codes. You can generate them later from the product detail page.', { id: 'code-generation' });
+        } finally {
+          setGeneratingCodes(false);
+        }
+      }
+      
+      // Navigate to product detail page to show the created product with codes
+      navigate(`/admin/products/${product.id}`);
     } catch (error: any) {
       console.error('Error creating product:', error);
       toast.error(error?.message || 'Failed to create product');
@@ -228,7 +276,9 @@ export const AdminNewProduct = () => {
 
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Add New Product</h1>
-        <p className="text-gray-500 dark:text-gray-400 mt-1">Create a new product with variants</p>
+        <p className="text-gray-500 dark:text-gray-400 mt-1">
+          Create a new product with variants. Barcodes and QR codes will be automatically generated.
+        </p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
@@ -331,8 +381,8 @@ export const AdminNewProduct = () => {
 
           <div className="space-y-4">
             {variants.map((variant, index) => (
-              <div key={index} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
-                <div className="flex justify-between items-center mb-4">
+              <div key={variant.tempId || index} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-3">
                   <h3 className="font-medium text-gray-900 dark:text-white">
                     Variant {index + 1}
                   </h3>
@@ -340,131 +390,165 @@ export const AdminNewProduct = () => {
                     <button
                       type="button"
                       onClick={() => removeVariant(index)}
-                      className="text-red-600 hover:text-red-700"
+                      className="text-red-600 hover:text-red-700 self-end sm:self-auto"
                     >
                       <XIcon size={20} />
                     </button>
                   )}
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Variant Name *
-                    </label>
-                    <input
-                      type="text"
-                      value={variant.name}
-                      onChange={(e) => handleVariantChange(index, 'name', e.target.value)}
-                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                      placeholder="e.g., Small, Red, 500ml"
-                      required
-                    />
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                      SKU will be auto-generated by the system
-                    </p>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Base Price *
-                    </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={variant.base_price}
-                      onChange={(e) => handleVariantChange(index, 'base_price', e.target.value)}
-                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                      placeholder="0.00"
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Sale Price
-                    </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={variant.sale_price}
-                      onChange={(e) => handleVariantChange(index, 'sale_price', e.target.value)}
-                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                      placeholder="0.00"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Stock Quantity
-                    </label>
-                    <input
-                      type="number"
-                      value={variant.stock}
-                      onChange={(e) => handleVariantChange(index, 'stock', e.target.value)}
-                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                      placeholder="0"
-                    />
-                  </div>
-                </div>
-
-                {/* Image Upload Section */}
-                <div className="mt-4">
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Variant Images
-                  </label>
-                  
-                  {/* Image Preview Grid */}
-                  {variant.imagePreviewUrls.length > 0 && (
-                    <div className="grid grid-cols-4 gap-3 mb-3">
-                      {variant.imagePreviewUrls.map((url, imgIndex) => (
-                        <div key={imgIndex} className="relative group">
-                          <img
-                            src={url}
-                            alt={`Preview ${imgIndex + 1}`}
-                            className="w-full h-24 object-cover rounded-lg border border-gray-300 dark:border-gray-600"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => removeImage(index, imgIndex)}
-                            className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                          >
-                            <XIcon size={14} />
-                          </button>
-                          {imgIndex === 0 && (
-                            <span className="absolute bottom-1 left-1 bg-primary text-white text-xs px-2 py-0.5 rounded">
-                              Primary
-                            </span>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* Upload Button */}
-                  <div className="flex items-center justify-center w-full">
-                    <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 dark:border-gray-600 border-dashed rounded-lg cursor-pointer bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600">
-                      <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                        <UploadIcon className="w-8 h-8 mb-2 text-gray-500 dark:text-gray-400" />
-                        <p className="mb-2 text-sm text-gray-500 dark:text-gray-400">
-                          <span className="font-semibold">Click to upload</span> or drag and drop
-                        </p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400">
-                          PNG, JPG, GIF up to 10MB
-                        </p>
-                      </div>
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  {/* Variant Details */}
+                  <div className="lg:col-span-2 space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Variant Name *
+                      </label>
                       <input
-                        type="file"
-                        className="hidden"
-                        accept="image/*"
-                        multiple
-                        onChange={(e) => handleImageUpload(index, e.target.files)}
+                        type="text"
+                        value={variant.name}
+                        onChange={(e) => handleVariantChange(index, 'name', e.target.value)}
+                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                        placeholder="e.g., Small, Red, 500ml"
+                        required
                       />
-                    </label>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        SKU will be auto-generated by the system
+                      </p>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          Base Price *
+                        </label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          value={variant.base_price}
+                          onChange={(e) => handleVariantChange(index, 'base_price', e.target.value)}
+                          className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                          placeholder="0.00"
+                          required
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          Sale Price
+                        </label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          value={variant.sale_price}
+                          onChange={(e) => handleVariantChange(index, 'sale_price', e.target.value)}
+                          className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                          placeholder="0.00"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          Stock Quantity
+                        </label>
+                        <input
+                          type="number"
+                          value={variant.stock}
+                          onChange={(e) => handleVariantChange(index, 'stock', e.target.value)}
+                          className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                          placeholder="0"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Image Upload Section */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Variant Images
+                      </label>
+                      
+                      {/* Image Preview Grid */}
+                      {variant.imagePreviewUrls.length > 0 && (
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
+                          {variant.imagePreviewUrls.map((url, imgIndex) => (
+                            <div key={imgIndex} className="relative group">
+                              <img
+                                src={url}
+                                alt={`Preview ${imgIndex + 1}`}
+                                className="w-full h-24 object-cover rounded-lg border border-gray-300 dark:border-gray-600"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => removeImage(index, imgIndex)}
+                                className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                              >
+                                <XIcon size={14} />
+                              </button>
+                              {imgIndex === 0 && (
+                                <span className="absolute bottom-1 left-1 bg-primary text-white text-xs px-2 py-0.5 rounded">
+                                  Primary
+                                </span>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Upload Button */}
+                      <div className="flex items-center justify-center w-full">
+                        <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 dark:border-gray-600 border-dashed rounded-lg cursor-pointer bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600">
+                          <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                            <UploadIcon className="w-8 h-8 mb-2 text-gray-500 dark:text-gray-400" />
+                            <p className="mb-2 text-sm text-gray-500 dark:text-gray-400">
+                              <span className="font-semibold">Click to upload</span> or drag and drop
+                            </p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">
+                              PNG, JPG, GIF up to 10MB
+                            </p>
+                          </div>
+                          <input
+                            type="file"
+                            className="hidden"
+                            accept="image/*"
+                            multiple
+                            onChange={(e) => handleImageUpload(index, e.target.files)}
+                          />
+                        </label>
+                      </div>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                        First image will be set as primary. You can upload multiple images.
+                      </p>
+                    </div>
                   </div>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
-                    First image will be set as primary. You can upload multiple images.
-                  </p>
+
+                  {/* Code Preview */}
+                  <div className="lg:col-span-1">
+                    <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
+                      <h4 className="text-sm font-medium text-gray-900 dark:text-white mb-3">
+                        Code Preview
+                      </h4>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+                        Barcodes and QR codes will be automatically generated after the product is created.
+                      </p>
+                      
+                      {/* Preview placeholders */}
+                      <div className="space-y-3">
+                        <div className="text-center">
+                          <div className="w-full h-12 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded flex items-center justify-center">
+                            <span className="text-xs text-gray-400">Barcode Preview</span>
+                          </div>
+                          <p className="text-xs text-gray-400 mt-1">Auto-generated SKU</p>
+                        </div>
+                        
+                        <div className="text-center">
+                          <div className="w-full h-12 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded flex items-center justify-center">
+                            <span className="text-xs text-gray-400">QR Code Preview</span>
+                          </div>
+                          <p className="text-xs text-gray-400 mt-1 break-words">{variant.name}</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             ))}
@@ -482,10 +566,12 @@ export const AdminNewProduct = () => {
           </button>
           <button
             type="submit"
-            disabled={loading || uploadingImages}
+            disabled={loading || uploadingImages || generatingCodes}
             className="px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {uploadingImages ? 'Uploading Images...' : loading ? 'Creating...' : 'Create Product'}
+            {uploadingImages ? 'Uploading Images...' : 
+             generatingCodes ? 'Generating Codes...' :
+             loading ? 'Creating...' : 'Create Product'}
           </button>
         </div>
       </form>
