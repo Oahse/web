@@ -192,6 +192,13 @@ export class AdminAPI {
   }
 
   /**
+   * Update variant stock
+   */
+  static async updateVariantStock(variantId: string, stock: number) {
+    return await apiClient.put(`/admin/variants/${variantId}/stock`, { stock }, {});
+  }
+
+  /**
    * Get order details
    */
   static async getOrder(orderId: string) {

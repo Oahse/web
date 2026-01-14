@@ -6,6 +6,7 @@ from uuid import UUID
 from core.database import get_db
 from core.utils.response import Response
 from core.exceptions import APIException
+from core.logging_config import get_logger
 from core.dependencies import require_admin_or_supplier, get_inventory_service
 from models.user import User
 
@@ -15,6 +16,8 @@ from schemas.inventories import (
     StockAdjustmentCreate, StockAdjustmentResponse
 )
 from services.inventories import InventoryService
+
+logger = get_logger(__name__)
 
 router = APIRouter(prefix="/inventory", tags=["Inventory Management"])
 
@@ -244,8 +247,7 @@ async def get_all_inventory_items(
     except APIException:
         raise
     except Exception as e:
-        import traceback
-        traceback.print_exc()
+        logger.exception("Failed to fetch inventory items")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to fetch inventory items: {e}")
 
 

@@ -8,43 +8,43 @@ import { apiClient } from './client';
 
 
 export class CartAPI {
-  static async getCart(access_token) {
+  static async getCart(access_token: string) {
     return await apiClient.get('/cart', {
       headers: { 'Authorization': `Bearer ${access_token}` },
     });
   }
 
-  static async addToCart(item, access_token) {
+  static async addToCart(item: any, access_token: string) {
     return await apiClient.post('/cart/add', item, {
       headers: { 'Authorization': `Bearer ${access_token}` },
     });
   }
 
-  static async updateCartItem(itemId, quantity, access_token) {
+  static async updateCartItem(itemId: string, quantity: number, access_token: string) {
     return await apiClient.put(`/cart/update/${itemId}`, { quantity }, {
       headers: { 'Authorization': `Bearer ${access_token}` },
     });
   }
 
-  static async removeFromCart(itemId, access_token) {
+  static async removeFromCart(itemId: string, access_token: string) {
     return await apiClient.delete(`/cart/remove/${itemId}`, {
       headers: { 'Authorization': `Bearer ${access_token}` },
     });
   }
 
-  static async clearCart(access_token) {
+  static async clearCart(access_token: string) {
     return await apiClient.post('/cart/clear', {}, {
       headers: { 'Authorization': `Bearer ${access_token}` },
     });
   }
 
-  static async applyPromocode(code, access_token) {
+  static async applyPromocode(code: string, access_token: string) {
     return await apiClient.post('/cart/promocode', { code }, {
       headers: { 'Authorization': `Bearer ${access_token}` },
     });
   }
 
-  static async removePromocode(access_token) {
+  static async removePromocode(access_token: string) {
     return await apiClient.delete('/cart/promocode', {
       headers: { 'Authorization': `Bearer ${access_token}` },
     });

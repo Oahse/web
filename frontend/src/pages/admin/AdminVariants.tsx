@@ -1,12 +1,13 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { SearchIcon, FilterIcon, EditIcon, TrashIcon, PlusIcon, EyeIcon, ArrowLeftIcon } from 'lucide-react';
+import { SearchIcon, FilterIcon, EditIcon, TrashIcon, PlusIcon, EyeIcon, ArrowLeftIcon, CheckIcon, XIcon } from 'lucide-react';
 import { usePaginatedApi } from '../../hooks/useApi';
 import { AdminAPI } from '../../apis';
 import ErrorMessage from '../../components/common/ErrorMessage';
 import { ResponsiveTable } from '../../components/ui/ResponsiveTable';
 import { Pagination } from '../../components/ui/Pagination';
 import { PLACEHOLDER_IMAGES } from '../../utils/placeholderImage';
+import { toast } from 'react-hot-toast';
 
 export const AdminVariants = () => {
   const { id: productIdFromRoute } = useParams<{ id: string }>();
@@ -14,6 +15,8 @@ export const AdminVariants = () => {
   const [submittedSearchTerm, setSubmittedSearchTerm] = useState('');
   const [showMoreFilters, setShowMoreFilters] = useState(false);
   const [productId, setProductId] = useState('');
+  const [editingStock, setEditingStock] = useState<{ [key: string]: string }>({});
+  const [updatingStock, setUpdatingStock] = useState<{ [key: string]: boolean }>({});
 
   // If we have a product ID from the route, use it and hide the filter
   const isProductSpecific = !!productIdFromRoute;
@@ -55,6 +58,49 @@ export const AdminVariants = () => {
     e.preventDefault();
     setSubmittedSearchTerm(searchTerm);
     goToPage(1); // Reset to first page when searching
+  };
+
+  const handleStockEdit = (variantId: string, currentStock: number) => {
+    setEditingStock(prev => ({ ...prev, [variantId]: currentStock.toString() }));
+  };
+
+  const handleStockCancel = (variantId: string) => {
+    setEditingStock(prev => {
+      const newState = { ...prev };
+      delete newState[variantId];
+      return newState;
+    });
+  };
+
+  const handleStockSave = async (variantId: string) => {
+    const newStock = editingStock[variantId];
+    if (!newStock || isNaN(parseInt(newStock))) {
+      toast.error('Please enter a valid stock number');
+      return;
+    }
+
+    setUpdatingStock(prev => ({ ...prev, [variantId]: true }));
+    
+    try {
+      // This would need to be implemented in the AdminAPI
+      await AdminAPI.updateVariantStock(variantId, parseInt(newStock));
+      toast.success('Stock updated successfully');
+      
+      // Remove from editing state
+      setEditingStock(prev => {
+        const newState = { ...prev };
+        delete newState[variantId];
+        return newState;
+      });
+      
+      // Refresh the data
+      fetchVariants();
+    } catch (error: any) {
+      console.error('Error updating stock:', error);
+      toast.error(error?.message || 'Failed to update stock');
+    } finally {
+      setUpdatingStock(prev => ({ ...prev, [variantId]: false }));
+    }
   };
 
   if (variantsError) {
@@ -111,10 +157,12 @@ export const AdminVariants = () => {
               </div>
             </div>
             <div className="flex items-center space-x-3">
-              <button type="button" onClick={() => setShowMoreFilters(!showMoreFilters)} className="flex items-center px-3 py-2 border border-border rounded-md hover:bg-surface-hover text-copy">
-                <FilterIcon size={18} className="mr-2" />
-                More Filters
-              </button>
+              {!isProductSpecific && (
+                <button type="button" onClick={() => setShowMoreFilters(!showMoreFilters)} className="flex items-center px-3 py-2 border border-border rounded-md hover:bg-surface-hover text-copy">
+                  <FilterIcon size={18} className="mr-2" />
+                  More Filters
+                </button>
+              )}
               <button type="submit" className="flex items-center px-3 py-2 bg-primary text-white rounded-md hover:bg-primary-dark">
                 <SearchIcon size={18} className="mr-2" />
                 Search
@@ -122,7 +170,7 @@ export const AdminVariants = () => {
             </div>
           </div>
         </form>
-        {showMoreFilters && (
+        {showMoreFilters && !isProductSpecific && (
           <div className="mt-4 pt-4 border-t border-border-light">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
@@ -215,7 +263,50 @@ export const AdminVariants = () => {
             {
               key: 'stock',
               label: 'Stock',
-              render: (variant) => <span className="text-copy-light">{variant.stock}</span>,
+              render: (variant) => {
+                const isEditing = editingStock[variant.id] !== undefined;
+                const isUpdating = updatingStock[variant.id];
+                
+                if (isEditing) {
+                  return (
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="number"
+                        value={editingStock[variant.id]}
+                        onChange={(e) => setEditingStock(prev => ({ ...prev, [variant.id]: e.target.value }))}
+                        className="w-20 px-2 py-1 border border-border rounded text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+                        disabled={isUpdating}
+                      />
+                      <button
+                        onClick={() => handleStockSave(variant.id)}
+                        disabled={isUpdating}
+                        className="p-1 text-success hover:bg-success/10 rounded disabled:opacity-50"
+                        title="Save"
+                      >
+                        <CheckIcon size={14} />
+                      </button>
+                      <button
+                        onClick={() => handleStockCancel(variant.id)}
+                        disabled={isUpdating}
+                        className="p-1 text-error hover:bg-error/10 rounded disabled:opacity-50"
+                        title="Cancel"
+                      >
+                        <XIcon size={14} />
+                      </button>
+                    </div>
+                  );
+                }
+                
+                return (
+                  <button
+                    onClick={() => handleStockEdit(variant.id, variant.stock)}
+                    className="text-copy-light hover:text-primary hover:bg-surface-hover px-2 py-1 rounded transition-colors"
+                    title="Click to edit stock"
+                  >
+                    {variant.stock}
+                  </button>
+                );
+              },
             },
             {
               key: 'status',

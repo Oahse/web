@@ -16,11 +16,11 @@ export const Wishlist = () => {
     fetchWishlists();
   }, [fetchWishlists]);
 
-  const handleRemoveItem = async (wishlistId, itemId) => {
+  const handleRemoveItem = async (wishlistId: string, itemId: string) => {
     await removeItem(wishlistId, itemId);
   };
 
-  const handleAddToCart = async (item) => {
+  const handleAddToCart = async (item: any) => {
     await executeWithAuth(async () => {
       // Ensure a variant is available - check variant_id first, then variant object, then product variants
       const targetVariantId = item.variant_id || item.variant?.id || item.product?.variants?.[0]?.id;

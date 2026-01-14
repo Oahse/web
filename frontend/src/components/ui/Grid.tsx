@@ -1,9 +1,15 @@
 import React, { forwardRef } from 'react';
 import { cn } from '../../lib/utils';
 
+interface GridProps extends React.HTMLAttributes<HTMLDivElement> {
+  cols?: 1 | 2 | 3 | 4 | 5 | 6 | 12 | 'auto' | string;
+  gap?: 'none' | 'xs' | 'sm' | 'md' | 'lg' | 'xl';
+  responsive?: boolean;
+  align?: 'start' | 'center' | 'end' | 'stretch';
+  justify?: 'start' | 'center' | 'end' | 'between' | 'around' | 'evenly';
+}
 
-
-export const Grid = forwardRef(({
+export const Grid = forwardRef<HTMLDivElement, GridProps>(({
   className,
   children,
   cols = 'auto',
@@ -72,8 +78,14 @@ Grid.displayName = 'Grid';
 
 // Grid item component for more control
 
+interface GridItemProps extends React.HTMLAttributes<HTMLDivElement> {
+  colSpan?: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 'full';
+  rowSpan?: 1 | 2 | 3 | 4 | 5 | 6 | 'full';
+  colStart?: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13;
+  rowStart?: 1 | 2 | 3 | 4 | 5 | 6 | 7;
+}
 
-export const GridItem = forwardRef(({
+export const GridItem = forwardRef<HTMLDivElement, GridItemProps>(({
   className,
   children,
   colSpan,

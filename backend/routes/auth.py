@@ -6,12 +6,15 @@ from core.database import get_db
 from core.utils.response import Response as APIResponse
 from core.exceptions import APIException
 from core.config import settings
+from core.logging_config import get_logger
 from schemas.auth import UserCreate, UserLogin, RefreshTokenRequest
 from schemas.user import AddressCreate, AddressUpdate, AddressResponse
 from services.auth import AuthService
 from services.user import UserService, AddressService
 from models.user import User
 from uuid import UUID
+
+logger = get_logger(__name__)
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
@@ -50,7 +53,7 @@ async def login(
     try:
         auth_service = AuthService(db)
         token = await auth_service.authenticate_user(user_login.email, user_login.password, background_tasks)
-        print("Login successful, returning response.")
+        logger.info(f"User login successful: {user_login.email}")
         return APIResponse(success=True, data=token, message="Login successful")
     except Exception as e:
         raise APIException(
@@ -133,8 +136,7 @@ async def get_profile(
         }
         return APIResponse.success(data=user_data)
     except Exception as e:
-        import traceback
-        traceback.print_exc()
+        logger.exception("Failed to get user profile")
         raise APIException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             message=f"Failed to get profile: {str(e)}"

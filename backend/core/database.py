@@ -15,7 +15,6 @@ from pydantic import ValidationError
 import logging
 from datetime import datetime as dt
 
-# from core.config import settings # REMOVE THIS IMPORT
 from core.utils.logging import structured_logger
 from core.exceptions.api_exceptions import DatabaseException, APIException
 

@@ -17,7 +17,7 @@ export class BrandsAPI {
     /**
      * Get brand by ID (placeholder)
      */
-    static async getBrand(id) {
+    static async getBrand(id: string) {
         return await apiClient.get(`/brands/${id}`);
     }
 }

@@ -3,16 +3,91 @@
  * Supports Google, Facebook, and TikTok OAuth
  */
 
-// eslint-disable-next-line no-unused-vars
 import React, { useEffect } from 'react';
 import { GoogleLogin } from '@react-oauth/google';
 import FacebookLogin from '@greatsumini/react-facebook-login';
-import { FaFacebook, FaTiktok, FaGoogle } from 'react-icons/fa';
+import { FaFacebook, FaTiktok } from 'react-icons/fa';
 import { toast } from 'react-hot-toast';
 import { apiClient } from '../../apis';
-import { tr } from 'date-fns/locale';
 
-const SocialAuthButtons = ({
+// Extend Window interface for Facebook SDK
+declare global {
+  interface Window {
+    fbAsyncInit?: () => void;
+    FB?: {
+      init: (params: {
+        appId: string;
+        cookie: boolean;
+        xfbml: boolean;
+        version: string;
+      }) => void;
+    };
+  }
+}
+
+// Define proper TypeScript interfaces
+interface User {
+  id: string;
+  email: string;
+  firstname: string;
+  lastname: string;
+  role: string;
+}
+
+interface AuthError {
+  message: string;
+  code?: string;
+}
+
+interface SocialAuthButtonsProps {
+  mode?: 'login' | 'register';
+  onSuccess?: (user: User) => void;
+  onError?: (error: AuthError) => void;
+}
+
+interface GoogleCredentialResponse {
+  credential: string;
+  select_by?: string;
+}
+
+interface FacebookAuthResponse {
+  accessToken: string;
+  userID: string;
+}
+
+interface FacebookLoginResponse {
+  accessToken?: string;
+  userID?: string;
+}
+
+// Type guard utilities for error handling
+const isError = (error: unknown): error is Error => {
+  return error instanceof Error;
+};
+
+const isErrorWithMessage = (error: unknown): error is { message: string } => {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'message' in error &&
+    typeof (error as { message: unknown }).message === 'string'
+  );
+};
+
+const getErrorMessage = (error: unknown): string => {
+  if (isError(error)) {
+    return error.message;
+  }
+  if (isErrorWithMessage(error)) {
+    return error.message;
+  }
+  if (typeof error === 'string') {
+    return error;
+  }
+  return 'An unknown error occurred';
+};
+
+const SocialAuthButtons: React.FC<SocialAuthButtonsProps> = ({
   mode = 'login',
   onSuccess,
   onError
@@ -22,12 +97,8 @@ const SocialAuthButtons = ({
   const isHttps = window.location.protocol === 'https:';
 
   // Check if we have valid (non-placeholder) credentials
-  const hasValidGoogleClientId = googleClientId && 
-    googleClientId !== 'your_google_client_id' && 
-    googleClientId !== 'placeholder_google_client_id';
-  const hasValidFacebookAppId = facebookAppId && 
-    facebookAppId !== 'your_facebook_app_id' && 
-    facebookAppId !== 'placeholder_facebook_app_id';
+  const hasValidGoogleClientId = googleClientId;
+  const hasValidFacebookAppId = facebookAppId;
 
   // Initialize Facebook SDK
   useEffect(() => {
@@ -35,27 +106,31 @@ const SocialAuthButtons = ({
 
     // Load Facebook SDK
     window.fbAsyncInit = function() {
-      window.FB.init({
-        appId: facebookAppId,
-        cookie: true,
-        xfbml: true,
-        version: 'v18.0'
-      });
+      if (window.FB) {
+        window.FB.init({
+          appId: facebookAppId,
+          cookie: true,
+          xfbml: true,
+          version: 'v18.0'
+        });
+      }
     };
 
     // Load the SDK asynchronously
     (function(d, s, id) {
-      var js, fjs = d.getElementsByTagName(s)[0];
+      const fjs = d.getElementsByTagName(s)[0];
       if (d.getElementById(id)) return;
-      js = d.createElement(s);
+      const js = d.createElement(s) as HTMLScriptElement;
       js.id = id;
       js.src = "https://connect.facebook.net/en_US/sdk.js";
-      fjs.parentNode.insertBefore(js, fjs);
+      if (fjs && fjs.parentNode) {
+        fjs.parentNode.insertBefore(js, fjs);
+      }
     }(document, 'script', 'facebook-jssdk'));
-  }, [hasValidFacebookAppId, isHttps]);
+  }, [hasValidFacebookAppId, isHttps, facebookAppId]);
 
   // Google OAuth Success Handler
-  const handleGoogleSuccess = async (credentialResponse) => {
+  const handleGoogleSuccess = async (credentialResponse: GoogleCredentialResponse) => {
     try {
       const response = await apiClient.post('/auth/social/google', {
         credential: credentialResponse.credential,
@@ -68,24 +143,30 @@ const SocialAuthButtons = ({
         localStorage.setItem('banwee_user', JSON.stringify(response.data.user));
         
         toast.success(`Successfully ${mode === 'login' ? 'logged in' : 'registered'} with Google!`);
-        onSuccess?.();
+        onSuccess?.(response.data.user);
       }
-    } catch (error) {
-      const errorMessage = error.message || `Failed to ${mode} with Google`;
-      toast.error(errorMessage);
-      onError?.(errorMessage);
+    } catch (error: unknown) {
+      const authError: AuthError = {
+        message: getErrorMessage(error),
+        code: 'GOOGLE_AUTH_ERROR'
+      };
+      toast.error(authError.message);
+      onError?.(authError);
     }
   };
 
   // Google OAuth Error Handler
   const handleGoogleError = () => {
-    const errorMessage = `Google ${mode} failed`;
-    toast.error(errorMessage);
-    onError?.(errorMessage);
+    const authError: AuthError = {
+      message: `Google ${mode} failed`,
+      code: 'GOOGLE_AUTH_ERROR'
+    };
+    toast.error(authError.message);
+    onError?.(authError);
   };
 
   // Facebook OAuth Success Handler
-  const handleFacebookSuccess = async (response) => {
+  const handleFacebookSuccess = async (response: FacebookLoginResponse) => {
     try {
       if (response.accessToken) {
         const apiResponse = await apiClient.post('/auth/social/facebook', {
@@ -100,21 +181,27 @@ const SocialAuthButtons = ({
           localStorage.setItem('banwee_user', JSON.stringify(apiResponse.data.user));
           
           toast.success(`Successfully ${mode === 'login' ? 'logged in' : 'registered'} with Facebook!`);
-          onSuccess?.();
+          onSuccess?.(apiResponse.data.user);
         }
       }
-    } catch (error) {
-      const errorMessage = error.message || `Failed to ${mode} with Facebook`;
-      toast.error(errorMessage);
-      onError?.(errorMessage);
+    } catch (error: unknown) {
+      const authError: AuthError = {
+        message: getErrorMessage(error),
+        code: 'FACEBOOK_AUTH_ERROR'
+      };
+      toast.error(authError.message);
+      onError?.(authError);
     }
   };
 
   // Facebook OAuth Error Handler
   const handleFacebookError = () => {
-    const errorMessage = `Facebook ${mode} failed`;
-    toast.error(errorMessage);
-    onError?.(errorMessage);
+    const authError: AuthError = {
+      message: `Facebook ${mode} failed`,
+      code: 'FACEBOOK_AUTH_ERROR'
+    };
+    toast.error(authError.message);
+    onError?.(authError);
   };
 
   // TikTok OAuth Handler (Custom implementation)
@@ -137,10 +224,13 @@ const SocialAuthButtons = ({
       
       // Redirect to TikTok OAuth
       window.location.href = tiktokAuthUrl;
-    } catch (error) {
-      const errorMessage = error.message || `Failed to ${mode} with TikTok`;
-      toast.error(errorMessage);
-      onError?.(errorMessage);
+    } catch (error: unknown) {
+      const authError: AuthError = {
+        message: getErrorMessage(error),
+        code: 'TIKTOK_AUTH_ERROR'
+      };
+      toast.error(authError.message);
+      onError?.(authError);
     }
   };
 

@@ -1,9 +1,16 @@
 import React, { forwardRef } from 'react';
 import { cn } from '../../lib/utils';
 
+interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
+  variant?: 'default' | 'elevated' | 'outlined' | 'filled';
+  padding?: 'none' | 'sm' | 'md' | 'lg' | 'xl';
+  rounded?: 'sm' | 'md' | 'lg' | 'xl' | '2xl';
+  shadow?: 'none' | 'sm' | 'md' | 'lg' | 'xl';
+  interactive?: boolean;
+  hover?: boolean;
+}
 
-
-export const Card = forwardRef(({
+export const Card = forwardRef<HTMLDivElement, CardProps>(({
   className,
   children,
   variant = 'default',

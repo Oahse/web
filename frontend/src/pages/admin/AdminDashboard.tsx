@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { ShoppingCartIcon, UsersIcon, DollarSignIcon, ArrowUpIcon, ArrowDownIcon, PackageIcon, Activity, RefreshCw } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useApi } from '../../hooks/useApi';
@@ -217,7 +217,7 @@ export const AdminDashboard = () => {
     { id: 'africa', name: 'Africa' }
   ];
 
-  const fetchSales = async () => {
+  const fetchSales = useCallback(async () => {
     const response = await AnalyticsAPI.getSalesOverview({
       days: salesFilters.dateRange === '7d' ? 7 : 
             salesFilters.dateRange === '30d' ? 30 : 
@@ -232,7 +232,7 @@ export const AdminDashboard = () => {
     });
     
     return response.data;
-  };
+  }, [salesFilters]);
 
   // Log data to console for verification
   useEffect(() => {
@@ -250,7 +250,7 @@ export const AdminDashboard = () => {
     executeOverview(AdminAPI.getPlatformOverview);
     executeOrders(() => AdminAPI.getAllOrders({ page: 1, limit: 10 }));
     fetchSalesData(fetchSales);
-  }, [executeStats, executeOverview, executeOrders, fetchSalesData, salesFilters]);
+  }, [executeStats, executeOverview, executeOrders, fetchSalesData, fetchSales]);
 
   const handleRefresh = () => {
     setIsRefreshing(true);

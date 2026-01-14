@@ -3,12 +3,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from uuid import UUID
 
 from core.database import get_db
+from core.logging_config import get_logger
 from services.wishlist import WishlistService
 from schemas.wishlist import WishlistCreate, WishlistUpdate, WishlistResponse, WishlistItemCreate, WishlistItemResponse
 from models.user import User
 from core.dependencies import get_current_auth_user
 from core.utils.response import Response
 from core.exceptions import APIException
+
+logger = get_logger(__name__)
 
 router = APIRouter(prefix="/users", tags=["Wishlists"])
 
@@ -67,8 +70,7 @@ async def create_default_wishlist(
     except APIException:
         raise
     except Exception as e:
-        import traceback
-        traceback.print_exc()
+        logger.exception("Failed to create default wishlist")
         raise APIException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             message=f"Failed to create default wishlist: {str(e)}"
@@ -156,8 +158,7 @@ async def get_wishlists(
     except APIException:
         raise
     except Exception as e:
-        import traceback
-        traceback.print_exc()
+        logger.exception("Failed to fetch wishlists")
         raise APIException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             message=f"Failed to fetch wishlists: {str(e)}"
@@ -197,8 +198,7 @@ async def create_wishlist(
     except APIException:
         raise
     except Exception as e:
-        import traceback
-        traceback.print_exc()
+        logger.exception("Failed to create wishlist")
         raise APIException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             message=f"Failed to create wishlist: {str(e)}"
@@ -286,8 +286,7 @@ async def add_item_to_wishlist(
     except APIException:
         raise
     except Exception as e:
-        import traceback
-        traceback.print_exc()
+        logger.exception("Failed to add item to wishlist")
         raise APIException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             message=f"Failed to add item to wishlist: {str(e)}"

@@ -77,7 +77,7 @@ export function renderWithProviders(
   } = options;
 
   const Wrapper = ({ children }: { children: ReactNode }) => 
-    createElement(SimpleWrapper, { queryClient }, children);
+    createElement(SimpleWrapper, { queryClient, children });
 
   return render(ui, { wrapper: Wrapper, ...renderOptions });
 }
@@ -90,7 +90,7 @@ export function renderWithRouter(
   const { routerProps, ...otherOptions } = options;
 
   const Wrapper = ({ children }: { children: ReactNode }) => 
-    createElement(BrowserRouter, routerProps, children);
+    createElement(BrowserRouter, { ...routerProps, children });
 
   return render(ui, { wrapper: Wrapper, ...otherOptions });
 }

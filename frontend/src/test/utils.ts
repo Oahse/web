@@ -246,7 +246,7 @@ export function renderWithProviders(
       wrappedChildren = React.createElement(Provider, null, wrappedChildren);
     });
 
-    return React.createElement(AllTheProviders, { queryClient }, wrappedChildren);
+    return React.createElement(AllTheProviders, { queryClient, children: wrappedChildren });
   };
 
   return render(ui, { wrapper: Wrapper, ...renderOptions });
@@ -260,7 +260,7 @@ export function renderWithRouter(
   const { routerProps, ...otherOptions } = options;
 
   const Wrapper = ({ children }: { children: ReactNode }) => 
-    React.createElement(BrowserRouter, routerProps, children);
+    React.createElement(BrowserRouter, { ...routerProps, children });
 
   return render(ui, { wrapper: Wrapper, ...otherOptions });
 }

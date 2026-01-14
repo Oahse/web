@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { ProductEditForm } from '../../components/admin/products/ProductEditForm';
 import { ArrowLeftIcon, SaveIcon } from 'lucide-react';
 import { useApi } from '../../hooks/useApi';
 import { ProductsAPI } from '../../apis';
@@ -98,12 +99,22 @@ export const AdminProductEdit = () => {
         {/* Edit Form Placeholder */}
         <div className="bg-surface rounded-lg p-6 border border-border-light">
           <h2 className="text-lg font-semibold text-main mb-4">Product Information</h2>
-          <div className="bg-info/10 border border-info/20 rounded-lg p-4">
-            <p className="text-info text-sm">
-              <strong>Note:</strong> Full product editing functionality is coming soon. 
-              For now, you can manage barcodes and QR codes for each variant below.
-            </p>
-          </div>
+          <ProductEditForm
+            product={product}
+            onSubmit={async (data) => {
+              setLoading(true);
+              try {
+                await ProductsAPI.updateProduct(product.id, data);
+                toast.success('Product updated successfully!');
+                navigate(`/admin/products/${product.id}`);
+              } catch (error) {
+                toast.error('Failed to update product.');
+              } finally {
+                setLoading(false);
+              }
+            }}
+            loading={loading}
+          />
         </div>
 
         {/* Variants with Code Management */}

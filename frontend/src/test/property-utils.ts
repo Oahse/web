@@ -6,6 +6,7 @@
  */
 
 import * as fc from 'fast-check';
+import { expect } from 'vitest';
 import { PropertyTestConfig, DEFAULT_PROPERTY_CONFIG } from './utils';
 
 // ==================== GENERATORS ====================

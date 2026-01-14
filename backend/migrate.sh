@@ -1,133 +1,7 @@
 #!/bin/sh
-# Migration script for Docker container startup with Alembic auto-initialization
+# Migration script for Docker container startup
 
-echo "🔄 Running database migrations..."
-
-# Initialize Alembic if not already configured
-if [ ! -f "alembic.ini" ]; then
-    echo "📝 Alembic not configured, initializing..."
-    python -m alembic init alembic
-    
-    # Update alembic.ini to use environment variables
-    sed -i 's|sqlalchemy.url = driver://user:pass@localhost/dbname|# sqlalchemy.url = driver://user:pass@localhost/dbname\n# Database URL will be set from environment variables in env.py|' alembic.ini
-    
-    # Create proper env.py for async operations
-    cat > alembic/env.py << 'EOF'
-import asyncio
-import os
-import sys
-from logging.config import fileConfig
-
-from sqlalchemy import pool
-from sqlalchemy.engine import Connection
-from sqlalchemy.ext.asyncio import async_engine_from_config
-
-from alembic import context
-
-# Add the parent directory to sys.path to import our modules
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-# Import your models and database configuration
-from core.database import Base, GUID
-from core.config import settings
-
-# Import all models to ensure they're registered with Base.metadata
-from models import *
-
-# this is the Alembic Config object
-config = context.config
-
-# Interpret the config file for Python logging
-if config.config_file_name is not None:
-    fileConfig(config.config_file_name)
-
-# Set the database URL from environment variables
-config.set_main_option("sqlalchemy.url", settings.SQLALCHEMY_DATABASE_URI)
-
-# add your model's MetaData object here for 'autogenerate' support
-target_metadata = Base.metadata
-
-def run_migrations_offline() -> None:
-    """Run migrations in 'offline' mode."""
-    url = config.get_main_option("sqlalchemy.url")
-    context.configure(
-        url=url,
-        target_metadata=target_metadata,
-        literal_binds=True,
-        dialect_opts={"paramstyle": "named"},
-        render_as_batch=True,
-    )
-
-    with context.begin_transaction():
-        context.run_migrations()
-
-def do_run_migrations(connection: Connection) -> None:
-    """Run migrations with the given connection."""
-    context.configure(
-        connection=connection, 
-        target_metadata=target_metadata,
-        render_as_batch=True,
-    )
-
-    with context.begin_transaction():
-        context.run_migrations()
-
-async def run_async_migrations() -> None:
-    """Run migrations in async mode."""
-    connectable = async_engine_from_config(
-        config.get_section(config.config_ini_section, {}),
-        prefix="sqlalchemy.",
-        poolclass=pool.NullPool,
-    )
-
-    async with connectable.connect() as connection:
-        await connection.run_sync(do_run_migrations)
-
-    await connectable.dispose()
-
-def run_migrations_online() -> None:
-    """Run migrations in 'online' mode."""
-    asyncio.run(run_async_migrations())
-
-if context.is_offline_mode():
-    run_migrations_offline()
-else:
-    run_migrations_online()
-EOF
-
-    # Update the script template to properly import custom types
-    cat > alembic/script.py.mako << 'EOF'
-"""${message}
-
-Revision ID: ${up_revision}
-Revises: ${down_revision | comma,n}
-Create Date: ${create_date}
-
-"""
-from typing import Sequence, Union
-
-from alembic import op
-import sqlalchemy as sa
-from core.database import GUID
-${imports if imports else ""}
-
-# revision identifiers, used by Alembic.
-revision: str = ${repr(up_revision)}
-down_revision: Union[str, None] = ${repr(down_revision)}
-branch_labels: Union[str, Sequence[str], None] = ${repr(branch_labels)}
-depends_on: Union[str, Sequence[str], None] = ${repr(depends_on)}
-
-
-def upgrade() -> None:
-    ${upgrades if upgrades else "pass"}
-
-
-def downgrade() -> None:
-    ${downgrades if downgrades else "pass"}
-EOF
-    
-    echo "✅ Alembic initialized successfully"
-fi
+echo "🔄 Running database setup..."
 
 # Wait for database to be ready
 echo "⏳ Waiting for database to be ready..."
@@ -168,71 +42,40 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-# Check if alembic version table exists and has data
-HAS_ALEMBIC_VERSION=$(python -c "
+# Check if tables exist
+TABLES_EXIST=$(python -c "
 import asyncio
 from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy import text
 from core.config import settings
 
-async def check_alembic_version():
+async def check_tables():
     engine = create_async_engine(settings.SQLALCHEMY_DATABASE_URI)
     try:
         async with engine.connect() as conn:
-            result = await conn.execute(text('SELECT version_num FROM alembic_version LIMIT 1'))
-            version = result.scalar()
-            print(version if version else '')
-    except:
-        print('')
+            result = await conn.execute(text(\"SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public' AND table_type = 'BASE TABLE'\"))
+            count = result.scalar()
+            print(count if count else 0)
+    except Exception as e:
+        print(0)
     finally:
         await engine.dispose()
 
-asyncio.run(check_alembic_version())
+asyncio.run(check_tables())
 " 2>/dev/null)
 
-# If database has alembic version but no migration files, clear the version
-if [ -n "$HAS_ALEMBIC_VERSION" ] && [ ! -f "alembic/versions/${HAS_ALEMBIC_VERSION}_*.py" ]; then
-    echo "🧹 Clearing orphaned alembic version from database..."
-    python -c "
-import asyncio
-from sqlalchemy.ext.asyncio import create_async_engine
-from sqlalchemy import text
-from core.config import settings
-
-async def clear_version():
-    engine = create_async_engine(settings.SQLALCHEMY_DATABASE_URI)
-    try:
-        async with engine.connect() as conn:
-            await conn.execute(text('DELETE FROM alembic_version'))
-            await conn.commit()
-    except Exception as e:
-        print(f'Warning: Could not clear alembic version: {e}')
-    finally:
-        await engine.dispose()
-
-asyncio.run(clear_version())
-"
-fi
-
-# Create initial migration if no migrations exist
-if [ ! "$(ls -A alembic/versions 2>/dev/null)" ]; then
-    echo "📝 No migrations found, creating initial migration..."
-    python -m alembic revision -m "Initial empty migration"
+# If no tables exist, initialize the database
+if [ "$TABLES_EXIST" = "0" ] || [ -z "$TABLES_EXIST" ]; then
+    echo "📝 No tables found, initializing database..."
+    python init_db.py
     if [ $? -eq 0 ]; then
-        echo "✅ Initial migration created successfully"
+        echo "✅ Database initialized successfully"
     else
-        echo "❌ Could not create initial migration"
+        echo "❌ Database initialization failed"
         exit 1
     fi
-fi
-
-# Run Alembic migrations
-echo "🔄 Applying database migrations..."
-python -m alembic upgrade head
-
-if [ $? -eq 0 ]; then
-    echo "✅ Migrations completed successfully"
 else
-    echo "❌ Migration failed"
-    exit 1
+    echo "✅ Database tables already exist"
 fi
+
+echo "✅ Database setup completed successfully"

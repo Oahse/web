@@ -100,6 +100,10 @@ let isToastVisible = false;
 
 // API Client class
 class APIClient {
+  private client: any;
+  private isRefreshing: boolean;
+  private failedQueue: Array<{ resolve: (value: any) => void; reject: (reason?: any) => void }>;
+
   constructor() {
     this.client = axios.create(API_CONFIG);
     this.isRefreshing = false;
@@ -115,7 +119,7 @@ class APIClient {
         const isPublic = this.isPublicEndpoint(config.url || '');
         
         const token = TokenManager.getToken();
-        if (token && !isPublic) {
+        if (token && !isPublic && !config.url?.endsWith('/auth/refresh')) {
           config.headers.Authorization = `Bearer ${token}`;
         }
 
@@ -339,7 +343,7 @@ class APIClient {
       '/v1/products/popular',
       '/v1/products',
       '/v1/products/categories',
-      '/v1/auth/refresh',
+      '/v1/auth/profile',
       '/v1/users/profile',
       '/v1/orders/track/'  // Public order tracking
     ];
@@ -376,22 +380,22 @@ class APIClient {
     return response.data;
   }
 
-  async post(url, data, config) {
+  async post(url: string, data?: any, config?: any) {
     const response = await this.client.post(url, data, config);
     return response.data;
   }
 
-  async put(url, data, config) {
+  async put(url: string, data?: any, config?: any) {
     const response = await this.client.put(url, data, config);
     return response.data;
   }
 
-  async patch(url, data, config) {
+  async patch(url: string, data?: any, config?: any) {
     const response = await this.client.patch(url, data, config);
     return response.data;
   }
 
-  async delete(url, config) {
+  async delete(url: string, config?: any) {
     const response = await this.client.delete(url, config);
     return response.data;
   }

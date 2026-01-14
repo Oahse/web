@@ -92,7 +92,7 @@ export const OptimizedRoutes = {
   ),
   
   Subscription: withSuspense(
-    createLazyRoute(() => import('./pages/Subscription').then(m => ({ default: m.Subscription })), false),
+    createLazyRoute(() => import('./pages/SubscriptionManagement').then(m => ({ default: m.SubscriptionManagement })), false),
     <PageSkeleton />
   ),
   

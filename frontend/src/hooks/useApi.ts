@@ -21,7 +21,7 @@ export const useApi = <T = any>(): UseApiReturn<T> => {
       return result;
     } catch (err) {
       setError(err);
-      return null;
+      throw err; // Re-throw the error to be caught by the API client interceptor
     } finally {
       setLoading(false);
     }
@@ -143,7 +143,7 @@ export const usePaginatedApi = <T = any>(
       if (options.showErrorToast !== false) {
         console.error('API Error:', err);
       }
-      return null;
+      throw err; // Re-throw the error
     } finally {
       setLoading(false);
     }

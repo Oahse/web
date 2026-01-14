@@ -5,12 +5,15 @@ from uuid import UUID
 from core.database import get_db
 from core.utils.response import Response
 from core.exceptions import APIException
+from core.logging_config import get_logger
 from schemas.product import ProductCreate, ProductUpdate, BarcodeGenerateRequest, BarcodeResponse, BarcodeUpdateRequest
 from services.products import ProductService
 from services.search import SearchService
 from models.user import User
 from services.auth import AuthService
 from fastapi.security import OAuth2PasswordBearer
+
+logger = get_logger(__name__)
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
@@ -140,7 +143,7 @@ async def get_home_data(
             }
         )
     except Exception as e:
-        print(f"Error fetching home data: {e}")
+        logger.exception("Error fetching home data")
         raise APIException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             message=f"Failed to fetch home data: {str(e)}"
@@ -487,7 +490,7 @@ async def get_product(
 ):
     """Get a specific product by ID."""
     try:
-        print(f"Fetching product with ID: {product_id}")
+        logger.debug(f"Fetching product with ID: {product_id}")
         product_service = ProductService(db)
         product = await product_service.get_product_by_id(product_id)
         if not product:
@@ -495,14 +498,12 @@ async def get_product(
                 status_code=status.HTTP_404_NOT_FOUND,
                 message="Product not found"
             )
-        print(f"Successfully fetched product: {product.name}")
+        logger.debug(f"Successfully fetched product: {product.name}")
         return Response(success=True, data=product)
     except APIException:
         raise
     except Exception as e:
-        print(f"Error fetching product {product_id}: {e}")
-        import traceback
-        traceback.print_exc()
+        logger.exception(f"Error fetching product {product_id}")
         raise APIException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             message=f"Failed to fetch product: {str(e)}"

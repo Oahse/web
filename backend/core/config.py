@@ -5,6 +5,7 @@ This module provides:
 - Environment variable management and validation
 - Application settings with context-aware defaults
 - Environment validation and setup utilities
+- Pydantic-based configuration validation
 """
 
 import os
@@ -15,6 +16,8 @@ from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
 from dotenv import load_dotenv
+from pydantic import Field, field_validator, ValidationError
+from pydantic_settings import BaseSettings
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -108,6 +111,323 @@ def parse_cors(value: str) -> List[str]:
         return [i.strip() for i in value.split(",")]
     
     raise ValueError("Invalid CORS format")
+
+
+# =============================================================================
+# PYDANTIC CONFIGURATION MODELS
+# =============================================================================
+
+class DatabaseConfig(BaseSettings):
+    """Pydantic model for database configuration validation"""
+    
+    POSTGRES_USER: str = Field(default="banwee", description="PostgreSQL username")
+    POSTGRES_PASSWORD: str = Field(..., min_length=8, description="PostgreSQL password")
+    POSTGRES_SERVER: str = Field(default="postgres", description="PostgreSQL server hostname")
+    POSTGRES_PORT: int = Field(default=5432, ge=1, le=65535, description="PostgreSQL port")
+    POSTGRES_DB: str = Field(default="banwee_db", description="PostgreSQL database name")
+    POSTGRES_DB_URL: Optional[str] = Field(None, description="Complete PostgreSQL connection URL")
+    
+    DB_POOL_SIZE: int = Field(default=20, ge=1, le=100, description="Database connection pool size")
+    DB_MAX_OVERFLOW: int = Field(default=30, ge=0, le=100, description="Max overflow connections")
+    DB_POOL_TIMEOUT: int = Field(default=30, ge=1, description="Pool timeout in seconds")
+    DB_POOL_RECYCLE: int = Field(default=3600, ge=300, description="Connection recycle time in seconds")
+    
+    @field_validator('POSTGRES_DB_URL')
+    @classmethod
+    def validate_db_url(cls, v):
+        """Validate database URL format"""
+        if v and not v.startswith(('postgresql://', 'postgresql+asyncpg://', 'postgresql+psycopg2://')):
+            raise ValueError('Database URL must start with postgresql:// or postgresql+asyncpg://')
+        return v
+    
+    @field_validator('POSTGRES_PASSWORD')
+    @classmethod
+    def validate_password_strength(cls, v):
+        """Validate password strength in production"""
+        env = os.getenv('ENVIRONMENT', 'local')
+        if env == 'production' and len(v) < 16:
+            raise ValueError('Production database password must be at least 16 characters')
+        return v
+    
+    class Config:
+        env_file = '.env'
+        case_sensitive = True
+
+
+class RedisConfig(BaseSettings):
+    """Pydantic model for Redis configuration validation"""
+    
+    REDIS_URL: str = Field(
+        default="redis://redis:6379/0",
+        description="Redis connection URL"
+    )
+    REDIS_CACHE_ENABLED: bool = Field(default=True, description="Enable Redis caching")
+    REDIS_RATELIMIT_ENABLED: bool = Field(default=True, description="Enable Redis rate limiting")
+    REDIS_CACHE_TTL: int = Field(default=3600, ge=60, description="Cache TTL in seconds")
+    
+    @field_validator('REDIS_URL')
+    @classmethod
+    def validate_redis_url(cls, v):
+        """Validate Redis URL format"""
+        if not v.startswith('redis://'):
+            raise ValueError('Redis URL must start with redis://')
+        return v
+    
+    class Config:
+        env_file = '.env'
+        case_sensitive = True
+
+
+class KafkaConfig(BaseSettings):
+    """Pydantic model for Kafka configuration validation"""
+    
+    KAFKA_BOOTSTRAP_SERVERS: str = Field(
+        default="kafka:29092",
+        description="Kafka bootstrap servers"
+    )
+    
+    # Kafka Topics
+    KAFKA_TOPIC_EMAIL: str = Field(default="banwee-email-notifications")
+    KAFKA_TOPIC_NOTIFICATION: str = Field(default="banwee-user-notifications")
+    KAFKA_TOPIC_ORDER: str = Field(default="banwee-order-events")
+    KAFKA_TOPIC_PAYMENT: str = Field(default="banwee-payment-events")
+    KAFKA_TOPIC_CART: str = Field(default="banwee-cart-events")
+    KAFKA_TOPIC_INVENTORY: str = Field(default="banwee-inventory-events")
+    KAFKA_TOPIC_WEBSOCKET: str = Field(default="banwee-websocket-events")
+    KAFKA_TOPIC_REAL_TIME: str = Field(default="banwee-real-time-notifications")
+    
+    # Kafka Consumer Groups
+    KAFKA_CONSUMER_GROUP_BACKEND: str = Field(default="banwee-backend-consumers")
+    KAFKA_CONSUMER_GROUP_SCHEDULER: str = Field(default="banwee-scheduler-consumers")
+    KAFKA_CONSUMER_GROUP_WEBSOCKET: str = Field(default="banwee-websocket-consumers")
+    
+    # Kafka Performance Settings
+    KAFKA_AUTO_OFFSET_RESET: str = Field(default="earliest")
+    KAFKA_ENABLE_AUTO_COMMIT: bool = Field(default=True)
+    KAFKA_MAX_POLL_RECORDS: int = Field(default=500, ge=1, le=10000)
+    KAFKA_SESSION_TIMEOUT_MS: int = Field(default=30000, ge=6000)
+    KAFKA_HEARTBEAT_INTERVAL_MS: int = Field(default=10000, ge=1000)
+    
+    @field_validator('KAFKA_BOOTSTRAP_SERVERS')
+    @classmethod
+    def validate_bootstrap_servers(cls, v):
+        """Validate Kafka bootstrap servers format"""
+        if not v or not v.strip():
+            raise ValueError('Kafka bootstrap servers cannot be empty')
+        return v
+    
+    @field_validator('KAFKA_TOPIC_EMAIL', 'KAFKA_TOPIC_NOTIFICATION', 'KAFKA_TOPIC_ORDER', 
+               'KAFKA_TOPIC_PAYMENT', 'KAFKA_TOPIC_CART', 'KAFKA_TOPIC_INVENTORY',
+               'KAFKA_TOPIC_WEBSOCKET', 'KAFKA_TOPIC_REAL_TIME')
+    @classmethod
+    def validate_topic_name(cls, v):
+        """Validate Kafka topic names"""
+        if not v or not v.strip():
+            raise ValueError('Kafka topic name cannot be empty')
+        return v
+    
+    class Config:
+        env_file = '.env'
+        case_sensitive = True
+
+
+class SecurityConfig(BaseSettings):
+    """Pydantic model for security configuration validation"""
+    
+    SECRET_KEY: str = Field(..., min_length=32, description="Application secret key")
+    ALGORITHM: str = Field(default="HS256", description="JWT algorithm")
+    
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(default=30, ge=5, le=1440)
+    REFRESH_TOKEN_EXPIRE_DAYS: int = Field(default=7, ge=1, le=90)
+    
+    STRIPE_SECRET_KEY: str = Field(..., description="Stripe API secret key")
+    STRIPE_WEBHOOK_SECRET: str = Field(..., description="Stripe webhook secret")
+    
+    @field_validator('SECRET_KEY')
+    @classmethod
+    def validate_secret_key(cls, v):
+        """Validate secret key strength"""
+        env = os.getenv('ENVIRONMENT', 'local')
+        if env == 'production':
+            if len(v) < 64:
+                raise ValueError('Production SECRET_KEY must be at least 64 characters')
+            if v == 'your_secret_key_here_change_in_production':
+                raise ValueError('Production SECRET_KEY must be changed from default value')
+        return v
+    
+    @field_validator('STRIPE_SECRET_KEY')
+    @classmethod
+    def validate_stripe_key(cls, v):
+        """Validate Stripe secret key format"""
+        if not v.startswith(('sk_test_', 'sk_live_')):
+            raise ValueError("STRIPE_SECRET_KEY must start with 'sk_test_' or 'sk_live_'")
+        
+        env = os.getenv('ENVIRONMENT', 'local')
+        if env == 'production' and v.startswith('sk_test_'):
+            raise ValueError('Production environment should use live Stripe keys (sk_live_)')
+        
+        return v
+    
+    @field_validator('STRIPE_WEBHOOK_SECRET')
+    @classmethod
+    def validate_webhook_secret(cls, v):
+        """Validate Stripe webhook secret format"""
+        if not v.startswith('whsec_'):
+            raise ValueError("STRIPE_WEBHOOK_SECRET must start with 'whsec_'")
+        return v
+    
+    class Config:
+        env_file = '.env'
+        case_sensitive = True
+
+
+class ApplicationConfig(BaseSettings):
+    """Pydantic model for general application configuration validation"""
+    
+    ENVIRONMENT: Literal["local", "staging", "production"] = Field(
+        default="local",
+        description="Application environment"
+    )
+    DOMAIN: str = Field(default="localhost", description="Application domain")
+    
+    FRONTEND_URL: str = Field(default="http://localhost:5173", description="Frontend URL")
+    BACKEND_URL: str = Field(default="http://localhost:8000", description="Backend URL")
+    BACKEND_CORS_ORIGINS: str = Field(
+        default="http://localhost:5173,http://127.0.0.1:5173",
+        description="CORS origins"
+    )
+    
+    # Email Configuration (optional in development)
+    MAILGUN_API_KEY: Optional[str] = Field(None, description="Mailgun API key")
+    MAILGUN_DOMAIN: Optional[str] = Field(None, description="Mailgun domain")
+    MAILGUN_FROM_EMAIL: str = Field(
+        default="Banwee <noreply@banwee.com>",
+        description="From email address"
+    )
+    
+    @field_validator('FRONTEND_URL', 'BACKEND_URL')
+    @classmethod
+    def validate_urls(cls, v):
+        """Validate URL format"""
+        if not v.startswith(('http://', 'https://')):
+            raise ValueError('URLs must start with http:// or https://')
+        return v
+    
+    @field_validator('MAILGUN_API_KEY', 'MAILGUN_DOMAIN')
+    @classmethod
+    def validate_email_config(cls, v):
+        """Validate email configuration in production"""
+        env = os.getenv('ENVIRONMENT', 'local')
+        if env == 'production' and not v:
+            logger.warning(f'Email configuration is not set in production environment')
+        return v
+    
+    class Config:
+        env_file = '.env'
+        case_sensitive = True
+
+
+class PydanticConfigValidator:
+    """Validator that uses Pydantic models for comprehensive configuration validation"""
+    
+    def __init__(self):
+        self.errors: List[str] = []
+        self.warnings: List[str] = []
+    
+    def validate_all(self) -> ValidationResult:
+        """Validate all configuration sections using Pydantic models"""
+        try:
+            # Validate each configuration section
+            self._validate_database()
+            self._validate_redis()
+            self._validate_kafka()
+            self._validate_security()
+            self._validate_application()
+            
+            # Check if there were any errors
+            is_valid = len(self.errors) == 0
+            
+            return ValidationResult(
+                is_valid=is_valid,
+                missing_variables=[],
+                invalid_variables=[(err, "") for err in self.errors],
+                warnings=self.warnings,
+                error_message="\n".join(self.errors) if self.errors else None
+            )
+            
+        except Exception as e:
+            logger.exception("Unexpected error during Pydantic validation")
+            return ValidationResult(
+                is_valid=False,
+                error_message=f"Validation error: {str(e)}"
+            )
+    
+    def _validate_database(self):
+        """Validate database configuration"""
+        try:
+            DatabaseConfig()
+            logger.info("✓ Database configuration validated successfully")
+        except ValidationError as e:
+            for error in e.errors():
+                field = error['loc'][0]
+                msg = error['msg']
+                self.errors.append(f"Database config - {field}: {msg}")
+            logger.error("✗ Database configuration validation failed")
+    
+    def _validate_redis(self):
+        """Validate Redis configuration"""
+        try:
+            RedisConfig()
+            logger.info("✓ Redis configuration validated successfully")
+        except ValidationError as e:
+            for error in e.errors():
+                field = error['loc'][0]
+                msg = error['msg']
+                self.errors.append(f"Redis config - {field}: {msg}")
+            logger.error("✗ Redis configuration validation failed")
+    
+    def _validate_kafka(self):
+        """Validate Kafka configuration"""
+        try:
+            KafkaConfig()
+            logger.info("✓ Kafka configuration validated successfully")
+        except ValidationError as e:
+            for error in e.errors():
+                field = error['loc'][0]
+                msg = error['msg']
+                self.errors.append(f"Kafka config - {field}: {msg}")
+            logger.error("✗ Kafka configuration validation failed")
+    
+    def _validate_security(self):
+        """Validate security configuration"""
+        try:
+            SecurityConfig()
+            logger.info("✓ Security configuration validated successfully")
+        except ValidationError as e:
+            for error in e.errors():
+                field = error['loc'][0]
+                msg = error['msg']
+                self.errors.append(f"Security config - {field}: {msg}")
+            logger.error("✗ Security configuration validation failed")
+    
+    def _validate_application(self):
+        """Validate application configuration"""
+        try:
+            ApplicationConfig()
+            logger.info("✓ Application configuration validated successfully")
+        except ValidationError as e:
+            for error in e.errors():
+                field = error['loc'][0]
+                msg = error['msg']
+                # Email config warnings are not critical in development
+                if field in ['MAILGUN_API_KEY', 'MAILGUN_DOMAIN'] and os.getenv('ENVIRONMENT') != 'production':
+                    self.warnings.append(f"Application config - {field}: {msg}")
+                else:
+                    self.errors.append(f"Application config - {field}: {msg}")
+            if not self.errors:
+                logger.info("✓ Application configuration validated successfully")
+            else:
+                logger.error("✗ Application configuration validation failed")
 
 
 # =============================================================================
@@ -411,6 +731,20 @@ class Settings:
     
     def _validate_configuration(self):
         """Validate all configuration settings"""
+        # Use Pydantic validator for comprehensive validation
+        pydantic_validator = PydanticConfigValidator()
+        pydantic_result = pydantic_validator.validate_all()
+        
+        if not pydantic_result.is_valid:
+            logger.error("Configuration validation failed:")
+            logger.error(pydantic_result.error_message)
+            raise ValueError(f"Configuration validation failed:\n{pydantic_result.error_message}")
+        
+        if pydantic_result.warnings:
+            for warning in pydantic_result.warnings:
+                logger.warning(warning)
+        
+        # Run legacy validators for backward compatibility
         self.validate_required_settings()
         self.validate_kafka_configuration()
         self.validate_stripe_configuration()

@@ -125,7 +125,7 @@ export class AuthAPI {
   /**
    * Verify email with token
    */
-  static async verifyEmail(token) {
+  static async verifyEmail(token: string) {
     return await apiClient.post('/auth/verify-email', { token });
   }
 
@@ -139,7 +139,7 @@ export class AuthAPI {
   /**
    * Social authentication
    */
-  static async socialLogin(token, provider) {
+  static async socialLogin(token: string, provider: string) {
     const response = await apiClient.post(`/auth/social/${provider}`, { token });
     
     if (response.data.access_token) {
@@ -195,7 +195,7 @@ export class AuthAPI {
   /**
    * Delete user account
    */
-  static async deleteAccount(password) {
+  static async deleteAccount(password: string) {
     const response = await apiClient.delete('/users', {
       data: { password }
     });
@@ -209,7 +209,7 @@ export class AuthAPI {
   /**
    * Update notification preferences
    */
-  static async updateNotificationPreferences(preferences) {
+  static async updateNotificationPreferences(preferences: any) {
     return await apiClient.put('/users/notification-preferences', preferences);
   }
 
@@ -223,21 +223,21 @@ export class AuthAPI {
   /**
    * Create new address
    */
-  static async createAddress(address) {
+  static async createAddress(address: any) {
     return await apiClient.post('/auth/addresses', address);
   }
 
   /**
    * Update address
    */
-  static async updateAddress(addressId, address) {
+  static async updateAddress(addressId: string, address: any) {
     return await apiClient.put(`/auth/addresses/${addressId}`, address);
   }
 
   /**
    * Delete address
    */
-  static async deleteAddress(addressId) {
+  static async deleteAddress(addressId: string) {
     return await apiClient.delete(`/auth/addresses/${addressId}`);
   }
 
@@ -251,28 +251,28 @@ export class AuthAPI {
   /**
    * Add payment method
    */
-  static async addPaymentMethod(paymentMethod) {
+  static async addPaymentMethod(paymentMethod: any) {
     return await apiClient.post('/payments/methods', paymentMethod);
   }
 
   /**
    * Update payment method
    */
-  static async updatePaymentMethod(paymentMethodId, paymentMethod) {
+  static async updatePaymentMethod(paymentMethodId: string, paymentMethod: any) {
     return await apiClient.put(`/payments/methods/${paymentMethodId}`, paymentMethod);
   }
 
   /**
    * Delete payment method
    */
-  static async deletePaymentMethod(paymentMethodId) {
+  static async deletePaymentMethod(paymentMethodId: string) {
     return await apiClient.delete(`/payments/methods/${paymentMethodId}`);
   }
 
   /**
    * Set default payment method
    */
-  static async setDefaultPaymentMethod(paymentMethodId) {
+  static async setDefaultPaymentMethod(paymentMethodId: string) {
     return await apiClient.put(`/payments/methods/${paymentMethodId}/default`);
   }
 

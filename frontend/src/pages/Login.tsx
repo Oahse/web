@@ -104,7 +104,7 @@ export const Login = ({ isInitialLoading = false }) => {
       if (intendedDestination) {
         setIntendedDestination(null);
       }
-    } catch (error) {
+    } catch {
       // Display error message if login fails
       toast.error('Login failed. Please check your email and password.');
     } finally {
@@ -228,7 +228,7 @@ export const Login = ({ isInitialLoading = false }) => {
               setIntendedDestination(null);
             }
           }}
-          onError={(error) => {
+          onError={() => {
             toast.error('Social login failed. Please try again.');
           }}
         />

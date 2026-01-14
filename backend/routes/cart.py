@@ -3,6 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from uuid import UUID
 from core.database import get_db
 from core.exceptions import APIException
+from core.logging_config import get_logger
 from core.redis import RedisKeyManager
 from services.cart import CartService
 from models.user import User
@@ -10,6 +11,8 @@ from core.utils.response import Response
 from schemas.cart import AddToCartRequest, ApplyPromocodeRequest, UpdateCartItemRequest
 from core.dependencies import get_current_auth_user
 from typing import Optional
+
+logger = get_logger(__name__)
 
 router = APIRouter(prefix="/cart", tags=["Cart"])
 
@@ -59,7 +62,7 @@ async def add_to_cart(
     except HTTPException as e:
         raise APIException(status_code=e.status_code, message=e.detail)
     except Exception as e:
-        print(f"Unexpected exception in add_to_cart: {e}")
+        logger.exception("Unexpected exception in add_to_cart")
         raise APIException(status_code=status.HTTP_400_BAD_REQUEST,
                            message=f"Failed to add item to cart {str(e)}")
 

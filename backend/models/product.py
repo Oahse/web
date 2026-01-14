@@ -155,7 +155,6 @@ class Product(BaseModel):
             "specifications": self.specifications,
             "dietary_tags": self.dietary_tags,
             "tags": self.tags.split(",") if self.tags else [],
-            "keywords": self.keywords.split(",") if self.keywords else [],
             "published_at": self.published_at.isoformat() if self.published_at else None,
             "view_count": self.view_count,
             "purchase_count": self.purchase_count,

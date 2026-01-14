@@ -3,9 +3,46 @@ import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { CheckCircleIcon, XCircleIcon, MailIcon, PhoneIcon } from 'lucide-react';
 
+// Type guard utilities for error handling
+const isError = (error: unknown): error is Error => {
+  return error instanceof Error;
+};
 
+const isErrorWithMessage = (error: unknown): error is { message: string } => {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'message' in error &&
+    typeof (error as { message: unknown }).message === 'string'
+  );
+};
 
-export const VerificationManager = ({
+const getErrorMessage = (error: unknown): string => {
+  if (isError(error)) {
+    return error.message;
+  }
+  if (isErrorWithMessage(error)) {
+    return error.message;
+  }
+  if (typeof error === 'string') {
+    return error;
+  }
+  return 'An unknown error occurred';
+};
+
+interface VerificationManagerProps {
+  email: string;
+  phone?: string;
+  emailVerified: boolean;
+  phoneVerified: boolean;
+  onVerifyEmail: (code: string) => Promise<void>;
+  onVerifyPhone: (code: string) => Promise<void>;
+  onResendEmailCode: () => Promise<void>;
+  onResendPhoneCode: () => Promise<void>;
+  loading?: boolean;
+}
+
+export const VerificationManager: React.FC<VerificationManagerProps> = ({
   email,
   phone,
   emailVerified,
@@ -37,8 +74,8 @@ export const VerificationManager = ({
     try {
       await onVerifyEmail(emailCode);
       setEmailCode('');
-    } catch (error) {
-      setEmailError(error.message || 'Verification failed. Please try again.');
+    } catch (error: unknown) {
+      setEmailError(getErrorMessage(error) || 'Verification failed. Please try again.');
     } finally {
       setIsVerifyingEmail(false);
     }
@@ -56,8 +93,8 @@ export const VerificationManager = ({
     try {
       await onVerifyPhone(phoneCode);
       setPhoneCode('');
-    } catch (error) {
-      setPhoneError(error.message || 'Verification failed. Please try again.');
+    } catch (error: unknown) {
+      setPhoneError(getErrorMessage(error) || 'Verification failed. Please try again.');
     } finally {
       setIsVerifyingPhone(false);
     }
@@ -67,18 +104,20 @@ export const VerificationManager = ({
     try {
       await onResendEmailCode();
       setEmailCodeSent(true);
-    } catch (error) {
-      setEmailError(error.message || 'Failed to resend email code. Please try again.');
+    } catch (error: unknown) {
+      setEmailError(getErrorMessage(error) || 'Failed to resend email code. Please try again.');
     }
+  };
 
   const handleResendPhoneCode = async () => {
     try {
       await onResendPhoneCode();
       setPhoneCodeSent(true);
       setPhoneError('');
-    } catch (error) {
-      setPhoneError(error.message || 'Failed to resend phone code. Please try again.');
+    } catch (error: unknown) {
+      setPhoneError(getErrorMessage(error) || 'Failed to resend phone code. Please try again.');
     }
+  };
 
   return (
     <div className="bg-white dark:bg-gray-800 shadow-lg rounded-lg p-6">

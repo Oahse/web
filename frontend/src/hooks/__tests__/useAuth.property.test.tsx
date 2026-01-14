@@ -431,7 +431,6 @@ describe('useAuth Hook Property Tests', () => {
       );
     });
   });
-});
 
   describe('Property 8: Hook Parameter Validation Robustness', () => {
     it('handles invalid login parameters gracefully', () => {
@@ -728,5 +727,4 @@ describe('useAuth Hook Property Tests', () => {
       );
     });
   });
-});
 });

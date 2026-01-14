@@ -37,6 +37,7 @@ itsdangerous==2.1.2
 
 # Data Validation
 pydantic==2.7.1
+pydantic-settings==2.2.1
 email_validator==2.1.1
 
 # Configuration

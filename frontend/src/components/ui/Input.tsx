@@ -1,9 +1,20 @@
 import React, { forwardRef, useState } from 'react';
 import { cn } from '../../lib/utils';
 
+interface InputProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'size'> {
+  label?: string;
+  helperText?: string;
+  error?: string;
+  success?: string;
+  leftIcon?: React.ReactNode;
+  rightIcon?: React.ReactNode;
+  fullWidth?: boolean;
+  variant?: 'default' | 'filled' | 'outlined';
+  size?: 'sm' | 'md' | 'lg';
+  rounded?: 'sm' | 'md' | 'lg' | 'full';
+}
 
-
-export const Input = forwardRef(({
+export const Input = forwardRef<HTMLInputElement, InputProps>(({
   className,
   label,
   helperText,

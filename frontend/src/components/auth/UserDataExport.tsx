@@ -2,7 +2,37 @@ import React, { useState } from 'react';
 import { Button } from '../ui/Button';
 import { DownloadIcon, FileTextIcon, TableIcon, CodeIcon } from 'lucide-react';
 
+// Type guard utilities for error handling
+const isError = (error: unknown): error is Error => {
+  return error instanceof Error;
+};
 
+const isErrorWithMessage = (error: unknown): error is { message: string } => {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'message' in error &&
+    typeof (error as { message: unknown }).message === 'string'
+  );
+};
+
+const getErrorMessage = (error: unknown): string => {
+  if (isError(error)) {
+    return error.message;
+  }
+  if (isErrorWithMessage(error)) {
+    return error.message;
+  }
+  if (typeof error === 'string') {
+    return error;
+  }
+  return 'An unknown error occurred';
+};
+
+interface UserDataExportProps {
+  onExport: (format: string) => Promise<void>;
+  loading?: boolean;
+}
 
 const exportFormats = [
   {
@@ -25,7 +55,7 @@ const exportFormats = [
   }
 ];
 
-export const UserDataExport = ({
+export const UserDataExport: React.FC<UserDataExportProps> = ({
   onExport,
   loading = false
 }) => {
@@ -36,8 +66,8 @@ export const UserDataExport = ({
     setIsExporting(true);
     try {
       await onExport(selectedFormat);
-    } catch (error) {
-      console.error('Export failed:', error);
+    } catch (error: unknown) {
+      console.error('Export failed:', getErrorMessage(error));
     } finally {
       setIsExporting(false);
     }

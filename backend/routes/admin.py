@@ -8,6 +8,7 @@ from typing import Optional, Dict, Any, List
 from core.database import get_db
 from core.utils.response import Response
 from core.exceptions import APIException
+from core.logging_config import get_logger
 from services.admin import AdminService
 from services.orders import OrderService
 from services.shipping import ShippingService
@@ -17,6 +18,8 @@ from services.auth import AuthService
 from schemas.auth import UserCreate
 from schemas.shipping import ShippingMethodCreate, ShippingMethodUpdate
 from fastapi.security import OAuth2PasswordBearer
+
+logger = get_logger(__name__)
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
@@ -263,8 +266,7 @@ async def get_all_users(
         )
         return Response.success(data=users)
     except Exception as e:
-        import logging
-        logging.error(f"Failed to fetch users: {str(e)}")
+        logger.exception("Failed to fetch users")
         raise APIException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             message=f"Failed to fetch users: {str(e)}"
@@ -419,16 +421,14 @@ async def get_all_products_admin(
     db: AsyncSession = Depends(get_db)
 ):
     """Get all products (admin only)."""
-    print(f"DEBUG: Route handler called with page={page}, limit={limit}")
+    logger.debug(f"Fetching products: page={page}, limit={limit}, search={search}")
     try:
         admin_service = AdminService(db)
         products = await admin_service.get_all_products(page, limit, search, category, status, supplier)
-        print(f"DEBUG: AdminService returned: {type(products)}")
+        logger.debug(f"Successfully fetched {len(products.get('data', []))} products")
         return Response.success(data=products)
     except Exception as e:
-        print(f"DEBUG: Exception in route handler: {str(e)}")
-        import traceback
-        traceback.print_exc()
+        logger.exception("Failed to fetch products in admin route")
         raise APIException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             message="Failed to fetch products"
@@ -452,6 +452,59 @@ async def get_all_variants_admin(
         raise APIException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             message="Failed to fetch variants"
+        )
+
+@router.put("/variants/{variant_id}/stock")
+async def update_variant_stock_admin(
+    variant_id: UUID,
+    stock_data: dict,
+    current_user: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db)
+):
+    """Update variant stock (admin only)."""
+    try:
+        from models.inventories import Inventory
+        from sqlalchemy import select
+        
+        stock = stock_data.get("stock")
+        if stock is None or not isinstance(stock, int) or stock < 0:
+            raise APIException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                message="Invalid stock value. Must be a non-negative integer."
+            )
+        
+        # Find the inventory record for this variant
+        query = select(Inventory).where(Inventory.variant_id == variant_id)
+        result = await db.execute(query)
+        inventory = result.scalar_one_or_none()
+        
+        if not inventory:
+            raise APIException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                message="Inventory record not found for this variant"
+            )
+        
+        # Update the stock
+        inventory.quantity_available = stock
+        inventory.quantity = stock  # Update legacy field too
+        
+        await db.commit()
+        
+        return Response.success(
+            data={
+                "variant_id": str(variant_id),
+                "stock": stock,
+                "updated_at": inventory.updated_at.isoformat() if inventory.updated_at else None
+            },
+            message="Variant stock updated successfully"
+        )
+    except APIException:
+        raise
+    except Exception as e:
+        logger.error(f"Error updating variant stock: {e}")
+        raise APIException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            message="Failed to update variant stock"
         )
 
 # Export Routes
@@ -541,8 +594,7 @@ async def export_orders(
     except APIException:
         raise
     except Exception as e:
-        import traceback
-        traceback.print_exc()
+        logger.exception("Failed to export orders")
         raise APIException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             message=f"Failed to export orders: {str(e)}"
