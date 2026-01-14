@@ -2,7 +2,7 @@
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import JSONResponse
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import text
 from datetime import datetime
 import psutil
@@ -57,7 +57,7 @@ async def liveness_check():
 
 
 @router.get("/ready")
-async def readiness_check(db: Session = Depends(get_db)):
+async def readiness_check(db: AsyncSession = Depends(get_db)):
     """
     Readiness check - returns 200 if the service is ready to handle traffic
     Checks critical dependencies like database connectivity
@@ -94,7 +94,7 @@ async def readiness_check(db: Session = Depends(get_db)):
 
 
 @router.get("/detailed")
-async def detailed_health_check(db: Session = Depends(get_db)):
+async def detailed_health_check(db: AsyncSession = Depends(get_db)):
     """
     Comprehensive health check with detailed component status
     """
@@ -290,7 +290,7 @@ async def api_endpoints_health_check():
 @router.get("/metrics")
 async def performance_metrics(
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
 ):
     """
     Get performance metrics (requires authentication)
@@ -313,7 +313,7 @@ async def performance_metrics(
 @router.get("/database/stats")
 async def database_stats(
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
 ):
     """Get database performance statistics (requires authentication)"""
     if current_user.role not in ["admin", "moderator"]:
@@ -339,7 +339,7 @@ async def database_stats(
 @router.post("/database/maintenance")
 async def run_database_maintenance(
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
 ):
     """Run database maintenance tasks (requires admin authentication)"""
     if current_user.role != "admin":
@@ -365,17 +365,18 @@ async def run_database_maintenance(
 # Health check helper functions
 
 
-async def check_database_health(db: Session) -> ComponentHealth:
+async def check_database_health(db: AsyncSession) -> ComponentHealth:
     """Check database connectivity and performance"""
     start_time = time.time()
 
     try:
         # Test basic connectivity
-        result = db.execute(text("SELECT 1"))
-        result.fetchone()
+        result = await db.execute(text("SELECT 1"))
+        row = result.scalar()
 
         # Test a more complex query
-        user_count = db.execute(text("SELECT COUNT(*) FROM users")).scalar()
+        user_count_result = await db.execute(text("SELECT COUNT(*) FROM users"))
+        user_count = user_count_result.scalar()
 
         response_time = (time.time() - start_time) * 1000
 
@@ -386,19 +387,28 @@ async def check_database_health(db: Session) -> ComponentHealth:
         elif response_time > 5000:  # 5 seconds
             status = HealthStatus.UNHEALTHY
 
+        # Get pool stats safely
+        try:
+            pool_size = db.get_bind().pool.size()
+            checked_out = db.get_bind().pool.checkedout()
+        except:
+            pool_size = 0
+            checked_out = 0
+
         return ComponentHealth(
             name="database",
             status=status,
             response_time=response_time,
             details={
-                "connection_pool_size": db.get_bind().pool.size(),
-                "checked_out_connections": db.get_bind().pool.checkedout(),
+                "connection_pool_size": pool_size,
+                "checked_out_connections": checked_out,
                 "user_count": user_count
             }
         )
 
     except Exception as e:
         response_time = (time.time() - start_time) * 1000
+        logger.error(f"Database health check failed: {e}")
         return ComponentHealth(
             name="database",
             status=HealthStatus.UNHEALTHY,
@@ -508,17 +518,29 @@ async def check_external_services() -> ComponentHealth:
     )
 
 
-async def check_application_metrics(db: Session) -> ComponentHealth:
+async def check_application_metrics(db: AsyncSession) -> ComponentHealth:
     """Check application-specific metrics"""
     try:
         # Get various application metrics
+        total_users_result = await db.execute(text("SELECT COUNT(*) FROM users"))
+        total_users = total_users_result.scalar()
+        
+        total_products_result = await db.execute(text("SELECT COUNT(*) FROM products"))
+        total_products = total_products_result.scalar()
+        
+        total_orders_result = await db.execute(text("SELECT COUNT(*) FROM orders"))
+        total_orders = total_orders_result.scalar()
+        
+        orders_24h_result = await db.execute(text(
+            "SELECT COUNT(*) FROM orders WHERE created_at > NOW() - INTERVAL '24 hours'"
+        ))
+        orders_24h = orders_24h_result.scalar()
+        
         metrics = {
-            "total_users": db.execute(text("SELECT COUNT(*) FROM users")).scalar(),
-            "total_products": db.execute(text("SELECT COUNT(*) FROM products")).scalar(),
-            "total_orders": db.execute(text("SELECT COUNT(*) FROM orders")).scalar(),
-            "orders_last_24h": db.execute(text(
-                "SELECT COUNT(*) FROM orders WHERE created_at > NOW() - INTERVAL '24 hours'"
-            )).scalar(),
+            "total_users": total_users,
+            "total_products": total_products,
+            "total_orders": total_orders,
+            "orders_last_24h": orders_24h,
             "active_sessions": 0,  # Would get from session store
         }
 
@@ -529,6 +551,7 @@ async def check_application_metrics(db: Session) -> ComponentHealth:
         )
 
     except Exception as e:
+        logger.error(f"Application metrics check failed: {e}")
         return ComponentHealth(
             name="application_metrics",
             status=HealthStatus.UNHEALTHY,
@@ -536,13 +559,21 @@ async def check_application_metrics(db: Session) -> ComponentHealth:
         )
 
 
-async def get_performance_metrics(db: Session) -> Dict[str, Any]:
+async def get_performance_metrics(db: AsyncSession) -> Dict[str, Any]:
     """Get detailed performance metrics"""
     try:
+        # Get pool stats safely
+        try:
+            pool_size = db.get_bind().pool.size()
+            active_connections = db.get_bind().pool.checkedout()
+        except:
+            pool_size = 0
+            active_connections = 0
+            
         return {
             "database": {
-                "connection_pool_size": db.get_bind().pool.size(),
-                "active_connections": db.get_bind().pool.checkedout(),
+                "connection_pool_size": pool_size,
+                "active_connections": active_connections,
                 "query_performance": {
                     # Would include slow query logs, etc.
                 }

@@ -15,6 +15,31 @@ logger = get_logger(__name__)
 
 router = APIRouter(prefix="/users", tags=["Wishlists"])
 
+# Convenience endpoint for current user's wishlists
+@router.get("/me/wishlists")
+async def get_my_wishlists(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_auth_user)
+):
+    """Get wishlists for the current authenticated user."""
+    try:
+        wishlist_service = WishlistService(db)
+        wishlists = await wishlist_service.get_wishlists(current_user.id)
+        
+        # Convert to response schema
+        wishlist_responses = [WishlistResponse.from_orm(w) for w in wishlists]
+        
+        return Response.success(
+            data=wishlist_responses,
+            message="Wishlists retrieved successfully"
+        )
+    except Exception as e:
+        logger.error(f"Error retrieving wishlists for user {current_user.id}: {e}")
+        raise APIException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            message=f"Failed to retrieve wishlists: {str(e)}"
+        )
+
 
 @router.post("/{user_id}/wishlists/default")
 async def create_default_wishlist(

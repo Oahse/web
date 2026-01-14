@@ -64,18 +64,53 @@ async def check_tables():
 asyncio.run(check_tables())
 " 2>/dev/null)
 
-# If no tables exist, initialize the database
+# If no tables exist, initialize and seed the database
 if [ "$TABLES_EXIST" = "0" ] || [ -z "$TABLES_EXIST" ]; then
-    echo "📝 No tables found, initializing database..."
-    python init_db.py
+    echo "📝 No tables found, initializing and seeding database..."
+    python init_db.py --seed
     if [ $? -eq 0 ]; then
-        echo "✅ Database initialized successfully"
+        echo "✅ Database initialized and seeded successfully"
     else
         echo "❌ Database initialization failed"
         exit 1
     fi
 else
     echo "✅ Database tables already exist"
+    
+    # Check if database has products
+    PRODUCT_COUNT=$(python -c "
+import asyncio
+from sqlalchemy.ext.asyncio import create_async_engine
+from sqlalchemy import text
+from core.config import settings
+
+async def check_products():
+    engine = create_async_engine(settings.SQLALCHEMY_DATABASE_URI)
+    try:
+        async with engine.connect() as conn:
+            result = await conn.execute(text('SELECT COUNT(*) FROM products'))
+            count = result.scalar()
+            print(count if count else 0)
+    except Exception as e:
+        print(0)
+    finally:
+        await engine.dispose()
+
+asyncio.run(check_products())
+" 2>/dev/null)
+    
+    # If no products, seed the database
+    if [ "$PRODUCT_COUNT" = "0" ] || [ -z "$PRODUCT_COUNT" ]; then
+        echo "📝 No products found, seeding database..."
+        python init_db.py --seed
+        if [ $? -eq 0 ]; then
+            echo "✅ Database seeded successfully"
+        else
+            echo "⚠️ Database seeding failed, but continuing..."
+        fi
+    else
+        echo "✅ Database has $PRODUCT_COUNT products"
+    fi
 fi
 
 echo "✅ Database setup completed successfully"

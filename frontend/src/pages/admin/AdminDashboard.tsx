@@ -2,13 +2,12 @@ import { useState, useEffect, useCallback } from 'react';
 import { ShoppingCartIcon, UsersIcon, DollarSignIcon, ArrowUpIcon, ArrowDownIcon, PackageIcon, Activity, RefreshCw } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useApi } from '../../hooks/useApi';
-import { AdminAPI } from '../../apis';
+import { AdminAPI, CategoriesAPI } from '../../apis';
 
 import { SalesFilters, SalesData, SalesMetrics } from '../../components/admin/sales/types';
 import AnalyticsAPI from '../../apis/analytics';
 import { themeClasses } from '../../lib/theme';
 import ErrorMessage from '../../components/common/ErrorMessage';
-import { apiClient } from '../../apis/client';
 
 interface StatCardProps {
   title: string;
@@ -205,7 +204,7 @@ export const AdminDashboard = () => {
 
   // Fetch categories on component mount
   useEffect(() => {
-    fetchCategories(apiClient.getCategories);
+    fetchCategories(CategoriesAPI.getCategories);
   }, [fetchCategories]);
 
   const availableCategories = categoriesData?.categories || [];
@@ -258,7 +257,7 @@ export const AdminDashboard = () => {
     executeOverview(AdminAPI.getPlatformOverview);
     executeOrders(() => AdminAPI.getAllOrders({ page: 1, limit: 10 }));
     fetchSalesData(fetchSales);
-    fetchCategories(apiClient.getCategories);
+    fetchCategories(CategoriesAPI.getCategories);
     setTimeout(() => setIsRefreshing(false), 1000);
   };
 

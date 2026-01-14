@@ -169,16 +169,29 @@ export const SmartCheckoutForm: React.FC<SmartCheckoutFormProps> = ({ onSuccess 
     debounce(async (data) => {
       try {
         // Validate that all required fields are present and not empty
-        if (!data.shipping_address_id || !data.shipping_method_id || !data.payment_method_id) {
-          return; // Skip validation if required fields are missing
+        // Skip validation if any required field is missing or empty
+        if (!data.shipping_address_id || 
+            !data.shipping_method_id || 
+            !data.payment_method_id ||
+            data.shipping_address_id === '' ||
+            data.shipping_method_id === '' ||
+            data.payment_method_id === '') {
+          // Clear validation state when fields are incomplete
+          setRealTimeValidation({});
+          return;
         }
         
         const response = await OrdersAPI.validateCheckout(data);
         setRealTimeValidation(response.data || {});
       } catch (error) {
         console.error('Real-time validation failed:', error);
-        // Don't show validation errors for incomplete forms
-        if (data.shipping_address_id && data.shipping_method_id && data.payment_method_id) {
+        // Only show validation errors if all required fields were provided
+        if (data.shipping_address_id && 
+            data.shipping_method_id && 
+            data.payment_method_id &&
+            data.shipping_address_id !== '' &&
+            data.shipping_method_id !== '' &&
+            data.payment_method_id !== '') {
           setRealTimeValidation({ 
             can_proceed: false, 
             validation_errors: ['Validation failed. Please check your selections.'] 
@@ -190,11 +203,17 @@ export const SmartCheckoutForm: React.FC<SmartCheckoutFormProps> = ({ onSuccess 
   );
 
   useEffect(() => {
-    // Only validate if all required fields have valid values
+    // Only validate if all required fields have valid non-empty values
     if (formData.shipping_address_id && 
         formData.shipping_method_id && 
-        formData.payment_method_id) {
+        formData.payment_method_id &&
+        formData.shipping_address_id !== '' &&
+        formData.shipping_method_id !== '' &&
+        formData.payment_method_id !== '') {
       debouncedValidation(formData);
+    } else {
+      // Clear validation state when fields are incomplete
+      setRealTimeValidation({});
     }
   }, [formData, debouncedValidation]);
 
