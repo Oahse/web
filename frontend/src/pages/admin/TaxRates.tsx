@@ -61,7 +61,7 @@ export const TaxRatesAdmin = () => {
       if (searchTerm) params.append('search', searchTerm);
       params.append('per_page', '100');
       
-      const response = await apiClient.get(`/admin/tax-rates?${params.toString()}`);
+      const response = await apiClient.get(`/tax/admin/tax-rates?${params.toString()}`);
       setTaxRates(response.data || []);
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'Failed to load tax rates');
@@ -72,7 +72,7 @@ export const TaxRatesAdmin = () => {
 
   const fetchCountries = async () => {
     try {
-      const response = await apiClient.get('/admin/tax-rates/countries');
+      const response = await apiClient.get('/tax/admin/tax-rates/countries');
       setCountries(response.data || []);
     } catch (error) {
       console.error('Failed to load countries:', error);
@@ -91,10 +91,10 @@ export const TaxRatesAdmin = () => {
       };
 
       if (editingRate) {
-        await apiClient.put(`/admin/tax-rates/${editingRate.id}`, data);
+        await apiClient.put(`/tax/admin/tax-rates/${editingRate.id}`, data);
         toast.success('Tax rate updated successfully');
       } else {
-        await apiClient.post('/admin/tax-rates', data);
+        await apiClient.post('/tax/admin/tax-rates', data);
         toast.success('Tax rate created successfully');
       }
       
@@ -124,7 +124,7 @@ export const TaxRatesAdmin = () => {
     if (!confirm('Are you sure you want to delete this tax rate?')) return;
     
     try {
-      await apiClient.delete(`/admin/tax-rates/${id}`);
+      await apiClient.delete(`/tax/admin/tax-rates/${id}`);
       toast.success('Tax rate deleted successfully');
       fetchTaxRates();
     } catch (error: any) {

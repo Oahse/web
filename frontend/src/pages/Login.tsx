@@ -53,10 +53,17 @@ export const Login = ({ isInitialLoading = false }) => {
       return destination.path;
     }
     
-    // Second priority: redirect query parameter
+    // Second priority: redirect query parameter (decode it)
     const params = new URLSearchParams(location.search);
     const redirect = params.get('redirect');
-    if (redirect) return redirect;
+    if (redirect) {
+      try {
+        return decodeURIComponent(redirect);
+      } catch (e) {
+        console.error('Failed to decode redirect URL:', e);
+        return redirect; // Fallback to non-decoded version
+      }
+    }
     
     // Third priority: role-based default
     if (user?.role === 'Admin' || user?.role === 'Supplier') return '/admin';
@@ -126,6 +133,15 @@ export const Login = ({ isInitialLoading = false }) => {
   return (
     <div className="container mx-auto px-4 py-12 text-copy">
       <div className="max-w-md mx-auto bg-surface p-8 rounded-lg shadow-sm border border-border-light">
+        {/* Show message if redirected from another page */}
+        {location.search.includes('redirect=') && (
+          <div className="mb-4 p-3 bg-primary/10 border border-primary/30 rounded-md">
+            <p className="text-sm text-copy">
+              Please log in to continue to your requested page.
+            </p>
+          </div>
+        )}
+        
         <h1 className="text-2xl font-bold text-main mb-6 text-center">Login to Your Account</h1>
         <form className="space-y-4" onSubmit={handleSubmit}>
           {/* Email Address Input */}

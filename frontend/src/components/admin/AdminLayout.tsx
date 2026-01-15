@@ -35,14 +35,25 @@ export const AdminLayout = ({ children }: AdminLayoutProps) => {
 
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, logout } = useAuth();
+  const { user, isAuthenticated, isLoading, logout } = useAuth();
 
-  // Check if user is admin, if not redirect to home
+  // Check authentication and admin access
   useEffect(() => {
-    if (!user || ((user as any).email !== 'admin@example.com' && (user as any).email !== 'admin@banwee.com')) {
-      navigate('/');
+    // Wait for auth check to complete
+    if (isLoading) return;
+
+    // If not authenticated, redirect to login with return URL
+    if (!isAuthenticated) {
+      const returnUrl = encodeURIComponent(location.pathname + location.search);
+      navigate(`/login?redirect=${returnUrl}`, { replace: true });
+      return;
     }
-  }, [user, navigate]);
+
+    // If authenticated but not admin, redirect to home
+    if (user && (user as any).email !== 'admin@example.com' && (user as any).email !== 'admin@banwee.com') {
+      navigate('/', { replace: true });
+    }
+  }, [user, isAuthenticated, isLoading, navigate, location]);
 
   const menuItems = [
     { title: 'Dashboard', path: '/admin', icon: <LayoutDashboardIcon size={20} /> },
@@ -75,6 +86,23 @@ export const AdminLayout = ({ children }: AdminLayoutProps) => {
   const handleMarkAllAsRead = () => {
     (markAllAsRead as any)();
   };
+
+  // Show loading state while checking authentication
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-copy-light">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Don't render admin content if not authenticated or not admin
+  if (!isAuthenticated || !user) {
+    return null;
+  }
 
   return (
     <div className="min-h-screen bg-background flex text-copy">
