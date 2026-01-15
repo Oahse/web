@@ -55,9 +55,25 @@ class OrderService:
         # Get client identifier for security tracking
         client_id = f"user:{user_id}"
         
-        # STEP 1: Validate cart and get current prices
+        # Get location from shipping address for tax calculation
+        country_code = "US"
+        province_code = None
+        if hasattr(request, 'shipping_address_id') and request.shipping_address_id:
+            shipping_address_result = await self.db.execute(
+                select(Address).where(Address.id == request.shipping_address_id)
+            )
+            shipping_address = shipping_address_result.scalar_one_or_none()
+            if shipping_address:
+                country_code = shipping_address.country or "US"
+                province_code = shipping_address.state
+        
+        # STEP 1: Validate cart and get current prices with location for tax
         cart_service = CartService(self.db)
-        validation_result = await cart_service.validate_cart(user_id)
+        validation_result = await cart_service.validate_cart(
+            user_id,
+            country_code=country_code,
+            province_code=province_code
+        )
         
         if not validation_result.get("valid", False) or not validation_result.get("can_checkout", False):
             error_issues = [issue for issue in validation_result.get("issues", []) if issue.get("severity") == "error"]
@@ -200,8 +216,24 @@ class OrderService:
                 # STEP 1: MANDATORY CART VALIDATION - Never skip this step
                 cart_service = CartService(self.db)
                 
+                # Get location from shipping address for tax calculation
+                country_code = "US"
+                province_code = None
+                if hasattr(request, 'shipping_address_id') and request.shipping_address_id:
+                    shipping_address_result = await self.db.execute(
+                        select(Address).where(Address.id == request.shipping_address_id)
+                    )
+                    shipping_address = shipping_address_result.scalar_one_or_none()
+                    if shipping_address:
+                        country_code = shipping_address.country or "US"
+                        province_code = shipping_address.state
+                
                 # Always validate cart first - this is critical for data integrity
-                validation_result = await cart_service.validate_cart(user_id)
+                validation_result = await cart_service.validate_cart(
+                    user_id,
+                    country_code=country_code,
+                    province_code=province_code
+                )
                 
                 if not validation_result.get("valid", False) or not validation_result.get("can_checkout", False):
                     # Cart validation failed - return detailed error

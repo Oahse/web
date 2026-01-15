@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { PlusIcon, PencilIcon, TrashIcon, SearchIcon, FilterIcon } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { apiClient } from '../../apis/client';
+import { Select } from '../../components/ui/Select';
 
 interface TaxRate {
   id: string;
@@ -178,35 +179,36 @@ export const TaxRatesAdmin = () => {
           </div>
           
           <div>
-            <label className="block text-sm font-medium text-copy mb-2">
-              <FilterIcon size={16} className="inline mr-1" />
-              Country
-            </label>
-            <select
+            <Select
+              label={
+                <>
+                  <FilterIcon size={16} className="inline mr-1" />
+                  Country
+                </>
+              }
               value={selectedCountry}
               onChange={(e) => setSelectedCountry(e.target.value)}
-              className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-1 focus:ring-primary bg-surface text-copy"
-            >
-              <option value="">All Countries</option>
-              {countries.map((country) => (
-                <option key={country.country_code} value={country.country_code}>
-                  {country.country_name} ({country.rate_count})
-                </option>
-              ))}
-            </select>
+              options={[
+                { value: '', label: 'All Countries' },
+                ...countries.map((country) => ({
+                  value: country.country_code,
+                  label: `${country.country_name} (${country.rate_count})`
+                }))
+              ]}
+            />
           </div>
           
           <div>
-            <label className="block text-sm font-medium text-copy mb-2">Status</label>
-            <select
+            <Select
+              label="Status"
               value={activeFilter === null ? '' : String(activeFilter)}
               onChange={(e) => setActiveFilter(e.target.value === '' ? null : e.target.value === 'true')}
-              className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-1 focus:ring-primary bg-surface text-copy"
-            >
-              <option value="">All</option>
-              <option value="true">Active</option>
-              <option value="false">Inactive</option>
-            </select>
+              options={[
+                { value: '', label: 'All' },
+                { value: 'true', label: 'Active' },
+                { value: 'false', label: 'Inactive' }
+              ]}
+            />
           </div>
           
           <div className="flex items-end">

@@ -52,7 +52,7 @@ class TaxRateResponse(BaseModel):
         from_attributes = True
 
 
-router = APIRouter(prefix="/admin/tax-rates", tags=["Admin - Tax Rates"])
+router = APIRouter(prefix="/tax-rates", tags=["Admin - Tax Rates"])
 
 
 @router.get("/", response_model=List[TaxRateResponse])

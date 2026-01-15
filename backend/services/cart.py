@@ -409,7 +409,7 @@ class CartService(RedisService):
             logger.error(f"Error clearing cart: {e}")
             raise HTTPException(status_code=500, detail="Failed to clear cart")
 
-    async def validate_cart(self, user_id: UUID) -> Dict[str, Any]:
+    async def validate_cart(self, user_id: UUID, country_code: str = "US", province_code: Optional[str] = None) -> Dict[str, Any]:
         """
         Comprehensive cart validation - ALWAYS run before checkout
         Validates availability, stock, prices, and product status
@@ -420,7 +420,7 @@ class CartService(RedisService):
             if not cart_data or not cart_data.get("items"):
                 return {
                     "valid": False, 
-                    "cart": await self._format_cart_response({}), 
+                    "cart": await self._format_cart_response({}, country_code, province_code), 
                     "issues": ["Cart is empty"],
                     "can_checkout": False
                 }
@@ -571,7 +571,7 @@ class CartService(RedisService):
             return {
                 "valid": can_checkout,
                 "can_checkout": can_checkout,
-                "cart": await self._format_cart_response(cart_data),
+                "cart": await self._format_cart_response(cart_data, country_code, province_code),
                 "issues": all_issues,
                 "summary": validation_summary,
                 "validation_timestamp": datetime.utcnow().isoformat()
@@ -583,7 +583,7 @@ class CartService(RedisService):
                 "valid": False,
                 "can_checkout": False,
                 "error": f"Cart validation failed: {str(e)}",
-                "cart": await self._format_cart_response({}),
+                "cart": await self._format_cart_response({}, country_code, province_code),
                 "issues": [{
                     "issue": "validation_error",
                     "message": "Unable to validate cart. Please try again.",
@@ -915,17 +915,17 @@ class CartService(RedisService):
             logger.error(f"Error merging carts: {e}")
             raise HTTPException(status_code=500, detail="Failed to merge carts")
 
-    async def get_checkout_summary(self, user_id: UUID, session_id: Optional[str] = None) -> Dict[str, Any]:
+    async def get_checkout_summary(self, user_id: UUID, session_id: Optional[str] = None, country_code: str = "US", province_code: Optional[str] = None) -> Dict[str, Any]:
         """Get comprehensive checkout summary"""
         try:
             # Get cart
-            cart = await self.get_cart(user_id, session_id)
+            cart = await self.get_cart(user_id, session_id, country_code, province_code)
             
             if not cart.items:
                 raise HTTPException(status_code=400, detail="Cart is empty")
             
             # Validate cart before checkout
-            validation_result = await self.validate_cart(user_id)
+            validation_result = await self.validate_cart(user_id, country_code, province_code)
             
             # Get shipping options (using default address for calculation)
             default_address = {"country": "US", "state": "CA", "zip": "90210"}

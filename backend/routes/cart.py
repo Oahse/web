@@ -235,6 +235,8 @@ async def get_cart_item_count(
 @router.post("/validate")
 async def validate_cart(
     request: Request,
+    country: Optional[str] = None,
+    province: Optional[str] = None,
     current_user: Optional[User] = Depends(get_current_auth_user),
     db: AsyncSession = Depends(get_db)
 ):
@@ -251,7 +253,15 @@ async def validate_cart(
                 message="Authentication required for cart validation"
             )
         
-        result = await cart_service.validate_cart(user_id=current_user.id)
+        # Get location from query params or headers
+        country_code = country or request.headers.get('X-Country-Code', 'US')
+        province_code = province or request.headers.get('X-Province-Code')
+        
+        result = await cart_service.validate_cart(
+            user_id=current_user.id,
+            country_code=country_code,
+            province_code=province_code
+        )
         
         # Determine response status based on validation results
         if result.get("valid", False) and result.get("can_checkout", False):

@@ -64,8 +64,28 @@ async def validate_checkout(
         
         cart_service = CartService(order_service.db)
         
-        # Step 1: Validate cart
-        cart_validation = await cart_service.validate_cart(current_user.id)
+        # Get location from shipping address if available, otherwise use defaults
+        country_code = "US"
+        province_code = None
+        
+        # Try to get shipping address to determine location for tax calculation
+        if request.shipping_address_id:
+            shipping_address_result = await order_service.db.execute(
+                select(Address).where(
+                    and_(Address.id == request.shipping_address_id, Address.user_id == current_user.id)
+                )
+            )
+            shipping_address = shipping_address_result.scalar_one_or_none()
+            if shipping_address:
+                country_code = shipping_address.country or "US"
+                province_code = shipping_address.state
+        
+        # Step 1: Validate cart with location for proper tax calculation
+        cart_validation = await cart_service.validate_cart(
+            current_user.id,
+            country_code=country_code,
+            province_code=province_code
+        )
         
         if not cart_validation.get("valid", False) or not cart_validation.get("can_checkout", False):
             error_issues = [issue for issue in cart_validation.get("issues", []) if issue.get("severity") == "error"]
