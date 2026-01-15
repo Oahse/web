@@ -10,7 +10,8 @@ from .notifications import Notification, NotificationPreference, NotificationHis
 from .loyalty import LoyaltyAccount, PointsTransaction
 from .variant_tracking import VariantTrackingEntry, VariantPriceHistory, VariantAnalytics, VariantSubstitution
 from .analytics import UserSession, AnalyticsEvent, ConversionFunnel, CustomerLifecycleMetrics
-from .refunds import Refund, RefundItem 
+from .refunds import Refund, RefundItem
+from .tax_rates import TaxRate
 
 # Consolidated models - single source of truth
 from .orders import Order, OrderItem, TrackingEvent
@@ -99,4 +100,7 @@ __all__ = [
     # Refund models
     "Refund",
     "RefundItem",
+    
+    # Tax models
+    "TaxRate",
 ]

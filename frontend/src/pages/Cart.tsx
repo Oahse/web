@@ -86,11 +86,10 @@ export const Cart = () => {
   };
 
   const items = cart?.items || [];
-  const subtotal = items.reduce((sum, item) => sum + (item.total_price || 0), 0);
-  const shipping = subtotal > 49.99 ? 0 : 5.99;
-  // Tax will be calculated at checkout based on shipping address
-  const tax = 0; // Removed hardcoded 8% tax - calculated at checkout
-  const total = cart?.total_amount || (subtotal + shipping + tax);
+  const subtotal = cart?.subtotal || 0;
+  const shipping = cart?.shipping_amount || 0;
+  const tax = cart?.tax_amount || 0;
+  const total = cart?.total_amount || 0;
 
   if (loading) {
     return <CartSkeleton />;

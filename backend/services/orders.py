@@ -340,19 +340,15 @@ class OrderService:
                     carrier=None,
                     billing_address=billing_address_dict,
                     shipping_address=shipping_address_dict,
-                    notes=request.notes,
-                    idempotency_key=idempotency_key,
-                    payment_status="pending",
-                    fulfillment_status="unfulfilled",
-                    order_source="web"
-                )
-                    total_amount=final_total["total_amount"],
                     shipping_address_id=request.shipping_address_id,
                     shipping_method_id=request.shipping_method_id,
                     payment_method_id=request.payment_method_id,
                     promocode_id=getattr(cart, 'promocode_id', None),
                     notes=request.notes,
-                    idempotency_key=idempotency_key  # Store idempotency key
+                    idempotency_key=idempotency_key,
+                    payment_status="pending",
+                    fulfillment_status="unfulfilled",
+                    order_source="web"
                 )
                 self.db.add(order)
                 await self.db.flush()  # Get order ID without committing

@@ -79,23 +79,68 @@ export const Header = ({
       setShowCookieConsent(true);
     }
 
-    // Detect user's country and language from browser settings
-    const browserLang = navigator.language || (navigator.languages && navigator.languages[0]);
-    if (browserLang) {
-      const langCode = browserLang.split('-')[0];
-      const countryCode = browserLang.split('-')[1];
-
-      if (countryCode && countryCode.length === 2) {
-        setSelectedCountry(countryCode.toUpperCase());
-      } else if (langCode) {
-        // Fallback: if only language is available, try to map it to a country
-        // This is a simplification; a more robust solution might involve a language-to-country map
-        if (langCode === 'en') setSelectedCountry('US');
-        else if (langCode === 'fr') setSelectedCountry('FR');
-        else if (langCode === 'de') setSelectedCountry('DE');
-        // Add more language-to-country mappings as needed
+    // Try to detect user's country from geolocation API first
+    const detectCountryFromLocation = async () => {
+      try {
+        // Try to get user's location
+        if ('geolocation' in navigator) {
+          navigator.geolocation.getCurrentPosition(
+            async (position) => {
+              try {
+                // Use a geolocation API to convert coordinates to country
+                const response = await fetch(
+                  `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${position.coords.latitude}&longitude=${position.coords.longitude}&localityLanguage=en`
+                );
+                const data = await response.json();
+                if (data.countryCode) {
+                  setSelectedCountry(data.countryCode);
+                  localStorage.setItem('detected_country', data.countryCode);
+                }
+              } catch (error) {
+                console.log('Failed to get country from coordinates:', error);
+                fallbackToLanguageDetection();
+              }
+            },
+            (error) => {
+              console.log('Geolocation permission denied or unavailable:', error);
+              fallbackToLanguageDetection();
+            }
+          );
+        } else {
+          fallbackToLanguageDetection();
+        }
+      } catch (error) {
+        console.log('Error detecting location:', error);
+        fallbackToLanguageDetection();
       }
-      setSelectedLanguage('en'); // Always set language to English
+    };
+
+    const fallbackToLanguageDetection = () => {
+      // Fallback: Detect from browser settings
+      const browserLang = navigator.language || (navigator.languages && navigator.languages[0]);
+      if (browserLang) {
+        const langCode = browserLang.split('-')[0];
+        const countryCode = browserLang.split('-')[1];
+
+        if (countryCode && countryCode.length === 2) {
+          setSelectedCountry(countryCode.toUpperCase());
+        } else if (langCode) {
+          // Fallback: if only language is available, try to map it to a country
+          if (langCode === 'en') setSelectedCountry('US');
+          else if (langCode === 'fr') setSelectedCountry('FR');
+          else if (langCode === 'de') setSelectedCountry('DE');
+          // Add more language-to-country mappings as needed
+        }
+        setSelectedLanguage('en'); // Always set language to English
+      }
+    };
+
+    // Check if we have a previously detected country
+    const savedCountry = localStorage.getItem('detected_country');
+    if (savedCountry) {
+      setSelectedCountry(savedCountry);
+    } else {
+      detectCountryFromLocation();
     }
   }, []);
 

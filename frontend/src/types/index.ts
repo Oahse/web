@@ -170,18 +170,18 @@ export interface CartItem {
 export interface Cart {
   id: string;
   user_id: string;
-
   promocode_id?: string;
   discount_amount?: number;
   items: CartItem[];
   created_at: string;
   updated_at?: string;
-  // Computed properties
+  // Computed properties from backend
   subtotal?: number;
   tax_amount?: number;
   shipping_amount?: number;
   total_amount?: number;
   item_count?: number;
+  currency?: string;
   // Legacy fields for backward compatibility
   total_items?: number;
 }
