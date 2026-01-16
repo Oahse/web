@@ -173,7 +173,9 @@ class CartService(RedisService):
         self, 
         user_id: UUID, 
         variant_id: UUID, 
-        request: UpdateCartItemRequest
+        request: UpdateCartItemRequest,
+        country_code: str = "US",
+        province_code: Optional[str] = None
     ) -> CartResponse:
         """Update item quantity in Redis cart"""
         try:
@@ -220,7 +222,7 @@ class CartService(RedisService):
             # Save to Redis
             await self.set_hash(cart_key, cart_data)
             
-            formatted_cart = await self._format_cart_response(cart_data)
+            formatted_cart = await self._format_cart_response(cart_data, country_code, province_code)
             await self._send_cart_update_notification(user_id, "item_updated", formatted_cart.dict())
             
             return formatted_cart
@@ -234,15 +236,24 @@ class CartService(RedisService):
     async def update_cart_item_quantity(
         self, 
         user_id: UUID, 
-        item_id: UUID, 
+        cart_item_id: UUID, 
         quantity: int,
         session_id: Optional[str] = None
-    ) -> CartResponse:
-        """Update item quantity in Redis cart by item_id"""
+    ) -> Dict[str, Any]:
+        """
+        Update item quantity in Redis cart by cart_item_id
+        
+        Args:
+            user_id: User's UUID
+            cart_item_id: The unique cart item ID (not variant_id)
+            quantity: New quantity
+            session_id: Optional session ID for guest carts
+        """
         try:
             if quantity <= 0:
                 # If quantity is 0 or negative, remove the item
-                return await self.remove_from_cart_by_item_id(user_id, item_id)
+                await self.remove_from_cart_by_item_id(user_id, cart_item_id)
+                return {"message": "Item removed from cart"}
             
             cart_key = RedisKeyManager.cart_key(str(user_id))
             cart_data = await self.get_hash(cart_key)
@@ -254,18 +265,26 @@ class CartService(RedisService):
             if isinstance(cart_data.get("items"), str):
                 cart_data["items"] = json.loads(cart_data["items"])
             
-            # Find the item by item_id
+            # Find the item by cart_item_id
             target_variant_key = None
             target_item = None
             
+            logger.info(f"Looking for cart_item_id {cart_item_id} in cart with {len(cart_data['items'])} items")
+            
             for variant_key, item in cart_data["items"].items():
-                if item.get("id") == str(item_id):
+                item_id_in_cart = item.get("id")
+                logger.info(f"Comparing cart_item_id {cart_item_id} with cart item id {item_id_in_cart}")
+                
+                # Compare both as strings to handle UUID vs string comparison
+                if str(item_id_in_cart) == str(cart_item_id):
                     target_variant_key = variant_key
                     target_item = item
+                    logger.info(f"Found matching item! variant_key: {variant_key}, variant_id: {item.get('variant_id')}, product_id: {item.get('product_id')}")
                     break
             
             if not target_item:
-                raise HTTPException(status_code=404, detail="Item not found in cart")
+                logger.error(f"Cart item {cart_item_id} not found in cart. Available cart item IDs: {[item.get('id') for item in cart_data['items'].values()]}")
+                raise HTTPException(status_code=404, detail="Cart item not found in cart")
             
             # Validate variant and stock
             variant = await self._get_variant_with_product(UUID(target_variant_key))
@@ -294,19 +313,24 @@ class CartService(RedisService):
             # Save to Redis
             await self.set_hash(cart_key, cart_data)
             
-            formatted_cart = await self._format_cart_response(cart_data)
-            await self._send_cart_update_notification(user_id, "quantity_updated", formatted_cart.dict())
+            logger.info(f"Successfully updated cart item {cart_item_id} (variant: {target_variant_key}) to quantity {quantity}")
             
-            return formatted_cart
+            return {"message": "Cart item quantity updated successfully"}
             
         except HTTPException:
             raise
         except Exception as e:
-            logger.error(f"Error updating cart item quantity: {e}")
+            logger.error(f"Error updating cart item quantity: {e}", exc_info=True)
             raise HTTPException(status_code=500, detail="Failed to update cart item quantity")
 
-    async def remove_from_cart_by_item_id(self, user_id: UUID, item_id: UUID) -> CartResponse:
-        """Remove item from Redis cart by item_id"""
+    async def remove_from_cart_by_item_id(self, user_id: UUID, cart_item_id: UUID) -> CartResponse:
+        """
+        Remove item from Redis cart by cart_item_id
+        
+        Args:
+            user_id: User's UUID
+            cart_item_id: The unique cart item ID (not variant_id)
+        """
         try:
             cart_key = RedisKeyManager.cart_key(str(user_id))
             cart_data = await self.get_hash(cart_key)
@@ -318,15 +342,17 @@ class CartService(RedisService):
             if isinstance(cart_data.get("items"), str):
                 cart_data["items"] = json.loads(cart_data["items"])
             
-            # Find and remove the item by item_id
+            # Find and remove the item by cart_item_id
             target_variant_key = None
             for variant_key, item in cart_data["items"].items():
-                if item.get("id") == str(item_id):
+                if str(item.get("id")) == str(cart_item_id):
                     target_variant_key = variant_key
+                    logger.info(f"Found cart item {cart_item_id} to remove (variant: {variant_key})")
                     break
             
             if not target_variant_key:
-                raise HTTPException(status_code=404, detail="Item not found in cart")
+                logger.error(f"Cart item {cart_item_id} not found. Available: {[item.get('id') for item in cart_data['items'].values()]}")
+                raise HTTPException(status_code=404, detail="Cart item not found in cart")
             
             # Remove item
             del cart_data["items"][target_variant_key]
@@ -392,25 +418,31 @@ class CartService(RedisService):
                 "error": "Failed to load cart"
             }, country_code, province_code)
 
-    async def clear_cart(self, user_id: UUID) -> Dict[str, Any]:
+    async def clear_cart(self, user_id: Optional[UUID] = None, session_id: Optional[str] = None) -> Dict[str, Any]:
         """Clear user's cart from Redis"""
         try:
-            cart_key = RedisKeyManager.cart_key(str(user_id))
+            if not user_id and not session_id:
+                raise HTTPException(status_code=400, detail="Either user_id or session_id is required")
+            
+            cart_key = RedisKeyManager.cart_key(str(user_id) if user_id else f"guest_{session_id}")
             await self.delete_key(cart_key)
 
-            # Send notification of cleared cart
-            cleared_cart_data = {
-                "user_id": str(user_id),
-                "items": {},
-                "total_items": 0,
-                "subtotal": 0.0,
-                "updated_at": datetime.utcnow().isoformat()
-            }
-            formatted_cart = await self._format_cart_response(cleared_cart_data)
-            await self._send_cart_update_notification(user_id, "cart_cleared", formatted_cart.dict())
+            # Send notification of cleared cart (only for authenticated users)
+            if user_id:
+                cleared_cart_data = {
+                    "user_id": str(user_id),
+                    "items": {},
+                    "total_items": 0,
+                    "subtotal": 0.0,
+                    "updated_at": datetime.utcnow().isoformat()
+                }
+                formatted_cart = await self._format_cart_response(cleared_cart_data)
+                await self._send_cart_update_notification(user_id, "cart_cleared", formatted_cart.dict())
             
             return {"message": "Cart cleared successfully"}
             
+        except HTTPException:
+            raise
         except Exception as e:
             logger.error(f"Error clearing cart: {e}")
             raise HTTPException(status_code=500, detail="Failed to clear cart")

@@ -29,7 +29,7 @@ interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (email: string, password: string, rememberMe?: boolean) => Promise<User>;
+  login: (email: string, password: string, rememberMe: boolean) => Promise<User>;
   register: (firstname: string, lastname: string, email: string, password: string, phone?: string) => Promise<void>;
   logout: () => Promise<void>;
   verifyEmail: (code: string) => Promise<void>;
@@ -97,10 +97,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     checkAuth();
   }, [transformUser]); // Add transformUser to dependency array
 
-  const login = useCallback(async (email: string, password: string, rememberMe?: boolean): Promise<User> => {
+  const login = useCallback(async (email: string, password: string, rememberMe: boolean = false): Promise<User> => {
     setIsLoading(true);
     try {
       console.log('AuthContext: Attempting login...');
+      
+      // Set the remember me preference BEFORE setting tokens
+      TokenManager.setRememberMe(rememberMe);
+      
       const response = await AuthAPI.login({ email, password });
 
       // Save tokens if provided by backend (TokenManager expects tokens directly in response.data)
@@ -127,6 +131,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const register = useCallback(async (firstname: string, lastname: string, email: string, password: string, phone?: string): Promise<void> => {
     setIsLoading(true);
     try {
+      // Set remember me to true by default for new registrations
+      TokenManager.setRememberMe(true);
+      
       const response = await AuthAPI.register({ firstname, lastname, email, password, phone });
 
       // Save tokens if provided by backend (TokenManager expects tokens directly in response.data)

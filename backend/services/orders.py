@@ -489,7 +489,7 @@ class OrderService:
                 self.db.add(tracking_event)
 
                 # Clear cart after successful order (validated cart)
-                await cart_service.clear_cart(user_id)
+                await cart_service.clear_cart(user_id=user_id)
 
                 # Transaction will auto-commit here if no exceptions occurred
                 

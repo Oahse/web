@@ -37,9 +37,12 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
       
       // Get location from localStorage (set by Header component)
       const detectedCountry = localStorage.getItem('detected_country') || 'US';
-      const detectedProvince = localStorage.getItem('detected_province') || null;
+      const detectedProvince = localStorage.getItem('detected_province');
       
-      const response = await CartAPI.getCart(token, detectedCountry, detectedProvince);
+      // Only pass province if it's a valid value (not null, undefined, or string 'null'/'undefined')
+      const validProvince = detectedProvince && detectedProvince !== 'null' && detectedProvince !== 'undefined' ? detectedProvince : undefined;
+      
+      const response = await CartAPI.getCart(token, detectedCountry, validProvince);
       console.log('CartContext: Fetch cart response:', response);
       
       // Backend returns { success: true, data: cart }
@@ -143,11 +146,19 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
 
     try {
       setLoading(true);
+      console.log(`CartContext: Updating item ${itemId} to quantity ${quantity}`);
       const response = await CartAPI.updateCartItem(itemId, quantity, token);
+      console.log('CartContext: Update response:', response);
       const cartData = response?.data;
+      console.log('CartContext: Setting updated cart data:', cartData);
       setCart(cartData);
     } catch (error) {
       console.error('Failed to update cart item:', error);
+      console.error('Error details:', {
+        message: error?.message,
+        response: error?.response?.data,
+        status: error?.response?.status
+      });
       throw error;
     } finally {
       setLoading(false);

@@ -90,6 +90,7 @@ class TaxService:
         Returns:
             Tax amount
         """
+        logger.info(f"Calculating tax for amount ${amount:.2f}, country: {country_code}, province: {province_code}")
         tax_rate = await self.get_tax_rate(country_code, province_code)
         tax_amount = amount * tax_rate
         logger.info(f"Calculated tax: ${amount:.2f} × {tax_rate * 100}% = ${tax_amount:.2f}")

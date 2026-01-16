@@ -54,18 +54,35 @@ async def get_cart(
 async def add_to_cart(
     request: AddToCartRequest,
     req: Request,
+    country: Optional[str] = None,
+    province: Optional[str] = None,
     current_user: Optional[User] = Depends(get_current_auth_user),
     db: AsyncSession = Depends(get_db)
 ):
     try:
         cart_service = CartService(db)
         session_id = get_session_id(req) if not current_user else None
-        cart = await cart_service.add_to_cart(
+        
+        # Add item to cart
+        await cart_service.add_to_cart(
             user_id=current_user.id if current_user else None,
             variant_id=request.variant_id,
             quantity=request.quantity,
             session_id=session_id
         )
+        
+        # Get location from query params or headers
+        country_code = country or req.headers.get('X-Country-Code', 'US')
+        province_code = province or req.headers.get('X-Province-Code')
+        
+        # Re-fetch cart with location to calculate tax
+        cart = await cart_service.get_cart(
+            user_id=current_user.id if current_user else None,
+            session_id=session_id,
+            country_code=country_code,
+            province_code=province_code
+        )
+        
         return Response(success=True, data=cart, message="Item added to cart")
     except HTTPException as e:
         raise APIException(status_code=e.status_code, message=e.detail)
@@ -75,66 +92,82 @@ async def add_to_cart(
                            message=f"Failed to add item to cart {str(e)}")
 
 
-@router.put("/update/{item_id}")
+@router.put("/items/{cart_item_id}")
 async def update_cart_item(
-    item_id: UUID,
+    cart_item_id: UUID,
     request: UpdateCartItemRequest,
     req: Request,
+    country: Optional[str] = None,
+    province: Optional[str] = None,
     current_user: Optional[User] = Depends(get_current_auth_user),
     db: AsyncSession = Depends(get_db)
 ):
+    """
+    Update cart item quantity by cart_item_id
+    
+    The cart_item_id is the unique ID assigned to each item when added to cart,
+    not the variant_id or product_id.
+    """
     try:
+        logger.info(f"Update cart item endpoint hit: cart_item_id={cart_item_id}, quantity={request.quantity}, user_id={current_user.id if current_user else None}")
+        
+        if not current_user:
+            raise HTTPException(status_code=401, detail="Authentication required")
+        
+        # Get location from query params or headers
+        country_code = country or req.headers.get('X-Country-Code', 'US')
+        province_code = province or req.headers.get('X-Province-Code')
+        
+        logger.info(f"Location: country={country_code}, province={province_code}")
+        
         cart_service = CartService(db)
         
-        # Get current cart to find the variant_id for this item_id
-        cart_key = RedisKeyManager.cart_key(str(current_user.id))
-        cart_data = await cart_service.get_hash(cart_key)
-        
-        if not cart_data or "items" not in cart_data:
-            raise HTTPException(status_code=400, detail="Cart is empty")
-        
-        # Parse items if it's a string
-        if isinstance(cart_data.get("items"), str):
-            import json
-            cart_data["items"] = json.loads(cart_data["items"])
-        
-        # Find the variant_id for this item_id
-        target_variant_id = None
-        for variant_key, item in cart_data["items"].items():
-            if item.get("id") == str(item_id):
-                target_variant_id = UUID(variant_key)
-                break
-        
-        if not target_variant_id:
-            raise HTTPException(status_code=404, detail="Item not found in cart")
-        
-        # Use the existing update_cart_item method
-        cart = await cart_service.update_cart_item(
+        # Use the update_cart_item_quantity method which handles cart_item_id
+        logger.info(f"Calling update_cart_item_quantity...")
+        result = await cart_service.update_cart_item_quantity(
             user_id=current_user.id,
-            variant_id=target_variant_id,
-            request=request
+            cart_item_id=cart_item_id,
+            quantity=request.quantity
         )
+        logger.info(f"Update result: {result}")
+        
+        # Re-fetch cart with location to recalculate tax
+        logger.info(f"Re-fetching cart with location...")
+        cart = await cart_service.get_cart(
+            user_id=current_user.id,
+            country_code=country_code,
+            province_code=province_code
+        )
+        logger.info(f"Cart fetched successfully")
+        
         return Response(success=True, data=cart, message="Cart item quantity updated")
     except HTTPException as e:
+        logger.error(f"HTTPException in update_cart_item: {e.status_code} - {e.detail}")
         raise APIException(status_code=e.status_code, message=e.detail)
     except Exception as e:
+        logger.exception("Error updating cart item")
         raise APIException(status_code=status.HTTP_400_BAD_REQUEST,
                            message=f"Failed to update cart item quantity: {e}")
 
 
-@router.delete("/remove/{item_id}")
+@router.delete("/items/{cart_item_id}")
 async def remove_from_cart(
-    item_id: UUID,
+    cart_item_id: UUID,
     req: Request,
     current_user: Optional[User] = Depends(get_current_auth_user),
     db: AsyncSession = Depends(get_db)
 ):
+    """
+    Remove item from cart by cart_item_id
+    
+    The cart_item_id is the unique ID assigned to each item when added to cart.
+    """
     try:
         cart_service = CartService(db)
         session_id = get_session_id(req) if not current_user else None
         cart = await cart_service.remove_from_cart_by_item_id(
             user_id=current_user.id if current_user else None,
-            item_id=item_id
+            cart_item_id=cart_item_id
         )
         return Response(success=True, data=cart, message="Item removed from cart")
     except HTTPException as e:

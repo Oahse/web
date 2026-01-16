@@ -50,30 +50,79 @@ class TokenManager {
   static TOKEN_KEY = 'banwee_access_token';
   static REFRESH_TOKEN_KEY = 'banwee_refresh_token';
   static USER_KEY = 'banwee_user';
+  static REMEMBER_ME_KEY = 'banwee_remember_me';
+
+  // Get the storage type based on remember me preference
+  private static getStorage(): Storage {
+    const rememberMe = localStorage.getItem(this.REMEMBER_ME_KEY);
+    return rememberMe === 'true' ? localStorage : sessionStorage;
+  }
+
+  static setRememberMe(remember: boolean) {
+    // Store the remember me preference in localStorage (always persistent)
+    localStorage.setItem(this.REMEMBER_ME_KEY, remember.toString());
+  }
+
+  static getRememberMe(): boolean {
+    return localStorage.getItem(this.REMEMBER_ME_KEY) === 'true';
+  }
 
   static getToken() {
-    return localStorage.getItem(this.TOKEN_KEY);
+    // Check both storages for backward compatibility
+    return this.getStorage().getItem(this.TOKEN_KEY) || 
+           localStorage.getItem(this.TOKEN_KEY) || 
+           sessionStorage.getItem(this.TOKEN_KEY);
   }
 
   static setToken(token: string) {
-    localStorage.setItem(this.TOKEN_KEY, token);
+    const storage = this.getStorage();
+    storage.setItem(this.TOKEN_KEY, token);
+    
+    // Clear from the other storage to avoid conflicts
+    if (storage === localStorage) {
+      sessionStorage.removeItem(this.TOKEN_KEY);
+    } else {
+      localStorage.removeItem(this.TOKEN_KEY);
+    }
   }
 
   static getRefreshToken() {
-    return localStorage.getItem(this.REFRESH_TOKEN_KEY);
+    // Check both storages for backward compatibility
+    return this.getStorage().getItem(this.REFRESH_TOKEN_KEY) || 
+           localStorage.getItem(this.REFRESH_TOKEN_KEY) || 
+           sessionStorage.getItem(this.REFRESH_TOKEN_KEY);
   }
 
   static setRefreshToken(token: string) {
-    localStorage.setItem(this.REFRESH_TOKEN_KEY, token);
+    const storage = this.getStorage();
+    storage.setItem(this.REFRESH_TOKEN_KEY, token);
+    
+    // Clear from the other storage to avoid conflicts
+    if (storage === localStorage) {
+      sessionStorage.removeItem(this.REFRESH_TOKEN_KEY);
+    } else {
+      localStorage.removeItem(this.REFRESH_TOKEN_KEY);
+    }
   }
 
   static getUser() {
-    const user = localStorage.getItem(this.USER_KEY);
+    const storage = this.getStorage();
+    const user = storage.getItem(this.USER_KEY) || 
+                 localStorage.getItem(this.USER_KEY) || 
+                 sessionStorage.getItem(this.USER_KEY);
     return user ? JSON.parse(user) : null;
   }
 
   static setUser(user: any) {
-    localStorage.setItem(this.USER_KEY, JSON.stringify(user));
+    const storage = this.getStorage();
+    storage.setItem(this.USER_KEY, JSON.stringify(user));
+    
+    // Clear from the other storage to avoid conflicts
+    if (storage === localStorage) {
+      sessionStorage.removeItem(this.USER_KEY);
+    } else {
+      localStorage.removeItem(this.USER_KEY);
+    }
   }
 
   static setTokens(tokens: { access_token?: string; refresh_token?: string; }) {
@@ -86,9 +135,14 @@ class TokenManager {
   }
 
   static clearTokens() {
+    // Clear from both storages
     localStorage.removeItem(this.TOKEN_KEY);
     localStorage.removeItem(this.REFRESH_TOKEN_KEY);
     localStorage.removeItem(this.USER_KEY);
+    sessionStorage.removeItem(this.TOKEN_KEY);
+    sessionStorage.removeItem(this.REFRESH_TOKEN_KEY);
+    sessionStorage.removeItem(this.USER_KEY);
+    // Don't clear REMEMBER_ME_KEY so the preference persists
   }
 
   static isAuthenticated(): boolean {
@@ -345,6 +399,7 @@ class APIClient {
       '/v1/products/categories',
       '/v1/auth/profile',
       '/v1/users/profile',
+      '/v1/cart',  // Cart endpoints are optional (work without auth)
       '/v1/orders/track/'  // Public order tracking
     ];
 

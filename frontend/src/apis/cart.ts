@@ -11,7 +11,9 @@ export class CartAPI {
   static async getCart(access_token: string, country?: string, province?: string) {
     const params = new URLSearchParams();
     if (country) params.append('country', country);
-    if (province) params.append('province', province);
+    if (province && province !== 'null' && province !== 'undefined') {
+      params.append('province', province);
+    }
     
     const queryString = params.toString();
     const url = queryString ? `/cart?${queryString}` : '/cart';
@@ -22,19 +24,43 @@ export class CartAPI {
   }
 
   static async addToCart(item: any, access_token: string) {
-    return await apiClient.post('/cart/add', item, {
+    const country = localStorage.getItem('detected_country') || 'US';
+    const province = localStorage.getItem('detected_province');
+    
+    const params = new URLSearchParams();
+    if (country) params.append('country', country);
+    if (province && province !== 'null' && province !== 'undefined') {
+      params.append('province', province);
+    }
+    
+    const queryString = params.toString();
+    const url = queryString ? `/cart/add?${queryString}` : '/cart/add';
+    
+    return await apiClient.post(url, item, {
       headers: { 'Authorization': `Bearer ${access_token}` },
     });
   }
 
   static async updateCartItem(itemId: string, quantity: number, access_token: string) {
-    return await apiClient.put(`/cart/update/${itemId}`, { quantity }, {
+    const country = localStorage.getItem('detected_country') || 'US';
+    const province = localStorage.getItem('detected_province');
+    
+    const params = new URLSearchParams();
+    if (country) params.append('country', country);
+    if (province && province !== 'null' && province !== 'undefined') {
+      params.append('province', province);
+    }
+    
+    const queryString = params.toString();
+    const url = queryString ? `/cart/items/${itemId}?${queryString}` : `/cart/items/${itemId}`;
+    
+    return await apiClient.put(url, { quantity }, {
       headers: { 'Authorization': `Bearer ${access_token}` },
     });
   }
 
   static async removeFromCart(itemId: string, access_token: string) {
-    return await apiClient.delete(`/cart/remove/${itemId}`, {
+    return await apiClient.delete(`/cart/items/${itemId}`, {
       headers: { 'Authorization': `Bearer ${access_token}` },
     });
   }
