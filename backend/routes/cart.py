@@ -342,9 +342,10 @@ async def calculate_totals(
             session_id=session_id
         )
         return Response(success=True, data=result)
-    except Exception:
+    except Exception as e:
+        logger.error(f"Failed to calculate totals: {str(e)}", exc_info=True)
         raise APIException(status_code=status.HTTP_400_BAD_REQUEST,
-                           message="Failed to calculate totals")
+                           message=f"Failed to calculate totals: {str(e)}")
 
 
 @router.post("/clear")

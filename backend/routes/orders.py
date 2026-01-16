@@ -61,6 +61,10 @@ async def validate_checkout(
     try:
         # Import CartService here to avoid circular imports
         from services.cart import CartService
+        from core.logging_config import logger
+        
+        logger.info(f"Validating checkout for user {current_user.id}")
+        logger.info(f"Request data: shipping_address_id={request.shipping_address_id}, shipping_method_id={request.shipping_method_id}, payment_method_id={request.payment_method_id}")
         
         cart_service = CartService(order_service.db)
         
@@ -79,46 +83,59 @@ async def validate_checkout(
             if shipping_address:
                 country_code = shipping_address.country or "US"
                 province_code = shipping_address.state
+                logger.info(f"Using shipping address location: {country_code}, {province_code}")
         
         # Step 1: Validate cart with location for proper tax calculation
+        logger.info("Step 1: Validating cart")
         cart_validation = await cart_service.validate_cart(
             current_user.id,
             country_code=country_code,
             province_code=province_code
         )
         
+        logger.info(f"Cart validation result: valid={cart_validation.get('valid')}, can_checkout={cart_validation.get('can_checkout')}")
+        
         if not cart_validation.get("valid", False) or not cart_validation.get("can_checkout", False):
             error_issues = [issue for issue in cart_validation.get("issues", []) if issue.get("severity") == "error"]
+            logger.warning(f"Cart validation failed with {len(error_issues)} errors")
             return Response.error(
                 message="Cart validation failed",
                 data={
                     "cart_validation": cart_validation,
                     "can_proceed": False,
+                    "validation_errors": [issue.get("message") for issue in error_issues],
                     "error_count": len(error_issues)
-                }
+                },
+                status_code=status.HTTP_400_BAD_REQUEST
             )
         
         # Step 2: Validate shipping address
+        logger.info("Step 2: Validating shipping address")
         shipping_address = await order_service.db.execute(
             select(Address).where(
                 and_(Address.id == request.shipping_address_id, Address.user_id == current_user.id)
             )
         )
         shipping_address = shipping_address.scalar_one_or_none()
+        logger.info(f"Shipping address valid: {shipping_address is not None}")
         
         # Step 3: Validate shipping method
+        logger.info("Step 3: Validating shipping method")
         shipping_method = await order_service.db.execute(
             select(ShippingMethod).where(ShippingMethod.id == request.shipping_method_id)
         )
         shipping_method = shipping_method.scalar_one_or_none()
+        logger.info(f"Shipping method valid: {shipping_method is not None}")
         
         # Step 4: Validate payment method
+        logger.info("Step 4: Validating payment method")
         payment_method = await order_service.db.execute(
             select(PaymentMethod).where(
                 and_(PaymentMethod.id == request.payment_method_id, PaymentMethod.user_id == current_user.id)
             )
         )
         payment_method = payment_method.scalar_one_or_none()
+        logger.info(f"Payment method valid: {payment_method is not None}")
         
         # Collect validation results
         validation_results = {
@@ -133,31 +150,78 @@ async def validate_checkout(
         validation_errors = []
         
         if not shipping_address:
-            validation_errors.append("Invalid shipping address")
+            validation_errors.append("Invalid or missing shipping address")
             validation_results["can_proceed"] = False
             
         if not shipping_method:
-            validation_errors.append("Invalid shipping method")
+            validation_errors.append("Invalid or missing shipping method")
             validation_results["can_proceed"] = False
             
         if not payment_method:
-            validation_errors.append("Invalid payment method")
+            validation_errors.append("Invalid or missing payment method")
             validation_results["can_proceed"] = False
         
         # Calculate estimated totals if validation passes
         if validation_results["can_proceed"]:
             try:
+                logger.info("Calculating estimated totals")
                 cart = cart_validation["cart"]
                 validated_cart_items = []
                 
-                # Convert cart items to format expected by price validation
-                for item in cart.items:
-                    validated_cart_items.append({
-                        "variant_id": item.variant_id,
-                        "quantity": item.quantity,
-                        "backend_price": item.price_per_unit,
-                        "backend_total": item.total_price
-                    })
+                # Handle both CartResponse object and dict
+                if hasattr(cart, 'items'):
+                    # It's a Pydantic CartResponse object
+                    cart_items = cart.items
+                    logger.info(f"Cart is a Pydantic object with {len(cart_items)} items")
+                elif isinstance(cart, dict) and 'items' in cart:
+                    # It's a dictionary
+                    cart_items = cart['items']
+                    logger.info(f"Cart is a dict with {len(cart_items)} items")
+                else:
+                    raise ValueError(f"Unexpected cart structure: {type(cart)}")
+                
+                logger.info(f"Processing {len(cart_items)} cart items for totals calculation")
+                
+                for idx, item in enumerate(cart_items):
+                    try:
+                        # Handle both Pydantic CartItemResponse and dict
+                        if hasattr(item, 'variant'):
+                            # Pydantic CartItemResponse object
+                            variant = item.variant
+                            if hasattr(variant, 'id'):
+                                variant_id = variant.id
+                            else:
+                                variant_id = variant
+                            quantity = item.quantity
+                            price_per_unit = item.price_per_unit
+                            total_price = item.total_price
+                            logger.debug(f"Item {idx}: Pydantic object, variant_id={variant_id}")
+                        elif isinstance(item, dict):
+                            # Dictionary format
+                            variant_data = item.get('variant', {})
+                            if isinstance(variant_data, dict):
+                                variant_id = variant_data.get('id')
+                            else:
+                                variant_id = variant_data
+                            quantity = item.get('quantity', 0)
+                            price_per_unit = item.get('price_per_unit', 0.0)
+                            total_price = item.get('total_price', 0.0)
+                            logger.debug(f"Item {idx}: Dict, variant_id={variant_id}")
+                        else:
+                            logger.error(f"Item {idx}: Unexpected type {type(item)}")
+                            raise ValueError(f"Unexpected item structure at index {idx}: {type(item)}")
+                        
+                        validated_cart_items.append({
+                            "variant_id": variant_id,
+                            "quantity": quantity,
+                            "backend_price": price_per_unit,
+                            "backend_total": total_price
+                        })
+                    except Exception as item_error:
+                        logger.error(f"Error processing cart item {idx}: {str(item_error)}", exc_info=True)
+                        raise
+                
+                logger.info(f"Successfully processed {len(validated_cart_items)} items")
                 
                 # Calculate final totals
                 final_total = await order_service._calculate_final_order_total(
@@ -167,27 +231,39 @@ async def validate_checkout(
                 )
                 
                 validation_results["estimated_totals"] = final_total
+                logger.info(f"Estimated total: {final_total.get('total_amount')}")
                 
             except Exception as e:
+                logger.error(f"Failed to calculate totals: {str(e)}", exc_info=True)
+                logger.error(f"Cart type: {type(cart)}")
+                if hasattr(cart, 'items'):
+                    logger.error(f"Cart.items type: {type(cart.items)}")
+                    if cart.items:
+                        logger.error(f"First item type: {type(cart.items[0])}")
+                        logger.error(f"First item: {cart.items[0]}")
                 validation_errors.append(f"Failed to calculate totals: {str(e)}")
                 validation_results["can_proceed"] = False
         
         validation_results["validation_errors"] = validation_errors
         
         if validation_results["can_proceed"]:
+            logger.info("Checkout validation successful")
             return Response.success(
                 data=validation_results,
                 message="Checkout validation successful - ready to place order"
             )
         else:
+            logger.warning(f"Checkout validation failed: {validation_errors}")
             return Response.error(
                 message="Checkout validation failed",
-                data=validation_results
+                data=validation_results,
+                status_code=status.HTTP_400_BAD_REQUEST
             )
             
     except APIException:
         raise
     except Exception as e:
+        logger.error(f"Checkout validation error: {str(e)}", exc_info=True)
         raise APIException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             message=f"Checkout validation failed: {str(e)}"

@@ -96,7 +96,7 @@ class OrderService:
             # Extract actual prices from validated cart
             actual_prices = {}
             for item in cart.items:
-                actual_prices[str(item.variant_id)] = float(item.price_per_unit)
+                actual_prices[str(item.variant.id)] = float(item.price_per_unit)
             
             # Check for price tampering
             tampering_result = await security_service.detect_price_tampering(
@@ -286,13 +286,13 @@ class OrderService:
                 stock_validation_results = []
                 for item in active_items:
                     stock_check = await self.inventory_service.check_stock_availability(
-                        variant_id=item.variant_id,
+                        variant_id=item.variant.id,
                         quantity=item.quantity
                     )
                     
                     if not stock_check.get("available", False):
                         stock_validation_results.append({
-                            "variant_id": item.variant_id,
+                            "variant_id": item.variant.id,
                             "product_name": item.variant.product.name if item.variant and item.variant.product else "Unknown Product",
                             "requested": item.quantity,
                             "available": stock_check.get("current_stock", 0),
@@ -761,12 +761,12 @@ class OrderService:
             total_discrepancies = []
             price_updates = []  # Track items with price changes for frontend notification
             
-            active_cart_items = [item for item in cart.items if not item.saved_for_later]
+            active_cart_items = [item for item in cart.items if not getattr(item, 'saved_for_later', False)]
             
             for cart_item in active_cart_items:
                 # Fetch current variant details from database
                 variant_result = await self.db.execute(
-                    select(ProductVariant).where(ProductVariant.id == cart_item.variant_id).options(
+                    select(ProductVariant).where(ProductVariant.id == cart_item.variant.id).options(
                         selectinload(ProductVariant.product)
                     )
                 )
@@ -775,7 +775,7 @@ class OrderService:
                 if not variant:
                     return {
                         "valid": False,
-                        "message": f"Product variant {cart_item.variant_id} no longer exists"
+                        "message": f"Product variant {cart_item.variant.id} no longer exists"
                     }
                 
                 # Get current backend price (sale_price takes precedence over base_price)
@@ -788,7 +788,7 @@ class OrderService:
                 
                 if price_difference > 0.01 or total_difference > 0.01:
                     discrepancy_info = {
-                        "variant_id": str(cart_item.variant_id),
+                        "variant_id": str(cart_item.variant.id),
                         "product_name": variant.product.name if variant.product else "Unknown",
                         "variant_name": variant.name,
                         "cart_price": cart_item.price_per_unit,
@@ -799,7 +799,7 @@ class OrderService:
                     
                     # Add to price updates for frontend notification
                     price_updates.append({
-                        "variant_id": str(cart_item.variant_id),
+                        "variant_id": str(cart_item.variant.id),
                         "product_name": variant.product.name if variant.product else "Unknown",
                         "variant_name": variant.name,
                         "old_price": cart_item.price_per_unit,
@@ -813,7 +813,7 @@ class OrderService:
                 
                 # Always use backend-calculated prices
                 validated_items.append({
-                    "variant_id": cart_item.variant_id,
+                    "variant_id": cart_item.variant.id,
                     "quantity": cart_item.quantity,
                     "cart_price": cart_item.price_per_unit,
                     "backend_price": backend_price,
@@ -885,7 +885,7 @@ class OrderService:
             tax_amount = subtotal * tax_rate
             
             # Apply any discounts (from promocodes, etc.)
-            discount_amount = await self._calculate_discount_amount(cart_items, subtotal)
+            discount_amount = await self._calculate_discount_amount(validated_items, subtotal)
             
             # Calculate final total
             total_amount = subtotal + shipping_cost + tax_amount - discount_amount
@@ -1101,8 +1101,8 @@ class OrderService:
         
         # Fallback to cart-based hash for backward compatibility
         cart_items = sorted([
-            f"{item.variant_id}:{item.quantity}:{item.price_per_unit}"
-            for item in cart.items if not item.saved_for_later
+            f"{item.variant.id}:{item.quantity}:{item.price_per_unit}"
+            for item in cart.items if not getattr(item, 'saved_for_later', False)
         ])
         
         cart_string = "|".join(cart_items)
@@ -1246,7 +1246,7 @@ class OrderService:
         cart_data = {
             "items": [
                 {
-                    "variant_id": str(item.variant_id),
+                    "variant_id": str(item.variant.id),
                     "quantity": item.quantity,
                     "price": float(item.price_per_unit)
                 }

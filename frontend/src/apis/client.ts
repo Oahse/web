@@ -267,14 +267,18 @@ class APIClient {
   }
 
   handleError(error, suppressToasts = false) {
-    const apiError = {
+    const apiError: any = {
       message: 'An unexpected error occurred',
       code: error.response?.status?.toString(),
       statusCode: error.response?.status,
+      response: error.response, // Preserve the full response
     };
 
     if (error.response?.data) {
       const errorData = error.response.data;
+      
+      // Preserve the full error data for detailed error handling
+      apiError.data = errorData;
       
       // Handle backend error structure
       if (errorData.message) {

@@ -142,7 +142,7 @@ export const SmartCheckoutForm: React.FC<SmartCheckoutFormProps> = ({ onSuccess 
       // Auto-select the first shipping method if none is selected
       if (shippingMethodsData.length > 0 && !formData.shipping_method_id) {
         const firstShipping = shippingMethodsData[0];
-        setFormData(prev => ({ ...prev, shipping_method_id: firstShipping?.id || '' }));
+        setFormData(prev => ({ ...prev, shipping_method_id: firstShipping?.id || null }));
       }
     } catch (error) {
       console.error('Failed to load shipping methods:', error);
@@ -170,25 +170,25 @@ export const SmartCheckoutForm: React.FC<SmartCheckoutFormProps> = ({ onSuccess 
         // Skip validation if any required field is missing or empty
         if (!data.shipping_address_id || 
             !data.shipping_method_id || 
-            !data.payment_method_id ||
-            data.shipping_address_id === '' ||
-            data.shipping_method_id === '' ||
-            data.payment_method_id === '') {
+            !data.payment_method_id) {
           // Clear validation state when fields are incomplete
           setRealTimeValidation({});
           return;
         }
         
         // Log the data being sent for debugging
+        console.log('=== CHECKOUT VALIDATION REQUEST ===');
         console.log('Validating checkout with data:', {
           shipping_address_id: data.shipping_address_id,
           shipping_method_id: data.shipping_method_id,
           payment_method_id: data.payment_method_id,
           notes: data.notes
         });
+        console.log('Full form data:', data);
         
         const response = await OrdersAPI.validateCheckout(data);
         
+        console.log('=== CHECKOUT VALIDATION RESPONSE ===');
         console.log('Validation response:', response);
         
         // Check if response is successful
@@ -197,29 +197,47 @@ export const SmartCheckoutForm: React.FC<SmartCheckoutFormProps> = ({ onSuccess 
         } else {
           // Handle validation failure from backend
           console.error('Validation failed:', response);
+          const errorMessages = response.data?.validation_errors || [response.message || 'Validation failed'];
           setRealTimeValidation({ 
             can_proceed: false, 
-            validation_errors: response.data?.validation_errors || [response.message || 'Validation failed'] 
+            validation_errors: errorMessages
           });
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error('Real-time validation failed:', error);
         console.error('Error details:', {
           message: error?.message,
-          response: error?.response?.data,
-          status: error?.response?.status
+          data: error?.data,
+          response: error?.response,
+          status: error?.statusCode
         });
         
-        const errorMessage = error?.response?.data?.message || error?.message || 'Validation failed';
-        const errorDetails = error?.response?.data?.data?.validation_errors || [];
+        // Extract error message and validation errors from various possible locations
+        let errorMessage = 'Validation failed';
+        let errorDetails: string[] = [];
+        
+        // Try to get error data from the preserved response
+        if (error?.data) {
+          errorMessage = error.data.message || errorMessage;
+          errorDetails = error.data.data?.validation_errors || 
+                        error.data.validation_errors || 
+                        [];
+        } else if (error?.response?.data) {
+          const errorData = error.response.data;
+          errorMessage = errorData.message || errorMessage;
+          errorDetails = errorData.data?.validation_errors || 
+                        errorData.validation_errors || 
+                        [];
+        } else if (error?.message) {
+          errorMessage = error.message;
+        }
+        
+        console.log('Extracted error details:', { errorMessage, errorDetails });
         
         // Only show validation errors if all required fields were provided
         if (data.shipping_address_id && 
             data.shipping_method_id && 
-            data.payment_method_id &&
-            data.shipping_address_id !== '' &&
-            data.shipping_method_id !== '' &&
-            data.payment_method_id !== '') {
+            data.payment_method_id) {
           setRealTimeValidation({ 
             can_proceed: false, 
             validation_errors: errorDetails.length > 0 ? errorDetails : [errorMessage]
@@ -237,10 +255,7 @@ export const SmartCheckoutForm: React.FC<SmartCheckoutFormProps> = ({ onSuccess 
     // Only validate if all required fields have valid non-empty values
     if (formData.shipping_address_id && 
         formData.shipping_method_id && 
-        formData.payment_method_id &&
-        formData.shipping_address_id !== '' &&
-        formData.shipping_method_id !== '' &&
-        formData.payment_method_id !== '') {
+        formData.payment_method_id) {
       debouncedValidation(formData);
     } else {
       // Clear validation state when fields are incomplete
@@ -290,9 +305,9 @@ export const SmartCheckoutForm: React.FC<SmartCheckoutFormProps> = ({ onSuccess 
 
       setFormData((prev: any) => ({
         ...prev,
-        shipping_address_id: prev.shipping_address_id || defaultAddress?.id || '',
-        shipping_method_id: prev.shipping_method_id || firstShipping?.id || '',
-        payment_method_id: prev.payment_method_id || defaultPayment?.id || ''
+        shipping_address_id: prev.shipping_address_id || defaultAddress?.id || null,
+        shipping_method_id: prev.shipping_method_id || firstShipping?.id || null,
+        payment_method_id: prev.payment_method_id || defaultPayment?.id || null
       }));
 
     } catch (error) {
@@ -629,7 +644,7 @@ export const SmartCheckoutForm: React.FC<SmartCheckoutFormProps> = ({ onSuccess 
                         onChange={(e) => {
                           setFormData(prev => ({ ...prev, shipping_address_id: e.target.value }));
                           // Clear shipping method selection when address changes
-                          setFormData(prev => ({ ...prev, shipping_method_id: '' }));
+                          setFormData(prev => ({ ...prev, shipping_method_id: null }));
                         }}
                         className="sr-only"
                       />

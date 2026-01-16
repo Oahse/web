@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, Field, ConfigDict, computed_field
 from typing import List, Optional, Dict, Any
 from datetime import datetime
 from uuid import UUID
@@ -25,6 +25,12 @@ class CartItemResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True, json_encoders={
         datetime: lambda v: v.isoformat() if v else None
     })
+    
+    @computed_field
+    @property
+    def variant_id(self) -> UUID:
+        """Convenience property to access variant ID directly"""
+        return self.variant.id if self.variant else None
 
 
 class CartResponse(BaseModel):
