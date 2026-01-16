@@ -11,7 +11,7 @@ import { getCountryByCode } from '../../lib/countries';
 import { NotificationBell } from '../ui/NotificationBell';
 
 const TopHeaderAds = [
-  'Free shipping on orders over $50',
+  'Free shipping on orders over $100',
   'Authentic African spices delivered to your door',
   'Fresh produce sourced from local farmers',
   'New arrivals every week – don’t miss out',
@@ -35,7 +35,6 @@ export const Header = ({
 
   const [currentAdIndex, setCurrentAdIndex] = useState(0);
   const [searchTerm, setSearchTerm] = useState('');
-  const [showCookieConsent, setShowCookieConsent] = useState(false);
   const [selectedCountry, setSelectedCountry] = useState('US'); // Default to US
   const [selectedLanguage, setSelectedLanguage] = useState('en'); // Default to English
   const navigate = useNavigate();
@@ -72,13 +71,8 @@ export const Header = ({
   ];
 
 
-  // Cookie consent and country detection
+  // Country detection
   useEffect(() => {
-    const consent = localStorage.getItem('cookie_consent');
-    if (consent !== 'accepted') {
-      setShowCookieConsent(true);
-    }
-
     // Try to detect user's country from geolocation API first
     const detectCountryFromLocation = async () => {
       try {
@@ -102,6 +96,9 @@ export const Header = ({
                     const provinceCode = data.principalSubdivisionCode.split('-').pop();
                     localStorage.setItem('detected_province', provinceCode);
                   }
+                  
+                  // Dispatch event to notify other components (like CartContext)
+                  window.dispatchEvent(new Event('locationDetected'));
                 }
               } catch (error) {
                 console.log('Failed to get country from coordinates:', error);
@@ -150,17 +147,6 @@ export const Header = ({
       detectCountryFromLocation();
     }
   }, []);
-
-  const handleAcceptCookies = () => {
-    localStorage.setItem('cookie_consent', 'accepted');
-    setShowCookieConsent(false);
-  };
-
-  const handleDeclineCookies = () => {
-    localStorage.setItem('cookie_consent', 'declined');
-    setShowCookieConsent(false);
-    // Optionally, disable non-essential cookies here
-  };
 
   const handleSearch = (e) => {
     e.preventDefault();
@@ -334,9 +320,6 @@ export const Header = ({
                 </div>
                 <div className="hidden md:flex flex-col ml-1 text-xs">
                   <span>Your Cart</span>
-                  <span className="font-semibold">
-                    ${cart?.subtotal?.toFixed(2) || '0.00'}
-                  </span>
                 </div>
               </Link>
 
@@ -414,35 +397,6 @@ export const Header = ({
           </div>
         </div>
       </div>
-
-      {showCookieConsent && (
-        <motion.div
-          initial={{ y: 100, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          exit={{ y: 100, opacity: 0 }}
-          transition={{ type: 'spring', stiffness: 100 }}
-          className="fixed bottom-0 left-0 right-0 bg-surface shadow-lg p-4 flex flex-col md:flex-row items-center justify-between z-50 text-copy"
-        >
-          <p className="text-sm text-center md:text-left mb-4 md:mb-0">
-            We use cookies to ensure you get the best experience on our website. By continuing to use this site, you agree to our use of cookies.
-            <Link to="/privacy" className="text-primary hover:underline ml-1">Learn more</Link>
-          </p>
-          <div className="flex flex-col w-full md:w-auto md:flex-row md:space-x-2">
-            <button
-              onClick={handleAcceptCookies}
-              className="bg-primary text-white px-4 py-2 rounded-md text-sm hover:bg-primary-dark transition-colors mb-2 md:mb-0"
-            >
-              Accept
-            </button>
-            <button
-              onClick={handleDeclineCookies}
-              className="bg-surface-hover text-copy px-4 py-2 rounded-md text-sm hover:bg-surface-active transition-colors"
-            >
-              Decline
-            </button>
-          </div>
-        </motion.div>
-      )}
 
     </header>
   );

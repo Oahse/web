@@ -253,7 +253,7 @@ class TestPaymentIntentCreationProperty:
         
         # Calculate expected values
         tax_amount = subtotal * tax_rate
-        shipping_amount = Decimal('10.00') if subtotal < Decimal('50.00') else Decimal('0.00')
+        shipping_amount = Decimal('10.00') if subtotal < Decimal('100.00') else Decimal('0.00')
         expected_total = subtotal + tax_amount + shipping_amount
 
         # Mock database and services

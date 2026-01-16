@@ -60,9 +60,27 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
     await fetchCart();
   }, [fetchCart]);
 
-  // ✅ Load cart on mount
+  // ✅ Load cart on mount and when location changes (only if authenticated)
   useEffect(() => {
-    fetchCart();
+    const token = TokenManager.getToken();
+    if (token) {
+      fetchCart();
+    }
+    
+    // Listen for location changes
+    const handleLocationChange = () => {
+      const token = TokenManager.getToken();
+      if (token) {
+        console.log('Location changed, refreshing cart for tax recalculation');
+        fetchCart();
+      }
+    };
+    
+    window.addEventListener('locationDetected', handleLocationChange);
+    
+    return () => {
+      window.removeEventListener('locationDetected', handleLocationChange);
+    };
   }, [fetchCart]);
 
   // ✅ Add item to cart

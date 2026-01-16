@@ -54,7 +54,7 @@ class TestBasicPricingCalculations:
     
     def test_shipping_cost_calculation(self):
         """Test shipping cost with free shipping threshold"""
-        free_shipping_threshold = 50.00
+        free_shipping_threshold = 100.00
         standard_shipping = 10.00
         
         # Below threshold

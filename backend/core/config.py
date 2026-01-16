@@ -305,6 +305,12 @@ class ApplicationConfig(BaseSettings):
         description="From email address"
     )
     
+    # Business Logic Configuration
+    FREE_SHIPPING_THRESHOLD: float = Field(
+        default=100.0,
+        description="Minimum order amount for free shipping"
+    )
+    
     @field_validator('FRONTEND_URL', 'BACKEND_URL')
     @classmethod
     def validate_urls(cls, v):
@@ -706,6 +712,9 @@ class Settings:
         self.ADMIN_USER_ID: str = os.getenv('ADMIN_USER_ID', 'your_admin_uuid_here')
         self.NOTIFICATION_CLEANUP_DAYS: int = int(os.getenv('NOTIFICATION_CLEANUP_DAYS', 30))
         self.NOTIFICATION_CLEANUP_INTERVAL_SECONDS: int = int(os.getenv('NOTIFICATION_CLEANUP_INTERVAL_SECONDS', 86400))
+        
+        # --- Business Logic Configuration ---
+        self.FREE_SHIPPING_THRESHOLD: float = float(os.getenv('FREE_SHIPPING_THRESHOLD', '100.0'))
     
     @property
     def server_host(self) -> str:

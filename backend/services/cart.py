@@ -1,7 +1,3 @@
-# Consolidated cart service with Redis integration
-# This file includes all cart-related functionality using Redis for performance
-# PostgreSQL remains the source of truth for orders
-
 import json
 from typing import Dict, List, Optional, Any
 from uuid import UUID, uuid4
@@ -211,6 +207,16 @@ class CartService(RedisService):
             
             # Update quantity and price
             current_price = float(variant.sale_price or variant.base_price)
+            cart_data["items"][variant_key]["quantity"] = request.quantity
+            cart_data["items"][variant_key]["price_per_unit"] = current_price
+            cart_data["items"][variant_key]["total_price"] = current_price * request.quantity
+            
+            # Recalculate cart totals
+            subtotal = sum(item["total_price"] for item in cart_data["items"].values())
+            cart_data["subtotal"] = subtotal
+            cart_data["total_items"] = sum(item["quantity"] for item in cart_data["items"].values())
+            cart_data["updated_at"] = datetime.utcnow().isoformat()
+            
             # Save to Redis
             await self.set_hash(cart_key, cart_data)
             
@@ -743,7 +749,7 @@ class CartService(RedisService):
             return {
                 "shipping_options": shipping_options,
                 "cart_subtotal": subtotal,
-                "free_shipping_threshold": 50.0  # This could also be moved to database config
+                "free_shipping_threshold": settings.FREE_SHIPPING_THRESHOLD
             }
             
         except Exception as e:
@@ -752,7 +758,7 @@ class CartService(RedisService):
             return {
                 "shipping_options": [],
                 "cart_subtotal": 0,
-                "free_shipping_threshold": 50.0
+                "free_shipping_threshold": settings.FREE_SHIPPING_THRESHOLD
             }
 
     async def calculate_totals(self, user_id: UUID, data: dict, session_id: Optional[str] = None) -> Dict[str, Any]:
@@ -771,7 +777,7 @@ class CartService(RedisService):
             # Calculate shipping cost
             shipping_cost = 0.0
             if shipping_option == "standard":
-                shipping_cost = 10.0 if subtotal < 50.0 else 0.0  # Free shipping over $50
+                shipping_cost = 10.0 if subtotal < settings.FREE_SHIPPING_THRESHOLD else 0.0  # Free shipping over threshold
             elif shipping_option == "express":
                 shipping_cost = 25.0 if subtotal < 100.0 else 15.0
             elif shipping_option == "overnight":
@@ -1113,10 +1119,37 @@ class CartService(RedisService):
             # Get tax rate for location
             from services.tax import TaxService
             tax_service = TaxService(self.db)
-            tax_amount = await tax_service.calculate_tax(subtotal, country_code, province_code)
+            try:
+                tax_amount = await tax_service.calculate_tax(subtotal, country_code, province_code)
+                logger.info(f"Tax calculated for {country_code}-{province_code}: ${tax_amount:.2f} on subtotal ${subtotal:.2f}")
+            except Exception as e:
+                logger.error(f"Error calculating tax for {country_code}-{province_code}: {e}")
+                tax_amount = 0.0
             
-            # Calculate shipping
-            shipping_amount = 0.0 if subtotal >= 50 else 10.0  # Free shipping over $50
+            # Get standard shipping method from database
+            from models.shipping import ShippingMethod
+            shipping_amount = 0.0
+            try:
+                result = await self.db.execute(
+                    select(ShippingMethod).where(
+                        ShippingMethod.name == "Standard Shipping",
+                        ShippingMethod.is_active == True
+                    )
+                )
+                standard_shipping = result.scalar_one_or_none()
+                
+                if standard_shipping:
+                    # Apply free shipping if subtotal >= threshold, otherwise use standard shipping price
+                    shipping_amount = 0.0 if subtotal >= settings.FREE_SHIPPING_THRESHOLD else standard_shipping.price
+                else:
+                    # Fallback to $9.99 if standard shipping not found
+                    shipping_amount = 0.0 if subtotal >= settings.FREE_SHIPPING_THRESHOLD else 9.99
+                    logger.warning("Standard Shipping method not found in database, using fallback price")
+            except Exception as e:
+                logger.error(f"Error fetching standard shipping: {e}")
+                # Fallback to $9.99 on error
+                shipping_amount = 0.0 if subtotal >= settings.FREE_SHIPPING_THRESHOLD else 9.99
+            
             total_amount = subtotal + tax_amount + shipping_amount
             
             return CartResponse(

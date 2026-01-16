@@ -878,7 +878,7 @@ class OrderService:
                     shipping_cost = shipping_method.price
                 else:
                     # Default shipping logic if no cost field
-                    shipping_cost = 0.0 if subtotal >= 50 else 10.0
+                    shipping_cost = 0.0 if subtotal >= settings.FREE_SHIPPING_THRESHOLD else 10.0
             
             # Calculate tax based on shipping address
             tax_rate = await self._get_tax_rate(shipping_address)

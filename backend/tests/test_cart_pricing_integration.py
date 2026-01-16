@@ -412,7 +412,7 @@ class TestCartServicePricing:
             
             assert free_shipping_option is not None
             assert free_shipping_option["price"] == 0.00
-            assert "Orders over $50" in free_shipping_option["description"]
+            assert "Orders over $100" in free_shipping_option["description"]
 
 
 class TestCartValidationIntegration:

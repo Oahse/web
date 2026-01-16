@@ -12,6 +12,14 @@ export const Cart = () => {
   const { cart, removeItem, updateQuantity, clearCart, loading } = useCart();
   const { formatCurrency } = useLocale();
   const [couponCode, setCouponCode] = useState('');
+  const [taxLocation, setTaxLocation] = useState<{ country: string; province?: string }>({ country: 'US' });
+
+  // Get tax location info
+  React.useEffect(() => {
+    const country = localStorage.getItem('detected_country') || 'US';
+    const province = localStorage.getItem('detected_province') || undefined;
+    setTaxLocation({ country, province });
+  }, [cart]); // Update when cart changes (which includes tax recalculation)
 
   const handleQuantityChange = (id: string, quantity: number) => {
     // Enhanced validation using validation utility
@@ -254,19 +262,47 @@ export const Cart = () => {
           <div className="lg:w-1/3">
             <div className="bg-surface rounded-lg shadow-sm p-6">
               <h2 className="text-xl font-semibold text-copy mb-4">Order Summary</h2>
+              
+              {/* Free shipping progress indicator */}
+              {subtotal > 0 && subtotal < 100 && (
+                <div className="mb-4 p-3 bg-primary/10 rounded-md">
+                  <p className="text-sm text-copy">
+                    Add <span className="font-semibold text-primary">{formatCurrency(100 - subtotal)}</span> more to get <span className="font-semibold">FREE Standard Shipping</span>!
+                  </p>
+                  <div className="mt-2 w-full bg-gray-200 rounded-full h-2">
+                    <div 
+                      className="bg-primary h-2 rounded-full transition-all duration-300"
+                      style={{ width: `${Math.min((subtotal / 100) * 100, 100)}%` }}
+                    />
+                  </div>
+                </div>
+              )}
+              
+              {subtotal >= 100 && (
+                <div className="mb-4 p-3 bg-success/10 rounded-md">
+                  <p className="text-sm text-success font-medium">
+                    🎉 You've qualified for FREE Standard Shipping!
+                  </p>
+                </div>
+              )}
+              
               <div className="space-y-3 mb-6">
                 <div className="flex justify-between">
                   <span className="text-copy-light">Subtotal</span>
                   <span className="font-medium text-copy">{formatCurrency(subtotal)}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-copy-light">Shipping</span>
+                  <span className="text-copy-light">
+                    Shipping {shipping === 0 ? '(Free - Standard)' : '(Standard)'}
+                  </span>
                   <span className="font-medium text-copy">
                     {shipping === 0 ? 'Free' : formatCurrency(shipping)}
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-copy-light">Tax</span>
+                  <span className="text-copy-light">
+                    Tax {taxLocation.province ? `(${taxLocation.province}, ${taxLocation.country})` : `(${taxLocation.country})`}
+                  </span>
                   <span className="font-medium text-copy">{formatCurrency(tax)}</span>
                 </div>
                 <div className="border-t border-border-light pt-3 flex justify-between">

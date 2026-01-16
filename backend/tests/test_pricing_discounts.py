@@ -132,7 +132,7 @@ class TestPricingCalculations:
         
         # Test case 1: Below free shipping threshold
         subtotal_below = 40.00
-        free_shipping_threshold = 50.00
+        free_shipping_threshold = 100.00
         
         shipping_cost = 10.00 if subtotal_below < free_shipping_threshold else 0.00
         assert shipping_cost == 10.00

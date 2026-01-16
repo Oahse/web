@@ -32,6 +32,7 @@ from models.wishlist import Wishlist, WishlistItem
 from models.notifications import Notification  # Added Notification import
 from models.inventories import WarehouseLocation, Inventory  # Added inventory imports
 from models.refunds import Refund, RefundItem  # Added refund imports
+from models.tax_rates import TaxRate  # Added tax rates import
 
 # ---------------- Config ----------------
 FILTER_CATEGORIES = {
@@ -123,6 +124,133 @@ DEFAULT_NUM_USERS = 20
 DEFAULT_NUM_PRODUCTS = 40
 DEFAULT_VARIANTS_PER_PRODUCT = 2
 DEFAULT_BATCH_SIZE = 50
+
+# Comprehensive tax rates data
+TAX_RATES_DATA = [
+    # United States - State Sales Tax
+    {"country_code": "US", "country_name": "United States", "province_code": "AL", "province_name": "Alabama", "tax_rate": 0.04, "tax_name": "Sales Tax"},
+    {"country_code": "US", "country_name": "United States", "province_code": "AK", "province_name": "Alaska", "tax_rate": 0.0, "tax_name": "Sales Tax"},
+    {"country_code": "US", "country_name": "United States", "province_code": "AZ", "province_name": "Arizona", "tax_rate": 0.056, "tax_name": "Sales Tax"},
+    {"country_code": "US", "country_name": "United States", "province_code": "AR", "province_name": "Arkansas", "tax_rate": 0.065, "tax_name": "Sales Tax"},
+    {"country_code": "US", "country_name": "United States", "province_code": "CA", "province_name": "California", "tax_rate": 0.0725, "tax_name": "Sales Tax"},
+    {"country_code": "US", "country_name": "United States", "province_code": "CO", "province_name": "Colorado", "tax_rate": 0.029, "tax_name": "Sales Tax"},
+    {"country_code": "US", "country_name": "United States", "province_code": "CT", "province_name": "Connecticut", "tax_rate": 0.0635, "tax_name": "Sales Tax"},
+    {"country_code": "US", "country_name": "United States", "province_code": "DE", "province_name": "Delaware", "tax_rate": 0.0, "tax_name": "Sales Tax"},
+    {"country_code": "US", "country_name": "United States", "province_code": "FL", "province_name": "Florida", "tax_rate": 0.06, "tax_name": "Sales Tax"},
+    {"country_code": "US", "country_name": "United States", "province_code": "GA", "province_name": "Georgia", "tax_rate": 0.04, "tax_name": "Sales Tax"},
+    {"country_code": "US", "country_name": "United States", "province_code": "HI", "province_name": "Hawaii", "tax_rate": 0.04, "tax_name": "Sales Tax"},
+    {"country_code": "US", "country_name": "United States", "province_code": "ID", "province_name": "Idaho", "tax_rate": 0.06, "tax_name": "Sales Tax"},
+    {"country_code": "US", "country_name": "United States", "province_code": "IL", "province_name": "Illinois", "tax_rate": 0.0625, "tax_name": "Sales Tax"},
+    {"country_code": "US", "country_name": "United States", "province_code": "IN", "province_name": "Indiana", "tax_rate": 0.07, "tax_name": "Sales Tax"},
+    {"country_code": "US", "country_name": "United States", "province_code": "IA", "province_name": "Iowa", "tax_rate": 0.06, "tax_name": "Sales Tax"},
+    {"country_code": "US", "country_name": "United States", "province_code": "KS", "province_name": "Kansas", "tax_rate": 0.065, "tax_name": "Sales Tax"},
+    {"country_code": "US", "country_name": "United States", "province_code": "KY", "province_name": "Kentucky", "tax_rate": 0.06, "tax_name": "Sales Tax"},
+    {"country_code": "US", "country_name": "United States", "province_code": "LA", "province_name": "Louisiana", "tax_rate": 0.0445, "tax_name": "Sales Tax"},
+    {"country_code": "US", "country_name": "United States", "province_code": "ME", "province_name": "Maine", "tax_rate": 0.055, "tax_name": "Sales Tax"},
+    {"country_code": "US", "country_name": "United States", "province_code": "MD", "province_name": "Maryland", "tax_rate": 0.06, "tax_name": "Sales Tax"},
+    {"country_code": "US", "country_name": "United States", "province_code": "MA", "province_name": "Massachusetts", "tax_rate": 0.0625, "tax_name": "Sales Tax"},
+    {"country_code": "US", "country_name": "United States", "province_code": "MI", "province_name": "Michigan", "tax_rate": 0.06, "tax_name": "Sales Tax"},
+    {"country_code": "US", "country_name": "United States", "province_code": "MN", "province_name": "Minnesota", "tax_rate": 0.06875, "tax_name": "Sales Tax"},
+    {"country_code": "US", "country_name": "United States", "province_code": "MS", "province_name": "Mississippi", "tax_rate": 0.07, "tax_name": "Sales Tax"},
+    {"country_code": "US", "country_name": "United States", "province_code": "MO", "province_name": "Missouri", "tax_rate": 0.04225, "tax_name": "Sales Tax"},
+    {"country_code": "US", "country_name": "United States", "province_code": "MT", "province_name": "Montana", "tax_rate": 0.0, "tax_name": "Sales Tax"},
+    {"country_code": "US", "country_name": "United States", "province_code": "NE", "province_name": "Nebraska", "tax_rate": 0.055, "tax_name": "Sales Tax"},
+    {"country_code": "US", "country_name": "United States", "province_code": "NV", "province_name": "Nevada", "tax_rate": 0.0685, "tax_name": "Sales Tax"},
+    {"country_code": "US", "country_name": "United States", "province_code": "NH", "province_name": "New Hampshire", "tax_rate": 0.0, "tax_name": "Sales Tax"},
+    {"country_code": "US", "country_name": "United States", "province_code": "NJ", "province_name": "New Jersey", "tax_rate": 0.06625, "tax_name": "Sales Tax"},
+    {"country_code": "US", "country_name": "United States", "province_code": "NM", "province_name": "New Mexico", "tax_rate": 0.05125, "tax_name": "Sales Tax"},
+    {"country_code": "US", "country_name": "United States", "province_code": "NY", "province_name": "New York", "tax_rate": 0.04, "tax_name": "Sales Tax"},
+    {"country_code": "US", "country_name": "United States", "province_code": "NC", "province_name": "North Carolina", "tax_rate": 0.0475, "tax_name": "Sales Tax"},
+    {"country_code": "US", "country_name": "United States", "province_code": "ND", "province_name": "North Dakota", "tax_rate": 0.05, "tax_name": "Sales Tax"},
+    {"country_code": "US", "country_name": "United States", "province_code": "OH", "province_name": "Ohio", "tax_rate": 0.0575, "tax_name": "Sales Tax"},
+    {"country_code": "US", "country_name": "United States", "province_code": "OK", "province_name": "Oklahoma", "tax_rate": 0.045, "tax_name": "Sales Tax"},
+    {"country_code": "US", "country_name": "United States", "province_code": "OR", "province_name": "Oregon", "tax_rate": 0.0, "tax_name": "Sales Tax"},
+    {"country_code": "US", "country_name": "United States", "province_code": "PA", "province_name": "Pennsylvania", "tax_rate": 0.06, "tax_name": "Sales Tax"},
+    {"country_code": "US", "country_name": "United States", "province_code": "RI", "province_name": "Rhode Island", "tax_rate": 0.07, "tax_name": "Sales Tax"},
+    {"country_code": "US", "country_name": "United States", "province_code": "SC", "province_name": "South Carolina", "tax_rate": 0.06, "tax_name": "Sales Tax"},
+    {"country_code": "US", "country_name": "United States", "province_code": "SD", "province_name": "South Dakota", "tax_rate": 0.045, "tax_name": "Sales Tax"},
+    {"country_code": "US", "country_name": "United States", "province_code": "TN", "province_name": "Tennessee", "tax_rate": 0.07, "tax_name": "Sales Tax"},
+    {"country_code": "US", "country_name": "United States", "province_code": "TX", "province_name": "Texas", "tax_rate": 0.0625, "tax_name": "Sales Tax"},
+    {"country_code": "US", "country_name": "United States", "province_code": "UT", "province_name": "Utah", "tax_rate": 0.0595, "tax_name": "Sales Tax"},
+    {"country_code": "US", "country_name": "United States", "province_code": "VT", "province_name": "Vermont", "tax_rate": 0.06, "tax_name": "Sales Tax"},
+    {"country_code": "US", "country_name": "United States", "province_code": "VA", "province_name": "Virginia", "tax_rate": 0.053, "tax_name": "Sales Tax"},
+    {"country_code": "US", "country_name": "United States", "province_code": "WA", "province_name": "Washington", "tax_rate": 0.065, "tax_name": "Sales Tax"},
+    {"country_code": "US", "country_name": "United States", "province_code": "WV", "province_name": "West Virginia", "tax_rate": 0.06, "tax_name": "Sales Tax"},
+    {"country_code": "US", "country_name": "United States", "province_code": "WI", "province_name": "Wisconsin", "tax_rate": 0.05, "tax_name": "Sales Tax"},
+    {"country_code": "US", "country_name": "United States", "province_code": "WY", "province_name": "Wyoming", "tax_rate": 0.04, "tax_name": "Sales Tax"},
+    
+    # Canada - Provincial Sales Tax (PST/GST/HST)
+    {"country_code": "CA", "country_name": "Canada", "province_code": "AB", "province_name": "Alberta", "tax_rate": 0.05, "tax_name": "GST"},
+    {"country_code": "CA", "country_name": "Canada", "province_code": "BC", "province_name": "British Columbia", "tax_rate": 0.12, "tax_name": "GST+PST"},
+    {"country_code": "CA", "country_name": "Canada", "province_code": "MB", "province_name": "Manitoba", "tax_rate": 0.12, "tax_name": "GST+PST"},
+    {"country_code": "CA", "country_name": "Canada", "province_code": "NB", "province_name": "New Brunswick", "tax_rate": 0.15, "tax_name": "HST"},
+    {"country_code": "CA", "country_name": "Canada", "province_code": "NL", "province_name": "Newfoundland and Labrador", "tax_rate": 0.15, "tax_name": "HST"},
+    {"country_code": "CA", "country_name": "Canada", "province_code": "NT", "province_name": "Northwest Territories", "tax_rate": 0.05, "tax_name": "GST"},
+    {"country_code": "CA", "country_name": "Canada", "province_code": "NS", "province_name": "Nova Scotia", "tax_rate": 0.15, "tax_name": "HST"},
+    {"country_code": "CA", "country_name": "Canada", "province_code": "NU", "province_name": "Nunavut", "tax_rate": 0.05, "tax_name": "GST"},
+    {"country_code": "CA", "country_name": "Canada", "province_code": "ON", "province_name": "Ontario", "tax_rate": 0.13, "tax_name": "HST"},
+    {"country_code": "CA", "country_name": "Canada", "province_code": "PE", "province_name": "Prince Edward Island", "tax_rate": 0.15, "tax_name": "HST"},
+    {"country_code": "CA", "country_name": "Canada", "province_code": "QC", "province_name": "Quebec", "tax_rate": 0.14975, "tax_name": "GST+QST"},
+    {"country_code": "CA", "country_name": "Canada", "province_code": "SK", "province_name": "Saskatchewan", "tax_rate": 0.11, "tax_name": "GST+PST"},
+    {"country_code": "CA", "country_name": "Canada", "province_code": "YT", "province_name": "Yukon", "tax_rate": 0.05, "tax_name": "GST"},
+    
+    # United Kingdom
+    {"country_code": "GB", "country_name": "United Kingdom", "province_code": None, "province_name": None, "tax_rate": 0.20, "tax_name": "VAT"},
+    
+    # European Union Countries
+    {"country_code": "DE", "country_name": "Germany", "province_code": None, "province_name": None, "tax_rate": 0.19, "tax_name": "VAT"},
+    {"country_code": "FR", "country_name": "France", "province_code": None, "province_name": None, "tax_rate": 0.20, "tax_name": "VAT"},
+    {"country_code": "IT", "country_name": "Italy", "province_code": None, "province_name": None, "tax_rate": 0.22, "tax_name": "VAT"},
+    {"country_code": "ES", "country_name": "Spain", "province_code": None, "province_name": None, "tax_rate": 0.21, "tax_name": "VAT"},
+    {"country_code": "NL", "country_name": "Netherlands", "province_code": None, "province_name": None, "tax_rate": 0.21, "tax_name": "VAT"},
+    {"country_code": "BE", "country_name": "Belgium", "province_code": None, "province_name": None, "tax_rate": 0.21, "tax_name": "VAT"},
+    {"country_code": "AT", "country_name": "Austria", "province_code": None, "province_name": None, "tax_rate": 0.20, "tax_name": "VAT"},
+    {"country_code": "SE", "country_name": "Sweden", "province_code": None, "province_name": None, "tax_rate": 0.25, "tax_name": "VAT"},
+    {"country_code": "DK", "country_name": "Denmark", "province_code": None, "province_name": None, "tax_rate": 0.25, "tax_name": "VAT"},
+    {"country_code": "FI", "country_name": "Finland", "province_code": None, "province_name": None, "tax_rate": 0.24, "tax_name": "VAT"},
+    {"country_code": "NO", "country_name": "Norway", "province_code": None, "province_name": None, "tax_rate": 0.25, "tax_name": "VAT"},
+    {"country_code": "PL", "country_name": "Poland", "province_code": None, "province_name": None, "tax_rate": 0.23, "tax_name": "VAT"},
+    {"country_code": "IE", "country_name": "Ireland", "province_code": None, "province_name": None, "tax_rate": 0.23, "tax_name": "VAT"},
+    {"country_code": "PT", "country_name": "Portugal", "province_code": None, "province_name": None, "tax_rate": 0.23, "tax_name": "VAT"},
+    {"country_code": "GR", "country_name": "Greece", "province_code": None, "province_name": None, "tax_rate": 0.24, "tax_name": "VAT"},
+    {"country_code": "CZ", "country_name": "Czech Republic", "province_code": None, "province_name": None, "tax_rate": 0.21, "tax_name": "VAT"},
+    {"country_code": "RO", "country_name": "Romania", "province_code": None, "province_name": None, "tax_rate": 0.19, "tax_name": "VAT"},
+    {"country_code": "HU", "country_name": "Hungary", "province_code": None, "province_name": None, "tax_rate": 0.27, "tax_name": "VAT"},
+    
+    # Asia-Pacific
+    {"country_code": "AU", "country_name": "Australia", "province_code": None, "province_name": None, "tax_rate": 0.10, "tax_name": "GST"},
+    {"country_code": "NZ", "country_name": "New Zealand", "province_code": None, "province_name": None, "tax_rate": 0.15, "tax_name": "GST"},
+    {"country_code": "JP", "country_name": "Japan", "province_code": None, "province_name": None, "tax_rate": 0.10, "tax_name": "Consumption Tax"},
+    {"country_code": "SG", "country_name": "Singapore", "province_code": None, "province_name": None, "tax_rate": 0.08, "tax_name": "GST"},
+    {"country_code": "IN", "country_name": "India", "province_code": None, "province_name": None, "tax_rate": 0.18, "tax_name": "GST"},
+    {"country_code": "CN", "country_name": "China", "province_code": None, "province_name": None, "tax_rate": 0.13, "tax_name": "VAT"},
+    {"country_code": "KR", "country_name": "South Korea", "province_code": None, "province_name": None, "tax_rate": 0.10, "tax_name": "VAT"},
+    {"country_code": "MY", "country_name": "Malaysia", "province_code": None, "province_name": None, "tax_rate": 0.06, "tax_name": "SST"},
+    {"country_code": "TH", "country_name": "Thailand", "province_code": None, "province_name": None, "tax_rate": 0.07, "tax_name": "VAT"},
+    {"country_code": "PH", "country_name": "Philippines", "province_code": None, "province_name": None, "tax_rate": 0.12, "tax_name": "VAT"},
+    {"country_code": "ID", "country_name": "Indonesia", "province_code": None, "province_name": None, "tax_rate": 0.11, "tax_name": "VAT"},
+    {"country_code": "VN", "country_name": "Vietnam", "province_code": None, "province_name": None, "tax_rate": 0.10, "tax_name": "VAT"},
+    
+    # Africa
+    {"country_code": "ZA", "country_name": "South Africa", "province_code": None, "province_name": None, "tax_rate": 0.15, "tax_name": "VAT"},
+    {"country_code": "NG", "country_name": "Nigeria", "province_code": None, "province_name": None, "tax_rate": 0.075, "tax_name": "VAT"},
+    {"country_code": "KE", "country_name": "Kenya", "province_code": None, "province_name": None, "tax_rate": 0.16, "tax_name": "VAT"},
+    {"country_code": "EG", "country_name": "Egypt", "province_code": None, "province_name": None, "tax_rate": 0.14, "tax_name": "VAT"},
+    {"country_code": "GH", "country_name": "Ghana", "province_code": None, "province_name": None, "tax_rate": 0.125, "tax_name": "VAT"},
+    
+    # Latin America
+    {"country_code": "BR", "country_name": "Brazil", "province_code": None, "province_name": None, "tax_rate": 0.17, "tax_name": "ICMS"},
+    {"country_code": "MX", "country_name": "Mexico", "province_code": None, "province_name": None, "tax_rate": 0.16, "tax_name": "IVA"},
+    {"country_code": "AR", "country_name": "Argentina", "province_code": None, "province_name": None, "tax_rate": 0.21, "tax_name": "IVA"},
+    {"country_code": "CL", "country_name": "Chile", "province_code": None, "province_name": None, "tax_rate": 0.19, "tax_name": "IVA"},
+    {"country_code": "CO", "country_name": "Colombia", "province_code": None, "province_name": None, "tax_rate": 0.19, "tax_name": "IVA"},
+    
+    # Middle East
+    {"country_code": "AE", "country_name": "United Arab Emirates", "province_code": None, "province_name": None, "tax_rate": 0.05, "tax_name": "VAT"},
+    {"country_code": "SA", "country_name": "Saudi Arabia", "province_code": None, "province_name": None, "tax_rate": 0.15, "tax_name": "VAT"},
+    {"country_code": "IL", "country_name": "Israel", "province_code": None, "province_name": None, "tax_rate": 0.17, "tax_name": "VAT"},
+    {"country_code": "TR", "country_name": "Turkey", "province_code": None, "province_name": None, "tax_rate": 0.18, "tax_name": "KDV"},
+]
 
 # ---------------- DB Utilities ----------------
 
@@ -232,7 +360,7 @@ async def seed_sample_data(
             },
             {
                 "name": "Standard Shipping",
-                "description": "Free shipping on orders over $50. Delivery in 5-7 business days.",
+                "description": "Free shipping on orders over $100. Delivery in 5-7 business days.",
                 "price": 9.99,
                 "estimated_days": 6,
                 "is_active": True
@@ -877,6 +1005,47 @@ async def seed_sample_data(
             f"🔐 Plaintext credentials saved to {users_file_path} (DEV ONLY).")
 
 
+async def seed_tax_rates(session):
+    """Seed tax rates into the database"""
+    try:
+        # Check if tax rates already exist
+        result = await session.execute(select(TaxRate).limit(1))
+        existing = result.scalar_one_or_none()
+        
+        if existing:
+            print("Tax rates already seeded. Skipping...")
+            return
+        
+        print(f"🌍 Seeding {len(TAX_RATES_DATA)} tax rates...")
+        
+        # Create tax rate objects in batches
+        tax_rates_batch = []
+        for data in TAX_RATES_DATA:
+            tax_rate = TaxRate(**data)
+            tax_rates_batch.append(tax_rate)
+            
+            if len(tax_rates_batch) >= DEFAULT_BATCH_SIZE:
+                session.add_all(tax_rates_batch)
+                await session.flush()
+                await session.commit()
+                session.expunge_all()
+                tax_rates_batch = []
+        
+        # Add remaining tax rates
+        if tax_rates_batch:
+            session.add_all(tax_rates_batch)
+            await session.flush()
+            await session.commit()
+            session.expunge_all()
+        
+        print(f"✅ Successfully seeded {len(TAX_RATES_DATA)} tax rates")
+        
+    except Exception as e:
+        print(f"❌ Error seeding tax rates: {e}")
+        await session.rollback()
+        raise
+
+
 async def main():
     parser = argparse.ArgumentParser(
         description="Initialize DB and optionally seed sample data in batches.")
@@ -907,9 +1076,8 @@ async def main():
                 batch_size=args.batch_size,
             )
             # Seed tax rates after other data
-            print("🌍 Seeding tax rates...")
-            from scripts.seed_tax_rates import seed_tax_rates
-            await seed_tax_rates()
+            async with db_manager.session_factory() as session:
+                await seed_tax_rates(session)
         print("✅ Database initialization complete!")
     except Exception as e:
         print(f"❌ Error initializing database: {e}")

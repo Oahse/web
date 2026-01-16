@@ -105,7 +105,7 @@ describe('Header Component', () => {
   it('renders SkeletonHeader when isLoading is true', () => {
     renderWithRouter(<Header isLoading={true} />);
     expect(screen.getByTestId('mock-skeleton-header')).toBeInTheDocument();
-    expect(screen.queryByText('Free shipping on orders over $50')).not.toBeInTheDocument();
+    expect(screen.queryByText('Free shipping on orders over $100')).not.toBeInTheDocument();
   });
 
   it('renders top header for desktop with unauthenticated user', () => {
@@ -131,7 +131,7 @@ describe('Header Component', () => {
 
   it('rotates ads in middle header', () => {
     renderWithRouter(<Header />);
-    expect(screen.getByText('Free shipping on orders over $50')).toBeInTheDocument();
+    expect(screen.getByText('Free shipping on orders over $100')).toBeInTheDocument();
     act(() => {
       vitest.advanceTimersByTime(5000);
     });
@@ -230,35 +230,5 @@ describe('Header Component', () => {
     // A more robust test might check for the existence of the wrapper div that becomes hidden.
     // For simplicity, we'll assume mouseLeave makes it disappear.
     // expect(screen.queryByRole('link', { name: 'Cereal Crops' })).not.toBeInTheDocument();
-  });
-
-  it('shows cookie consent banner if not accepted', () => {
-    mockGetItem.mockReturnValue(null);
-    renderWithRouter(<Header />);
-    expect(screen.getByText('We use cookies to ensure you get the best experience on our website.')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Accept' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Decline' })).toBeInTheDocument();
-  });
-
-  it('does not show cookie consent banner if accepted', () => {
-    mockGetItem.mockReturnValue('accepted');
-    renderWithRouter(<Header />);
-    expect(screen.queryByText('We use cookies to ensure you get the best experience on our website.')).not.toBeInTheDocument();
-  });
-
-  it('accepts cookies and dismisses banner', () => {
-    mockGetItem.mockReturnValue(null);
-    renderWithRouter(<Header />);
-    fireEvent.click(screen.getByRole('button', { name: 'Accept' }));
-    expect(mockSetItem).toHaveBeenCalledWith('cookie_consent', 'accepted');
-    expect(screen.queryByText('We use cookies to ensure you get the best experience on our website.')).not.toBeInTheDocument();
-  });
-
-  it('declines cookies and dismisses banner', () => {
-    mockGetItem.mockReturnValue(null);
-    renderWithRouter(<Header />);
-    fireEvent.click(screen.getByRole('button', { name: 'Decline' }));
-    expect(mockSetItem).toHaveBeenCalledWith('cookie_consent', 'declined');
-    expect(screen.queryByText('We use cookies to ensure you get the best experience on our website.')).not.toBeInTheDocument();
   });
 });

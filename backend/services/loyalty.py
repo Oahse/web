@@ -62,7 +62,7 @@ class LoyaltyService:
                 "points_multiplier": 1.5,
                 "discount_percentage": 5.0,
                 "benefits": {
-                    "free_shipping_threshold": 50.0,
+                    "free_shipping_threshold": settings.FREE_SHIPPING_THRESHOLD,
                     "early_access": True,
                     "exclusive_products": False,
                     "birthday_bonus": 200
