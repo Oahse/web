@@ -40,6 +40,7 @@ export const Cart = () => {
     const maxStock = item.variant?.stock || 999; // Default to 999 if stock not available
     const stockValidation = validation.quantity(quantity, maxStock);
     if (!stockValidation.valid) {
+      console.log(stockValidation.message,'====')
       toast.error(stockValidation.message);
       return;
     }

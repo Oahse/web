@@ -19,8 +19,12 @@ export const Login = ({ isInitialLoading = false }) => {
   const [password, setPassword] = useState('');
   // State to toggle password visibility
   const [showPassword, setShowPassword] = useState(false);
-  // State for 'Remember Me' checkbox
-  const [rememberMe, setRememberMe] = useState(false);
+  // State for 'Remember Me' checkbox - load from TokenManager
+  const [rememberMe, setRememberMe] = useState(() => {
+    // Check if there's a saved remember me preference
+    const savedPreference = localStorage.getItem('banwee_remember_me');
+    return savedPreference === 'true';
+  });
   // State for loading indicator during form submission
   const [loading, setLoading] = useState(false);
 
@@ -31,6 +35,16 @@ export const Login = ({ isInitialLoading = false }) => {
   // React Router hooks for navigation and location
   const navigate = useNavigate();
   const location = useLocation();
+
+  /**
+   * Load saved email if remember me was previously checked
+   */
+  useEffect(() => {
+    const savedEmail = localStorage.getItem('banwee_saved_email');
+    if (savedEmail && rememberMe) {
+      setEmail(savedEmail);
+    }
+  }, [rememberMe]);
 
   /**
    * Determines the appropriate redirect path after successful login.
@@ -102,6 +116,14 @@ export const Login = ({ isInitialLoading = false }) => {
 
     try {
       setLoading(true); // Show loading indicator
+      
+      // Save email if remember me is checked
+      if (rememberMe) {
+        localStorage.setItem('banwee_saved_email', email);
+      } else {
+        localStorage.removeItem('banwee_saved_email');
+      }
+      
       // Attempt to log in the user through the AuthContext with remember me preference
       const user = await login(email, password, rememberMe);
       // Navigate to intended destination or default path

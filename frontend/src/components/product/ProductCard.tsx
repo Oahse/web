@@ -102,7 +102,7 @@ export const ProductCard = ({
   // Get the display variant (selected variant or first variant or fallback to product)
   const displayVariant = selectedVariant || (product.variants && Array.isArray(product.variants) && product.variants.length > 0 ? product.variants[0] : null);
 
-  const isInCart = cart?.items.some(item => item.variant.id === displayVariant?.id) || false;
+  const isInCart = cart?.items?.some(item => item.variant.id === displayVariant?.id) || false;
 
   // Get the primary image from variant or fallback to product image
   const getPrimaryImage = () => {

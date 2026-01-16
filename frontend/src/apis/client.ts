@@ -134,7 +134,7 @@ class TokenManager {
     }
   }
 
-  static clearTokens() {
+  static clearTokens(clearRememberMe: boolean = false) {
     // Clear from both storages
     localStorage.removeItem(this.TOKEN_KEY);
     localStorage.removeItem(this.REFRESH_TOKEN_KEY);
@@ -142,7 +142,12 @@ class TokenManager {
     sessionStorage.removeItem(this.TOKEN_KEY);
     sessionStorage.removeItem(this.REFRESH_TOKEN_KEY);
     sessionStorage.removeItem(this.USER_KEY);
-    // Don't clear REMEMBER_ME_KEY so the preference persists
+    
+    // Optionally clear remember me preference (e.g., on explicit logout)
+    if (clearRememberMe) {
+      localStorage.removeItem(this.REMEMBER_ME_KEY);
+      localStorage.removeItem('banwee_saved_email');
+    }
   }
 
   static isAuthenticated(): boolean {

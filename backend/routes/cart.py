@@ -217,35 +217,6 @@ async def remove_promocode(
                            message="Failed to remove promocode")
 
 
-@router.post("/promocode")
-async def apply_promocode(
-    request: ApplyPromocodeRequest,
-    current_user: User = Depends(get_current_auth_user),
-    db: AsyncSession = Depends(get_db)
-):
-    try:
-        cart_service = CartService(db)
-        result = await cart_service.apply_promocode(current_user.id, request.code)
-        return Response(success=True, data=result)
-    except Exception as e:
-        raise APIException(status_code=status.HTTP_400_BAD_REQUEST,
-                           message=f"Failed to apply promocode: {e}")
-
-
-@router.delete("/promocode")
-async def remove_promocode(
-    current_user: User = Depends(get_current_auth_user),
-    db: AsyncSession = Depends(get_db)
-):
-    try:
-        cart_service = CartService(db)
-        result = await cart_service.remove_promocode(current_user.id)
-        return Response(success=True, data=result)
-    except Exception:
-        raise APIException(status_code=status.HTTP_400_BAD_REQUEST,
-                           message="Failed to remove promocode")
-
-
 @router.get("/count")
 async def get_cart_item_count(
     request: Request,
