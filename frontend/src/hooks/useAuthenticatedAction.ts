@@ -20,9 +20,15 @@ export const useAuthenticatedAction = () => {
 
     try {
       return await action();
-    } catch (error) {
+    } catch (error: any) {
       // If authentication error occurs during action, redirect to login
-      if (error instanceof Error && error.message.includes('authenticated')) {
+      // Check for 401 status code or authentication-related error messages
+      const is401Error = error?.statusCode === 401 || error?.code === '401';
+      const isAuthError = error?.message?.toLowerCase().includes('authenticated') || 
+                         error?.message?.toLowerCase().includes('unauthorized') ||
+                         error?.message?.toLowerCase().includes('token');
+      
+      if (is401Error || isAuthError) {
         setIntendedDestination({ path: location.pathname, action: actionType });
         navigate('/login');
         return false;

@@ -90,8 +90,8 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
   const addItem = async (item: AddToCartRequest): Promise<boolean> => {
     const token = TokenManager.getToken();
     if (!token) {
-      // Return false instead of throwing error - let useAuthenticatedAction handle the redirect
-      return false;
+      // Throw error with specific message that executeWithAuth can catch
+      throw new Error('User must be authenticated to add items to cart');
     }
 
     try {
@@ -107,8 +107,9 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
       console.log('CartContext: Setting cart data:', cartData);
       setCart(cartData);
       return true;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to add item to cart:', error);
+      // Re-throw the error so executeWithAuth can handle 401s
       throw error;
     } finally {
       setLoading(false);

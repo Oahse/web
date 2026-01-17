@@ -62,7 +62,7 @@ async def validate_checkout(
         # Import CartService here to avoid circular imports
         from services.cart import CartService
         from core.logging_config import logger
-        
+        print('Validating checkout for user')
         logger.info(f"Validating checkout for user {current_user.id}")
         logger.info(f"Request data: shipping_address_id={request.shipping_address_id}, shipping_method_id={request.shipping_method_id}, payment_method_id={request.payment_method_id}")
         
@@ -86,7 +86,41 @@ async def validate_checkout(
                 logger.info(f"Using shipping address location: {country_code}, {province_code}")
         
         # Step 1: Validate cart with location for proper tax calculation
-        logger.info("Step 1: Validating cart")
+        logger.info("Step 1: Validating cart")    
+        
+        # First, check if user has any items in cart
+        cart_count = await cart_service.get_cart_item_count(current_user.id)
+        logger.info(f"User has {cart_count} items in cart")
+        
+        if cart_count == 0:
+            logger.warning("Cart is empty - cannot proceed with checkout")
+            return Response.error(
+                message="Cart is empty",
+                data={
+                    "can_proceed": False,
+                    "validation_errors": ["Your cart is empty. Please add items before checking out."],
+                    "cart_validation": {
+                        "valid": False,
+                        "can_checkout": False,
+                        "issues": [{
+                            "issue": "empty_cart",
+                            "message": "Cart is empty",
+                            "severity": "error"
+                        }],
+                        "summary": {
+                            "total_items_checked": 0,
+                            "valid_items": 0,
+                            "removed_items": 0,
+                            "price_updates": 0,
+                            "stock_adjustments": 0,
+                            "availability_issues": 0,
+                            "cart_updated": False
+                        }
+                    }
+                },
+                status_code=status.HTTP_400_BAD_REQUEST
+            )
+        
         cart_validation = await cart_service.validate_cart(
             current_user.id,
             country_code=country_code,
@@ -94,16 +128,50 @@ async def validate_checkout(
         )
         
         logger.info(f"Cart validation result: valid={cart_validation.get('valid')}, can_checkout={cart_validation.get('can_checkout')}")
+        logger.info(f"Cart validation summary: {cart_validation.get('summary', {})}")
+        
+        # Check if cart has any issues
+        issues = cart_validation.get("issues", [])
+        if issues:
+            logger.info(f"Cart validation found {len(issues)} issues:")
+            for issue in issues:
+                logger.info(f"  - {issue.get('severity', 'unknown')}: {issue.get('message', 'no message')}")
         
         if not cart_validation.get("valid", False) or not cart_validation.get("can_checkout", False):
             error_issues = [issue for issue in cart_validation.get("issues", []) if issue.get("severity") == "error"]
-            logger.warning(f"Cart validation failed with {len(error_issues)} errors")
+            all_issues = cart_validation.get("issues", [])
+            logger.warning(f"Cart validation failed with {len(error_issues)} errors out of {len(all_issues)} total issues")
+            logger.warning(f"Cart validation details: valid={cart_validation.get('valid')}, can_checkout={cart_validation.get('can_checkout')}")
+            logger.warning(f"Error issues: {error_issues}")
+            
+            # Serialize cart_validation to avoid Pydantic serialization issues
+            cart_obj = cart_validation.get("cart")
+            serialized_cart = None
+            if cart_obj:
+                # Convert CartResponse to dict
+                if hasattr(cart_obj, 'model_dump'):
+                    serialized_cart = cart_obj.model_dump()
+                elif hasattr(cart_obj, 'dict'):
+                    serialized_cart = cart_obj.dict()
+                else:
+                    serialized_cart = cart_obj
+            
+            serialized_cart_validation = {
+                "valid": cart_validation.get("valid"),
+                "can_checkout": cart_validation.get("can_checkout"),
+                "cart": serialized_cart,
+                "issues": cart_validation.get("issues", []),
+                "summary": cart_validation.get("summary", {}),
+                "validation_timestamp": cart_validation.get("validation_timestamp"),
+                "error": cart_validation.get("error")
+            }
+            
             return Response.error(
-                message="Cart validation failed",
+                message="Cart validation failed" if error_issues else "Cart is empty or invalid",
                 data={
-                    "cart_validation": cart_validation,
+                    "cart_validation": serialized_cart_validation,
                     "can_proceed": False,
-                    "validation_errors": [issue.get("message") for issue in error_issues],
+                    "validation_errors": [issue.get("message") for issue in error_issues] if error_issues else ["Cart is empty or has no valid items"],
                     "error_count": len(error_issues)
                 },
                 status_code=status.HTTP_400_BAD_REQUEST
@@ -195,7 +263,7 @@ async def validate_checkout(
                             quantity = item.quantity
                             price_per_unit = item.price_per_unit
                             total_price = item.total_price
-                            logger.debug(f"Item {idx}: Pydantic object, variant_id={variant_id}")
+                            logger.debug(f"Item {idx}: Pydantic object, variant_id={variant_id}, type(item)={type(item)}, type(variant)={type(variant)}")
                         elif isinstance(item, dict):
                             # Dictionary format
                             variant_data = item.get('variant', {})
@@ -208,7 +276,7 @@ async def validate_checkout(
                             total_price = item.get('total_price', 0.0)
                             logger.debug(f"Item {idx}: Dict, variant_id={variant_id}")
                         else:
-                            logger.error(f"Item {idx}: Unexpected type {type(item)}")
+                            logger.error(f"Item {idx}: Unexpected type {type(item)}, item={item}")
                             raise ValueError(f"Unexpected item structure at index {idx}: {type(item)}")
                         
                         validated_cart_items.append({
@@ -245,6 +313,15 @@ async def validate_checkout(
                 validation_results["can_proceed"] = False
         
         validation_results["validation_errors"] = validation_errors
+        
+        # Serialize cart_validation to ensure proper JSON serialization
+        if "cart_validation" in validation_results:
+            cart_val = validation_results["cart_validation"]
+            cart_obj = cart_val.get("cart")
+            if cart_obj and hasattr(cart_obj, 'model_dump'):
+                cart_val["cart"] = cart_obj.model_dump()
+            elif cart_obj and hasattr(cart_obj, 'dict'):
+                cart_val["cart"] = cart_obj.dict()
         
         if validation_results["can_proceed"]:
             logger.info("Checkout validation successful")

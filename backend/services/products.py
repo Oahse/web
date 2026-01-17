@@ -807,33 +807,47 @@ class ProductService:
                 print(f"Warning: Failed to generate codes for variant {final_sku}: {e}")
                 # Leave as None if generation fails
             
-            # Create inventory record for the variant
-            if hasattr(variant_data, 'stock') and variant_data.stock is not None:
-                from models.inventories import Inventory, WarehouseLocation
-                
-                # Get or create default warehouse location
+            # ALWAYS create inventory record for the variant (even if stock is 0)
+            from models.inventories import Inventory, WarehouseLocation
+            
+            # Get or create default warehouse location
+            default_location_result = await self.db.execute(
+                select(WarehouseLocation).where(WarehouseLocation.name == "Main Warehouse")
+            )
+            default_location = default_location_result.scalar_one_or_none()
+            
+            if not default_location:
+                # Try "Default" as fallback
                 default_location_result = await self.db.execute(
                     select(WarehouseLocation).where(WarehouseLocation.name == "Default")
                 )
                 default_location = default_location_result.scalar_one_or_none()
-                
-                if not default_location:
-                    default_location = WarehouseLocation(
-                        name="Default",
-                        description="Default warehouse location"
-                    )
-                    self.db.add(default_location)
-                    await self.db.flush()
-                
-                # Create inventory record
-                inventory = Inventory(
-                    variant_id=db_variant.id,
-                    location_id=default_location.id,
-                    quantity_available=variant_data.stock,
-                    quantity_reserved=0,
-                    low_stock_threshold=10
+            
+            if not default_location:
+                # Create default warehouse if it doesn't exist
+                default_location = WarehouseLocation(
+                    name="Default",
+                    address="Default Location",
+                    description="Default warehouse location for inventory"
                 )
-                self.db.add(inventory)
+                self.db.add(default_location)
+                await self.db.flush()
+            
+            # Get stock quantity from variant_data, default to 0 if not provided
+            stock_quantity = getattr(variant_data, 'stock', 0) if hasattr(variant_data, 'stock') else 0
+            
+            # Create inventory record - ALWAYS, even if stock is 0
+            inventory = Inventory(
+                variant_id=db_variant.id,
+                location_id=default_location.id,
+                quantity_available=stock_quantity,
+                quantity_reserved=0,
+                quantity=stock_quantity,  # Legacy field for backward compatibility
+                low_stock_threshold=10,
+                reorder_point=5,
+                inventory_status="active"
+            )
+            self.db.add(inventory)
             
             # Create variant images from CDN URLs
             if variant_data.image_urls:
