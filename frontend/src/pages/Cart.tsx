@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { ChevronRightIcon, TrashIcon, MinusIcon, PlusIcon, ShoppingCartIcon } from 'lucide-react';
 import { useCart } from '../contexts/CartContext';
+import { useAuth } from '../contexts/AuthContext';
+import { useAuthRedirect } from '../hooks/useAuthRedirect';
 import { useLocale } from '../contexts/LocaleContext';
 import { motion } from 'framer-motion';
 import { CartSkeleton } from '../components/ui/CartSkeleton';
@@ -10,12 +12,17 @@ import { validation } from '../lib/validation';
 
 export const Cart = () => {
   const { cart, removeItem, updateQuantity, clearCart, loading } = useCart();
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const { redirectToLogin } = useAuthRedirect({ 
+    requireAuth: false // Cart doesn't require auth, but checkout does
+  });
   const { formatCurrency } = useLocale();
+  const navigate = useNavigate();
   const [couponCode, setCouponCode] = useState('');
   const [taxLocation, setTaxLocation] = useState<{ country: string; province?: string }>({ country: 'US' });
 
   // Get tax location info
-  React.useEffect(() => {
+  useEffect(() => {
     const country = localStorage.getItem('detected_country') || 'US';
     const province = localStorage.getItem('detected_province') || undefined;
     setTaxLocation({ country, province });
@@ -94,13 +101,22 @@ export const Cart = () => {
     }
   };
 
+  const handleCheckout = () => {
+    if (!isAuthenticated) {
+      redirectToLogin('Please login to proceed to checkout');
+      return;
+    }
+    navigate('/checkout');
+  };
+
   const items = cart?.items || [];
   const subtotal = cart?.subtotal || 0;
   const shipping = cart?.shipping_amount || 0;
   const tax = cart?.tax_amount || 0;
   const total = cart?.total_amount || 0;
 
-  if (loading) {
+  // Show loading state while cart or auth is loading
+  if (loading || authLoading) {
     return <CartSkeleton />;
   }
 
@@ -328,11 +344,11 @@ export const Cart = () => {
                 </div>
               </form>
               <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-                <Link
-                  to="/checkout"
+                <button
+                  onClick={handleCheckout}
                   className="block w-full bg-primary hover:bg-primary-dark text-white py-3 rounded-md transition-colors text-center font-medium">
-                  Proceed to Checkout
-                </Link>
+                  {isAuthenticated ? 'Proceed to Checkout' : 'Login to Checkout'}
+                </button>
               </motion.div>
             </div>
           </div>
