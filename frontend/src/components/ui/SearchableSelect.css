@@ -1,0 +1,38 @@
+/* Custom scrollbar for dropdown */
+.searchable-select-dropdown {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(156, 163, 175, 0.5) transparent;
+}
+
+.searchable-select-dropdown::-webkit-scrollbar {
+  width: 6px;
+}
+
+.searchable-select-dropdown::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.searchable-select-dropdown::-webkit-scrollbar-thumb {
+  background-color: rgba(156, 163, 175, 0.5);
+  border-radius: 3px;
+}
+
+.searchable-select-dropdown::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(156, 163, 175, 0.7);
+}
+
+/* Smooth transitions */
+.searchable-select-option {
+  transition: background-color 0.15s ease-in-out;
+}
+
+/* Focus ring for accessibility */
+.searchable-select-input:focus {
+  outline: none;
+}
+
+/* Highlight matching text */
+.searchable-select-highlight {
+  background-color: rgba(59, 130, 246, 0.1);
+  font-weight: 500;
+}

@@ -17,6 +17,7 @@ class ApplyPromocodeRequest(BaseModel):
 class CartItemResponse(BaseModel):
     id: UUID
     variant: ProductVariantResponse
+    variant_id: UUID  # Add as regular field for easier access
     quantity: int
     price_per_unit: float
     total_price: float
@@ -25,12 +26,6 @@ class CartItemResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True, json_encoders={
         datetime: lambda v: v.isoformat() if v else None
     })
-    
-    @computed_field
-    @property
-    def variant_id(self) -> UUID:
-        """Convenience property to access variant ID directly"""
-        return self.variant.id if self.variant else None
 
 
 class CartResponse(BaseModel):

@@ -3,6 +3,8 @@ import { PlusIcon, PencilIcon, TrashIcon, SearchIcon, FilterIcon } from 'lucide-
 import { toast } from 'react-hot-toast';
 import { apiClient } from '../../apis/client';
 import { Select } from '../../components/ui/Select';
+import { SearchableSelect } from '../../components/ui/SearchableSelect';
+import { getCountryOptions, getProvinceOptions, getCountryByCode, taxNameOptions } from '../../data/countries';
 
 interface TaxRate {
   id: string;
@@ -104,6 +106,29 @@ export const TaxRatesAdmin = () => {
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'Failed to save tax rate');
     }
+  };
+
+  // Handle country selection and auto-populate country name
+  const handleCountryChange = (countryCode: string) => {
+    const country = getCountryByCode(countryCode);
+    setFormData({
+      ...formData,
+      country_code: countryCode,
+      country_name: country?.name || '',
+      province_code: '', // Reset province when country changes
+      province_name: ''
+    });
+  };
+
+  // Handle province selection and auto-populate province name
+  const handleProvinceChange = (provinceCode: string) => {
+    const provinces = getProvinceOptions(formData.country_code);
+    const province = provinces.find(p => p.value === provinceCode);
+    setFormData({
+      ...formData,
+      province_code: provinceCode,
+      province_name: province?.label || ''
+    });
   };
 
   const handleEdit = (rate: TaxRate) => {
@@ -335,21 +360,16 @@ export const TaxRatesAdmin = () => {
               
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-copy mb-2">
-                      Country Code *
-                    </label>
-                    <input
-                      type="text"
-                      maxLength={2}
-                      required
-                      disabled={!!editingRate}
-                      value={formData.country_code}
-                      onChange={(e) => setFormData({ ...formData, country_code: e.target.value.toUpperCase() })}
-                      className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-1 focus:ring-primary bg-surface text-copy disabled:opacity-50"
-                      placeholder="US"
-                    />
-                  </div>
+                  <SearchableSelect
+                    label="Country"
+                    placeholder="Search and select country..."
+                    value={formData.country_code}
+                    onChange={handleCountryChange}
+                    options={getCountryOptions()}
+                    required
+                    disabled={!!editingRate}
+                    allowClear={!editingRate}
+                  />
                   
                   <div>
                     <label className="block text-sm font-medium text-copy mb-2">
@@ -361,26 +381,27 @@ export const TaxRatesAdmin = () => {
                       value={formData.country_name}
                       onChange={(e) => setFormData({ ...formData, country_name: e.target.value })}
                       className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-1 focus:ring-primary bg-surface text-copy"
-                      placeholder="United States"
+                      placeholder="Auto-filled from country selection"
+                      readOnly
                     />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-copy mb-2">
-                      Province/State Code
-                    </label>
-                    <input
-                      type="text"
-                      maxLength={10}
-                      disabled={!!editingRate}
-                      value={formData.province_code}
-                      onChange={(e) => setFormData({ ...formData, province_code: e.target.value.toUpperCase() })}
-                      className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-1 focus:ring-primary bg-surface text-copy disabled:opacity-50"
-                      placeholder="CA"
-                    />
-                  </div>
+                  <SearchableSelect
+                    label="Province/State"
+                    placeholder="Search and select province/state..."
+                    value={formData.province_code}
+                    onChange={handleProvinceChange}
+                    options={getProvinceOptions(formData.country_code)}
+                    disabled={!!editingRate || !formData.country_code}
+                    allowClear
+                    noOptionsMessage={
+                      !formData.country_code 
+                        ? "Select a country first" 
+                        : "No provinces/states available for this country"
+                    }
+                  />
                   
                   <div>
                     <label className="block text-sm font-medium text-copy mb-2">
@@ -391,7 +412,8 @@ export const TaxRatesAdmin = () => {
                       value={formData.province_name}
                       onChange={(e) => setFormData({ ...formData, province_name: e.target.value })}
                       className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-1 focus:ring-primary bg-surface text-copy"
-                      placeholder="California"
+                      placeholder="Auto-filled from province selection"
+                      readOnly
                     />
                   </div>
                 </div>
@@ -414,18 +436,14 @@ export const TaxRatesAdmin = () => {
                     />
                   </div>
                   
-                  <div>
-                    <label className="block text-sm font-medium text-copy mb-2">
-                      Tax Name
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.tax_name}
-                      onChange={(e) => setFormData({ ...formData, tax_name: e.target.value })}
-                      className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-1 focus:ring-primary bg-surface text-copy"
-                      placeholder="Sales Tax, VAT, GST"
-                    />
-                  </div>
+                  <SearchableSelect
+                    label="Tax Name"
+                    placeholder="Search or type tax name..."
+                    value={formData.tax_name}
+                    onChange={(value) => setFormData({ ...formData, tax_name: value })}
+                    options={taxNameOptions}
+                    allowClear
+                  />
                 </div>
 
                 <div className="flex items-center">

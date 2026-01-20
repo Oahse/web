@@ -1139,6 +1139,7 @@ class CartService(RedisService):
                         items.append(CartItemResponse(
                             id=UUID(str(item_data.get("id", str(uuid4())))),
                             variant=variant_response,
+                            variant_id=variant.id,  # Add variant_id field
                             quantity=item_data.get("quantity", 0),
                             price_per_unit=item_data.get("price_per_unit", 0.0),
                             total_price=item_data.get("total_price", 0.0),
