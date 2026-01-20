@@ -8,9 +8,11 @@ const environment = import.meta.env.VITE_ENVIRONMENT || 'local';
 // Dynamic URL configuration based on environment
 const getApiBaseUrl = () => {
   if (environment === 'local' || environment === 'development') {
-    return `${import.meta.env.VITE_API_BASE_URL_DEV}/v1` || `${import.meta.env.VITE_API_BASE_URL}/v1` || 'http://localhost:8000/v1';
+    const devUrl = import.meta.env.VITE_API_BASE_URL_DEV || import.meta.env.VITE_API_BASE_URL;
+    return devUrl ? `${devUrl}/v1` : 'http://localhost:8000/v1';
   }
-  return `${import.meta.env.VITE_API_BASE_URL_PROD}/v1` || `${import.meta.env.VITE_API_BASE_URL}/v1` || 'https://api.banwee.com';
+  const prodUrl = import.meta.env.VITE_API_BASE_URL_PROD || import.meta.env.VITE_API_BASE_URL;
+  return prodUrl ? `${prodUrl}/v1` : 'https://api.banwee.com/v1';
 };
 
 const getAppUrl = () => {
@@ -22,9 +24,11 @@ const getAppUrl = () => {
 
 const getWebSocketUrl = () => {
   if (environment === 'local' || environment === 'development') {
-    return `${import.meta.env.VITE_WS_URL_DEV}/v1/ws` || `${import.meta.env.VITE_WS_URL}/v1/ws` || 'ws://localhost:8000/v1/ws';
+    const devWsUrl = import.meta.env.VITE_WS_URL_DEV || import.meta.env.VITE_WS_URL;
+    return devWsUrl ? `${devWsUrl}/v1/ws` : 'ws://localhost:8000/v1/ws';
   }
-  return `${import.meta.env.VITE_WS_URL_PROD}/v1/ws` || `${import.meta.env.VITE_WS_URL}/v1/ws` || 'wss://api.banwee.com/v1/ws';
+  const prodWsUrl = import.meta.env.VITE_WS_URL_PROD || import.meta.env.VITE_WS_URL;
+  return prodWsUrl ? `${prodWsUrl}/v1/ws` : 'wss://api.banwee.com/v1/ws';
 };
 
 export const config = {
