@@ -106,6 +106,9 @@ class Order(BaseModel):
     customer_notes = Column(Text, nullable=True)
     internal_notes = Column(Text, nullable=True)
     
+    # Failure tracking
+    failure_reason = Column(Text, nullable=True)
+    
     # Subscription metadata for recurring orders
     subscription_metadata = Column(JSONB, nullable=True)
     

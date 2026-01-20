@@ -21,10 +21,6 @@ from fastapi.security import OAuth2PasswordBearer
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
-async def get_current_auth_user(token: str = Depends(oauth2_scheme), db: AsyncSession = Depends(get_db)) -> User:
-    auth_service = AuthService(db)
-    return await auth_service.get_current_user(token)
-
 router = APIRouter(prefix="/orders", tags=["Orders"])
 
 

@@ -356,6 +356,30 @@ class OrderService:
         try:
             # Begin transaction - all operations below must succeed or all will be rolled back
             async with self.db.begin():
+                # Generate order number
+                order_number = f"ORD-{datetime.utcnow().strftime('%Y%m%d')}-{str(uuid4())[:8].upper()}"
+                
+                # Extract totals from final_total calculation
+                subtotal = final_total["subtotal"]
+                tax_amount = final_total["tax_amount"]
+                shipping_amount = final_total["shipping_cost"]
+                discount_amount = final_total["discount_amount"]
+                total_amount = final_total["total_amount"]
+                
+                # Convert addresses to dict format for JSONB storage
+                billing_address_dict = {
+                    "street": shipping_address.street,
+                    "city": shipping_address.city,
+                    "state": shipping_address.state,
+                    "country": shipping_address.country,
+                    "postal_code": shipping_address.postal_code,
+                    "first_name": shipping_address.first_name,
+                    "last_name": shipping_address.last_name
+                }
+                
+                # Use shipping address as billing address if no separate billing address
+                shipping_address_dict = billing_address_dict.copy()
+                
                 # Create order with backend-calculated prices and idempotency key
                 order = Order(
                     user_id=user_id,
@@ -380,7 +404,8 @@ class OrderService:
                     idempotency_key=idempotency_key,
                     payment_status="pending",
                     fulfillment_status="unfulfilled",
-                    order_source="web"
+                    order_status="pending",
+                    source="web"
                 )
                 self.db.add(order)
                 await self.db.flush()  # Get order ID without committing
@@ -1295,3 +1320,358 @@ class OrderService:
                 for item in order.items
             ]
         )
+
+    async def get_order_tracking(self, order_id: UUID, user_id: UUID) -> Dict[str, Any]:
+        """Get order tracking information for authenticated user"""
+        try:
+            # Get order with tracking events
+            query = select(Order).where(
+                and_(Order.id == order_id, Order.user_id == user_id)
+            ).options(
+                selectinload(Order.tracking_events)
+            )
+            
+            result = await self.db.execute(query)
+            order = result.scalar_one_or_none()
+            
+            if not order:
+                raise HTTPException(status_code=404, detail="Order not found")
+            
+            # Format tracking events
+            tracking_events = []
+            for event in order.tracking_events:
+                tracking_events.append({
+                    "id": str(event.id),
+                    "status": event.status,
+                    "description": event.description,
+                    "location": event.location,
+                    "timestamp": event.created_at.isoformat() if event.created_at else None
+                })
+            
+            # Sort events by timestamp (newest first)
+            tracking_events.sort(key=lambda x: x["timestamp"] or "", reverse=True)
+            
+            return {
+                "order_id": str(order.id),
+                "order_number": order.order_number,
+                "status": order.order_status,
+                "tracking_number": order.tracking_number,
+                "carrier": order.carrier,
+                "estimated_delivery": self._calculate_estimated_delivery(order),
+                "tracking_events": tracking_events,
+                "shipping_address": order.shipping_address
+            }
+            
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error(f"Failed to get order tracking for order {order_id}: {e}")
+            raise HTTPException(
+                status_code=500,
+                detail="Failed to retrieve tracking information"
+            )
+
+    async def get_order_tracking_public(self, order_id: UUID) -> Dict[str, Any]:
+        """Get order tracking information without authentication (public endpoint)"""
+        try:
+            # Get order with tracking events (no user_id filter for public access)
+            query = select(Order).where(Order.id == order_id).options(
+                selectinload(Order.tracking_events)
+            )
+            
+            result = await self.db.execute(query)
+            order = result.scalar_one_or_none()
+            
+            if not order:
+                raise HTTPException(status_code=404, detail="Order not found")
+            
+            # Only return limited information for public access
+            tracking_events = []
+            for event in order.tracking_events:
+                # Only include public-safe tracking events
+                if event.status in ["confirmed", "processing", "shipped", "out_for_delivery", "delivered"]:
+                    tracking_events.append({
+                        "status": event.status,
+                        "description": event.description,
+                        "location": event.location,
+                        "timestamp": event.created_at.isoformat() if event.created_at else None
+                    })
+            
+            # Sort events by timestamp (newest first)
+            tracking_events.sort(key=lambda x: x["timestamp"] or "", reverse=True)
+            
+            return {
+                "order_number": order.order_number,
+                "status": order.order_status,
+                "tracking_number": order.tracking_number,
+                "carrier": order.carrier,
+                "estimated_delivery": self._calculate_estimated_delivery(order),
+                "tracking_events": tracking_events
+                # Note: No shipping address or sensitive info for public access
+            }
+            
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error(f"Failed to get public order tracking for order {order_id}: {e}")
+            raise HTTPException(
+                status_code=404,
+                detail="Order not found or tracking information unavailable"
+            )
+
+    async def reorder(self, order_id: UUID, user_id: UUID) -> OrderResponse:
+        """Create a new order from an existing order"""
+        try:
+            # Get the original order with items
+            query = select(Order).where(
+                and_(Order.id == order_id, Order.user_id == user_id)
+            ).options(
+                selectinload(Order.items).selectinload(OrderItem.variant)
+            )
+            
+            result = await self.db.execute(query)
+            original_order = result.scalar_one_or_none()
+            
+            if not original_order:
+                raise HTTPException(status_code=404, detail="Original order not found")
+            
+            # Clear user's current cart
+            cart_service = CartService(self.db)
+            await cart_service.clear_cart(user_id)
+            
+            # Add items from original order to cart
+            for item in original_order.items:
+                # Check if variant still exists and is available
+                variant_query = select(ProductVariant).where(ProductVariant.id == item.variant_id)
+                variant_result = await self.db.execute(variant_query)
+                variant = variant_result.scalar_one_or_none()
+                
+                if variant and variant.is_active:
+                    # Check stock availability
+                    stock_check = await self.inventory_service.check_stock_availability(
+                        variant_id=item.variant_id,
+                        quantity=item.quantity
+                    )
+                    
+                    # Add to cart with available quantity
+                    quantity_to_add = min(item.quantity, stock_check.get("current_stock", 0))
+                    if quantity_to_add > 0:
+                        await cart_service.add_to_cart(
+                            user_id=user_id,
+                            variant_id=item.variant_id,
+                            quantity=quantity_to_add
+                        )
+            
+            # Get updated cart
+            cart = await cart_service.get_or_create_cart(user_id)
+            
+            if not cart.items:
+                raise HTTPException(
+                    status_code=400,
+                    detail="No items from the original order are currently available"
+                )
+            
+            return {
+                "message": "Items added to cart successfully",
+                "cart_items": len(cart.items),
+                "original_order_id": str(order_id),
+                "cart_id": str(cart.id)
+            }
+            
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error(f"Failed to reorder from order {order_id}: {e}")
+            raise HTTPException(
+                status_code=500,
+                detail="Failed to create reorder"
+            )
+
+    async def generate_invoice(self, order_id: UUID, user_id: UUID) -> Dict[str, Any]:
+        """Generate invoice for an order"""
+        try:
+            # Get order with items
+            query = select(Order).where(
+                and_(Order.id == order_id, Order.user_id == user_id)
+            ).options(
+                selectinload(Order.items).selectinload(OrderItem.variant).selectinload(ProductVariant.product),
+                selectinload(Order.user)
+            )
+            
+            result = await self.db.execute(query)
+            order = result.scalar_one_or_none()
+            
+            if not order:
+                raise HTTPException(status_code=404, detail="Order not found")
+            
+            # Use invoice generator utility
+            from core.utils.invoice_generator import InvoiceGenerator
+            
+            invoice_generator = InvoiceGenerator()
+            
+            # Prepare order data for invoice
+            order_data = {
+                "order_id": str(order.id),
+                "order_number": order.order_number,
+                "order_date": order.created_at,
+                "customer": {
+                    "name": f"{order.user.first_name} {order.user.last_name}",
+                    "email": order.user.email,
+                    "phone": order.user.phone
+                },
+                "billing_address": order.billing_address,
+                "shipping_address": order.shipping_address,
+                "items": [
+                    {
+                        "name": item.variant.product.name if item.variant and item.variant.product else "Unknown Product",
+                        "variant_name": item.variant.name if item.variant else "",
+                        "quantity": item.quantity,
+                        "price": item.price_per_unit,
+                        "total": item.total_price
+                    }
+                    for item in order.items
+                ],
+                "subtotal": order.subtotal,
+                "tax_amount": order.tax_amount,
+                "shipping_amount": order.shipping_amount,
+                "discount_amount": order.discount_amount,
+                "total_amount": order.total_amount,
+                "currency": order.currency,
+                "payment_status": order.payment_status
+            }
+            
+            # Generate invoice
+            invoice_result = await invoice_generator.generate_invoice(order_data)
+            
+            return invoice_result
+            
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error(f"Failed to generate invoice for order {order_id}: {e}")
+            raise HTTPException(
+                status_code=500,
+                detail="Failed to generate invoice"
+            )
+
+    async def add_order_note(self, order_id: UUID, user_id: UUID, note: str) -> Dict[str, Any]:
+        """Add a customer note to an order"""
+        try:
+            # Get order
+            query = select(Order).where(
+                and_(Order.id == order_id, Order.user_id == user_id)
+            )
+            
+            result = await self.db.execute(query)
+            order = result.scalar_one_or_none()
+            
+            if not order:
+                raise HTTPException(status_code=404, detail="Order not found")
+            
+            # Add note to customer_notes (append if existing)
+            if order.customer_notes:
+                timestamp = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+                order.customer_notes += f"\n\n[{timestamp}] {note}"
+            else:
+                timestamp = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+                order.customer_notes = f"[{timestamp}] {note}"
+            
+            await self.db.commit()
+            await self.db.refresh(order)
+            
+            return {
+                "order_id": str(order.id),
+                "note_added": note,
+                "timestamp": timestamp,
+                "all_notes": order.customer_notes
+            }
+            
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error(f"Failed to add note to order {order_id}: {e}")
+            raise HTTPException(
+                status_code=500,
+                detail="Failed to add order note"
+            )
+
+    async def get_order_notes(self, order_id: UUID, user_id: UUID) -> Dict[str, Any]:
+        """Get all customer notes for an order"""
+        try:
+            # Get order
+            query = select(Order).where(
+                and_(Order.id == order_id, Order.user_id == user_id)
+            )
+            
+            result = await self.db.execute(query)
+            order = result.scalar_one_or_none()
+            
+            if not order:
+                raise HTTPException(status_code=404, detail="Order not found")
+            
+            # Parse notes if they exist
+            notes = []
+            if order.customer_notes:
+                # Split notes by timestamp pattern
+                import re
+                note_pattern = r'\[(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})\] (.*?)(?=\n\[\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\]|$)'
+                matches = re.findall(note_pattern, order.customer_notes, re.DOTALL)
+                
+                for timestamp_str, note_text in matches:
+                    notes.append({
+                        "timestamp": timestamp_str,
+                        "note": note_text.strip()
+                    })
+            
+            return {
+                "order_id": str(order.id),
+                "notes": notes,
+                "total_notes": len(notes)
+            }
+            
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error(f"Failed to get notes for order {order_id}: {e}")
+            raise HTTPException(
+                status_code=500,
+                detail="Failed to retrieve order notes"
+            )
+
+    def _calculate_estimated_delivery(self, order: Order) -> Optional[str]:
+        """Calculate estimated delivery date based on order status and shipping method"""
+        try:
+            if order.delivered_at:
+                return order.delivered_at.isoformat()
+            
+            if order.order_status in ["cancelled", "refunded"]:
+                return None
+            
+            # Base delivery estimate on shipping method and current status
+            base_days = 5  # Default delivery time
+            
+            # Adjust based on shipping method
+            if order.shipping_method:
+                shipping_method_lower = order.shipping_method.lower()
+                if "express" in shipping_method_lower or "overnight" in shipping_method_lower:
+                    base_days = 1
+                elif "priority" in shipping_method_lower or "2-day" in shipping_method_lower:
+                    base_days = 2
+                elif "standard" in shipping_method_lower:
+                    base_days = 5
+                elif "economy" in shipping_method_lower:
+                    base_days = 7
+            
+            # Calculate from appropriate date
+            if order.shipped_at:
+                estimated_date = order.shipped_at + timedelta(days=base_days)
+            elif order.confirmed_at:
+                estimated_date = order.confirmed_at + timedelta(days=base_days + 2)  # Add processing time
+            else:
+                estimated_date = order.created_at + timedelta(days=base_days + 3)  # Add confirmation + processing time
+            
+            return estimated_date.isoformat()
+            
+        except Exception as e:
+            logger.error(f"Failed to calculate estimated delivery for order {order.id}: {e}")
+            return None

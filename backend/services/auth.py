@@ -123,6 +123,15 @@ class AuthService:
                     status_code=status.HTTP_401_UNAUTHORIZED,
                     detail="User not found or inactive"
                 )
+            
+            # Create new access token data
+            access_token_data = {
+                "sub": str(user.id),
+                "email": user.email,
+                "is_active": user.is_active,
+                "role": getattr(user, 'role', 'user')
+            }
+            
             new_access_token = self.create_access_token(access_token_data)
             
             return {
