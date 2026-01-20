@@ -54,11 +54,6 @@ export const OptimizedRoutes = {
     createLazyRoute(() => import('./pages/admin/AdminOrders').then(m => ({ default: m.AdminOrders })), false),
     <DashboardSkeleton />
   ),
-  
-  AdminAnalytics: withSuspense(
-    createLazyRoute(() => import('./pages/admin/AdminAnalytics').then(m => ({ default: m.AdminAnalytics })), false),
-    <DashboardSkeleton />
-  ),
 
   // Secondary routes - lazy load
   Account: withSuspense(
