@@ -8,6 +8,7 @@ from sqlalchemy import select, and_, or_, func
 from typing import Optional, List
 from uuid import UUID
 from decimal import Decimal
+import logging
 
 from core.database import get_db
 from core.dependencies import get_current_user, require_admin
@@ -25,7 +26,65 @@ from schemas.tax import (
     TaxRateResponse,
 )
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/tax", tags=["tax"])
+
+
+@router.post("/simple-test")
+async def simple_test(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Simple test endpoint without TaxService
+    """
+    try:
+        logger.info("Simple test endpoint called")
+        
+        # Just return a simple response without using TaxService
+        return {"status": "success", "message": "Simple test works"}
+        
+    except Exception as e:
+        import traceback
+        logger.error(f"Simple test error: {str(e)}")
+        logger.error(f"Traceback: {traceback.format_exc()}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Simple test failed: {str(e)}"
+        )
+
+
+@router.post("/test")
+async def test_tax_service(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Test endpoint to isolate the TaxService issue
+    """
+    try:
+        logger.info("Starting test endpoint")
+        
+        # Test 1: Just create TaxService
+        logger.info("Creating TaxService...")
+        tax_service = TaxService(db)
+        logger.info("TaxService created successfully")
+        
+        # Test 2: Try to call a simple method
+        logger.info("Calling get_tax_rate...")
+        tax_rate = await tax_service.get_tax_rate("US", "CA")
+        logger.info(f"Tax rate retrieved: {tax_rate}")
+        
+        return {"status": "success", "tax_rate": tax_rate}
+        
+    except Exception as e:
+        import traceback
+        logger.error(f"Test error: {str(e)}")
+        logger.error(f"Traceback: {traceback.format_exc()}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Test failed: {str(e)}"
+        )
 
 
 @router.post("/calculate")
@@ -38,32 +97,58 @@ async def calculate_tax(
     Calculate tax amount based on subtotal, shipping, and location
     """
     try:
-        async with TaxService(db) as tax_service:
-            result = await tax_service.calculate_tax(
-                subtotal=Decimal(str(request.subtotal)),
-                shipping_address_id=request.shipping_address_id,
-                country_code=request.country_code,
-                state_code=request.state_code,
-                product_type=request.product_type,
-                currency=request.currency
-            )
-            
-            tax_response = TaxCalculationResponse(
-                tax_amount=float(result.tax_amount),
-                tax_rate=result.tax_rate,
-                tax_type=result.tax_type.value,
-                jurisdiction=result.jurisdiction,
-                currency=Currency(result.currency),
-                breakdown=result.breakdown
-            )
-            
-            return Response.success(data=tax_response)
-            
+        logger.info(f"Starting tax calculation for request: {request}")
+        
+        tax_service = TaxService(db)
+        logger.info("TaxService created successfully")
+        
+        # Use the tax service to get tax rate
+        logger.info(f"Getting tax rate for {request.country_code or 'US'}-{request.state_code}")
+        tax_rate = await tax_service.get_tax_rate(
+            country_code=request.country_code or 'US',
+            province_code=request.state_code
+        )
+        logger.info(f"Tax rate retrieved: {tax_rate}")
+        
+        # Calculate tax amount
+        logger.info(f"Calculating tax for amount: {request.subtotal + request.shipping}")
+        tax_amount = await tax_service.calculate_tax(
+            amount=request.subtotal + request.shipping,
+            country_code=request.country_code or 'US',
+            province_code=request.state_code
+        )
+        logger.info(f"Tax amount calculated: {tax_amount}")
+        
+        # Get tax info for response
+        logger.info("Getting tax info")
+        tax_info = await tax_service.get_tax_info(
+            country_code=request.country_code or 'US',
+            province_code=request.state_code
+        )
+        logger.info(f"Tax info retrieved: {tax_info}")
+        
+        # Create response data as dict first
+        response_data = {
+            "tax_amount": tax_amount,
+            "tax_rate": tax_rate,
+            "tax_type": tax_info.get('tax_name', 'Tax'),
+            "jurisdiction": f"{tax_info.get('province_name', tax_info.get('country_name', 'Unknown'))}",
+            "currency": request.currency,
+            "breakdown": []
+        }
+        logger.info(f"Response data created: {response_data}")
+        
+        return Response.success(data=response_data)
+        
     except Exception as e:
+        import traceback
+        logger.error(f"Tax calculation error: {str(e)}")
+        logger.error(f"Traceback: {traceback.format_exc()}")
         raise HTTPException(
             status_code=500,
             detail=f"Tax calculation failed: {str(e)}"
         )
+
 
 # ============================================================================
 # ADMIN TAX RATES MANAGEMENT ROUTES
@@ -99,24 +184,26 @@ async def list_tax_rates(
             conditions.append(
                 or_(
                     TaxRate.country_name.ilike(search_term),
-                    TaxRate.province_name.ilike(search_term)
+                    TaxRate.province_name.ilike(search_term),
+                    TaxRate.tax_name.ilike(search_term)
                 )
             )
         
         if conditions:
             query = query.where(and_(*conditions))
         
-        # Order by country, then province
-        query = query.order_by(TaxRate.country_code, TaxRate.province_code)
+        # Add ordering
+        query = query.order_by(TaxRate.country_name, TaxRate.province_name)
         
         # Apply pagination
         offset = (page - 1) * per_page
         query = query.offset(offset).limit(per_page)
         
+        # Execute query
         result = await db.execute(query)
         tax_rates = result.scalars().all()
         
-        # Format response
+        # Convert to response format
         response_data = []
         for rate in tax_rates:
             response_data.append(TaxRateResponse(
@@ -136,44 +223,74 @@ async def list_tax_rates(
         return response_data
         
     except Exception as e:
-        raise APIException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            message=f"Failed to list tax rates: {str(e)}"
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to fetch tax rates: {str(e)}"
         )
 
 
-@router.get("/admin/tax-rates/countries", response_model=List[dict])
-async def list_countries(
+@router.get("/admin/tax-rates/countries")
+async def get_countries_with_tax_rates(
     current_user: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db)
 ):
-    """Get list of unique countries with tax rates (Admin only)"""
+    """Get list of countries that have tax rates configured"""
     try:
-        query = select(
-            TaxRate.country_code,
-            TaxRate.country_name,
-            func.count(TaxRate.id).label('rate_count')
-        ).group_by(
-            TaxRate.country_code,
-            TaxRate.country_name
-        ).order_by(TaxRate.country_name)
+        result = await db.execute(
+            select(
+                TaxRate.country_code,
+                TaxRate.country_name,
+                func.count(TaxRate.id).label('rate_count')
+            )
+            .group_by(TaxRate.country_code, TaxRate.country_name)
+            .order_by(TaxRate.country_name)
+        )
         
-        result = await db.execute(query)
-        countries = result.all()
-        
-        return [
-            {
+        countries = []
+        for row in result:
+            countries.append({
                 "country_code": row.country_code,
                 "country_name": row.country_name,
                 "rate_count": row.rate_count
-            }
-            for row in countries
-        ]
+            })
+        
+        return countries
         
     except Exception as e:
-        raise APIException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            message=f"Failed to list countries: {str(e)}"
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to fetch countries: {str(e)}"
+        )
+
+
+@router.get("/admin/tax-rates/tax-types")
+async def get_available_tax_types(
+    current_user: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db)
+):
+    """Get list of all tax types currently in use"""
+    try:
+        result = await db.execute(
+            select(TaxRate.tax_name, func.count(TaxRate.id).label('usage_count'))
+            .where(TaxRate.tax_name.isnot(None))
+            .group_by(TaxRate.tax_name)
+            .order_by(func.count(TaxRate.id).desc(), TaxRate.tax_name)
+        )
+        
+        tax_types = []
+        for row in result:
+            tax_types.append({
+                "value": row.tax_name,
+                "label": row.tax_name,
+                "usage_count": row.usage_count
+            })
+        
+        return tax_types
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to fetch tax types: {str(e)}"
         )
 
 
@@ -191,10 +308,7 @@ async def get_tax_rate(
         tax_rate = result.scalar_one_or_none()
         
         if not tax_rate:
-            raise APIException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                message="Tax rate not found"
-            )
+            raise HTTPException(status_code=404, detail="Tax rate not found")
         
         return TaxRateResponse(
             id=tax_rate.id,
@@ -210,12 +324,12 @@ async def get_tax_rate(
             updated_at=tax_rate.updated_at.isoformat() if tax_rate.updated_at else None
         )
         
-    except APIException:
+    except HTTPException:
         raise
     except Exception as e:
-        raise APIException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            message=f"Failed to get tax rate: {str(e)}"
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to get tax rate: {str(e)}"
         )
 
 
@@ -238,9 +352,9 @@ async def create_tax_rate(
         existing = result.scalar_one_or_none()
         
         if existing:
-            raise APIException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                message=f"Tax rate already exists for {data.country_code}" + 
+            raise HTTPException(
+                status_code=400,
+                detail=f"Tax rate already exists for {data.country_code}" + 
                         (f"-{data.province_code}" if data.province_code else "")
             )
         
@@ -273,13 +387,13 @@ async def create_tax_rate(
             updated_at=tax_rate.updated_at.isoformat() if tax_rate.updated_at else None
         )
         
-    except APIException:
+    except HTTPException:
         raise
     except Exception as e:
         await db.rollback()
-        raise APIException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            message=f"Failed to create tax rate: {str(e)}"
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to create tax rate: {str(e)}"
         )
 
 
@@ -298,10 +412,7 @@ async def update_tax_rate(
         tax_rate = result.scalar_one_or_none()
         
         if not tax_rate:
-            raise APIException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                message="Tax rate not found"
-            )
+            raise HTTPException(status_code=404, detail="Tax rate not found")
         
         # Update fields
         if data.country_name is not None:
@@ -332,13 +443,13 @@ async def update_tax_rate(
             updated_at=tax_rate.updated_at.isoformat() if tax_rate.updated_at else None
         )
         
-    except APIException:
+    except HTTPException:
         raise
     except Exception as e:
         await db.rollback()
-        raise APIException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            message=f"Failed to update tax rate: {str(e)}"
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to update tax rate: {str(e)}"
         )
 
 
@@ -356,23 +467,20 @@ async def delete_tax_rate(
         tax_rate = result.scalar_one_or_none()
         
         if not tax_rate:
-            raise APIException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                message="Tax rate not found"
-            )
+            raise HTTPException(status_code=404, detail="Tax rate not found")
         
         await db.delete(tax_rate)
         await db.commit()
         
-        return Response.success(message="Tax rate deleted successfully")
+        return {"message": "Tax rate deleted successfully"}
         
-    except APIException:
+    except HTTPException:
         raise
     except Exception as e:
         await db.rollback()
-        raise APIException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            message=f"Failed to delete tax rate: {str(e)}"
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to delete tax rate: {str(e)}"
         )
 
 
@@ -422,7 +530,7 @@ async def bulk_update_tax_rates(
         
     except Exception as e:
         await db.rollback()
-        raise APIException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            message=f"Failed to bulk update tax rates: {str(e)}"
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to bulk update tax rates: {str(e)}"
         )

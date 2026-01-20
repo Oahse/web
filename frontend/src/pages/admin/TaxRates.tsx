@@ -1,34 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { PlusIcon, PencilIcon, TrashIcon, SearchIcon, FilterIcon } from 'lucide-react';
 import { toast } from 'react-hot-toast';
-import { apiClient } from '../../apis/client';
 import { Select } from '../../components/ui/Select';
 import { SearchableSelect } from '../../components/ui/SearchableSelect';
-import { getCountryOptions, getProvinceOptions, getCountryByCode, taxNameOptions } from '../../data/countries';
-
-interface TaxRate {
-  id: string;
-  country_code: string;
-  country_name: string;
-  province_code?: string;
-  province_name?: string;
-  tax_rate: number;
-  tax_percentage: number;
-  tax_name?: string;
-  is_active: boolean;
-  created_at: string;
-  updated_at?: string;
-}
-
-interface Country {
-  country_code: string;
-  country_name: string;
-  rate_count: number;
-}
+import { getCountryOptions, getProvinceOptions, getCountryByCode } from '../../data/countries';
+import TaxAPI, { TaxRate, TaxType, Country } from '../../apis/tax';
 
 export const TaxRatesAdmin = () => {
   const [taxRates, setTaxRates] = useState<TaxRate[]>([]);
   const [countries, setCountries] = useState<Country[]>([]);
+  const [taxTypes, setTaxTypes] = useState<TaxType[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingRate, setEditingRate] = useState<TaxRate | null>(null);
@@ -52,19 +33,20 @@ export const TaxRatesAdmin = () => {
   useEffect(() => {
     fetchTaxRates();
     fetchCountries();
+    fetchTaxTypes();
   }, [selectedCountry, activeFilter, searchTerm]);
 
   const fetchTaxRates = async () => {
     try {
       setLoading(true);
-      const params = new URLSearchParams();
-      if (selectedCountry) params.append('country_code', selectedCountry);
-      if (activeFilter !== null) params.append('is_active', String(activeFilter));
-      if (searchTerm) params.append('search', searchTerm);
-      params.append('per_page', '100');
+      const params: any = {};
+      if (selectedCountry) params.country_code = selectedCountry;
+      if (activeFilter !== null) params.is_active = activeFilter;
+      if (searchTerm) params.search = searchTerm;
+      params.per_page = 100;
       
-      const response = await apiClient.get(`/tax/admin/tax-rates?${params.toString()}`);
-      setTaxRates(response.data || []);
+      const data = await TaxAPI.getTaxRates(params);
+      setTaxRates(data || []);
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'Failed to load tax rates');
     } finally {
@@ -74,10 +56,28 @@ export const TaxRatesAdmin = () => {
 
   const fetchCountries = async () => {
     try {
-      const response = await apiClient.get('/tax/admin/tax-rates/countries');
-      setCountries(response.data || []);
+      const data = await TaxAPI.getCountriesWithTaxRates();
+      setCountries(data || []);
     } catch (error) {
       console.error('Failed to load countries:', error);
+    }
+  };
+
+  const fetchTaxTypes = async () => {
+    try {
+      const data = await TaxAPI.getAvailableTaxTypes();
+      setTaxTypes(data || []);
+    } catch (error) {
+      console.error('Failed to load tax types:', error);
+      // Fallback to basic tax types if API fails
+      setTaxTypes([
+        { value: 'VAT', label: 'VAT (Value Added Tax)', usage_count: 0 },
+        { value: 'GST', label: 'GST (Goods and Services Tax)', usage_count: 0 },
+        { value: 'Sales Tax', label: 'Sales Tax', usage_count: 0 },
+        { value: 'IVA', label: 'IVA (Impuesto al Valor Agregado)', usage_count: 0 },
+        { value: 'HST', label: 'HST (Harmonized Sales Tax)', usage_count: 0 },
+        { value: 'Other', label: 'Other', usage_count: 0 }
+      ]);
     }
   };
 
@@ -86,17 +86,20 @@ export const TaxRatesAdmin = () => {
     
     try {
       const data = {
-        ...formData,
-        tax_rate: parseFloat(formData.tax_rate) / 100, // Convert percentage to decimal
         country_code: formData.country_code.toUpperCase(),
-        province_code: formData.province_code ? formData.province_code.toUpperCase() : undefined
+        country_name: formData.country_name,
+        province_code: formData.province_code ? formData.province_code.toUpperCase() : undefined,
+        province_name: formData.province_name || undefined,
+        tax_rate: parseFloat(formData.tax_rate) / 100, // Convert percentage to decimal
+        tax_name: formData.tax_name || undefined,
+        is_active: formData.is_active
       };
 
       if (editingRate) {
-        await apiClient.put(`/tax/admin/tax-rates/${editingRate.id}`, data);
+        await TaxAPI.updateTaxRate(editingRate.id, data);
         toast.success('Tax rate updated successfully');
       } else {
-        await apiClient.post('/tax/admin/tax-rates', data);
+        await TaxAPI.createTaxRate(data);
         toast.success('Tax rate created successfully');
       }
       
@@ -149,7 +152,7 @@ export const TaxRatesAdmin = () => {
     if (!confirm('Are you sure you want to delete this tax rate?')) return;
     
     try {
-      await apiClient.delete(`/tax/admin/tax-rates/${id}`);
+      await TaxAPI.deleteTaxRate(id);
       toast.success('Tax rate deleted successfully');
       fetchTaxRates();
     } catch (error: any) {
@@ -441,7 +444,10 @@ export const TaxRatesAdmin = () => {
                     placeholder="Search or type tax name..."
                     value={formData.tax_name}
                     onChange={(value) => setFormData({ ...formData, tax_name: value })}
-                    options={taxNameOptions}
+                    options={taxTypes.map(type => ({
+                      value: type.value,
+                      label: `${type.label} (${type.usage_count} uses)`
+                    }))}
                     allowClear
                   />
                 </div>
