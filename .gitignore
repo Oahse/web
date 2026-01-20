@@ -274,3 +274,9 @@ fabric.properties
 api.md
 .vscode/
 backend/users.txt
+
+# Temporary development files
+/package.json
+/package-lock.json
+/node_modules/
+test-tax-api.js
