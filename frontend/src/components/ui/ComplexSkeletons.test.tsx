@@ -103,7 +103,7 @@ describe('Complex Skeleton Components', () => {
       expect(screen.getByRole('status', { name: 'Loading navigation...' })).toBeInTheDocument();
       expect(screen.getAllByTestId('skeleton-text').length).toBeGreaterThan(0); // Menu items
       expect(screen.getAllByTestId('skeleton-rectangle').length).toBeGreaterThan(0); // Logo, search
-      expect(screen.getAllByTestId('skeleton-circle').length).toBeGreaterThan(0); // Profile, notification
+      expect(screen.getAllByTestId('skeleton-circle').length).toBeGreaterThan(0); // Profile, user avatar
     });
 
     it('renders sidebar variant correctly', () => {

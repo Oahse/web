@@ -1,7 +1,7 @@
 import React from 'react';
 import CartButton from './CartButton';
 
-export const ProductCard = ({ product }) => {
+export const ProductCard = ({ product }: { product: any }) => {
   const variant = product.variants?.[0] || product;
   const image = variant.primary_image?.url || variant.images?.[0]?.url || '/placeholder.jpg';
   const price = variant.current_price || variant.base_price;
@@ -17,7 +17,10 @@ export const ProductCard = ({ product }) => {
           src={image}
           alt={product.name}
           className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
-          onError={(e) => e.target.src = '/placeholder.jpg'}
+          onError={(e: React.SyntheticEvent<HTMLImageElement>) => {
+            const target = e.target as HTMLImageElement;
+            target.src = '/placeholder.jpg';
+          }}
         />
         {isOnSale && (
           <div className="absolute top-2 left-2 bg-red-500 text-white px-2 py-1 rounded text-xs font-medium">

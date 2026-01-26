@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { SearchIcon, FilterIcon, XIcon } from 'lucide-react';
-import { useApi } from '../hooks/useApi';
+import { useAsync } from '../hooks/useAsync';
 import { ProductsAPI } from '../apis';
 import { ProductCard } from '../components/ProductCard';
 import { Loading } from '../components/Loading';
@@ -11,15 +11,16 @@ import { useCategories } from '../contexts/CategoryContext';
 const Products = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [searchQuery, setSearchQuery] = useState(searchParams.get('q') || '');
-  const [selectedCategories, setSelectedCategories] = useState(
+  const [selectedCategories, setSelectedCategories] = useState<string[]>(
     searchParams.get('category')?.split(',') || []
   );
   const [sortOption, setSortOption] = useState('created_at:desc');
   const [priceRange, setPriceRange] = useState([0, 1000]);
   const [currentPage, setCurrentPage] = useState(1);
   const [showFilters, setShowFilters] = useState(false);
+  const [productsData, setProductsData] = useState<any>(null);
 
-  const { data: productsData, loading, error, execute: fetchProducts } = useApi();
+  const { loading, error, execute: fetchProducts } = useAsync();
   const { categories } = useCategories();
 
   const buildSearchParams = useCallback(() => {
@@ -38,10 +39,14 @@ const Products = () => {
 
   useEffect(() => {
     const params = buildSearchParams();
-    fetchProducts(() => ProductsAPI.getProducts(params));
+    fetchProducts(async () => {
+      const response = await ProductsAPI.getProducts(params);
+      setProductsData(response.data);
+      return response.data;
+    });
   }, [buildSearchParams, fetchProducts]);
 
-  const handleSearch = (e) => {
+  const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     setCurrentPage(1);
     const newParams = new URLSearchParams(searchParams);
@@ -53,7 +58,7 @@ const Products = () => {
     setSearchParams(newParams);
   };
 
-  const handleCategoryChange = (categoryId) => {
+  const handleCategoryChange = (categoryId: string) => {
     const newCategories = selectedCategories.includes(categoryId)
       ? selectedCategories.filter(id => id !== categoryId)
       : [...selectedCategories, categoryId];
@@ -79,12 +84,21 @@ const Products = () => {
     setSearchParams({});
   };
 
+  const retryFetch = () => {
+    const params = buildSearchParams();
+    fetchProducts(async () => {
+      const response = await ProductsAPI.getProducts(params);
+      setProductsData(response.data);
+      return response.data;
+    });
+  };
+
   if (loading && !productsData) {
     return <Loading text="Loading products..." />;
   }
 
   if (error && !productsData) {
-    return <Error message="Failed to load products" onRetry={() => fetchProducts(() => ProductsAPI.getProducts(buildSearchParams()))} />;
+    return <Error message="Failed to load products" onRetry={retryFetch} />;
   }
 
   const products = productsData?.items || [];
@@ -149,11 +163,11 @@ const Products = () => {
         {showFilters && (
           <div className="bg-white border border-gray-200 rounded-lg p-4 space-y-4">
             {/* Categories */}
-            {categories && categories.length > 0 && (
+            {categories && Array.isArray(categories) && categories.length > 0 && (
               <div>
                 <h3 className="heading text-sm font-medium mb-2">Categories</h3>
                 <div className="flex flex-wrap gap-2">
-                  {categories.map((category) => (
+                  {categories.map((category: any) => (
                     <button
                       key={category.id}
                       onClick={() => handleCategoryChange(category.id)}
@@ -207,7 +221,7 @@ const Products = () => {
       {/* Products Grid */}
       {products.length > 0 ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 sm:gap-6">
-          {products.map((product) => (
+          {products.map((product: any) => (
             <ProductCard key={product.id} product={product} />
           ))}
         </div>

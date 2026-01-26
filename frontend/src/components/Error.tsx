@@ -1,7 +1,7 @@
 import React from 'react';
 import { AlertCircle } from 'lucide-react';
 
-export const Error = ({ message = 'Something went wrong', onRetry }) => {
+export const Error = ({ message = 'Something went wrong', onRetry }: { message?: string, onRetry?: () => void }) => {
   return (
     <div className="flex flex-col items-center justify-center p-8 text-center">
       <AlertCircle className="w-12 h-12 text-red-500 mb-4" />
