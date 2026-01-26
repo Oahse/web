@@ -185,6 +185,183 @@ export function useOptimisticUpdate<T>(
 }
 
 /**
+ * Enhanced hook for cart operations with optimistic updates
+ */
+export function useOptimisticCart(initialCart: any) {
+  const [cart, setCart] = useState(initialCart);
+  const [isOptimistic, setIsOptimistic] = useState(false);
+  const { loading, error, execute } = useAsyncOperations({
+    showErrorToast: true,
+    showSuccessToast: false,
+  });
+
+  // Helper function to calculate cart totals
+  const calculateTotals = useCallback((cartData: any) => {
+    const subtotal = cartData.items.reduce((sum: number, item: any) => 
+      sum + (item.quantity * item.price_per_unit), 0
+    );
+    const taxAmount = subtotal * 0.08; // 8% tax rate - should be dynamic
+    const totalAmount = subtotal + taxAmount + (cartData.shipping_amount || 0);
+    
+    return {
+      ...cartData,
+      subtotal,
+      tax_amount: taxAmount,
+      total_amount: totalAmount,
+      item_count: cartData.items.length,
+      total_items: cartData.items.reduce((sum: number, item: any) => sum + item.quantity, 0),
+    };
+  }, []);
+
+  // Add item optimistically
+  const addItemOptimistic = useCallback(async (
+    variant: any,
+    quantity: number,
+    apiCall: () => Promise<any>
+  ) => {
+    const optimisticItem = {
+      id: `temp-${Date.now()}`,
+      variant_id: variant.id,
+      quantity,
+      price_per_unit: variant.current_price,
+      total_price: variant.current_price * quantity,
+      variant,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+
+    // Check if item already exists
+    const existingItemIndex = cart.items.findIndex((item: any) => 
+      item.variant_id === variant.id
+    );
+
+    let optimisticCart;
+    if (existingItemIndex >= 0) {
+      // Update existing item
+      const updatedItems = [...cart.items];
+      updatedItems[existingItemIndex] = {
+        ...updatedItems[existingItemIndex],
+        quantity: updatedItems[existingItemIndex].quantity + quantity,
+        total_price: (updatedItems[existingItemIndex].quantity + quantity) * variant.current_price,
+      };
+      optimisticCart = { ...cart, items: updatedItems };
+    } else {
+      // Add new item
+      optimisticCart = { ...cart, items: [...cart.items, optimisticItem] };
+    }
+
+    optimisticCart = calculateTotals(optimisticCart);
+    
+    setIsOptimistic(true);
+    setCart(optimisticCart);
+
+    try {
+      const result = await execute(apiCall);
+      setCart(result);
+      setIsOptimistic(false);
+      return result;
+    } catch (error) {
+      setCart(cart); // Rollback
+      setIsOptimistic(false);
+      throw error;
+    }
+  }, [cart, execute, calculateTotals]);
+
+  // Update item quantity optimistically
+  const updateQuantityOptimistic = useCallback(async (
+    itemId: string,
+    newQuantity: number,
+    apiCall: () => Promise<any>
+  ) => {
+    const itemIndex = cart.items.findIndex((item: any) => item.id === itemId);
+    if (itemIndex === -1) return;
+
+    const updatedItems = [...cart.items];
+    if (newQuantity <= 0) {
+      // Remove item if quantity is 0 or less
+      updatedItems.splice(itemIndex, 1);
+    } else {
+      // Update quantity
+      updatedItems[itemIndex] = {
+        ...updatedItems[itemIndex],
+        quantity: newQuantity,
+        total_price: newQuantity * updatedItems[itemIndex].price_per_unit,
+      };
+    }
+
+    const optimisticCart = calculateTotals({ ...cart, items: updatedItems });
+    
+    setIsOptimistic(true);
+    setCart(optimisticCart);
+
+    try {
+      const result = await execute(apiCall);
+      setCart(result);
+      setIsOptimistic(false);
+      return result;
+    } catch (error) {
+      setCart(cart); // Rollback
+      setIsOptimistic(false);
+      throw error;
+    }
+  }, [cart, execute, calculateTotals]);
+
+  // Remove item optimistically
+  const removeItemOptimistic = useCallback(async (
+    itemId: string,
+    apiCall: () => Promise<any>
+  ) => {
+    const updatedItems = cart.items.filter((item: any) => item.id !== itemId);
+    const optimisticCart = calculateTotals({ ...cart, items: updatedItems });
+    
+    setIsOptimistic(true);
+    setCart(optimisticCart);
+
+    try {
+      const result = await execute(apiCall);
+      setCart(result);
+      setIsOptimistic(false);
+      return result;
+    } catch (error) {
+      setCart(cart); // Rollback
+      setIsOptimistic(false);
+      throw error;
+    }
+  }, [cart, execute, calculateTotals]);
+
+  // Clear cart optimistically
+  const clearCartOptimistic = useCallback(async (apiCall: () => Promise<any>) => {
+    const optimisticCart = calculateTotals({ ...cart, items: [] });
+    
+    setIsOptimistic(true);
+    setCart(optimisticCart);
+
+    try {
+      const result = await execute(apiCall);
+      setCart(result);
+      setIsOptimistic(false);
+      return result;
+    } catch (error) {
+      setCart(cart); // Rollback
+      setIsOptimistic(false);
+      throw error;
+    }
+  }, [cart, execute, calculateTotals]);
+
+  return {
+    cart,
+    loading,
+    error,
+    isOptimistic,
+    setCart,
+    addItemOptimistic,
+    updateQuantityOptimistic,
+    removeItemOptimistic,
+    clearCartOptimistic,
+  };
+}
+
+/**
  * Hook for retry logic
  */
 export function useRetry(maxRetries = 3, retryDelay = 1000) {

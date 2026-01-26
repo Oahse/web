@@ -13,7 +13,6 @@ from uuid import UUID
 from datetime import datetime, timedelta
 from typing import Optional, List, Dict, Any
 from services.payments import PaymentService
-from services.notifications import NotificationService
 import logging
 
 logger = logging.getLogger(__name__)
@@ -25,7 +24,6 @@ class SubscriptionService:
     def __init__(self, db: AsyncSession):
         self.db = db
         self.payment_service = PaymentService(db)
-        self.notification_service = NotificationService(db)
 
     async def create_subscription(
         self,
@@ -122,14 +120,6 @@ class SubscriptionService:
                 subscription.status = "payment_failed"
                 await self.db.commit()
                 raise HTTPException(status_code=400, detail=f"Payment failed: {str(e)}")
-        
-        # Send notification
-        await self.notification_service.create_notification(
-            user_id=user_id,
-            message=f"Your subscription has been created successfully! Total: {cost_breakdown['total_amount']} {currency}. Next order will be placed on {subscription.next_billing_date.strftime('%Y-%m-%d')}.",
-            type="success",
-            related_id=str(subscription.id)
-        )
         
         return subscription
 
@@ -324,14 +314,6 @@ class SubscriptionService:
         await self.db.commit()
         await self.db.refresh(subscription)
         
-        # Send notification
-        await self.notification_service.create_notification(
-            user_id=user_id,
-            message=f"Added {len(new_variant_ids)} product(s) to your subscription!",
-            type="success",
-            related_id=str(subscription.id)
-        )
-        
         return subscription
 
     async def remove_products_from_subscription(
@@ -382,14 +364,6 @@ class SubscriptionService:
         
         await self.db.commit()
         await self.db.refresh(subscription)
-        
-        # Send notification
-        await self.notification_service.create_notification(
-            user_id=user_id,
-            message=f"Removed {len(variants_to_remove)} product(s) from your subscription!",
-            type="info",
-            related_id=str(subscription.id)
-        )
         
         return subscription
 
@@ -509,14 +483,6 @@ class SubscriptionService:
         await self.db.commit()
         await self.db.refresh(subscription)
         
-        # Send notification
-        await self.notification_service.create_notification(
-            user_id=user_id,
-            message=f"Your subscription has been updated successfully!",
-            type="info",
-            related_id=str(subscription.id)
-        )
-        
         return subscription
 
     async def cancel_subscription(
@@ -546,13 +512,6 @@ class SubscriptionService:
         await self.db.commit()
         await self.db.refresh(subscription)
         
-        # Send notification
-        await self.notification_service.create_notification(
-            user_id=user_id,
-            message=f"Your subscription has been cancelled.",
-            type="info",
-            related_id=str(subscription.id)
-        )
         
         return subscription
 
@@ -578,13 +537,6 @@ class SubscriptionService:
         await self.db.commit()
         await self.db.refresh(subscription)
         
-        # Send notification
-        await self.notification_service.create_notification(
-            user_id=user_id,
-            message=f"Your subscription has been paused.",
-            type="info",
-            related_id=str(subscription.id)
-        )
         
         return subscription
 

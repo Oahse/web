@@ -20,7 +20,6 @@ from .barcode import BarcodeService
 from .orders import OrderService
 from .subscriptions import SubscriptionService
 from .payments import PaymentService
-from .notifications import NotificationService
 from .inventories import InventoryService
 from .admin import AdminService
 from .export import ExportService
@@ -50,7 +49,6 @@ __all__ = [
     "OrderService",
     "SubscriptionService", 
     "PaymentService",
-    "NotificationService",
     "InventoryService",
     "AdminService",
     "ExportService",

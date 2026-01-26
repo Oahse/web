@@ -7,6 +7,7 @@ import { toast } from 'react-hot-toast';
 interface CartContextType {
   cart: Cart | null;
   loading: boolean;
+  isOptimistic: boolean;
   fetchCart: () => Promise<void>;
   refreshCart: () => Promise<void>;
   addItem: (item: AddToCartRequest) => Promise<boolean>;
@@ -31,8 +32,27 @@ interface CartProviderProps {
 export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
   const [cart, setCart] = useState<Cart | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
+  const [isOptimistic, setIsOptimistic] = useState<boolean>(false);
   const [processingItems, setProcessingItems] = useState<Set<string>>(new Set());
   const [clearingCart, setClearingCart] = useState(false);
+
+  // Helper function to calculate cart totals
+  const calculateTotals = useCallback((cartData: Cart) => {
+    const subtotal = cartData.items.reduce((sum, item) => 
+      sum + (item.quantity * item.price_per_unit), 0
+    );
+    const taxAmount = subtotal * 0.08; // 8% tax rate - should be dynamic
+    const totalAmount = subtotal + taxAmount + (cartData.shipping_amount || 0);
+    
+    return {
+      ...cartData,
+      subtotal,
+      tax_amount: taxAmount,
+      total_amount: totalAmount,
+      item_count: cartData.items.length,
+      total_items: cartData.items.reduce((sum, item) => sum + item.quantity, 0),
+    };
+  }, []);
 
   // ✅ Fetch the cart
   const fetchCart = useCallback(async () => {
@@ -59,6 +79,7 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
       const cartData = response?.data;
       console.log('CartContext: Setting cart data from fetch:', cartData);
       setCart(cartData);
+      setIsOptimistic(false); // Clear optimistic state when real data arrives
     } catch (error) {
       console.error('Failed to fetch cart:', error);
     } finally {
@@ -94,7 +115,7 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
     };
   }, [fetchCart]);
 
-  // ✅ Add item to cart
+  // ✅ Add item to cart with optimistic updates
   const addItem = async (item: AddToCartRequest): Promise<boolean> => {
     const token = TokenManager.getToken();
     if (!token) {
@@ -102,7 +123,49 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
       throw new Error('User must be authenticated to add items to cart');
     }
 
+    // Create optimistic item
+    const optimisticItem = {
+      id: `temp-${Date.now()}`,
+      cart_id: cart?.id || '',
+      variant_id: item.variant_id,
+      quantity: item.quantity || 1,
+      price_per_unit: item.price_per_unit || 0,
+      total_price: (item.price_per_unit || 0) * (item.quantity || 1),
+      variant: item.variant,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+
+    // Store original cart for rollback
+    const originalCart = cart;
+
     try {
+      // Apply optimistic update
+      if (cart) {
+        const existingItemIndex = cart.items.findIndex(cartItem => 
+          cartItem.variant_id === item.variant_id
+        );
+
+        let optimisticCart;
+        if (existingItemIndex >= 0) {
+          // Update existing item
+          const updatedItems = [...cart.items];
+          updatedItems[existingItemIndex] = {
+            ...updatedItems[existingItemIndex],
+            quantity: updatedItems[existingItemIndex].quantity + (item.quantity || 1),
+            total_price: (updatedItems[existingItemIndex].quantity + (item.quantity || 1)) * updatedItems[existingItemIndex].price_per_unit,
+          };
+          optimisticCart = { ...cart, items: updatedItems };
+        } else {
+          // Add new item
+          optimisticCart = { ...cart, items: [...cart.items, optimisticItem] };
+        }
+
+        optimisticCart = calculateTotals(optimisticCart);
+        setCart(optimisticCart);
+        setIsOptimistic(true);
+      }
+
       setLoading(true);
       console.log('CartContext: Adding item to cart:', item);
       const response = await CartAPI.addToCart(item, token);
@@ -111,10 +174,14 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
       const cartData = response?.data;
       console.log('CartContext: Setting cart data:', cartData);
       setCart(cartData);
+      setIsOptimistic(false);
       toast.success(`Added ${item.quantity || 1} item${(item.quantity || 1) > 1 ? 's' : ''} to cart`);
       return true;
     } catch (error: any) {
       console.error('Failed to add item to cart:', error);
+      // Rollback optimistic update
+      setCart(originalCart);
+      setIsOptimistic(false);
       // Re-throw the error so executeWithAuth can handle 401s
       throw error;
     } finally {
@@ -122,28 +189,41 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
     }
   };
 
-  // ✅ Remove item from cart
+  // ✅ Remove item from cart with optimistic updates
   const removeItem = async (itemId: string): Promise<void> => {
     const token = TokenManager.getToken();
     if (!token) {
       throw new Error('User must be authenticated to modify cart');
     }
 
+    // Store original cart for rollback
+    const originalCart = cart;
+    const item = cart?.items?.find(item => item.id === itemId);
+    const itemName = item?.variant?.product_name || item?.variant?.name || 'Item';
+
     // Add item to processing set
     setProcessingItems(prev => new Set(prev).add(itemId));
 
     try {
+      // Apply optimistic update
+      if (cart) {
+        const updatedItems = cart.items.filter(item => item.id !== itemId);
+        const optimisticCart = calculateTotals({ ...cart, items: updatedItems });
+        setCart(optimisticCart);
+        setIsOptimistic(true);
+      }
+
       setLoading(true);
       const response = await CartAPI.removeFromCart(itemId, token);
       const cartData = response?.data;
       setCart(cartData);
-      
-      // Find item name for toast
-      const item = cart?.items?.find(item => item.id === itemId);
-      const itemName = item?.variant?.product_name || item?.variant?.name || 'Item';
+      setIsOptimistic(false);
       toast.success(`${itemName} removed from cart`);
     } catch (error) {
       console.error('Failed to remove item from cart:', error);
+      // Rollback optimistic update
+      setCart(originalCart);
+      setIsOptimistic(false);
       throw error;
     } finally {
       setLoading(false);
@@ -156,7 +236,7 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
     }
   };
 
-  // ✅ Update item quantity
+  // ✅ Update item quantity with optimistic updates
   const updateQuantity = async (itemId: string, quantity: number): Promise<void> => {
     const token = TokenManager.getToken();
     if (!token) {
@@ -180,10 +260,29 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
       throw new Error(`Only ${maxStock} items available in stock`);
     }
 
+    // Store original cart for rollback
+    const originalCart = cart;
+
     // Add item to processing set
     setProcessingItems(prev => new Set(prev).add(itemId));
 
     try {
+      // Apply optimistic update
+      if (cart) {
+        const updatedItems = [...cart.items];
+        const itemIndex = updatedItems.findIndex(item => item.id === itemId);
+        if (itemIndex >= 0) {
+          updatedItems[itemIndex] = {
+            ...updatedItems[itemIndex],
+            quantity,
+            total_price: quantity * updatedItems[itemIndex].price_per_unit,
+          };
+          const optimisticCart = calculateTotals({ ...cart, items: updatedItems });
+          setCart(optimisticCart);
+          setIsOptimistic(true);
+        }
+      }
+
       setLoading(true);
       console.log(`CartContext: Updating item ${itemId} to quantity ${quantity}`);
       
@@ -202,9 +301,14 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
       const cartData = response?.data;
       console.log('CartContext: Setting updated cart data:', cartData);
       setCart(cartData);
+      setIsOptimistic(false);
       toast.success('Cart updated successfully');
     } catch (error: any) {
       console.error('Failed to update cart item:', error);
+      // Rollback optimistic update
+      setCart(originalCart);
+      setIsOptimistic(false);
+      
       console.error('Error details:', {
         itemId,
         quantity,
@@ -234,7 +338,7 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
     }
   };
 
-  // ✅ Clear the cart
+  // ✅ Clear the cart with optimistic updates
   const clearCart = async () => {
     const token = TokenManager.getToken();
     if (!token) {
@@ -245,9 +349,19 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
       throw new Error('Cart is already empty');
     }
 
+    // Store original cart for rollback
+    const originalCart = cart;
+
     setClearingCart(true);
     
     try {
+      // Apply optimistic update
+      if (cart) {
+        const optimisticCart = calculateTotals({ ...cart, items: [] });
+        setCart(optimisticCart);
+        setIsOptimistic(true);
+      }
+
       setLoading(true);
       const response = await CartAPI.clearCart(token);
       if (response?.data) {
@@ -256,9 +370,13 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
         // Fallback if API doesn't return updated cart
         setCart(cart ? { ...cart, items: [], total_items: 0, total_amount: 0 } : null);
       }
+      setIsOptimistic(false);
       toast.success('Cart cleared successfully');
     } catch (error) {
       console.error('Failed to clear cart:', error);
+      // Rollback optimistic update
+      setCart(originalCart);
+      setIsOptimistic(false);
       throw error;
     } finally {
       setLoading(false);
@@ -311,6 +429,7 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
       value={{
         cart,
         loading,
+        isOptimistic,
         fetchCart,
         refreshCart,
         addItem,

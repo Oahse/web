@@ -117,20 +117,6 @@ const OrderManagement = () => {
     }
   };
 
-  /**
-   * Handles a click on a notification, typically to view the associated order.
-   * @param {object} notification - The notification object, potentially containing an orderId.
-   */
-  const handleNotificationClick = (notification) => {
-    if (notification.orderId) {
-      // Find the order in the currently fetched paginated orders
-      const order = paginatedOrders?.data.find(o => o.id === notification.orderId);
-      if (order) {
-        setSelectedOrder(order); // Set the found order as selected to display its details
-      }
-    }
-  };
-
   // Extract orders from paginated data, defaulting to an empty array if no data
   const orders = paginatedOrders?.data || [];
 
