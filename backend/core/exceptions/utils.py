@@ -1,11 +1,11 @@
-import uuid
+from core.utils.uuid_utils import uuid7
 from datetime import datetime
 from typing import Any, Dict, Optional
 
 
 def get_correlation_id() -> str:
     """Generate a new correlation ID"""
-    return str(uuid.uuid4())
+    return str(uuid7())
 
 
 def format_error_response(

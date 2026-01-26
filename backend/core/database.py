@@ -15,7 +15,8 @@ from pydantic import ValidationError
 import logging
 from datetime import datetime as dt
 
-from core.utils.logging import structured_logger
+from core.logging import structured_logger
+from core.utils.uuid_utils import uuid7
 from core.exceptions.api_exceptions import DatabaseException, APIException
 
 logger = logging.getLogger(__name__)
@@ -61,7 +62,7 @@ class BaseModel(Base):
     __abstract__ = True
 
     # Core fields - always present
-    id = Column(GUID(), primary_key=True, default=uuid.uuid4, index=True)
+    id = Column(GUID(), primary_key=True, default=uuid7, index=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     

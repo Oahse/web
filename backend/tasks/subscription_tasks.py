@@ -1,52 +1,46 @@
 """
-Background tasks for subscription management using Kafka
+Background tasks for subscription management using Hybrid approach
 Handles periodic order placement and subscription lifecycle
+Uses ARQ for scheduled processing and FastAPI BackgroundTasks for immediate tasks
 """
 import asyncio
 import logging
 from datetime import datetime, timedelta
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 from uuid import UUID
+from fastapi import BackgroundTasks
 
 from core.database import get_db
 from core.config import settings
-from core.kafka import get_kafka_producer_service
+from core.hybrid_tasks import hybrid_task_manager, send_email_hybrid, send_notification_hybrid
+from core.arq_worker import enqueue_subscription_processing, enqueue_subscription_renewal
 from services.subscriptions.subscription_scheduler import SubscriptionSchedulerService
 from services.notifications import NotificationService
-from tasks.email_tasks import email_task_service
-from fastapi import BackgroundTasks
 
 logger = logging.getLogger(__name__)
 
 
 class SubscriptionTaskManager:
-    """Manages background tasks for subscription operations using Kafka"""
+    """Manages background tasks for subscription operations using hybrid approach"""
     
     def __init__(self):
         self.is_running = False
         self.check_interval_minutes = 60  # Check every hour
-        self.producer = None
         
-    async def initialize_kafka(self):
-        """Initialize Kafka producer"""
-        if not self.producer:
-            self.producer = await get_kafka_producer_service()
-    
     async def start_subscription_scheduler(self):
-        """Start the subscription order scheduler using Kafka"""
+        """Start the subscription order scheduler using ARQ"""
         if self.is_running:
             logger.warning("Subscription scheduler is already running")
             return
         
         self.is_running = True
-        logger.info("Starting subscription order scheduler with Kafka")
-        
-        await self.initialize_kafka()
+        logger.info("Starting subscription order scheduler with ARQ")
         
         while self.is_running:
             try:
-                await self._process_subscription_orders()
-                await asyncio.sleep(self.check_interval_minutes * 60)  # Convert to seconds
+                # Use ARQ for scheduled processing
+                await enqueue_subscription_processing()
+                await asyncio.sleep(self.check_interval_minutes * 60)
             except Exception as e:
                 logger.error(f"Error in subscription scheduler: {e}")
                 await asyncio.sleep(300)  # Wait 5 minutes before retrying
@@ -55,6 +49,74 @@ class SubscriptionTaskManager:
         """Stop the subscription scheduler"""
         self.is_running = False
         logger.info("Subscription scheduler stopped")
+    
+    async def process_subscription_renewal_immediate(
+        self,
+        background_tasks: BackgroundTasks,
+        subscription_id: str,
+        **kwargs
+    ):
+        """Process subscription renewal immediately using FastAPI BackgroundTasks"""
+        hybrid_task_manager.add_subscription_renewal_task(
+            background_tasks,
+            subscription_id,
+            **kwargs
+        )
+    
+    async def schedule_subscription_renewal(
+        self,
+        subscription_id: str,
+        delay_hours: int = 0,
+        **kwargs
+    ):
+        """Schedule subscription renewal using ARQ"""
+        if delay_hours > 0:
+            # Use ARQ for delayed processing
+            from core.arq_worker import get_arq_pool
+            pool = await get_arq_pool()
+            await pool.enqueue_job(
+                'process_subscription_renewal_task',
+                subscription_id,
+                _defer_by=timedelta(hours=delay_hours),
+                **kwargs
+            )
+        else:
+            # Use ARQ for immediate processing
+            await enqueue_subscription_renewal(subscription_id, **kwargs)
+    
+    async def send_subscription_notification(
+        self,
+        background_tasks: Optional[BackgroundTasks],
+        user_id: str,
+        notification_type: str,
+        use_arq: bool = False,
+        **kwargs
+    ):
+        """Send subscription notification using hybrid approach"""
+        await send_notification_hybrid(
+            background_tasks,
+            user_id,
+            notification_type,
+            use_arq,
+            **kwargs
+        )
+    
+    async def send_subscription_email(
+        self,
+        background_tasks: Optional[BackgroundTasks],
+        email_type: str,
+        recipient: str,
+        use_arq: bool = True,  # Email tasks usually use ARQ for reliability
+        **kwargs
+    ):
+        """Send subscription email using hybrid approach"""
+        await send_email_hybrid(
+            background_tasks,
+            email_type,
+            recipient,
+            use_arq,
+            **kwargs
+        )
     
     async def _process_subscription_orders(self):
         """Process subscriptions due for order placement"""

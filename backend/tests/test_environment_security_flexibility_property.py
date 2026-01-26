@@ -54,9 +54,8 @@ class ConfigurationValidator:
     ]
     
     REQUIRED_DATABASE_SETTINGS = [
-        # Either POSTGRES_DB_URL or all individual settings
-        ['POSTGRES_DB_URL'],
-        ['POSTGRES_USER', 'POSTGRES_PASSWORD', 'POSTGRES_SERVER', 'POSTGRES_DB']
+        # Only POSTGRES_DB_URL is required now
+        ['POSTGRES_DB_URL']
     ]
     
     @staticmethod
@@ -150,16 +149,12 @@ class ConfigurationValidator:
                 result['valid'] = False
                 result['errors'].append(f"Security setting {setting} is required for token signing")
         
-        # Check database settings - either full URL or individual components
+        # Check database settings - only POSTGRES_DB_URL is required
         has_db_url = 'POSTGRES_DB_URL' in config_dict and config_dict['POSTGRES_DB_URL']
-        has_individual_settings = all(
-            setting in config_dict and config_dict[setting] 
-            for setting in ['POSTGRES_USER', 'POSTGRES_PASSWORD', 'POSTGRES_SERVER', 'POSTGRES_DB']
-        )
         
-        if not has_db_url and not has_individual_settings:
+        if not has_db_url:
             result['valid'] = False
-            result['errors'].append("Database configuration is incomplete. Either set POSTGRES_DB_URL or all individual PostgreSQL settings")
+            result['errors'].append("Database configuration is incomplete. POSTGRES_DB_URL is required")
         
         return result
     
@@ -279,16 +274,8 @@ def valid_complete_config(draw):
     }
     
     # Add database config - either full URL or individual components
-    db_type = draw(st.sampled_from(['url', 'components']))
-    if db_type == 'url':
-        config['POSTGRES_DB_URL'] = 'postgresql+asyncpg://user:pass@localhost:5432/dbname'
-    else:
-        config.update({
-            'POSTGRES_USER': 'testuser',
-            'POSTGRES_PASSWORD': 'testpass',
-            'POSTGRES_SERVER': 'localhost',
-            'POSTGRES_DB': 'testdb'
-        })
+    # Database configuration - only use POSTGRES_DB_URL
+    config['POSTGRES_DB_URL'] = 'postgresql+asyncpg://user:pass@localhost:5432/dbname'
     
     return config
 
@@ -303,10 +290,8 @@ def invalid_complete_config(draw):
     if invalid_type == 'missing_secret_key':
         del base_config['SECRET_KEY']
     elif invalid_type == 'missing_db_config':
-        # Remove both URL and individual components
+        # Remove POSTGRES_DB_URL
         base_config.pop('POSTGRES_DB_URL', None)
-        for key in ['POSTGRES_USER', 'POSTGRES_PASSWORD', 'POSTGRES_SERVER', 'POSTGRES_DB']:
-            base_config.pop(key, None)
     elif invalid_type == 'invalid_kafka':
         base_config['KAFKA_BOOTSTRAP_SERVERS'] = 'invalid-format'
     elif invalid_type == 'invalid_stripe':
@@ -585,10 +570,6 @@ class TestConfigurationValidationProperty:
                 self.STRIPE_WEBHOOK_SECRET = env_vars.get('STRIPE_WEBHOOK_SECRET', '')
                 self.KAFKA_BOOTSTRAP_SERVERS = env_vars.get('KAFKA_BOOTSTRAP_SERVERS', '')
                 self.POSTGRES_DB_URL = env_vars.get('POSTGRES_DB_URL', '')
-                self.POSTGRES_USER = env_vars.get('POSTGRES_USER', '')
-                self.POSTGRES_PASSWORD = env_vars.get('POSTGRES_PASSWORD', '')
-                self.POSTGRES_SERVER = env_vars.get('POSTGRES_SERVER', '')
-                self.POSTGRES_DB = env_vars.get('POSTGRES_DB', '')
                 
                 # Add all Kafka topic attributes
                 self.KAFKA_TOPIC_EMAIL = env_vars.get('KAFKA_TOPIC_EMAIL', 'banwee-emails')

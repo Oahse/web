@@ -15,7 +15,6 @@ from datetime import datetime, timedelta
 from typing import Optional, List, Dict, Any
 from enum import Enum
 from core.config import settings
-from core.kafka import get_kafka_producer_service
 import stripe
 import logging
 import time
@@ -1483,13 +1482,7 @@ class PaymentService:
             # Store in database or send to analytics service
             logger.error(f"Payment failure recorded: {failure_record}")
             
-            # Send to Kafka for real-time monitoring
-            kafka_service = get_kafka_producer_service()
-            if kafka_service:
-                await kafka_service.send_event(
-                    "payment_failure",
-                    failure_record
-                )
+            # Payment failure monitoring handled by hybrid task system
                 
         except Exception as e:
             logger.error(f"Failed to record payment failure: {e}")

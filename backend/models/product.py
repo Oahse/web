@@ -230,6 +230,11 @@ class ProductVariant(BaseModel):
         return self.sale_price if self.sale_price else self.base_price
 
     @property
+    def stock(self) -> int:
+        """Get available stock quantity"""
+        return self.inventory.quantity_available if self.inventory else 0
+
+    @property
     def discount_percentage(self) -> float:
         """Calculate discount percentage if on sale"""
         if not self.sale_price or self.sale_price >= self.base_price:

@@ -8,7 +8,7 @@ from typing import Optional, Dict, Any, List
 from core.database import get_db
 from core.utils.response import Response
 from core.exceptions import APIException
-from core.logging_config import get_logger
+from core.logging import get_logger
 from services.admin import AdminService
 from services.orders import OrderService
 from services.shipping import ShippingService

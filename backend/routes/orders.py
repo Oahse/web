@@ -57,7 +57,7 @@ async def validate_checkout(
     try:
         # Import CartService here to avoid circular imports
         from services.cart import CartService
-        from core.logging_config import logger
+        from core.logging import logger
         print('Validating checkout for user')
         logger.info(f"Validating checkout for user {current_user.id}")
         logger.info(f"Request data: shipping_address_id={request.shipping_address_id}, shipping_method_id={request.shipping_method_id}, payment_method_id={request.payment_method_id}")

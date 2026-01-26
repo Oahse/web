@@ -1,4 +1,4 @@
-import uuid
+from core.utils.uuid_utils import uuid7
 from typing import Optional, Any
 
 # This function should ideally be used in conjunction with a middleware
@@ -12,4 +12,4 @@ def get_correlation_id(request: Optional[Any] = None) -> str:
     """
     if request and hasattr(request.state, "correlation_id"):
         return request.state.correlation_id
-    return str(uuid.uuid4())
+    return str(uuid7())

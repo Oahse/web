@@ -22,11 +22,9 @@ from uuid import UUID, uuid4
 from datetime import datetime, timedelta
 from typing import Optional, List, Dict, Any
 from core.config import settings
-from core.kafka import get_kafka_producer_service
-from services.event_service import event_service
-import logging
+from core.logging import get_structured_logger
 
-logger = logging.getLogger(__name__)
+logger = get_structured_logger(__name__)
 
 
 class OrderService:
@@ -521,12 +519,12 @@ class OrderService:
             # Refresh order after transaction commit
             await self.db.refresh(order)
             
-            # Send Kafka events with idempotency after successful transaction commit
+            # Send ARQ events with idempotency after successful transaction commit
             try:
                 await self._send_order_events_with_idempotency(order, user_id, validated_cart_items)
-            except Exception as kafka_error:
-                # Log Kafka errors but don't fail the order
-                logger.error(f"Failed to send order events for order {order.id}: {kafka_error}")
+            except Exception as arq_error:
+                # Log ARQ errors but don't fail the order
+                logger.error(f"Failed to send order events for order {order.id}: {arq_error}")
                 # Order is still successful even if events fail
                 
         except HTTPException:
@@ -856,7 +854,7 @@ class OrderService:
             # For security, we'll log discrepancies but use backend prices
             
             if total_discrepancies:
-                from core.utils.logging import structured_logger
+                from core.logging import structured_logger
                 structured_logger.warning(
                     message="Price discrepancies detected during checkout",
                     metadata={
@@ -1018,10 +1016,10 @@ class OrderService:
             return 0.08  # Default 8% tax rate
     async def _send_price_update_notification(self, user_id: UUID, price_updates: List[Dict]) -> None:
         """
-        Send real-time price update notification to frontend via WebSocket
+        Send real-time price update notification to frontend via ARQ
         """
         try:
-            from core.kafka import get_kafka_producer_service
+            from core.arq_worker import enqueue_notification
             from core.config import settings
             
             # Calculate summary statistics
@@ -1046,42 +1044,23 @@ class OrderService:
                 "message": self._generate_price_update_message(price_updates, total_price_change)
             }
             
-            # Send via Kafka to WebSocket service
-            producer_service = await get_kafka_producer_service()
-            await producer_service.send_message(
-                settings.KAFKA_TOPIC_WEBSOCKET,
-                {
-                    "type": "price_update_notification",
-                    "user_id": str(user_id),
-                    "data": notification_data
-                },
-                key=str(user_id)
-            )
-            
-            # Also send as regular notification for persistence
-            await producer_service.send_message(
-                settings.KAFKA_TOPIC_NOTIFICATION,
-                {
-                    "service": "NotificationService",
-                    "method": "create_notification",
-                    "args": [],
-                    "kwargs": {
-                        "user_id": str(user_id),
-                        "message": notification_data["message"],
-                        "type": "info",
-                        "title": "Price Update",
-                        "metadata": {
-                            "type": "price_update",
-                            "items_updated": total_items_updated,
-                            "total_change": total_price_change
-                        }
-                    }
+            # Send notification using ARQ
+            await enqueue_notification(
+                str(user_id),
+                "price_update",
+                title="Price Update",
+                message=notification_data["message"],
+                data={
+                    "type": "price_update",
+                    "items_updated": total_items_updated,
+                    "total_change": total_price_change,
+                    "items": price_updates
                 }
             )
             
         except Exception as e:
             # Don't fail checkout if notification fails
-            from core.utils.logging import structured_logger
+            from core.logging import structured_logger
             structured_logger.error(
                 message="Failed to send price update notification",
                 metadata={
@@ -1141,10 +1120,12 @@ class OrderService:
 
     async def _send_order_events_with_idempotency(self, order: Order, user_id: UUID, validated_cart_items: List[Dict[str, Any]]):
         """
-        Send immutable Kafka events for order creation using new event system.
+        Send immutable ARQ events for order creation using new event system.
         Events are versioned, validated, and idempotent.
         """
         try:
+            from core.arq_worker import enqueue_email, enqueue_notification
+            
             # Use correlation ID for event tracing
             correlation_id = str(order.id)
             
@@ -1171,31 +1152,38 @@ class OrderService:
                     "postal_code": order.shipping_address.postal_code
                 }
             
-            # Publish order.created event using new event system
-            await event_service.publish_order_created(
-                order_id=str(order.id),
-                user_id=str(user_id),
-                amount=float(order.total_amount),
-                currency=order.currency,  # Use order's currency
-                items=order_items,
-                shipping_address=shipping_address,
-                payment_method="card",  # You can get this from payment method
-                correlation_id=correlation_id
-            )
+            # Order created event handled by hybrid task system
             
-            # If order is already confirmed (payment succeeded), also publish order.paid event
-            if order.status == "confirmed":
-                # Get payment information (you might need to adjust this based on your payment model)
-                payment_id = getattr(order, 'payment_id', str(uuid4()))
-                
-                await event_service.publish_order_paid(
+            # Send order confirmation email using ARQ
+            user_result = await self.db.execute(select(User).where(User.id == user_id))
+            user = user_result.scalar_one_or_none()
+            if user:
+                await enqueue_email(
+                    "order_confirmation",
+                    user.email,
                     order_id=str(order.id),
-                    payment_id=payment_id,
-                    amount=float(order.total_amount),
-                    currency=order.currency,  # Use order's currency
-                    payment_method="card",
-                    correlation_id=correlation_id
+                    order_details={
+                        "items": order_items,
+                        "total_amount": float(order.total_amount),
+                        "currency": order.currency,
+                        "shipping_address": shipping_address
+                    }
                 )
+                
+                # Send order notification
+                await enqueue_notification(
+                    str(user_id),
+                    "order_created",
+                    title="Order Confirmed",
+                    message=f"Your order #{order.id} has been confirmed and is being processed.",
+                    data={
+                        "order_id": str(order.id),
+                        "total_amount": float(order.total_amount),
+                        "currency": order.currency
+                    }
+                )
+            
+            # Order payment event handled by hybrid task system
             
             logger.info(f"Successfully published order events for order {order.id} using new event system")
             
@@ -1237,28 +1225,6 @@ class OrderService:
                 status_code=500,
                 detail=f"Failed to process refund request: {str(e)}"
             )
-    async def _send_price_update_notification(self, user_id: UUID, price_updates: List[Dict]):
-        """Send real-time price update notification to frontend"""
-        try:
-            # Send WebSocket notification about price changes
-            notification_data = {
-                "type": "price_update",
-                "user_id": str(user_id),
-                "updates": price_updates,
-                "timestamp": datetime.utcnow().isoformat()
-            }
-            
-            # Send via Kafka for WebSocket delivery
-            kafka_service = get_kafka_producer_service()
-            if kafka_service:
-                await kafka_service.send_event(
-                    "price_update_notification",
-                    notification_data
-                )
-                
-        except Exception as e:
-            logger.error(f"Failed to send price update notification: {e}")
-
     def _generate_cart_hash(self, cart, request: CheckoutRequest) -> str:
         """Generate deterministic hash for cart state and checkout request"""
         import hashlib

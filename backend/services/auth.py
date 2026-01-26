@@ -7,7 +7,7 @@ from jose import JWTError, jwt
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any
 import secrets
-import uuid
+from core.utils.uuid_utils import uuid7
 from core.config import settings
 from models.user import User
 from schemas.auth import UserCreate, Token, UserResponse, AuthResponse
@@ -42,7 +42,7 @@ class AuthService:
             "exp": expire,
             "iat": datetime.utcnow(),
             "type": "access",
-            "jti": str(uuid.uuid4())  # JWT ID for token tracking
+            "jti": str(uuid7())  # JWT ID for token tracking
         })
         
         encoded_jwt = jwt.encode(
@@ -61,7 +61,7 @@ class AuthService:
             "exp": expire,
             "iat": datetime.utcnow(),
             "type": "refresh",
-            "jti": str(uuid.uuid4())  # JWT ID for token tracking
+            "jti": str(uuid7())  # JWT ID for token tracking
         })
         
         encoded_jwt = jwt.encode(

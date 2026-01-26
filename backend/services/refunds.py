@@ -17,7 +17,6 @@ from models.user import User
 from schemas.refunds import RefundRequest, RefundResponse, RefundItemRequest
 from services.payments import PaymentService
 from core.config import settings
-from core.events.producer import EventProducer
 import stripe
 
 logger = logging.getLogger(__name__)
@@ -29,7 +28,7 @@ class RefundService:
     def __init__(self, db: AsyncSession):
         self.db = db
         self.payment_service = PaymentService(db)
-        self.event_producer = EventProducer()
+        self.hybrid_task_manager = HybridTaskManager()
     
     async def request_refund(
         self,
@@ -106,17 +105,7 @@ class RefundService:
             # Send notifications
             await self._send_refund_notifications(refund, "requested")
             
-            # Publish event
-            await self.event_producer.publish_event(
-                event_type="refund.refund.requested",
-                data={
-                    "refund_id": str(refund.id),
-                    "order_id": str(order_id),
-                    "user_id": str(user_id),
-                    "amount": refund.requested_amount,
-                    "auto_approved": refund.auto_approved
-                }
-            )
+            # Refund event handled by hybrid task system
             
             return await self._format_refund_response(refund)
             
@@ -515,11 +504,7 @@ class RefundService:
                 "event_type": event_type
             }
             
-            # Publish notification event
-            await self.event_producer.publish_event(
-                event_type=f"notification.refund.{event_type}",
-                data=notification_data
-            )
+            # Refund notification handled by hybrid task system
             
         except Exception as e:
             logger.error(f"Failed to send refund notification: {e}")

@@ -1,6 +1,7 @@
 """
-Background Tasks for Payment Retry Management
+Background Tasks for Payment Retry Management using Hybrid approach
 Handles automatic payment retries, cleanup, and notifications
+Uses ARQ for scheduled retries and FastAPI BackgroundTasks for immediate processing
 """
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_, or_
@@ -8,8 +9,11 @@ from datetime import datetime, timedelta
 from typing import List, Dict, Any
 import asyncio
 import logging
+from fastapi import BackgroundTasks
 
 from core.database import get_db
+from core.hybrid_tasks import hybrid_task_manager, process_payment_hybrid
+from core.arq_worker import enqueue_payment_retry, enqueue_data_cleanup
 from models.payments import PaymentIntent, Transaction
 from models.subscriptions import Subscription
 from models.orders import Order
@@ -21,33 +25,95 @@ logger = logging.getLogger(__name__)
 
 
 class PaymentRetryTaskManager:
-    """Manages background tasks for payment retry operations"""
+    """Manages background tasks for payment retry operations using hybrid approach"""
     
     def __init__(self):
         self.is_running = False
         self.retry_interval_minutes = 30  # Check every 30 minutes
         
     async def start_retry_scheduler(self):
-        """Start the payment retry scheduler"""
+        """Start the payment retry scheduler using ARQ"""
         if self.is_running:
             logger.warning("Payment retry scheduler is already running")
             return
         
         self.is_running = True
-        logger.info("Starting payment retry scheduler")
+        logger.info("Starting payment retry scheduler with ARQ")
+        
+        # Use ARQ for scheduled processing
+        from core.arq_worker import get_arq_pool
+        pool = await get_arq_pool()
         
         while self.is_running:
             try:
-                await self._process_retry_queue()
-                await asyncio.sleep(self.retry_interval_minutes * 60)  # Convert to seconds
+                # Schedule the next processing cycle
+                await pool.enqueue_job(
+                    'process_payment_retries_task',
+                    _defer_by=timedelta(minutes=self.retry_interval_minutes)
+                )
+                await asyncio.sleep(self.retry_interval_minutes * 60)
             except Exception as e:
                 logger.error(f"Error in payment retry scheduler: {e}")
-                await asyncio.sleep(60)  # Wait 1 minute before retrying
+                await asyncio.sleep(60)
     
     def stop_retry_scheduler(self):
         """Stop the payment retry scheduler"""
         self.is_running = False
         logger.info("Payment retry scheduler stopped")
+    
+    async def schedule_payment_retry(
+        self, 
+        payment_id: str, 
+        retry_delay_hours: int = 1,
+        background_tasks: Optional[BackgroundTasks] = None,
+        **kwargs
+    ):
+        """Schedule a payment retry using hybrid approach"""
+        try:
+            if retry_delay_hours > 0:
+                # Use ARQ for delayed retries
+                await enqueue_payment_retry(
+                    payment_id, 
+                    delay_hours=retry_delay_hours,
+                    **kwargs
+                )
+                logger.info(f"Scheduled payment retry for {payment_id} in {retry_delay_hours} hours")
+            else:
+                # Use FastAPI BackgroundTasks for immediate retry
+                if background_tasks:
+                    await process_payment_hybrid(
+                        background_tasks,
+                        payment_id,
+                        "retry",
+                        use_arq=False,  # Immediate processing
+                        **kwargs
+                    )
+                else:
+                    # Direct processing
+                    await hybrid_task_manager.process_payment_task(payment_id, "retry", **kwargs)
+                
+        except Exception as e:
+            logger.error(f"Error scheduling payment retry for {payment_id}: {e}")
+    
+    async def process_immediate_retry(
+        self,
+        background_tasks: BackgroundTasks,
+        payment_id: str,
+        **kwargs
+    ):
+        """Process immediate payment retry using FastAPI BackgroundTasks"""
+        await process_payment_hybrid(
+            background_tasks,
+            payment_id,
+            "retry",
+            use_arq=False,
+            **kwargs
+        )
+    
+    async def cleanup_expired_retries(self, days_old: int = 30):
+        """Schedule cleanup of expired retries using ARQ"""
+        await enqueue_data_cleanup("failed_payments", days_old)
+        logger.info(f"Scheduled cleanup of failed payments older than {days_old} days")
     
     async def _process_retry_queue(self):
         """Process payments that are due for retry"""

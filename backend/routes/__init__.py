@@ -18,7 +18,6 @@ from .subscriptions import router as subscriptions_router
 from .tax import router as tax_router
 from .user import router as user_router
 from .webhooks import router as webhooks_router
-from .websockets import ws_router as websockets_router
 from .wishlist import router as wishlist_router
 
 # Export all routers for easy importing
@@ -42,6 +41,5 @@ __all__ = [
     "tax_router",
     "user_router",
     "webhooks_router",
-    "websockets_router",
     "wishlist_router",
 ]

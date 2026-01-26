@@ -20,7 +20,7 @@ from schemas.loyalty import (
     PersonalizedOffer, LoyaltyAnalyticsResponse
 )
 from core.exceptions import APIException
-from core.utils.logging import structured_logger
+from core.logging import structured_logger
 from core.config import settings
 
 

@@ -6,7 +6,7 @@ from core.database import get_db
 from core.utils.response import Response as APIResponse
 from core.exceptions import APIException
 from core.config import settings
-from core.logging_config import get_logger
+from core.logging import get_logger
 from schemas.auth import UserCreate, UserLogin, RefreshTokenRequest
 from schemas.user import AddressCreate, AddressUpdate, AddressResponse
 from services.auth import AuthService

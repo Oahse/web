@@ -16,7 +16,7 @@ This guide explains how to configure environment variables for the Banwee applic
    SECRET_KEY=<generate-with-openssl-rand-hex-32>
    STRIPE_SECRET_KEY=sk_test_<your-test-key>
    STRIPE_WEBHOOK_SECRET=whsec_<your-webhook-secret>
-   POSTGRES_PASSWORD=<strong-password>
+   POSTGRES_DB_URL=postgresql+asyncpg://banwee:<strong-password>@postgres:5432/banwee_db
    ```
 
 3. Start the application:
@@ -67,7 +67,7 @@ The application validates all configuration at startup using Pydantic models. If
 | `SECRET_KEY` | JWT signing key (32+ chars, 64+ for prod) | `openssl rand -hex 32` |
 | `STRIPE_SECRET_KEY` | Stripe API key | `sk_test_...` or `sk_live_...` |
 | `STRIPE_WEBHOOK_SECRET` | Stripe webhook secret | `whsec_...` |
-| `POSTGRES_PASSWORD` | Database password (8+ chars, 16+ for prod) | Strong password |
+| `POSTGRES_DB_URL` | Complete database connection URL | `postgresql+asyncpg://user:pass@host:port/db` |
 | `KAFKA_BOOTSTRAP_SERVERS` | Kafka connection | `kafka:29092` |
 
 ### Production-Only Required
@@ -97,11 +97,7 @@ BACKEND_CORS_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
 ### 3. Database (PostgreSQL)
 
 ```bash
-POSTGRES_USER=banwee
-POSTGRES_PASSWORD=banwee_password
-POSTGRES_SERVER=postgres       # Use 'localhost' for local development
-POSTGRES_PORT=5432
-POSTGRES_DB=banwee_db
+POSTGRES_DB_URL=postgresql+asyncpg://banwee:banwee_password@postgres:5432/banwee_db
 ```
 
 **Connection Pool Settings:**
@@ -162,7 +158,7 @@ MAILGUN_FROM_EMAIL=Banwee <noreply@yourdomain.com>
 Use service names for inter-container communication:
 
 ```bash
-POSTGRES_SERVER=postgres
+POSTGRES_DB_URL=postgresql+asyncpg://banwee:banwee_password@postgres:5432/banwee_db
 REDIS_URL=redis://redis:6379/0
 KAFKA_BOOTSTRAP_SERVERS=kafka:29092
 ```
@@ -172,7 +168,7 @@ KAFKA_BOOTSTRAP_SERVERS=kafka:29092
 Use localhost for local services:
 
 ```bash
-POSTGRES_SERVER=localhost
+POSTGRES_DB_URL=postgresql+asyncpg://banwee:banwee_password@localhost:5432/banwee_db
 REDIS_URL=redis://localhost:6379/0
 KAFKA_BOOTSTRAP_SERVERS=localhost:9092
 ```
@@ -193,7 +189,7 @@ VITE_STRIPE_PUBLIC_KEY=pk_live_...
 
 # Strong secrets (64+ characters)
 SECRET_KEY=<64-character-random-string>
-POSTGRES_PASSWORD=<16-character-strong-password>
+POSTGRES_DB_URL=postgresql+asyncpg://banwee:<16-character-strong-password>@postgres:5432/banwee_db
 ```
 
 ## Production Checklist
@@ -202,7 +198,7 @@ Before deploying to production, ensure:
 
 - [ ] `ENVIRONMENT=production`
 - [ ] `SECRET_KEY` is 64+ characters and randomly generated
-- [ ] `POSTGRES_PASSWORD` is 16+ characters and strong
+- [ ] `POSTGRES_DB_URL` contains a strong password (16+ characters)
 - [ ] `STRIPE_SECRET_KEY` starts with `sk_live_`
 - [ ] `STRIPE_WEBHOOK_SECRET` is configured
 - [ ] `MAILGUN_API_KEY` and `MAILGUN_DOMAIN` are set
@@ -226,13 +222,16 @@ openssl rand -hex 32
 openssl rand -hex 64
 ```
 
-### POSTGRES_PASSWORD
+### POSTGRES_DB_URL
 
-Generate a strong password:
+Generate a complete database URL with a strong password:
 
 ```bash
-# 24-character random password
-openssl rand -base64 24
+# Generate a 24-character random password
+PASSWORD=$(openssl rand -base64 24)
+
+# Create the complete database URL
+echo "POSTGRES_DB_URL=postgresql+asyncpg://banwee:$PASSWORD@postgres:5432/banwee_db"
 ```
 
 ## Validation Errors
@@ -289,8 +288,8 @@ volumes:
 
 ### Database connection fails
 
-1. Verify `POSTGRES_SERVER` matches your setup (postgres for Docker, localhost for local)
-2. Check `POSTGRES_PASSWORD` is correct
+1. Verify `POSTGRES_DB_URL` is correctly formatted and accessible
+2. Check the database password in the URL is correct
 3. Ensure PostgreSQL is running and healthy
 
 ### Stripe webhooks fail

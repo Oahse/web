@@ -5,7 +5,7 @@ from uuid import UUID
 from core.database import get_db
 from core.utils.response import Response
 from core.exceptions import APIException
-from core.logging_config import get_logger
+from core.logging import get_logger
 from schemas.product import ProductCreate, ProductUpdate, BarcodeGenerateRequest, BarcodeResponse, BarcodeUpdateRequest
 from services.products import ProductService
 from services.search import SearchService

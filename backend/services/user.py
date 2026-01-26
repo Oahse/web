@@ -14,7 +14,6 @@ from core.utils.messages.email import send_email
 import httpx
 from core.config import settings
 from core.utils.encryption import PasswordManager
-from services.event_service import event_service
 import logging
 
 logger = logging.getLogger(__name__)
@@ -272,19 +271,7 @@ class UserService:
         background_tasks.add_task(
             self.send_verification_email, new_user, verification_token)
 
-        # Publish user.registered event using new event system
-        try:
-            await event_service.publish_user_registered(
-                user_id=str(new_user.id),
-                email=new_user.email,
-                username=f"{new_user.firstname} {new_user.lastname}",
-                registration_source="web",
-                email_verified=False,
-                correlation_id=str(new_user.id)
-            )
-        except Exception as e:
-            # Log error but don't fail user creation
-            logger.error(f"Failed to publish user.registered event for user {new_user.id}: {e}")
+        # User registration event handled by hybrid task system
 
         return new_user
 
@@ -336,27 +323,7 @@ class UserService:
         # Send welcome email in the background
         background_tasks.add_task(self.send_welcome_email, user)
 
-        # Publish user.verified event using new event system
-        try:
-            await event_service.publish_user_verified(
-                user_id=str(user.id),
-                email=user.email,
-                correlation_id=str(user.id)
-            )
-        except Exception as e:
-            # Log error but don't fail verification
-            logger.error(f"Failed to publish user.verified event for user {user.id}: {e}")
-
-        # Publish user.verified event using new event system
-        try:
-            await event_service.publish_user_verified(
-                user_id=str(user.id),
-                email=user.email,
-                correlation_id=str(user.id)
-            )
-        except Exception as e:
-            # Log error but don't fail verification
-            logger.error(f"Failed to publish user.verified event for user {user.id}: {e}")
+        # User verification event handled by hybrid task system
 
     async def get_users(self, page: int = 1, limit: int = 10, role: Optional[str] = None) -> dict:
         """Get paginated list of users with order count"""

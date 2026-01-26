@@ -107,7 +107,7 @@ class TestPriceValidation:
         mock_db_session.execute.return_value = mock_result
         
         # Test price validation
-        with patch('core.utils.logging.structured_logger') as mock_logger:
+        with patch('core.logging.structured_logger') as mock_logger:
             result = await order_service._validate_and_recalculate_prices(mock_cart)
         
         # Should still be valid but use backend prices

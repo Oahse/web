@@ -4,7 +4,7 @@ from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from sqlalchemy.exc import SQLAlchemyError
 from datetime import datetime
-import uuid
+from core.utils.uuid_utils import uuid7
 import traceback
 
 from .api_exceptions import APIException
@@ -27,7 +27,7 @@ async def api_exception_handler(request: Request, exc: APIException) -> JSONResp
 
 async def http_exception_handler(request: Request, exc: StarletteHTTPException) -> JSONResponse:
     """Handle standard HTTP exceptions"""
-    correlation_id = str(uuid.uuid4())
+    correlation_id = str(uuid7())
 
     return JSONResponse(
         status_code=exc.status_code,
@@ -43,7 +43,7 @@ async def http_exception_handler(request: Request, exc: StarletteHTTPException) 
 
 async def validation_exception_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
     """Handle validation errors"""
-    correlation_id = str(uuid.uuid4())
+    correlation_id = str(uuid7())
 
     # Format validation errors
     errors = {}
@@ -67,7 +67,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 
 async def sqlalchemy_exception_handler(request: Request, exc: SQLAlchemyError) -> JSONResponse:
     """Handle SQLAlchemy database errors"""
-    correlation_id = str(uuid.uuid4())
+    correlation_id = str(uuid7())
 
     # Log the full error for debugging
     print(f"Database error [{correlation_id}]: {str(exc)}")
@@ -87,7 +87,7 @@ async def sqlalchemy_exception_handler(request: Request, exc: SQLAlchemyError) -
 
 async def general_exception_handler(request: Request, exc: Exception) -> JSONResponse:
     """Handle unexpected exceptions"""
-    correlation_id = str(uuid.uuid4())
+    correlation_id = str(uuid7())
 
     # Log the full error for debugging
     print(f"Unexpected error [{correlation_id}]: {str(exc)}")

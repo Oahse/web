@@ -329,7 +329,7 @@ docker stats
    
    # Configure environment variables
    cp .env.example .env
-   # Edit .env file - change POSTGRES_SERVER to localhost
+   # Edit .env file - update POSTGRES_DB_URL if needed
    
    # Initialize database
    python init_db.py --seed
@@ -551,11 +551,7 @@ All backend environment variables should be configured in `backend/.env`. See `b
 
 | Variable | Description | Example |
 |----------|-------------|---------|
-| `POSTGRES_USER` | PostgreSQL username | `banwee` |
-| `POSTGRES_PASSWORD` | PostgreSQL password | `banwee_password` |
-| `POSTGRES_SERVER` | PostgreSQL host (use `postgres` for Docker, `localhost` for local) | `postgres` or `localhost` |
-| `POSTGRES_PORT` | PostgreSQL port | `5432` |
-| `POSTGRES_DB` | PostgreSQL database name | `banwee_db` |
+| `POSTGRES_DB_URL` | Complete PostgreSQL connection URL | `postgresql+asyncpg://banwee:banwee_password@postgres:5432/banwee_db` |
 | `SECRET_KEY` | JWT secret key (min 32 chars) | Generate with `openssl rand -hex 32` |
 | `REDIS_URL` | Redis connection URL (use `redis://redis:6379/0` for Docker) | `redis://redis:6379/0` |
 
@@ -629,7 +625,6 @@ The included `.env` files are already configured for Docker deployment:
 **Backend (`backend/.env`):**
 ```bash
 # Database (configured for Docker service names)
-POSTGRES_SERVER=postgres
 POSTGRES_DB_URL=postgresql+asyncpg://banwee:banwee_password@postgres:5432/banwee_db
 REDIS_URL=redis://redis:6379/0
 

@@ -1,6 +1,6 @@
 from fastapi import HTTPException
 from datetime import datetime
-import uuid
+from core.utils.uuid_utils import uuid7
 from typing import Any, Dict, Optional
 
 
@@ -19,7 +19,7 @@ class APIException(HTTPException):
         self.message = message
         self.detail = detail or message
         self.error_code = error_code or f"ERR_{status_code}"
-        self.correlation_id = correlation_id or str(uuid.uuid4())
+        self.correlation_id = correlation_id or str(uuid7())
         self.timestamp = datetime.now().isoformat()
 
         super().__init__(status_code=status_code, detail=self.detail, **kwargs)

@@ -23,7 +23,7 @@ from models.inventories import Inventory
 from models.payments import PaymentMethod, PaymentIntent, Transaction
 from models.user import User, Address
 from models.shipping import ShippingMethod
-from core.events.producer import EventProducer
+from core.hybrid_tasks import HybridTaskManager
 from fastapi import BackgroundTasks, HTTPException
 
 

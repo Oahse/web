@@ -199,9 +199,9 @@ class SubscriptionSchedulerService:
     
     async def _generate_order_number(self) -> str:
         """Generate unique order number"""
-        import uuid
+        from core.utils.uuid_utils import uuid7
         timestamp = datetime.utcnow().strftime("%Y%m%d")
-        short_uuid = str(uuid.uuid4())[:8].upper()
+        short_uuid = str(uuid7())[:8].upper()
         return f"SUB-{timestamp}-{short_uuid}"
     
     async def _recalculate_subscription_pricing(self, subscription: Subscription, variants: List[ProductVariant]) -> Dict[str, Any]:

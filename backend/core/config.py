@@ -120,12 +120,7 @@ def parse_cors(value: str) -> List[str]:
 class DatabaseConfig(BaseSettings):
     """Pydantic model for database configuration validation"""
     
-    POSTGRES_USER: str = Field(default="banwee", description="PostgreSQL username")
-    POSTGRES_PASSWORD: str = Field(..., min_length=8, description="PostgreSQL password")
-    POSTGRES_SERVER: str = Field(default="postgres", description="PostgreSQL server hostname")
-    POSTGRES_PORT: int = Field(default=5432, ge=1, le=65535, description="PostgreSQL port")
-    POSTGRES_DB: str = Field(default="banwee_db", description="PostgreSQL database name")
-    POSTGRES_DB_URL: Optional[str] = Field(None, description="Complete PostgreSQL connection URL")
+    POSTGRES_DB_URL: str = Field(..., description="Complete PostgreSQL connection URL")
     
     DB_POOL_SIZE: int = Field(default=20, ge=1, le=100, description="Database connection pool size")
     DB_MAX_OVERFLOW: int = Field(default=30, ge=0, le=100, description="Max overflow connections")
@@ -136,17 +131,8 @@ class DatabaseConfig(BaseSettings):
     @classmethod
     def validate_db_url(cls, v):
         """Validate database URL format"""
-        if v and not v.startswith(('postgresql://', 'postgresql+asyncpg://', 'postgresql+psycopg2://')):
+        if not v.startswith(('postgresql://', 'postgresql+asyncpg://', 'postgresql+psycopg2://')):
             raise ValueError('Database URL must start with postgresql:// or postgresql+asyncpg://')
-        return v
-    
-    @field_validator('POSTGRES_PASSWORD')
-    @classmethod
-    def validate_password_strength(cls, v):
-        """Validate password strength in production"""
-        env = os.getenv('ENVIRONMENT', 'local')
-        if env == 'production' and len(v) < 16:
-            raise ValueError('Production database password must be at least 16 characters')
         return v
     
     class Config:
@@ -171,59 +157,6 @@ class RedisConfig(BaseSettings):
         """Validate Redis URL format"""
         if not v.startswith('redis://'):
             raise ValueError('Redis URL must start with redis://')
-        return v
-    
-    class Config:
-        env_file = '.env'
-        case_sensitive = True
-
-
-class KafkaConfig(BaseSettings):
-    """Pydantic model for Kafka configuration validation"""
-    
-    KAFKA_BOOTSTRAP_SERVERS: str = Field(
-        default="kafka:29092",
-        description="Kafka bootstrap servers"
-    )
-    
-    # Kafka Topics
-    KAFKA_TOPIC_EMAIL: str = Field(default="banwee-email-notifications")
-    KAFKA_TOPIC_NOTIFICATION: str = Field(default="banwee-user-notifications")
-    KAFKA_TOPIC_ORDER: str = Field(default="banwee-order-events")
-    KAFKA_TOPIC_PAYMENT: str = Field(default="banwee-payment-events")
-    KAFKA_TOPIC_CART: str = Field(default="banwee-cart-events")
-    KAFKA_TOPIC_INVENTORY: str = Field(default="banwee-inventory-events")
-    KAFKA_TOPIC_WEBSOCKET: str = Field(default="banwee-websocket-events")
-    KAFKA_TOPIC_REAL_TIME: str = Field(default="banwee-real-time-notifications")
-    
-    # Kafka Consumer Groups
-    KAFKA_CONSUMER_GROUP_BACKEND: str = Field(default="banwee-backend-consumers")
-    KAFKA_CONSUMER_GROUP_SCHEDULER: str = Field(default="banwee-scheduler-consumers")
-    KAFKA_CONSUMER_GROUP_WEBSOCKET: str = Field(default="banwee-websocket-consumers")
-    
-    # Kafka Performance Settings
-    KAFKA_AUTO_OFFSET_RESET: str = Field(default="earliest")
-    KAFKA_ENABLE_AUTO_COMMIT: bool = Field(default=True)
-    KAFKA_MAX_POLL_RECORDS: int = Field(default=500, ge=1, le=10000)
-    KAFKA_SESSION_TIMEOUT_MS: int = Field(default=30000, ge=6000)
-    KAFKA_HEARTBEAT_INTERVAL_MS: int = Field(default=10000, ge=1000)
-    
-    @field_validator('KAFKA_BOOTSTRAP_SERVERS')
-    @classmethod
-    def validate_bootstrap_servers(cls, v):
-        """Validate Kafka bootstrap servers format"""
-        if not v or not v.strip():
-            raise ValueError('Kafka bootstrap servers cannot be empty')
-        return v
-    
-    @field_validator('KAFKA_TOPIC_EMAIL', 'KAFKA_TOPIC_NOTIFICATION', 'KAFKA_TOPIC_ORDER', 
-               'KAFKA_TOPIC_PAYMENT', 'KAFKA_TOPIC_CART', 'KAFKA_TOPIC_INVENTORY',
-               'KAFKA_TOPIC_WEBSOCKET', 'KAFKA_TOPIC_REAL_TIME')
-    @classmethod
-    def validate_topic_name(cls, v):
-        """Validate Kafka topic names"""
-        if not v or not v.strip():
-            raise ValueError('Kafka topic name cannot be empty')
         return v
     
     class Config:
@@ -346,7 +279,6 @@ class PydanticConfigValidator:
             # Validate each configuration section
             self._validate_database()
             self._validate_redis()
-            self._validate_kafka()
             self._validate_security()
             self._validate_application()
             
@@ -392,18 +324,6 @@ class PydanticConfigValidator:
                 self.errors.append(f"Redis config - {field}: {msg}")
             logger.error("✗ Redis configuration validation failed")
     
-    def _validate_kafka(self):
-        """Validate Kafka configuration"""
-        try:
-            KafkaConfig()
-            logger.info("✓ Kafka configuration validated successfully")
-        except ValidationError as e:
-            for error in e.errors():
-                field = error['loc'][0]
-                msg = error['msg']
-                self.errors.append(f"Kafka config - {field}: {msg}")
-            logger.error("✗ Kafka configuration validation failed")
-    
     def _validate_security(self):
         """Validate security configuration"""
         try:
@@ -446,50 +366,11 @@ class VariableDefinitions:
     BACKEND_VARIABLES = [
         # Database Configuration
         EnvironmentVariable(
-            name="POSTGRES_USER",
-            description="PostgreSQL database username",
-            variable_type=VariableType.STRING,
-            required=True,
-            default_value="banwee"
-        ),
-        EnvironmentVariable(
-            name="POSTGRES_PASSWORD", 
-            description="PostgreSQL database password",
-            variable_type=VariableType.SECRET,
-            required=True,
-            sensitive=True,
-            default_value="banwee_password"
-        ),
-        EnvironmentVariable(
-            name="POSTGRES_SERVER",
-            description="PostgreSQL server hostname",
-            variable_type=VariableType.STRING,
-            required=True,
-            default_value="postgres",
-            dev_override="localhost",
-            prod_override="postgres"
-        ),
-        EnvironmentVariable(
-            name="POSTGRES_PORT",
-            description="PostgreSQL server port", 
-            variable_type=VariableType.INTEGER,
-            required=True,
-            default_value="5432",
-            validation_pattern=r"^\d{1,5}$"
-        ),
-        EnvironmentVariable(
-            name="POSTGRES_DB",
-            description="PostgreSQL database name",
-            variable_type=VariableType.STRING,
-            required=True,
-            default_value="banwee_db"
-        ),
-        EnvironmentVariable(
             name="POSTGRES_DB_URL",
             description="Complete PostgreSQL connection URL",
             variable_type=VariableType.URL,
-            required=False,
-            validation_pattern=r"^postgresql\+asyncpg://.*"
+            required=True,
+            validation_pattern=r"^postgresql(\+asyncpg)?://.*"
         ),
         
         # Redis Configuration
@@ -501,17 +382,6 @@ class VariableDefinitions:
             default_value="redis://redis:6379/0",
             dev_override="redis://localhost:6379/0",
             prod_override="redis://redis:6379/0"
-        ),
-        
-        # Kafka Configuration
-        EnvironmentVariable(
-            name="KAFKA_BOOTSTRAP_SERVERS",
-            description="Kafka bootstrap servers",
-            variable_type=VariableType.STRING,
-            required=True,
-            default_value="kafka:29092",
-            dev_override="localhost:9092",
-            prod_override="kafka:29092"
         ),
         
         # Security Configuration
@@ -639,11 +509,6 @@ class Settings:
         cors_origins = os.getenv('BACKEND_CORS_ORIGINS', 'http://localhost:5173,http://127.0.0.1:5173,http://0.0.0.0:5173')
         
         # --- PostgreSQL Database Configuration ---
-        self.POSTGRES_USER: str = os.getenv('POSTGRES_USER', 'banwee')
-        self.POSTGRES_PASSWORD: str = os.getenv('POSTGRES_PASSWORD', 'banwee_password')
-        self.POSTGRES_SERVER: str = os.getenv('POSTGRES_SERVER')
-        self.POSTGRES_PORT: int = int(os.getenv('POSTGRES_PORT', 5432))
-        self.POSTGRES_DB: str = os.getenv('POSTGRES_DB', 'banwee_db')
         self.POSTGRES_DB_URL: str = os.getenv('POSTGRES_DB_URL')
         
         # Database connection pool settings
@@ -666,45 +531,18 @@ class Settings:
         self.FORCE_LOGOUT_ON_PASSWORD_CHANGE: bool = os.getenv('FORCE_LOGOUT_ON_PASSWORD_CHANGE', 'true').lower() == 'true'
         
         # --- Redis Configuration ---
+        self.ENABLE_REDIS: bool = os.getenv('ENABLE_REDIS', 'true').lower() == 'true'
         self.REDIS_URL: str = os.getenv('REDIS_URL')
         self.REDIS_CACHE_ENABLED: bool = os.getenv('REDIS_CACHE_ENABLED', 'true').lower() == 'true'
         self.REDIS_RATELIMIT_ENABLED: bool = os.getenv('REDIS_RATELIMIT_ENABLED', 'true').lower() == 'true'
         self.REDIS_CACHE_TTL: int = int(os.getenv('REDIS_CACHE_TTL', '3600'))
+        self.REDIS_CART_TTL_GUEST: int = int(os.getenv('REDIS_CART_TTL_GUEST', '1800'))  # 30 minutes for guests
+        self.REDIS_CART_TTL_USER: int = int(os.getenv('REDIS_CART_TTL_USER', '259200'))  # 3 days for users
+        self.REDIS_CART_EXTEND_ON_ADD: bool = os.getenv('REDIS_CART_EXTEND_ON_ADD', 'true').lower() == 'true'
         
-        # --- Kafka Configuration ---
-        self.KAFKA_BOOTSTRAP_SERVERS: str = os.getenv('KAFKA_BOOTSTRAP_SERVERS')
-        
-        # Kafka Topics
-        self.KAFKA_TOPIC_EMAIL: str = os.getenv('KAFKA_TOPIC_EMAIL', 'banwee-email-notifications')
-        self.KAFKA_TOPIC_NOTIFICATION: str = os.getenv('KAFKA_TOPIC_NOTIFICATION', 'banwee-user-notifications')
-        self.KAFKA_TOPIC_ORDER: str = os.getenv('KAFKA_TOPIC_ORDER', 'banwee-order-events')
-        self.KAFKA_TOPIC_NEGOTIATION: str = os.getenv('KAFKA_TOPIC_NEGOTIATION', 'banwee-negotiation-events')
-        self.KAFKA_TOPIC_PAYMENT: str = os.getenv('KAFKA_TOPIC_PAYMENT', 'banwee-payment-events')
-        self.KAFKA_TOPIC_CART: str = os.getenv('KAFKA_TOPIC_CART', 'banwee-cart-events')
-        self.KAFKA_TOPIC_INVENTORY: str = os.getenv('KAFKA_TOPIC_INVENTORY', 'banwee-inventory-events')
-        self.KAFKA_TOPIC_WEBSOCKET: str = os.getenv('KAFKA_TOPIC_WEBSOCKET', 'banwee-websocket-events')
-        self.KAFKA_TOPIC_REAL_TIME: str = os.getenv('KAFKA_TOPIC_REAL_TIME', 'banwee-real-time-notifications')
-        
-        # Kafka Consumer Groups
-        self.KAFKA_CONSUMER_GROUP_BACKEND: str = os.getenv('KAFKA_CONSUMER_GROUP_BACKEND', 'banwee-backend-consumers')
-        self.KAFKA_CONSUMER_GROUP_SCHEDULER: str = os.getenv('KAFKA_CONSUMER_GROUP_SCHEDULER', 'banwee-scheduler-consumers')
-        self.KAFKA_CONSUMER_GROUP_NEGOTIATOR: str = os.getenv('KAFKA_CONSUMER_GROUP_NEGOTIATOR', 'banwee-negotiator-consumers')
-        self.KAFKA_CONSUMER_GROUP_WEBSOCKET: str = os.getenv('KAFKA_CONSUMER_GROUP_WEBSOCKET', 'banwee-websocket-consumers')
-        
-        # Kafka Performance Settings
-        self.KAFKA_AUTO_OFFSET_RESET: str = os.getenv('KAFKA_AUTO_OFFSET_RESET', 'earliest')
-        self.KAFKA_ENABLE_AUTO_COMMIT: bool = os.getenv('KAFKA_ENABLE_AUTO_COMMIT', 'true').lower() == 'true'
-        self.KAFKA_MAX_POLL_RECORDS: int = int(os.getenv('KAFKA_MAX_POLL_RECORDS', 500))
-        self.KAFKA_SESSION_TIMEOUT_MS: int = int(os.getenv('KAFKA_SESSION_TIMEOUT_MS', 30000))
-        self.KAFKA_HEARTBEAT_INTERVAL_MS: int = int(os.getenv('KAFKA_HEARTBEAT_INTERVAL_MS', 10000))
-        self.KAFKA_RETRY_BACKOFF_MS: int = int(os.getenv('KAFKA_RETRY_BACKOFF_MS', 1000))
-        self.KAFKA_MAX_RETRIES: int = int(os.getenv('KAFKA_MAX_RETRIES', 3))
-        self.KAFKA_REQUEST_TIMEOUT_MS: int = int(os.getenv('KAFKA_REQUEST_TIMEOUT_MS', 30000))
-        self.KAFKA_DELIVERY_TIMEOUT_MS: int = int(os.getenv('KAFKA_DELIVERY_TIMEOUT_MS', 120000))
-        self.KAFKA_BATCH_SIZE: int = int(os.getenv('KAFKA_BATCH_SIZE', 16384))
-        self.KAFKA_LINGER_MS: int = int(os.getenv('KAFKA_LINGER_MS', 5))
-        self.KAFKA_COMPRESSION_TYPE: str = os.getenv('KAFKA_COMPRESSION_TYPE', 'snappy')
-        self.KAFKA_ACKS: str = os.getenv('KAFKA_ACKS', 'all')
+        # --- Background Tasks Configuration (ARQ + FastAPI) ---
+        self.ENABLE_ARQ: bool = os.getenv('ENABLE_ARQ', 'true').lower() == 'true'
+        self.ARQ_REDIS_URL: str = os.getenv('ARQ_REDIS_URL', 'redis://redis:6379/0')
         
         # --- CORS Configuration ---
         self.BACKEND_CORS_ORIGINS: List[str] = parse_cors(cors_origins)
@@ -720,10 +558,6 @@ class Settings:
         self.FACEBOOK_APP_SECRET: str = os.getenv('FACEBOOK_APP_SECRET')
         self.TIKTOK_CLIENT_KEY: str = os.getenv('TIKTOK_CLIENT_KEY')
         self.TIKTOK_CLIENT_SECRET: str = os.getenv('TIKTOK_CLIENT_SECRET')
-        self.TAX_API_KEY: str = os.getenv('TAX_API_KEY', '')
-        self.TAX_API_URL: str = os.getenv('TAX_API_URL', 'https://api.taxjar.com/v2')
-        self.VAT_API_KEY: str = os.getenv('VAT_API_KEY', '')
-        self.VAT_API_URL: str = os.getenv('VAT_API_URL', 'https://vatlayer.com/api')
         self.ADMIN_USER_ID: str = os.getenv('ADMIN_USER_ID', 'your_admin_uuid_here')
         self.NOTIFICATION_CLEANUP_DAYS: int = int(os.getenv('NOTIFICATION_CLEANUP_DAYS', 30))
         self.NOTIFICATION_CLEANUP_INTERVAL_SECONDS: int = int(os.getenv('NOTIFICATION_CLEANUP_INTERVAL_SECONDS', 86400))
@@ -739,13 +573,9 @@ class Settings:
     @property
     def SQLALCHEMY_DATABASE_URI(self) -> str:
         """Constructs the SQLAlchemy database URI for async operations."""
-        if self.POSTGRES_DB_URL:
-            return self.POSTGRES_DB_URL
-        
-        return (
-            f"postgresql+asyncpg://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}"
-            f"@{self.POSTGRES_SERVER}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
-        )
+        if not self.POSTGRES_DB_URL:
+            raise ValueError("POSTGRES_DB_URL is required")
+        return self.POSTGRES_DB_URL
     
     @property
     def SQLALCHEMY_DATABASE_URI_SYNC(self) -> str:
@@ -770,7 +600,6 @@ class Settings:
         
         # Run legacy validators for backward compatibility
         self.validate_required_settings()
-        self.validate_kafka_configuration()
         self.validate_stripe_configuration()
     
     def validate_required_settings(self) -> None:
@@ -786,32 +615,18 @@ class Settings:
         if not self.STRIPE_WEBHOOK_SECRET:
             missing_settings.append("STRIPE_WEBHOOK_SECRET is required for webhook signature verification")
         
-        if not self.KAFKA_BOOTSTRAP_SERVERS:
-            missing_settings.append("KAFKA_BOOTSTRAP_SERVERS is required for Kafka connection")
+        if self.ENABLE_REDIS and not self.REDIS_URL:
+            missing_settings.append("REDIS_URL is required for Redis connection")
         
-        if not self.POSTGRES_DB_URL and not all([
-            self.POSTGRES_USER, self.POSTGRES_PASSWORD, 
-            self.POSTGRES_SERVER, self.POSTGRES_DB
-        ]):
-            missing_settings.append("Database configuration is incomplete")
+        if self.ENABLE_ARQ and not self.ARQ_REDIS_URL:
+            missing_settings.append("ARQ_REDIS_URL is required for background tasks")
+        
+        if not self.POSTGRES_DB_URL:
+            missing_settings.append("POSTGRES_DB_URL is required for database connection")
         
         if missing_settings:
             error_message = "Missing required configuration settings:\n" + "\n".join(f"- {setting}" for setting in missing_settings)
             raise ValueError(error_message)
-    
-    def validate_kafka_configuration(self) -> None:
-        """Validates Kafka-specific configuration settings."""
-        topics = [
-            self.KAFKA_TOPIC_EMAIL,
-            self.KAFKA_TOPIC_NOTIFICATION,
-            self.KAFKA_TOPIC_ORDER,
-            # self.KAFKA_TOPIC_NEGOTIATION,  # Disabled - not using negotiator for now
-            self.KAFKA_TOPIC_PAYMENT
-        ]
-        
-        for topic in topics:
-            if not topic or not topic.strip():
-                raise ValueError(f"Kafka topic name cannot be empty")
     
     def validate_stripe_configuration(self) -> None:
         """Validates Stripe-specific configuration settings."""

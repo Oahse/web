@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from uuid import UUID
 from core.database import get_db
 from core.exceptions import APIException
-from core.logging_config import get_logger
+from core.logging import get_logger
 from core.redis import RedisKeyManager
 from services.cart import CartService
 from models.user import User
@@ -63,24 +63,12 @@ async def add_to_cart(
         cart_service = CartService(db)
         session_id = get_session_id(req) if not current_user else None
         
-        # Add item to cart
-        await cart_service.add_to_cart(
+        # Add item to cart with ARQ background tasks
+        cart = await cart_service.add_to_cart(
             user_id=current_user.id if current_user else None,
             variant_id=request.variant_id,
             quantity=request.quantity,
             session_id=session_id
-        )
-        
-        # Get location from query params or headers
-        country_code = country or req.headers.get('X-Country-Code', 'US')
-        province_code = province or req.headers.get('X-Province-Code')
-        
-        # Re-fetch cart with location to calculate tax
-        cart = await cart_service.get_cart(
-            user_id=current_user.id if current_user else None,
-            session_id=session_id,
-            country_code=country_code,
-            province_code=province_code
         )
         
         return Response(success=True, data=cart, message="Item added to cart")

@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from uuid import UUID
 
 from core.database import get_db
-from core.logging_config import get_logger
+from core.logging import get_logger
 from services.wishlist import WishlistService
 from schemas.wishlist import WishlistCreate, WishlistUpdate, WishlistResponse, WishlistItemCreate, WishlistItemResponse
 from models.user import User

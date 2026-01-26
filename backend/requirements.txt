@@ -11,8 +11,8 @@ alembic==1.13.1
 redis==5.0.3
 redis[hiredis]==5.0.3
 
-# Kafka (Async)
-aiokafka==0.9.0
+# Background Tasks (ARQ)
+arq==0.25.0
 
 # HTTP Client (Async)
 aiohttp==3.9.5

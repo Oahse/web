@@ -23,29 +23,22 @@ class TestDatabaseConfig:
     
     def test_valid_database_config(self, monkeypatch):
         """Test that valid database configuration passes validation"""
-        monkeypatch.setenv('POSTGRES_USER', 'testuser')
-        monkeypatch.setenv('POSTGRES_PASSWORD', 'testpassword123')
-        monkeypatch.setenv('POSTGRES_SERVER', 'localhost')
-        monkeypatch.setenv('POSTGRES_PORT', '5432')
-        monkeypatch.setenv('POSTGRES_DB', 'testdb')
+        monkeypatch.setenv('POSTGRES_DB_URL', 'postgresql+asyncpg://testuser:testpassword123@localhost:5432/testdb')
         
         config = DatabaseConfig()
-        assert config.POSTGRES_USER == 'testuser'
-        assert config.POSTGRES_PASSWORD == 'testpassword123'
+        assert config.POSTGRES_DB_URL == 'postgresql+asyncpg://testuser:testpassword123@localhost:5432/testdb'
     
-    def test_password_too_short(self, monkeypatch):
-        """Test that short passwords are rejected"""
-        monkeypatch.setenv('POSTGRES_USER', 'testuser')
-        monkeypatch.setenv('POSTGRES_PASSWORD', 'short')
+    def test_missing_database_url(self, monkeypatch):
+        """Test that missing database URL is rejected"""
+        # Don't set POSTGRES_DB_URL
         
         with pytest.raises(ValidationError) as exc_info:
             DatabaseConfig()
         
-        assert 'at least 8 characters' in str(exc_info.value)
+        assert 'field required' in str(exc_info.value)
     
     def test_invalid_db_url_format(self, monkeypatch):
         """Test that invalid database URL format is rejected"""
-        monkeypatch.setenv('POSTGRES_PASSWORD', 'testpassword123')
         monkeypatch.setenv('POSTGRES_DB_URL', 'mysql://invalid')
         
         with pytest.raises(ValidationError) as exc_info:
@@ -53,15 +46,15 @@ class TestDatabaseConfig:
         
         assert 'postgresql' in str(exc_info.value).lower()
     
-    def test_invalid_port_range(self, monkeypatch):
-        """Test that invalid port numbers are rejected"""
-        monkeypatch.setenv('POSTGRES_PASSWORD', 'testpassword123')
-        monkeypatch.setenv('POSTGRES_PORT', '99999')
+    def test_invalid_pool_settings(self, monkeypatch):
+        """Test that invalid pool settings are rejected"""
+        monkeypatch.setenv('POSTGRES_DB_URL', 'postgresql+asyncpg://user:pass@localhost:5432/db')
+        monkeypatch.setenv('DB_POOL_SIZE', '0')  # Invalid pool size
         
         with pytest.raises(ValidationError) as exc_info:
             DatabaseConfig()
         
-        assert 'less than or equal to 65535' in str(exc_info.value)
+        assert 'greater than or equal to 1' in str(exc_info.value)
 
 
 class TestRedisConfig:
@@ -221,7 +214,7 @@ class TestPydanticConfigValidator:
     def test_validator_with_valid_config(self, monkeypatch):
         """Test that validator passes with valid configuration"""
         # Set all required environment variables
-        monkeypatch.setenv('POSTGRES_PASSWORD', 'testpassword123')
+        monkeypatch.setenv('POSTGRES_DB_URL', 'postgresql+asyncpg://user:testpassword123@localhost:5432/db')
         monkeypatch.setenv('REDIS_URL', 'redis://localhost:6379/0')
         monkeypatch.setenv('KAFKA_BOOTSTRAP_SERVERS', 'localhost:9092')
         monkeypatch.setenv('SECRET_KEY', 'a' * 32)
@@ -252,7 +245,7 @@ class TestPydanticConfigValidator:
         """Test that validator collects multiple validation errors"""
         monkeypatch.setenv('SECRET_KEY', 'short')  # Too short
         monkeypatch.setenv('STRIPE_SECRET_KEY', 'invalid')  # Invalid format
-        monkeypatch.setenv('POSTGRES_PASSWORD', 'short')  # Too short
+        monkeypatch.setenv('POSTGRES_DB_URL', 'mysql://invalid')  # Invalid format
         
         validator = PydanticConfigValidator()
         result = validator.validate_all()

@@ -66,41 +66,7 @@ services:
       - banwee_network
     restart: unless-stopped
 
-  # Kafka Broker (KRaft mode)
-  kafka:
-    image: confluentinc/cp-kafka:7.4.0
-    container_name: banwee_kafka
-    ports:
-      - "9092:9092"
-    environment:
-      CLUSTER_ID: LuOvOlIgRyanHYvDTWx6uQ # Generated UUID for consistent cluster identity
-      KAFKA_NODE_ID: 1
-      KAFKA_PROCESS_ROLES: broker,controller
-      KAFKA_LISTENERS: PLAINTEXT://kafka:29092,CONTROLLER://kafka:9093,PLAINTEXT_HOST://localhost:9092
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
-      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
-      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
-      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
-      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
-      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
-      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
-      KAFKA_NUM_PARTITIONS: 3
-      KAFKA_DEFAULT_REPLICATION_FACTOR: 1
-    volumes:
-      - kafka_data:/var/lib/kafka/data
-    command: "sh -c '/etc/confluent/docker/run'"
-    healthcheck:
-      test: ["CMD-SHELL", "kafka-broker-api-versions --bootstrap-server localhost:9092 > /dev/null 2>&1"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 30s # Give Kafka time to start up
-    networks:
-      - banwee_network
-    restart: unless-stopped
-
+  
   # Backend API
   # This service runs the FastAPI backend application.
   # It exposes the API on port 8000 and connects to PostgreSQL and Redis.
@@ -123,8 +89,6 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-      kafka:
-        condition: service_healthy
     networks:
       - banwee_network
     restart: unless-stopped
@@ -134,6 +98,29 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
+  # ARQ Background Worker
+  arq_worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: banwee_arq_worker
+    env_file:
+      - ./.prod.env
+    environment:
+      - PYTHONPATH=/app
+      - REDIS_URL=redis://redis:6379/0
+      - ARQ_REDIS_URL=redis://redis:6379/0
+      - ENABLE_REDIS=true
+      - ENABLE_ARQ=true
+    command: python start_arq_worker.py
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - banwee_network
+    restart: unless-stopped
 
   # Frontend
   # This service runs the Vite-based React frontend application.

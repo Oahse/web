@@ -12,7 +12,7 @@ from services.jinja_template import JinjaTemplateService
 # Email tasks are imported separately where needed
 # from tasks.email_tasks import (...)
 from core.config import settings
-from core.kafka import get_kafka_producer_service # ADD THIS LINE
+from core.hybrid_tasks import send_email_hybrid
 from core.exceptions import APIException # Assuming APIException is suitable for service layer errors
 
 
@@ -73,8 +73,8 @@ class EmailService:
             "order_tracking_url": f"{settings.FRONTEND_URL}/account/orders/{order.id}",
             "company_name": "Banwee",
         }
-        producer_service = await get_kafka_producer_service()
-        await producer_service.send_message(settings.KAFKA_TOPIC_EMAIL, {"task": "send_order_confirmation_email", "args": [str(order_id), context]})
+        from core.hybrid_tasks import send_email_hybrid
+        await send_email_hybrid(None, "order_confirmation", user.email, use_arq=True, order_id=str(order_id), **context)
 
     async def send_shipping_update(self, order_id: UUID, carrier_name: str, tracking_number: str):
         order = await self._get_order_by_id(order_id)
@@ -93,8 +93,8 @@ class EmailService:
             "tracking_url": f"https://www.google.com/search?q={carrier_name}+{tracking_number}",
             "company_name": "Banwee",
         }
-        producer_service = await get_kafka_producer_service()
-        await producer_service.send_message(settings.KAFKA_TOPIC_EMAIL, {"task": "send_shipping_update_email", "args": [str(order_id), carrier_name, context]})
+        from core.hybrid_tasks import send_email_hybrid
+        await send_email_hybrid(None, "shipping_update", user.email, use_arq=True, order_id=str(order_id), carrier_name=carrier_name, **context)
 
     async def send_welcome(self, user_id: UUID):
         user = await self._get_user_by_id(user_id)
@@ -104,8 +104,7 @@ class EmailService:
             "store_url": settings.FRONTEND_URL,
             "company_name": "Banwee",
         }
-        producer_service = await get_kafka_producer_service()
-        await producer_service.send_message(settings.KAFKA_TOPIC_EMAIL, {"task": "send_welcome_email", "args": [str(user_id), context]})
+        await send_email_hybrid(None, "welcome", user.email, use_arq=True, user_name=user.first_name or user.email, **context)
 
     async def send_password_reset(self, user_id: UUID, reset_token: str):
         user = await self._get_user_by_id(user_id)
@@ -115,8 +114,7 @@ class EmailService:
             "expiry_time": "1 hour",
             "company_name": "Banwee",
         }
-        producer_service = await get_kafka_producer_service()
-        await producer_service.send_message(settings.KAFKA_TOPIC_EMAIL, {"task": "send_password_reset_email", "args": [str(user_id), reset_token, context]})
+        await send_email_hybrid(None, "password_reset", user.email, use_arq=True, reset_token=reset_token, **context)
 
     async def send_email_verification_link(self, user_id: UUID, verification_token: str):
         user = await self._get_user_by_id(user_id)
@@ -125,8 +123,7 @@ class EmailService:
             "activation_link": f"{settings.FRONTEND_URL}/verify-email?token={verification_token}",
             "company_name": "Banwee",
         }
-        producer_service = await get_kafka_producer_service()
-        await producer_service.send_message(settings.KAFKA_TOPIC_EMAIL, {"task": "send_email_verification", "args": [str(user_id), verification_token, context]})
+        await send_email_hybrid(None, "email_verification", user.email, use_arq=True, verification_token=verification_token, **context)
 
     async def send_email_change_confirmation_link(self, user_id: UUID, new_email: str, old_email: str, confirmation_token: str):
         user = await self._get_user_by_id(user_id)
@@ -137,8 +134,7 @@ class EmailService:
             "confirmation_link": f"{settings.FRONTEND_URL}/confirm-email?token={confirmation_token}",
             "company_name": "Banwee",
         }
-        producer_service = await get_kafka_producer_service()
-        await producer_service.send_message(settings.KAFKA_TOPIC_EMAIL, {"task": "send_email_change_confirmation", "args": [str(user_id), new_email, old_email, confirmation_token, context]})
+        await send_email_hybrid(None, "email_change_confirmation", old_email, use_arq=True, new_email=new_email, confirmation_token=confirmation_token, **context)
 
     async def send_order_delivered(self, order_id: UUID):
         order = await self._get_order_by_id(order_id)
@@ -160,8 +156,7 @@ class EmailService:
             "review_link": f"{settings.FRONTEND_URL}/account/orders/{order.id}/review",
             "company_name": "Banwee",
         }
-        producer_service = await get_kafka_producer_service()
-        await producer_service.send_message(settings.KAFKA_TOPIC_EMAIL, {"task": "send_order_delivered_email", "args": [str(order_id), context]})
+        await send_email_hybrid(None, "order_delivered", user.email, use_arq=True, order_id=str(order_id), **context)
 
     async def send_return_process_instructions(self, order_id: UUID, return_instructions: str):
         order = await self._get_order_by_id(order_id)
@@ -174,8 +169,7 @@ class EmailService:
             "return_label_url": f"{settings.FRONTEND_URL}/returns/{order.id}/label",
             "company_name": "Banwee",
         }
-        producer_service = await get_kafka_producer_service()
-        await producer_service.send_message(settings.KAFKA_TOPIC_EMAIL, {"task": "send_return_process_email", "args": [str(order_id), return_instructions, context]})
+        await send_email_hybrid(None, "return_process", user.email, use_arq=True, order_id=str(order_id), return_instructions=return_instructions, **context)
 
     async def send_referral_request(self, user_id: UUID, referral_code: str):
         user = await self._get_user_by_id(user_id)
@@ -186,8 +180,7 @@ class EmailService:
             "reward_amount": "$10",  # Configure as needed
             "company_name": "Banwee",
         }
-        producer_service = await get_kafka_producer_service()
-        await producer_service.send_message(settings.KAFKA_TOPIC_EMAIL, {"task": "send_referral_request_email", "args": [str(user_id), referral_code, context]})
+        await send_email_hybrid(None, "referral_request", user.email, use_arq=True, referral_code=referral_code, **context)
 
     async def send_low_stock_alert(self, recipient_email: str, product_name: str, variant_name: str, location_name: str, current_stock: int, threshold: int):
         """
@@ -203,9 +196,11 @@ class EmailService:
             "admin_inventory_link": f"{settings.FRONTEND_URL}/admin/inventory", # Link to admin inventory page
             "company_name": "Banwee",
         }
-        producer_service = await get_kafka_producer_service()
-        await producer_service.send_message(settings.KAFKA_TOPIC_EMAIL, {"task": "send_low_stock_alert_email", "args": [recipient_email, context]})
-        print(f"📧 Kafka message dispatched to send low stock alert email to {recipient_email}.")
+        await send_email_hybrid(None, "low_stock_alert", recipient_email, use_arq=True,
+                          product_name=product_name, variant_name=variant_name, 
+                          location_name=location_name, current_stock=current_stock, 
+                          threshold=threshold, **context)
+        print(f"📧 ARQ task queued to send low stock alert email to {recipient_email}.")
         
     async def send_payment_method_expiration_notice(self, user_id: UUID, payment_method_id: UUID):
         """
@@ -227,15 +222,9 @@ class EmailService:
         "update_payment_url": f"{settings.FRONTEND_URL}/account/payment-methods",
         "company_name": "Banwee",
         }
-        producer_service = await get_kafka_producer_service()
-        await producer_service.send_message(
-            settings.KAFKA_TOPIC_EMAIL,
-            {
-                "task": "send_payment_method_expiration_email",
-                "args": [user.email, context]
-            }
-        )
-        print(f"📧 Kafka message dispatched for payment method expiration notice to {user.email}.")
+        await send_email_hybrid(None, "payment_method_expiration", user.email, use_arq=True,
+                          payment_method_id=str(payment_method_id), **context)
+        print(f"📧 ARQ task queued for payment method expiration notice to {user.email}.")
     
     async def send_subscription_cost_change_notification(
         self, 
@@ -261,14 +250,9 @@ class EmailService:
             "company_name": "Banwee",
         }
         
-        producer_service = await get_kafka_producer_service()
-        await producer_service.send_message(
-            settings.KAFKA_TOPIC_EMAIL,
-            {
-                "task": "send_subscription_cost_change_email",
-                "args": [user.email, context]
-            }
-        )
+        await send_email_hybrid(None, "subscription_cost_change", user.email, use_arq=True,
+                          subscription_id=str(subscription_id), old_cost=old_cost, 
+                          new_cost=new_cost, change_reason=change_reason, **context)
         print(f"📧 Subscription cost change notification sent to {user.email}")
     
     async def send_payment_confirmation(
@@ -295,14 +279,9 @@ class EmailService:
             "company_name": "Banwee",
         }
         
-        producer_service = await get_kafka_producer_service()
-        await producer_service.send_message(
-            settings.KAFKA_TOPIC_EMAIL,
-            {
-                "task": "send_payment_confirmation_email",
-                "args": [user.email, context]
-            }
-        )
+        await send_email_hybrid(None, "payment_confirmation", user.email, use_arq=True,
+                          subscription_id=str(subscription_id), payment_amount=payment_amount,
+                          payment_method=payment_method, cost_breakdown=cost_breakdown, **context)
         print(f"📧 Payment confirmation sent to {user.email}")
     
     async def send_payment_failure_notification(
@@ -327,14 +306,9 @@ class EmailService:
             "company_name": "Banwee",
         }
         
-        producer_service = await get_kafka_producer_service()
-        await producer_service.send_message(
-            settings.KAFKA_TOPIC_EMAIL,
-            {
-                "task": "send_payment_failure_email",
-                "args": [user.email, context]
-            }
-        )
+        await send_email_hybrid(None, "payment_failure", user.email, use_arq=True,
+                          subscription_id=str(subscription_id), failure_reason=failure_reason,
+                          retry_url=retry_url, **context)
         print(f"📧 Payment failure notification sent to {user.email}")
     
     async def render_email_with_template(

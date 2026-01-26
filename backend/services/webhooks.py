@@ -10,7 +10,6 @@ from models.orders import Order
 from services.payments import PaymentService
 from services.inventories import InventoryService
 from core.security.webhook import verify_stripe_webhook_request, WebhookSecurityError
-from core.events import publish_payment_event, publish_order_event
 from uuid import UUID
 from datetime import datetime
 from typing import Dict, Any, Optional

@@ -1,5 +1,6 @@
 """
-Email tasks using FastAPI BackgroundTasks and Kafka for async processing
+Email tasks using Hybrid approach (FastAPI BackgroundTasks + ARQ)
+Quick email tasks use FastAPI BackgroundTasks, complex/retry tasks use ARQ
 """
 import asyncio
 import json
@@ -10,7 +11,7 @@ from fastapi import BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.config import settings
-from core.kafka import get_kafka_producer_service
+from core.hybrid_tasks import hybrid_task_manager, send_email_hybrid
 from core.utils.messages.email import send_email
 from services.jinja_template import JinjaTemplateService
 
@@ -18,25 +19,13 @@ logger = logging.getLogger(__name__)
 
 
 class EmailTaskService:
-    """Service for handling email tasks with background processing and Kafka"""
+    """Service for handling email tasks with hybrid processing"""
     
     def __init__(self):
         self.template_service = JinjaTemplateService(template_dir="core/utils/messages/templates")
-        self.kafka_topic = getattr(settings, 'KAFKA_TOPIC_EMAIL', 'email_notifications')
-    
-    async def _send_email_via_kafka(self, email_data: Dict[str, Any]):
-        """Send email task to Kafka for async processing"""
-        try:
-            producer_service = await get_kafka_producer_service()
-            await producer_service.send_message(self.kafka_topic, email_data)
-            logger.info(f"Email task sent to Kafka: {email_data.get('mail_type', 'unknown')}")
-        except Exception as e:
-            logger.error(f"Failed to send email task to Kafka: {e}")
-            # Fallback to direct email sending
-            await self._send_email_direct(email_data)
     
     async def _send_email_direct(self, email_data: Dict[str, Any]):
-        """Send email directly without Kafka"""
+        """Send email directly"""
         try:
             await send_email(
                 to_email=email_data['to_email'],
@@ -47,9 +36,21 @@ class EmailTaskService:
         except Exception as e:
             logger.error(f"Failed to send email directly: {e}")
     
-    def add_email_task(self, background_tasks: BackgroundTasks, email_data: Dict[str, Any]):
-        """Add email task to FastAPI background tasks"""
-        background_tasks.add_task(self._send_email_via_kafka, email_data)
+    def add_email_task(self, background_tasks: BackgroundTasks, email_data: Dict[str, Any], use_arq: bool = True):
+        """Add email task using hybrid approach"""
+        if use_arq:
+            # Use ARQ for reliability and retries
+            background_tasks.add_task(
+                send_email_hybrid,
+                None,  # No background_tasks for ARQ
+                email_data['mail_type'],
+                email_data['to_email'],
+                True,  # use_arq=True
+                **email_data['context']
+            )
+        else:
+            # Use FastAPI BackgroundTasks for immediate processing
+            background_tasks.add_task(self._send_email_direct, email_data)
 
 
 # Global instance

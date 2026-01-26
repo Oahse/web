@@ -226,8 +226,7 @@ def valid_env_file_content(draw):
     
     # Always include some standard variables
     variables.update({
-        'POSTGRES_USER': 'testuser',
-        'POSTGRES_PASSWORD': 'testpass',
+        'POSTGRES_DB_URL': 'postgresql+asyncpg://testuser:testpass@localhost:5432/testdb',
         'SECRET_KEY': 'test-secret-key-12345678901234567890'
     })
     
@@ -483,8 +482,7 @@ class TestContainerEnvironmentManagementProperty:
             
             # Create basic .env content
             env_content = [
-                'POSTGRES_USER=testuser',
-                'POSTGRES_PASSWORD=testpass',
+                'POSTGRES_DB_URL=postgresql+asyncpg://testuser:testpass@localhost:5432/testdb',
                 'SECRET_KEY=test-secret-key-12345678901234567890',
                 'ENVIRONMENT=local'
             ]
@@ -526,7 +524,7 @@ class TestContainerEnvironmentManagementProperty:
 
     @given(
         sensitive_vars=st.lists(
-            st.sampled_from(['SECRET_KEY', 'STRIPE_SECRET_KEY', 'POSTGRES_PASSWORD', 'MAILGUN_API_KEY']),
+            st.sampled_from(['SECRET_KEY', 'STRIPE_SECRET_KEY', 'MAILGUN_API_KEY']),
             min_size=1,
             max_size=3,
             unique=True
@@ -545,10 +543,7 @@ class TestContainerEnvironmentManagementProperty:
         
         # Add required non-sensitive variables to make validation work
         weak_env_vars.update({
-            'POSTGRES_USER': 'testuser',
-            'POSTGRES_SERVER': 'localhost',
-            'POSTGRES_DB': 'testdb',
-            'POSTGRES_PORT': '5432',
+            'POSTGRES_DB_URL': 'postgresql+asyncpg://testuser:testpass@localhost:5432/testdb',
             'ENVIRONMENT': 'local'
         })
         
@@ -598,10 +593,7 @@ class TestContainerEnvironmentManagementProperty:
             
             # Add required non-sensitive variables
             strong_env_vars.update({
-                'POSTGRES_USER': 'testuser',
-                'POSTGRES_SERVER': 'localhost',
-                'POSTGRES_DB': 'testdb',
-                'POSTGRES_PORT': '5432',
+                'POSTGRES_DB_URL': 'postgresql+asyncpg://testuser:strongpassword123@localhost:5432/testdb',
                 'ENVIRONMENT': 'local'
             })
             
@@ -643,7 +635,7 @@ class TestContainerEnvironmentManagementProperty:
 
     @given(
         sensitive_vars=st.lists(
-            st.sampled_from(['SECRET_KEY', 'STRIPE_SECRET_KEY', 'POSTGRES_PASSWORD', 'MAILGUN_API_KEY']),
+            st.sampled_from(['SECRET_KEY', 'STRIPE_SECRET_KEY', 'MAILGUN_API_KEY']),
             min_size=1,
             max_size=2,
             unique=True
@@ -662,10 +654,7 @@ class TestContainerEnvironmentManagementProperty:
         
         # Add required non-sensitive variables
         short_env_vars.update({
-            'POSTGRES_USER': 'testuser',
-            'POSTGRES_SERVER': 'localhost',
-            'POSTGRES_DB': 'testdb',
-            'POSTGRES_PORT': '5432',
+            'POSTGRES_DB_URL': 'postgresql+asyncpg://testuser:testpass@localhost:5432/testdb',
             'ENVIRONMENT': 'local'
         })
         
