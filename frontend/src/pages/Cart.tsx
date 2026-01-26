@@ -15,12 +15,8 @@ export const Cart = () => {
     removeItem, 
     updateQuantity, 
     clearCart, 
-    loading, 
-    fetchCart,
-    processingItems,
-    clearingCart,
-    validateForCheckout,
-    getCartSummary
+    loading,
+    refreshCart
   } = useCart();
   const { isAuthenticated, isLoading: authLoading, setIntendedDestination } = useAuth();
   const { formatCurrency } = useLocale();
@@ -28,8 +24,43 @@ export const Cart = () => {
   const location = useLocation();
   const [couponCode, setCouponCode] = useState('');
   const [taxLocation, setTaxLocation] = useState<{ country: string; province?: string }>({ country: 'US' });
+  const [processingItems, setProcessingItems] = useState<Set<string>>(new Set());
+  const [clearingCart, setClearingCart] = useState(false);
+
+  // Local functions to replace missing ones
+  const fetchCart = refreshCart;
+  
+  const validateForCheckout = () => {
+    if (!items.length) {
+      toast.error('Your cart is empty');
+      return false;
+    }
+    
+    // Check for out of stock items
+    const outOfStockItems = items.filter(item => 
+      item.variant?.stock !== undefined && item.variant.stock < item.quantity
+    );
+    
+    if (outOfStockItems.length > 0) {
+      toast.error('Some items in your cart are out of stock');
+      return false;
+    }
+    
+    return true;
+  };
 
   const items = cart?.items || [];
+  
+  // Calculate cart summary locally
+  const getCartSummary = () => {
+    const subtotal = cart?.subtotal || items.reduce((sum, item) => sum + item.total_price, 0);
+    const tax = cart?.tax_amount || 0;
+    const shipping = cart?.shipping_amount || (subtotal >= 100 ? 0 : 10); // Free shipping over $100
+    const total = cart?.total_amount || (subtotal + tax + shipping);
+    
+    return { subtotal, tax, shipping, total };
+  };
+  
   const { subtotal, tax, shipping, total } = getCartSummary();
 
   // Simple redirect to login function
@@ -59,6 +90,9 @@ export const Cart = () => {
       return;
     }
 
+    // Add to processing items
+    setProcessingItems(prev => new Set(prev).add(id));
+
     try {
       await updateQuantity(String(id), quantity);
     } catch (error: any) {
@@ -70,6 +104,13 @@ export const Cart = () => {
       if (error?.message?.includes('not found') || error?.message?.includes('expired')) {
         await fetchCart();
       }
+    } finally {
+      // Remove from processing items
+      setProcessingItems(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(id);
+        return newSet;
+      });
     }
   }, [isAuthenticated, setIntendedDestination, redirectToLogin, location.pathname, updateQuantity, fetchCart]);
 
@@ -104,6 +145,9 @@ export const Cart = () => {
         return;
       }
     }
+
+    // Add to processing items
+    setProcessingItems(prev => new Set(prev).add(id));
     
     try {
       await removeItem(String(id));
@@ -111,6 +155,13 @@ export const Cart = () => {
       console.error('Failed to remove item:', error);
       const errorMessage = error?.message || 'Failed to remove item. Please try again.';
       toast.error(errorMessage);
+    } finally {
+      // Remove from processing items
+      setProcessingItems(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(id);
+        return newSet;
+      });
     }
   }, [items, isAuthenticated, setIntendedDestination, redirectToLogin, location.pathname, removeItem]);
 
@@ -129,6 +180,8 @@ export const Cart = () => {
     if (!window.confirm(`Are you sure you want to remove all ${items.length} items from your cart?`)) {
       return;
     }
+
+    setClearingCart(true);
     
     try {
       await clearCart();
@@ -136,6 +189,8 @@ export const Cart = () => {
       console.error('Failed to clear cart:', error);
       const errorMessage = error?.message || 'Failed to clear cart. Please try again.';
       toast.error(errorMessage);
+    } finally {
+      setClearingCart(false);
     }
   }, [isAuthenticated, setIntendedDestination, redirectToLogin, location.pathname, items.length, clearCart]);
 
