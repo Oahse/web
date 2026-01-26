@@ -120,26 +120,6 @@ services:
       timeout: 10s
       retries: 3
 
-  # Kafka Message Broker
-  kafka:
-    image: confluentinc/cp-kafka:latest
-    depends_on:
-      - zookeeper
-    environment:
-      KAFKA_BROKER_ID: 1
-      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
-      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-    ports:
-      - "9092:9092"
-
-  # Zookeeper (for Kafka)
-  zookeeper:
-    image: confluentinc/cp-zookeeper:latest
-    environment:
-      ZOOKEEPER_CLIENT_PORT: 2181
-      ZOOKEEPER_TICK_TIME: 2000
-
   # Backend API
   backend:
     build:
@@ -153,7 +133,6 @@ services:
     environment:
       - POSTGRES_DB_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       - REDIS_URL=redis://redis:6379
-      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
     ports:
       - "8000:8000"
     volumes:
@@ -298,22 +277,6 @@ services:
 
   kafka:
     image: confluentinc/cp-kafka:latest
-    depends_on:
-      - zookeeper
-    environment:
-      KAFKA_BROKER_ID: 1
-      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
-      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-    restart: unless-stopped
-
-  zookeeper:
-    image: confluentinc/cp-zookeeper:latest
-    environment:
-      ZOOKEEPER_CLIENT_PORT: 2181
-      ZOOKEEPER_TICK_TIME: 2000
-    restart: unless-stopped
-
   backend:
     build:
       context: ./backend

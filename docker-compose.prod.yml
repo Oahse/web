@@ -98,7 +98,6 @@ services:
 volumes:
   postgres_data:
   redis_data:
-  kafka_data:
 
 # Docker Networks for inter-service communication
 networks:

@@ -1,20 +1,20 @@
-import React, { createContext, useContext, useCallback } from 'react';
+import React, { createContext, useContext, useCallback, useState, useEffect } from 'react';
 import { TokenManager } from '../apis/client';
 import { CartAPI } from '../apis/cart';
 import { Cart, AddToCartRequest } from '../types';
 import { toast } from 'react-hot-toast';
-import { useData } from '../hooks/useData';
-import { usePolling } from '../hooks/usePolling';
 
 interface CartContextType {
   cart: Cart | null;
   loading: boolean;
+  error: any;
   addItem: (item: AddToCartRequest) => Promise<boolean>;
   removeItem: (itemId: string) => Promise<void>;
   updateQuantity: (itemId: string, quantity: number) => Promise<void>;
   clearCart: () => Promise<void>;
   totalItems: number;
   items: Cart['items'];
+  refreshCart: () => Promise<void>;
 }
 
 export const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -24,42 +24,68 @@ interface CartProviderProps {
 }
 
 export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
-  const {
-    data: cart,
-    loading,
-    error,
-    updateData: setCart,
-    setLoadingState,
-    setErrorState
-  } = useData<Cart>(null);
+  // ✅ Using useState for all local state management
+  const [cart, setCart] = useState<Cart | null>(null);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<any>(null);
 
-  // Polling for cart updates
+  // Fetch cart data
   const fetchCart = useCallback(async () => {
     const token = TokenManager.getToken();
-    if (!token) return null;
+    if (!token) {
+      setCart(null);
+      return null;
+    }
 
-    const country = localStorage.getItem('detected_country') || 'US';
-    const province = localStorage.getItem('detected_province');
-    const validProvince = province && province !== 'null' && province !== 'undefined' ? province : undefined;
-    
-    const response = await CartAPI.getCart(token, country, validProvince);
-    return response?.data;
+    setLoading(true);
+    setError(null);
+
+    try {
+      const country = localStorage.getItem('detected_country') || 'US';
+      const province = localStorage.getItem('detected_province');
+      const validProvince = province && province !== 'null' && province !== 'undefined' ? province : undefined;
+      
+      const response = await CartAPI.getCart(token, country, validProvince);
+      const cartData = response?.data;
+      setCart(cartData);
+      return cartData;
+    } catch (err) {
+      setError(err);
+      console.error('Failed to fetch cart:', err);
+      return null;
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  usePolling(fetchCart, {
-    interval: 10000, // Poll every 10 seconds
-    enabled: !!TokenManager.getToken(),
-    onError: (err) => setErrorState(err)
-  });
+  // Refresh cart function
+  const refreshCart = useCallback(async () => {
+    await fetchCart();
+  }, [fetchCart]);
 
-  // Optimistic add item
+  // Initial cart fetch and periodic updates
+  useEffect(() => {
+    fetchCart();
+    
+    // Poll cart every 30 seconds if user is authenticated
+    const interval = setInterval(() => {
+      if (TokenManager.getToken()) {
+        fetchCart();
+      }
+    }, 30000);
+
+    return () => clearInterval(interval);
+  }, [fetchCart]);
+
+  // ✅ Optimistic add item with useState
   const addItem = useCallback(async (item: AddToCartRequest): Promise<boolean> => {
     const token = TokenManager.getToken();
     if (!token) {
       throw new Error('User must be authenticated to add items to cart');
     }
 
-    // Optimistic update
+    // Optimistic update using setState
+    const previousCart = cart;
     if (cart) {
       const existingIndex = cart.items.findIndex(i => i.variant_id === item.variant_id);
       let newItems;
@@ -99,14 +125,14 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
       toast.success(`Added ${item.quantity || 1} item${(item.quantity || 1) > 1 ? 's' : ''} to cart`);
       return true;
     } catch (error: any) {
-      // Revert optimistic update by fetching fresh data
-      const freshCart = await fetchCart();
-      if (freshCart) setCart(freshCart);
+      // Revert optimistic update
+      setCart(previousCart);
+      toast.error(error.message || 'Failed to add item to cart');
       throw error;
     }
-  }, [cart, setCart, fetchCart]);
+  }, [cart]);
 
-  // Optimistic remove item
+  // ✅ Optimistic remove item with useState
   const removeItem = useCallback(async (itemId: string): Promise<void> => {
     const token = TokenManager.getToken();
     if (!token) throw new Error('User must be authenticated');
@@ -114,7 +140,8 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
     const item = cart?.items?.find(i => i.id === itemId);
     const itemName = item?.variant?.product_name || item?.variant?.name || 'Item';
 
-    // Optimistic update
+    // Optimistic update using setState
+    const previousCart = cart;
     if (cart) {
       const newItems = cart.items.filter(i => i.id !== itemId);
       const optimisticCart = {
@@ -129,22 +156,23 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
       const response = await CartAPI.removeFromCart(itemId, token);
       setCart(response?.data);
       toast.success(`${itemName} removed from cart`);
-    } catch (error) {
+    } catch (error: any) {
       // Revert optimistic update
-      const freshCart = await fetchCart();
-      if (freshCart) setCart(freshCart);
+      setCart(previousCart);
+      toast.error(error.message || 'Failed to remove item from cart');
       throw error;
     }
-  }, [cart, setCart, fetchCart]);
+  }, [cart]);
 
-  // Optimistic update quantity
+  // ✅ Optimistic update quantity with useState
   const updateQuantity = useCallback(async (itemId: string, quantity: number): Promise<void> => {
     const token = TokenManager.getToken();
     if (!token) throw new Error('User must be authenticated');
 
     if (quantity <= 0) throw new Error('Quantity must be greater than 0');
 
-    // Optimistic update
+    // Optimistic update using setState
+    const previousCart = cart;
     if (cart) {
       const newItems = cart.items.map(item => 
         item.id === itemId 
@@ -165,20 +193,21 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
       toast.success('Cart updated');
     } catch (error: any) {
       // Revert optimistic update
-      const freshCart = await fetchCart();
-      if (freshCart) setCart(freshCart);
+      setCart(previousCart);
+      toast.error(error.message || 'Failed to update cart');
       throw error;
     }
-  }, [cart, setCart, fetchCart]);
+  }, [cart]);
 
-  // Optimistic clear cart
+  // ✅ Optimistic clear cart with useState
   const clearCart = useCallback(async () => {
     const token = TokenManager.getToken();
     if (!token) throw new Error('User must be authenticated');
 
     if (!cart?.items?.length) throw new Error('Cart is already empty');
 
-    // Optimistic update
+    // Optimistic update using setState
+    const previousCart = cart;
     const optimisticCart = { ...cart, items: [], total_items: 0 };
     setCart(optimisticCart);
 
@@ -186,13 +215,13 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
       const response = await CartAPI.clearCart(token);
       setCart(response?.data || optimisticCart);
       toast.success('Cart cleared');
-    } catch (error) {
+    } catch (error: any) {
       // Revert optimistic update
-      const freshCart = await fetchCart();
-      if (freshCart) setCart(freshCart);
+      setCart(previousCart);
+      toast.error(error.message || 'Failed to clear cart');
       throw error;
     }
-  }, [cart, setCart, fetchCart]);
+  }, [cart]);
 
   const totalItems = cart?.items?.reduce((sum, item) => sum + item.quantity, 0) || 0;
   const items = cart?.items || [];
@@ -202,12 +231,14 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
       value={{
         cart,
         loading,
+        error,
         addItem,
         removeItem,
         updateQuantity,
         clearCart,
         totalItems,
         items,
+        refreshCart,
       }}
     >
       {children}
@@ -219,14 +250,6 @@ export const useCart = (): CartContextType => {
   const context = useContext(CartContext);
   if (context === undefined) {
     throw new Error('useCart must be used within a CartProvider');
-  }
-  return context;
-};
-
-export const useCart = (): CartContextType => {
-  const context = useContext(CartContext);
-  if (context === undefined) {
-    throw new Error('useCart error: must be used within a CartProvider');
   }
   return context;
 };

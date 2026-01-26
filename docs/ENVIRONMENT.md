@@ -68,7 +68,6 @@ The application validates all configuration at startup using Pydantic models. If
 | `STRIPE_SECRET_KEY` | Stripe API key | `sk_test_...` or `sk_live_...` |
 | `STRIPE_WEBHOOK_SECRET` | Stripe webhook secret | `whsec_...` |
 | `POSTGRES_DB_URL` | Complete database connection URL | `postgresql+asyncpg://user:pass@host:port/db` |
-| `KAFKA_BOOTSTRAP_SERVERS` | Kafka connection | `kafka:29092` |
 
 ### Production-Only Required
 
@@ -117,15 +116,7 @@ REDIS_RATELIMIT_ENABLED=true
 REDIS_CACHE_TTL=3600
 ```
 
-### 5. Kafka
-
-```bash
-KAFKA_BOOTSTRAP_SERVERS=kafka:29092  # Use 'localhost:9092' for local
-KAFKA_TOPIC_EMAIL=banwee-email
-# ... (see .env.example for all topics)
-```
-
-### 6. Security
+### 5. Security
 
 ```bash
 SECRET_KEY=<64-character-random-string>
@@ -134,7 +125,7 @@ ACCESS_TOKEN_EXPIRE_MINUTES=30
 REFRESH_TOKEN_EXPIRE_DAYS=7
 ```
 
-### 7. Payment (Stripe)
+### 6. Payment (Stripe)
 
 ```bash
 STRIPE_SECRET_KEY=sk_test_...        # Use sk_live_ in production
@@ -159,7 +150,6 @@ Use service names for inter-container communication:
 ```bash
 POSTGRES_DB_URL=postgresql+asyncpg://banwee:banwee_password@postgres:5432/banwee_db
 REDIS_URL=redis://redis:6379/0
-KAFKA_BOOTSTRAP_SERVERS=kafka:29092
 ```
 
 ### Development (Local)
@@ -169,7 +159,6 @@ Use localhost for local services:
 ```bash
 POSTGRES_DB_URL=postgresql+asyncpg://banwee:banwee_password@localhost:5432/banwee_db
 REDIS_URL=redis://localhost:6379/0
-KAFKA_BOOTSTRAP_SERVERS=localhost:9092
 ```
 
 ### Production
@@ -282,7 +271,7 @@ volumes:
 
 1. Check validation errors in logs
 2. Verify all required variables are set
-3. Ensure database/Redis/Kafka are running
+3. Ensure database/Redis are running
 4. Check service connectivity (use service names in Docker)
 
 ### Database connection fails

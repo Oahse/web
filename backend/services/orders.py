@@ -1011,63 +1011,6 @@ class OrderService:
         except Exception as e:
             logger.error(f"Error calculating tax rate: {e}")
             return 0.08  # Default 8% tax rate
-    async def _send_price_update_notification(self, user_id: UUID, price_updates: List[Dict]) -> None:
-        """
-        Send real-time price update notification to frontend via ARQ
-        """
-        try:
-            from core.arq_worker import enqueue_notification
-            from core.config import settings
-            
-            # Calculate summary statistics
-            total_items_updated = len(price_updates)
-            price_increases = [update for update in price_updates if update["price_increased"]]
-            price_decreases = [update for update in price_updates if not update["price_increased"]]
-            total_price_change = sum(update["new_total"] - update["old_total"] for update in price_updates)
-            
-            # Create notification message
-            notification_data = {
-                "type": "price_update",
-                "user_id": str(user_id),
-                "timestamp": datetime.utcnow().isoformat(),
-                "summary": {
-                    "total_items_updated": total_items_updated,
-                    "price_increases": len(price_increases),
-                    "price_decreases": len(price_decreases),
-                    "total_price_change": round(total_price_change, 2),
-                    "currency": "USD"
-                },
-                "items": price_updates,
-                "message": self._generate_price_update_message(price_updates, total_price_change)
-            }
-            
-            # Send notification using ARQ
-            await enqueue_notification(
-                str(user_id),
-                "price_update",
-                title="Price Update",
-                message=notification_data["message"],
-                data={
-                    "type": "price_update",
-                    "items_updated": total_items_updated,
-                    "total_change": total_price_change,
-                    "items": price_updates
-                }
-            )
-            
-        except Exception as e:
-            # Don't fail checkout if notification fails
-            from core.logging import structured_logger
-            structured_logger.error(
-                message="Failed to send price update notification",
-                metadata={
-                    "user_id": str(user_id),
-                    "price_updates_count": len(price_updates),
-                    "error": str(e)
-                },
-                exception=e
-            )
-    
     def _generate_price_update_message(self, price_updates: List[Dict], total_change: float) -> str:
         """
         Generate a user-friendly message about price updates

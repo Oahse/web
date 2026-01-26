@@ -432,7 +432,6 @@ The platform includes an innovative price negotiation system:
 - Set your target price and maximum limit
 - Choose negotiation style (aggressive, balanced, friendly)
 - AI agents simulate realistic buyer-seller negotiations
-- Real-time negotiation rounds with WebSocket updates
 - Accept or reject final negotiated prices
 
 #### For Admins
@@ -483,7 +482,7 @@ All project documentation is now located in the `docs/` directory.
 │  └──────────────────────────────────────────────────────┘  │
 └─────────────────────────────────────────────────────────────┘
                             │
-                            │ HTTP/WebSocket
+                            │ HTTP
                             ▼
 ┌────────────────────────────────────────────────────────────┐
 │                         Backend                            │

@@ -197,35 +197,6 @@ async def dependencies_health_check():
     status_code = 200 if overall_status != HealthStatus.UNHEALTHY else 503
     return JSONResponse(content=response_data, status_code=status_code)
 
-# WebSocket health check
-
-
-@router.get("/websockets")
-async def websocket_health_check():
-    """
-    Check WebSocket connection health and metrics
-    """
-    # This would integrate with your WebSocket manager
-    # For now, return a basic health status
-
-    websocket_health = ComponentHealth(
-        name="websockets",
-        status=HealthStatus.HEALTHY,
-        details={
-            "active_connections": 0,  # Would get from WebSocket manager
-            "total_messages_sent": 0,
-            "total_messages_received": 0,
-            "connection_errors": 0,
-            "average_connection_duration": 0
-        }
-    )
-
-    return {
-        "status": websocket_health.status,
-        "timestamp": websocket_health.timestamp,
-        "details": websocket_health.details
-    }
-
 # API endpoints health check
 
 
