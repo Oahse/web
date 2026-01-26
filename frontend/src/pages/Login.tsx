@@ -55,15 +55,8 @@ export const Login = ({ isInitialLoading = false }) => {
     // First priority: intended destination (from protected route)
     if (intendedDestination && (intendedDestination as any).path !== '/login') {
       const destination = intendedDestination as any;
-      // If the action was to add to cart, redirect to cart page
-      if (destination.action === 'cart') {
-        return '/cart';
-      }
-      // If the action was to add to wishlist, redirect to wishlist page
-      if (destination.action === 'wishlist') {
-        return '/account/wishlist';
-      }
-      // Otherwise redirect to the original path
+      // Always redirect back to the original page where the user was
+      // This allows them to continue their shopping experience
       return destination.path;
     }
     
@@ -128,6 +121,14 @@ export const Login = ({ isInitialLoading = false }) => {
       const user = await login(email, password, rememberMe);
       // Navigate to intended destination or default path
       const path = getRedirectPath(user);
+      
+      // Show success message based on intended action
+      if (intendedDestination && (intendedDestination as any).action === 'cart') {
+        toast.success('Login successful! You can now add items to your cart.');
+      } else if (intendedDestination && (intendedDestination as any).action === 'wishlist') {
+        toast.success('Login successful! You can now add items to your wishlist.');
+      }
+      
       navigate(path, { replace: true });
       // Clear intended destination after navigation
       if (intendedDestination) {
@@ -261,6 +262,14 @@ export const Login = ({ isInitialLoading = false }) => {
           onSuccess={(user) => {
             // Handle successful social login
             const path = getRedirectPath(user);
+            
+            // Show success message based on intended action
+            if (intendedDestination && (intendedDestination as any).action === 'cart') {
+              toast.success('Login successful! You can now add items to your cart.');
+            } else if (intendedDestination && (intendedDestination as any).action === 'wishlist') {
+              toast.success('Login successful! You can now add items to your wishlist.');
+            }
+            
             navigate(path, { replace: true });
             if (intendedDestination) {
               setIntendedDestination(null);

@@ -66,24 +66,19 @@ services:
       - banwee_network
     restart: unless-stopped
 
-  
-  # Backend API
-  # This service runs the FastAPI backend application.
-  # It exposes the API on port 8000 and connects to PostgreSQL and Redis.
-  # Environment variables are loaded from backend/.env file.
-  # 'depends_on' ensures postgres and redis are healthy before starting.
-  # 'healthcheck' verifies the backend API is responsive.
-  backend:
+  # Unified Application (Frontend + Backend + ARQ Worker)
+  app:
     build:
-      context: ./backend
+      context: .
       dockerfile: Dockerfile
-    container_name: banwee_backend
+    container_name: banwee_app
     ports:
+      - "80:80"
       - "8000:8000"
     env_file:
-      - ./.prod.env
+      - ./.env
     environment:
-      - PYTHONPATH=/app
+      - ENVIRONMENT=production
     depends_on:
       postgres:
         condition: service_healthy
@@ -94,55 +89,6 @@ services:
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/v1/health/live"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
-  # ARQ Background Worker
-  arq_worker:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    container_name: banwee_arq_worker
-    env_file:
-      - ./.prod.env
-    environment:
-      - PYTHONPATH=/app
-      - REDIS_URL=redis://redis:6379/0
-      - ARQ_REDIS_URL=redis://redis:6379/0
-      - ENABLE_REDIS=true
-      - ENABLE_ARQ=true
-    command: python start_arq_worker.py
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    networks:
-      - banwee_network
-    restart: unless-stopped
-
-  # Frontend
-  # This service runs the Vite-based React frontend application.
-  # It exposes the frontend on port 5173 and connects to the backend API.
-  # Environment variables are loaded from frontend/.env file.
-  # 'healthcheck' verifies the frontend is accessible.
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-    container_name: banwee_frontend
-    ports:
-      - "5173:5173"
-    env_file:
-      - ./.prod.env
-    depends_on:
-      - backend
-    networks:
-      - banwee_network
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:5173"]
       interval: 30s
       timeout: 10s
       retries: 3

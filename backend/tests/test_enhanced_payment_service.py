@@ -5,7 +5,7 @@ import pytest
 from unittest.mock import Mock, AsyncMock, patch
 from decimal import Decimal
 from datetime import datetime, timedelta
-from uuid import uuid4
+from core.utils.uuid_utils import uuid7
 
 from services.payment import PaymentService
 from models.user import User
@@ -32,7 +32,7 @@ class TestEnhancedPaymentService:
     def sample_user(self):
         """Sample user for testing"""
         return User(
-            id=uuid4(),
+            id=uuid7(),
             email="test@example.com",
             firstname="Test",
             lastname="User",
@@ -44,8 +44,8 @@ class TestEnhancedPaymentService:
     def sample_subscription(self):
         """Sample subscription for testing"""
         return Subscription(
-            id=uuid4(),
-            user_id=uuid4(),
+            id=uuid7(),
+            user_id=uuid7(),
             plan_id="premium",
             status="active",
             billing_cycle="monthly",
@@ -144,7 +144,7 @@ class TestEnhancedPaymentService:
             
             # Mock local payment intent record
             mock_local_record = Mock()
-            mock_local_record.user_id = uuid4()
+            mock_local_record.user_id = uuid7()
             mock_db.execute.return_value.scalar_one_or_none.return_value = mock_local_record
             mock_db.get.return_value = Mock(stripe_customer_id="cus_test123")
             mock_db.commit = AsyncMock()
@@ -177,7 +177,7 @@ class TestEnhancedPaymentService:
         
         # Mock default payment method
         mock_payment_method = Mock()
-        mock_payment_method.id = uuid4()
+        mock_payment_method.id = uuid7()
         mock_payment_method.stripe_payment_method_id = "pm_test123"
         
         with patch.object(payment_service, 'get_default_payment_method', return_value=mock_payment_method):
@@ -227,7 +227,7 @@ class TestEnhancedPaymentService:
             
             # Mock local payment intent record
             mock_local_record = Mock()
-            mock_local_record.user_id = uuid4()
+            mock_local_record.user_id = uuid7()
             mock_local_record.payment_metadata = {}
             mock_db.execute.return_value.scalar_one_or_none.return_value = mock_local_record
             mock_db.commit = AsyncMock()
@@ -301,7 +301,7 @@ class TestEnhancedPaymentService:
         self, payment_service, mock_db
     ):
         """Test user currency detection"""
-        user_id = uuid4()
+        user_id = uuid7()
         
         # Mock user with address
         mock_user = Mock()
@@ -324,7 +324,7 @@ class TestEnhancedPaymentService:
         self, payment_service, mock_db
     ):
         """Test payment attempt logging"""
-        user_id = uuid4()
+        user_id = uuid7()
         payment_intent_id = "pi_test123"
         amount = Decimal("25.00")
         

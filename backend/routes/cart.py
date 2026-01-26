@@ -110,6 +110,25 @@ async def update_cart_item(
         
         cart_service = CartService(db)
         
+        # First check if user has a cart
+        try:
+            cart_data = await cart_service.get_cart(user_id=current_user.id)
+            if not cart_data or not cart_data.get('items'):
+                logger.warning(f"User {current_user.id} has no cart or empty cart")
+                raise HTTPException(status_code=404, detail="Cart is empty or expired. Please add items to your cart.")
+        except Exception as e:
+            logger.error(f"Failed to get cart for user {current_user.id}: {e}")
+            raise HTTPException(status_code=404, detail="Cart not found or expired. Please refresh and try again.")
+        
+        # Check if the specific item exists in cart
+        cart_items = cart_data.get('items', [])
+        item_exists = any(item['id'] == str(cart_item_id) for item in cart_items)
+        if not item_exists:
+            logger.warning(f"Cart item {cart_item_id} not found in user {current_user.id}'s cart")
+            available_items = [item['id'] for item in cart_items]
+            logger.info(f"Available cart items: {available_items}")
+            raise HTTPException(status_code=404, detail="Cart item not found. It may have been removed or your cart may have expired.")
+        
         # Use the update_cart_item_quantity method which handles cart_item_id
         logger.info(f"Calling update_cart_item_quantity...")
         result = await cart_service.update_cart_item_quantity(

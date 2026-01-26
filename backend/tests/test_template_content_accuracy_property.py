@@ -18,7 +18,7 @@ import asyncio
 from decimal import Decimal
 from datetime import datetime, date
 from typing import Dict, Any, List
-from uuid import uuid4
+from core.utils.uuid_utils import uuid7
 
 # Add the backend directory to the Python path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)) + '/..')
@@ -80,10 +80,10 @@ class TestTemplateContentAccuracyProperty:
             'user_name': draw(st.text(min_size=2, max_size=50, alphabet=st.characters(whitelist_categories=('Lu', 'Ll', 'Zs')))),
             'payment_date': datetime.now().strftime('%B %d, %Y'),
             'payment_method': draw(st.sampled_from(['Visa ending in 1234', 'Mastercard ending in 5678', 'American Express ending in 9012'])),
-            'subscription_id': str(uuid4()),
+            'subscription_id': str(uuid7()),
             'payment_amount': cost_breakdown['total_amount'],
             'cost_breakdown': cost_breakdown,
-            'subscription_management_url': f"https://banwee.com/subscriptions/{uuid4()}",
+            'subscription_management_url': f"https://banwee.com/subscriptions/{uuid7()}",
             'company_name': 'Banwee'
         }
 
@@ -95,7 +95,7 @@ class TestTemplateContentAccuracyProperty:
         
         for _ in range(variant_count):
             variants.append({
-                'id': str(uuid4()),
+                'id': str(uuid7()),
                 'name': draw(st.text(min_size=5, max_size=50, alphabet=st.characters(whitelist_categories=('Lu', 'Ll', 'Nd', 'Pc', 'Pd', 'Zs')))),
                 'price': float(draw(st.decimals(min_value=Decimal('1.00'), max_value=Decimal('999.99'), places=2))),
                 'description': draw(st.text(min_size=10, max_size=100, alphabet=st.characters(whitelist_categories=('Lu', 'Ll', 'Nd', 'Pc', 'Pd', 'Zs'))))
@@ -105,12 +105,12 @@ class TestTemplateContentAccuracyProperty:
             'stripe_payment_intent_id': f"pi_{draw(st.text(min_size=24, max_size=24, alphabet='abcdefghijklmnopqrstuvwxyz0123456789'))}",
             'stripe_status': draw(st.sampled_from(['succeeded', 'pending', 'failed', 'canceled'])),
             'payment_method': draw(st.sampled_from(['card', 'bank_transfer', 'wallet'])),
-            'transaction_id': str(uuid4()),
+            'transaction_id': str(uuid7()),
             'processed_at': datetime.now().isoformat()
         }
         
         subscription = {
-            'id': str(uuid4()),
+            'id': str(uuid7()),
             'variants': variants,
             'cost_breakdown': draw(TestTemplateContentAccuracyProperty.cost_breakdown_strategy()),
             'user': {
@@ -283,7 +283,7 @@ class TestTemplateContentAccuracyProperty:
         payment_export_context = {
             'payments': [
                 {
-                    'id': str(uuid4()),
+                    'id': str(uuid7()),
                     'subscription_id': context['subscription']['id'],
                     'amount': context['subscription']['cost_breakdown']['total_amount'],
                     'currency': context['subscription']['cost_breakdown']['currency'],
@@ -384,7 +384,7 @@ class TestTemplateContentAccuracyProperty:
         **Validates: Requirements 4.7**
         """
         template_service = self.get_template_service()
-        subscription_id = str(uuid4())
+        subscription_id = str(uuid7())
         subscription_url = f"https://banwee.com/subscriptions/{subscription_id}"
         
         # Test different email templates that should include subscription management links

@@ -11,7 +11,7 @@ import sys
 import os
 import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
-from uuid import uuid4, UUID
+from core.utils.uuid_utils import uuid7, UUID
 from hypothesis import given, strategies as st, settings, HealthCheck
 from decimal import Decimal
 from datetime import datetime
@@ -50,7 +50,7 @@ class TestComprehensiveCostCalculationProperty:
     def sample_pricing_config(self):
         """Sample pricing configuration"""
         return PricingConfig(
-            id=uuid4(),
+            id=uuid7(),
             subscription_percentage=10.0,
             delivery_costs={
                 "standard": 10.0,
@@ -66,7 +66,7 @@ class TestComprehensiveCostCalculationProperty:
                 "default": "USD",
                 "supported": ["USD", "EUR", "GBP", "CAD"]
             },
-            updated_by=uuid4(),
+            updated_by=uuid7(),
             version="1.0",
             is_active="active"
         )
@@ -74,13 +74,13 @@ class TestComprehensiveCostCalculationProperty:
     def create_mock_variant(self, base_price: float, sale_price: float = None) -> ProductVariant:
         """Create a mock product variant"""
         return ProductVariant(
-            id=uuid4(),
-            name=f"Test Variant {uuid4().hex[:8]}",
-            sku=f"TV{uuid4().hex[:6].upper()}",
+            id=uuid7(),
+            name=f"Test Variant {uuid7().hex[:8]}",
+            sku=f"TV{uuid7().hex[:6].upper()}",
             base_price=Decimal(str(base_price)),
             sale_price=Decimal(str(sale_price)) if sale_price else None,
             is_active=True,
-            product_id=uuid4()
+            product_id=uuid7()
         )
 
     @given(

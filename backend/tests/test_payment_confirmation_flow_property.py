@@ -10,7 +10,7 @@ import pytest
 import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 from decimal import Decimal
-from uuid import uuid4, UUID
+from core.utils.uuid_utils import uuid7, UUID
 from datetime import datetime, timedelta
 import stripe
 
@@ -73,7 +73,7 @@ class TestPaymentConfirmationFlowProperty:
     def sample_user(self):
         """Create a sample user for testing"""
         return User(
-            id=uuid4(),
+            id=uuid7(),
             email="test@example.com",
             firstname="Test",
             lastname="User",
@@ -85,8 +85,8 @@ class TestPaymentConfirmationFlowProperty:
     def sample_order(self):
         """Create a sample order for testing"""
         return Order(
-            id=uuid4(),
-            user_id=uuid4(),
+            id=uuid7(),
+            user_id=uuid7(),
             status="pending",
             total_amount=100.00
         )
@@ -95,9 +95,9 @@ class TestPaymentConfirmationFlowProperty:
     def sample_transaction(self):
         """Create a sample transaction for testing"""
         return Transaction(
-            id=uuid4(),
-            user_id=uuid4(),
-            order_id=uuid4(),
+            id=uuid7(),
+            user_id=uuid7(),
+            order_id=uuid7(),
             stripe_payment_intent_id="pi_test_123456789",
             amount=Decimal("99.99"),
             currency="USD",
@@ -493,7 +493,7 @@ class TestPaymentConfirmationFlowProperty:
         if user_id_match:
             sample_transaction.user_id = sample_user.id
         else:
-            sample_transaction.user_id = uuid4()  # Different user ID
+            sample_transaction.user_id = uuid7()  # Different user ID
 
         # Mock Stripe payment intent
         mock_stripe_intent = MagicMock()

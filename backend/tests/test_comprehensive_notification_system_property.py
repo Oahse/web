@@ -12,7 +12,7 @@ import os
 import asyncio
 import json
 from unittest.mock import AsyncMock, MagicMock, patch
-from uuid import uuid4, UUID
+from core.utils.uuid_utils import uuid7, UUID
 from hypothesis import given, strategies as st, settings, HealthCheck, assume
 from decimal import Decimal
 from datetime import datetime, timedelta
@@ -126,7 +126,7 @@ class TestComprehensiveNotificationSystemProperty:
         for i in range(num_users):
             # Create mock user data instead of User objects
             user_data = {
-                "id": uuid4(),
+                "id": uuid7(),
                 "email": f"user{i}@test.com",
                 "firstname": f"User",
                 "lastname": f"{i}",
@@ -136,7 +136,7 @@ class TestComprehensiveNotificationSystemProperty:
             
             # Create mock notification preferences
             preferences_data = {
-                "id": uuid4(),
+                "id": uuid7(),
                 "user_id": user_data["id"],
                 "email_enabled": user_preferences.get("email_enabled", True),
                 "push_enabled": user_preferences.get("push_enabled", True),
@@ -171,7 +171,7 @@ class TestComprehensiveNotificationSystemProperty:
             elif "notifications" in query_str.lower() and "insert" not in query_str.lower():
                 # Mock notification creation
                 mock_notification = MagicMock()
-                mock_notification.id = uuid4()
+                mock_notification.id = uuid7()
                 mock_notification.user_id = users[0]["id"]
                 mock_notification.message = "Test notification"
                 mock_notification.type = "info"
@@ -196,7 +196,7 @@ class TestComprehensiveNotificationSystemProperty:
                     subject = f"Test {notification_type} notification"
                     message = f"This is a test {notification_type} message"
                     metadata = {
-                        "subscription_id": str(uuid4()),
+                        "subscription_id": str(uuid7()),
                         "test_data": "test_value"
                     }
                     
@@ -206,7 +206,7 @@ class TestComprehensiveNotificationSystemProperty:
                         notification_type=notification_type,
                         subject=subject,
                         message=message,
-                        related_id=str(uuid4()),
+                        related_id=str(uuid7()),
                         metadata=metadata,
                         channels=channels
                     ))
@@ -285,7 +285,7 @@ class TestComprehensiveNotificationSystemProperty:
         
         for i in range(num_subscriptions):
             user_data = {
-                "id": uuid4(),
+                "id": uuid7(),
                 "email": f"subscriber{i}@test.com",
                 "firstname": f"Subscriber",
                 "lastname": f"{i}",
@@ -293,7 +293,7 @@ class TestComprehensiveNotificationSystemProperty:
             users.append(user_data)
             
             subscription_data = {
-                "id": uuid4(),
+                "id": uuid7(),
                 "user_id": user_data["id"],
                 "plan_id": f"plan_{i % 3}",
                 "price": Decimal('50.00'),
@@ -305,7 +305,7 @@ class TestComprehensiveNotificationSystemProperty:
         def mock_preferences_side_effect(query):
             mock_result = MagicMock()
             mock_preferences = MagicMock()
-            mock_preferences.id = uuid4()
+            mock_preferences.id = uuid7()
             mock_preferences.user_id = users[0]["id"]
             mock_preferences.email_enabled = True
             mock_preferences.push_enabled = True
@@ -413,7 +413,7 @@ class TestComprehensiveNotificationSystemProperty:
         users = []
         for i in range(num_users):
             user_data = {
-                "id": uuid4(),
+                "id": uuid7(),
                 "email": f"payer{i}@test.com",
                 "firstname": f"Payer",
                 "lastname": f"{i}",
@@ -425,7 +425,7 @@ class TestComprehensiveNotificationSystemProperty:
         def mock_payment_preferences_side_effect(query):
             mock_result = MagicMock()
             mock_preferences = MagicMock()
-            mock_preferences.id = uuid4()
+            mock_preferences.id = uuid7()
             mock_preferences.user_id = users[0]["id"]
             mock_preferences.email_enabled = True
             mock_preferences.push_enabled = True
@@ -449,7 +449,7 @@ class TestComprehensiveNotificationSystemProperty:
             # Test payment status notifications
             for i, scenario in enumerate(payment_scenarios):
                 user = users[i % len(users)]
-                subscription_id = uuid4()
+                subscription_id = uuid7()
                 
                 if scenario[0] == "success":
                     status, amount, payment_method = scenario
@@ -557,7 +557,7 @@ class TestComprehensiveNotificationSystemProperty:
         
         for i in range(num_affected_users):
             user_data = {
-                "id": uuid4(),
+                "id": uuid7(),
                 "email": f"customer{i}@test.com",
                 "firstname": f"Customer",
                 "lastname": f"{i}",
@@ -565,7 +565,7 @@ class TestComprehensiveNotificationSystemProperty:
             users.append(user_data)
             
             subscription_data = {
-                "id": uuid4(),
+                "id": uuid7(),
                 "user_id": user_data["id"],
                 "plan_id": f"plan_{i}",
                 "status": "active"
@@ -576,7 +576,7 @@ class TestComprehensiveNotificationSystemProperty:
         def mock_variant_preferences_side_effect(query):
             mock_result = MagicMock()
             mock_preferences = MagicMock()
-            mock_preferences.id = uuid4()
+            mock_preferences.id = uuid7()
             mock_preferences.user_id = users[0]["id"]
             mock_preferences.email_enabled = True
             mock_preferences.push_enabled = True
@@ -667,7 +667,7 @@ class TestComprehensiveNotificationSystemProperty:
         
         for i in range(num_users):
             user_data = {
-                "id": uuid4(),
+                "id": uuid7(),
                 "email": f"realtime{i}@test.com",
                 "firstname": f"Realtime",
                 "lastname": f"{i}",
@@ -675,7 +675,7 @@ class TestComprehensiveNotificationSystemProperty:
             users.append(user_data)
             
             subscription_data = {
-                "id": uuid4(),
+                "id": uuid7(),
                 "user_id": user_data["id"],
                 "plan_id": f"plan_{i}",
                 "status": "active"
@@ -752,7 +752,7 @@ class TestComprehensiveNotificationSystemProperty:
         users = []
         for i in range(num_users):
             user_data = {
-                "id": uuid4(),
+                "id": uuid7(),
                 "email": f"history{i}@test.com",
                 "firstname": f"History",
                 "lastname": f"{i}",
@@ -770,7 +770,7 @@ class TestComprehensiveNotificationSystemProperty:
         def mock_history_refresh_side_effect(obj):
             # Simulate database refresh by setting an ID
             if hasattr(obj, 'id') and obj.id is None:
-                obj.id = uuid4()
+                obj.id = uuid7()
         
         mock_db.refresh.side_effect = mock_history_refresh_side_effect
         
@@ -784,7 +784,7 @@ class TestComprehensiveNotificationSystemProperty:
                 # Log notification history
                 result = asyncio.run(notification_service._log_notification_history(
                     user_id=user["id"],
-                    notification_id=uuid4(),
+                    notification_id=uuid7(),
                     channel=channel,
                     notification_type=notification_type,
                     subject=subject,

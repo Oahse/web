@@ -11,7 +11,7 @@ import sys
 import os
 import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
-from uuid import uuid4, UUID
+from core.utils.uuid_utils import uuid7, UUID
 from hypothesis import given, strategies as st, settings, HealthCheck, assume
 from decimal import Decimal
 from datetime import datetime, timedelta
@@ -66,11 +66,11 @@ class TestAdminDashboardImpactAnalysisProperty:
         assume(len(subscription_prices) >= num_subscriptions)
         assume(current_percentage != proposed_percentage)  # Ensure there's actually a change
         
-        admin_user_id = uuid4()
+        admin_user_id = uuid7()
         
         # Create current pricing configuration
         current_config = PricingConfig(
-            id=uuid4(),
+            id=uuid7(),
             subscription_percentage=current_percentage,
             delivery_costs={
                 "standard": 10.0,
@@ -91,7 +91,7 @@ class TestAdminDashboardImpactAnalysisProperty:
         
         for i in range(num_subscriptions):
             user = User(
-                id=uuid4(),
+                id=uuid7(),
                 email=f"user{i}@test.com",
                 firstname=f"User",
                 lastname=f"{i}",
@@ -101,7 +101,7 @@ class TestAdminDashboardImpactAnalysisProperty:
             users.append(user)
             
             subscription = Subscription(
-                id=uuid4(),
+                id=uuid7(),
                 user_id=user.id,
                 plan_id=f"plan_{i % 5}",
                 price=subscription_prices[i % len(subscription_prices)],
@@ -282,11 +282,11 @@ class TestAdminDashboardImpactAnalysisProperty:
         assume(len(subscription_prices) >= num_subscriptions)
         assume(current_delivery_costs != proposed_delivery_costs)  # Ensure there's a change
         
-        admin_user_id = uuid4()
+        admin_user_id = uuid7()
         
         # Create current pricing configuration
         current_config = PricingConfig(
-            id=uuid4(),
+            id=uuid7(),
             subscription_percentage=15.0,  # Fixed percentage
             delivery_costs=current_delivery_costs,
             tax_rates={"US": 0.08},
@@ -301,8 +301,8 @@ class TestAdminDashboardImpactAnalysisProperty:
         subscriptions = []
         for i in range(num_subscriptions):
             subscription = Subscription(
-                id=uuid4(),
-                user_id=uuid4(),
+                id=uuid7(),
+                user_id=uuid7(),
                 plan_id=f"plan_{i % 3}",
                 price=subscription_prices[i % len(subscription_prices)],
                 currency="USD",
@@ -415,11 +415,11 @@ class TestAdminDashboardImpactAnalysisProperty:
         assume(len(base_subscription_prices) >= num_subscriptions)
         assume(len(set(percentage_changes)) > 1)  # Ensure we have different percentages
         
-        admin_user_id = uuid4()
+        admin_user_id = uuid7()
         
         # Create base pricing configuration
         base_config = PricingConfig(
-            id=uuid4(),
+            id=uuid7(),
             subscription_percentage=percentage_changes[0],
             delivery_costs={"standard": 15.0, "express": 30.0, "overnight": 60.0},
             tax_rates={"US": 0.08},
@@ -434,8 +434,8 @@ class TestAdminDashboardImpactAnalysisProperty:
         subscriptions = []
         for i in range(num_subscriptions):
             subscription = Subscription(
-                id=uuid4(),
-                user_id=uuid4(),
+                id=uuid7(),
+                user_id=uuid7(),
                 plan_id=f"plan_{i % 4}",
                 price=base_subscription_prices[i % len(base_subscription_prices)],
                 currency="USD",

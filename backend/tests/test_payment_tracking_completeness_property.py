@@ -11,7 +11,7 @@ import sys
 import os
 import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
-from uuid import uuid4, UUID
+from core.utils.uuid_utils import uuid7, UUID
 from hypothesis import given, strategies as st, settings, HealthCheck
 from decimal import Decimal
 from datetime import datetime, timedelta
@@ -48,10 +48,10 @@ class TestPaymentTrackingCompletenessProperty:
     def sample_payment_intent(self):
         """Sample payment intent for testing"""
         return PaymentIntent(
-            id=uuid4(),
+            id=uuid7(),
             stripe_payment_intent_id="pi_test123",
-            user_id=uuid4(),
-            subscription_id=uuid4(),
+            user_id=uuid7(),
+            subscription_id=uuid7(),
             amount_breakdown={
                 "subtotal": 100.0,
                 "admin_fee": 10.0,
@@ -84,8 +84,8 @@ class TestPaymentTrackingCompletenessProperty:
         **Feature: subscription-payment-enhancements, Property 19: Payment tracking completeness**
         **Validates: Requirements 7.1**
         """
-        subscription_id = uuid4()
-        metadata = {"test_key": "test_value", "order_id": str(uuid4())}
+        subscription_id = uuid7()
+        metadata = {"test_key": "test_value", "order_id": str(uuid7())}
         
         # Mock database operations
         mock_db.execute.return_value.scalar_one_or_none.return_value = sample_payment_intent
@@ -261,10 +261,10 @@ class TestPaymentTrackingCompletenessProperty:
         
         for i in range(num_payments):
             payment_intent = PaymentIntent(
-                id=uuid4(),
+                id=uuid7(),
                 stripe_payment_intent_id=f"pi_test_{i}",
-                user_id=uuid4(),
-                subscription_id=uuid4(),
+                user_id=uuid7(),
+                subscription_id=uuid7(),
                 amount_breakdown={
                     "total_amount": float(50 + (i * 10) % 500)  # Varying amounts
                 },
@@ -397,7 +397,7 @@ class TestPaymentTrackingCompletenessProperty:
                         amount=amount,
                         currency=currency,
                         payment_method_type=payment_method_type,
-                        subscription_id=uuid4()
+                        subscription_id=uuid7()
                     ))
                     
                     # Property: Each attempt should be logged successfully
@@ -460,10 +460,10 @@ class TestPaymentTrackingCompletenessProperty:
         payment_intents = []
         for payment_intent_id, status, failure_reason in failure_scenarios:
             payment_intent = PaymentIntent(
-                id=uuid4(),
+                id=uuid7(),
                 stripe_payment_intent_id=payment_intent_id,
-                user_id=uuid4(),
-                subscription_id=uuid4(),
+                user_id=uuid7(),
+                subscription_id=uuid7(),
                 amount_breakdown={"total_amount": 100.0},
                 currency="USD",
                 status=status,

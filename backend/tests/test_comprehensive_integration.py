@@ -5,7 +5,7 @@ Tests end-to-end subscription flows from creation to billing with real Stripe in
 import pytest
 import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
-from uuid import uuid4
+from core.utils.uuid_utils import uuid7
 from decimal import Decimal
 from datetime import datetime, timedelta
 import sys
@@ -113,7 +113,7 @@ class TestComprehensiveIntegration:
     def sample_user(self):
         """Sample user for testing"""
         user = MagicMock()
-        user.id = uuid4()
+        user.id = uuid7()
         user.email = "integration@test.com"
         user.firstname = "Integration"
         user.lastname = "Test"
@@ -130,7 +130,7 @@ class TestComprehensiveIntegration:
         products = []
         for i in range(3):
             product = MagicMock()
-            product.id = uuid4()
+            product.id = uuid7()
             product.name = f"Test Product {i+1}"
             product.price = Decimal(f"{10 + i*5}.00")
             product.currency = "USD"
@@ -200,7 +200,7 @@ class TestComprehensiveIntegration:
         
         # Mock subscription creation
         created_subscription = MagicMock()
-        created_subscription.id = uuid4()
+        created_subscription.id = uuid7()
         created_subscription.user_id = sample_user.id
         created_subscription.variant_ids = variant_ids
         created_subscription.delivery_type = delivery_type
@@ -261,11 +261,11 @@ class TestComprehensiveIntegration:
         """Test subscription billing cycle with dynamic cost recalculation"""
         # Setup existing subscription
         subscription = MagicMock()
-        subscription.id = uuid4()
+        subscription.id = uuid7()
         subscription.user_id = sample_user.id
         subscription.status = "active"
         subscription.billing_cycle = "monthly"
-        subscription.variant_ids = [str(uuid4()), str(uuid4())]
+        subscription.variant_ids = [str(uuid7()), str(uuid7())]
         subscription.delivery_type = "standard"
         subscription.cost_breakdown = {
             "total_amount": 35.00,
@@ -313,7 +313,7 @@ class TestComprehensiveIntegration:
         # Execute admin pricing update
         await admin_pricing_service.update_subscription_percentage(
             new_percentage=12.0,
-            admin_user_id=uuid4(),
+            admin_user_id=uuid7(),
             change_reason="Market adjustment"
         )
         
@@ -345,7 +345,7 @@ class TestComprehensiveIntegration:
         """Test multi-currency subscription with international tax calculations"""
         # Setup UK user
         uk_user = MagicMock()
-        uk_user.id = uuid4()
+        uk_user.id = uuid7()
         uk_user.email = "uk@test.com"
         uk_user.preferred_currency = "GBP"
         uk_user.default_address = MagicMock()
@@ -397,7 +397,7 @@ class TestComprehensiveIntegration:
         
         # Mock subscription creation
         created_subscription = MagicMock()
-        created_subscription.id = uuid4()
+        created_subscription.id = uuid7()
         created_subscription.currency = "GBP"
         created_subscription.cost_breakdown = gbp_cost_breakdown
         
@@ -454,7 +454,7 @@ class TestComprehensiveIntegration:
         for i in range(10):
             # Create subscription data
             sub_data = MagicMock()
-            sub_data.id = uuid4()
+            sub_data.id = uuid7()
             sub_data.user_id = sample_user.id
             sub_data.status = "active" if i < 8 else "cancelled"
             sub_data.created_at = datetime.utcnow() - timedelta(days=30-i*3)
@@ -468,7 +468,7 @@ class TestComprehensiveIntegration:
             # Create payment data
             if sub_data.status == "active":
                 payment_data = MagicMock()
-                payment_data.id = uuid4()
+                payment_data.id = uuid7()
                 payment_data.subscription_id = sub_data.id
                 payment_data.amount = sub_data.cost_breakdown["total_amount"]
                 payment_data.status = "succeeded" if i < 7 else "failed"
@@ -549,7 +549,7 @@ class TestComprehensiveIntegration:
         """Test Jinja template system integration for emails and exports"""
         # Setup subscription and payment data
         subscription = MagicMock()
-        subscription.id = uuid4()
+        subscription.id = uuid7()
         subscription.user_id = sample_user.id
         subscription.cost_breakdown = {
             "total_amount": 45.00,
@@ -562,7 +562,7 @@ class TestComprehensiveIntegration:
         subscription.next_billing_date = datetime.utcnow() + timedelta(days=30)
         
         payment = MagicMock()
-        payment.id = uuid4()
+        payment.id = uuid7()
         payment.subscription_id = subscription.id
         payment.amount = 45.00
         payment.status = "succeeded"
@@ -638,14 +638,14 @@ class TestComprehensiveIntegration:
         """Test loyalty system integration with subscription lifecycle"""
         # Setup loyalty account
         loyalty_account = MagicMock()
-        loyalty_account.id = uuid4()
+        loyalty_account.id = uuid7()
         loyalty_account.user_id = sample_user.id
         loyalty_account.total_points = 100
         loyalty_account.tier = "bronze"
         
         # Setup subscription
         subscription = MagicMock()
-        subscription.id = uuid4()
+        subscription.id = uuid7()
         subscription.user_id = sample_user.id
         subscription.cost_breakdown = {"total_amount": 50.00}
         subscription.status = "active"
@@ -708,7 +708,7 @@ class TestComprehensiveIntegration:
         """Test complete subscription lifecycle from creation to cancellation"""
         # Phase 1: Subscription Creation
         subscription = MagicMock()
-        subscription.id = uuid4()
+        subscription.id = uuid7()
         subscription.user_id = sample_user.id
         subscription.variant_ids = [str(p.id) for p in sample_products[:2]]
         subscription.status = "active"

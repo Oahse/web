@@ -2,7 +2,7 @@ import pytest
 import asyncio
 from datetime import datetime, timedelta
 from decimal import Decimal
-from uuid import uuid4, UUID
+from core.utils.uuid_utils import uuid7, UUID
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -37,23 +37,23 @@ class TestEnhancedInventoryIntegrationService:
         """Sample warehouse data for testing"""
         return [
             {
-                "variant_id": str(uuid4()),
+                "variant_id": str(uuid7()),
                 "quantity": 100,
-                "location_id": str(uuid4()),
+                "location_id": str(uuid7()),
                 "batch_number": "BATCH001",
                 "cost_per_unit": 25.50
             },
             {
-                "variant_id": str(uuid4()),
+                "variant_id": str(uuid7()),
                 "quantity": 50,
-                "location_id": str(uuid4()),
+                "location_id": str(uuid7()),
                 "batch_number": "BATCH002",
                 "cost_per_unit": 30.00
             },
             {
-                "variant_id": str(uuid4()),
+                "variant_id": str(uuid7()),
                 "quantity": 0,  # Out of stock
-                "location_id": str(uuid4()),
+                "location_id": str(uuid7()),
                 "batch_number": "BATCH003",
                 "cost_per_unit": 15.75
             }
@@ -62,8 +62,8 @@ class TestEnhancedInventoryIntegrationService:
     @pytest.fixture
     async def sample_tracking_entries(self):
         """Sample variant tracking entries for demand prediction"""
-        variant_id = uuid4()
-        subscription_id = uuid4()
+        variant_id = uuid7()
+        subscription_id = uuid7()
         
         entries = []
         base_date = datetime.utcnow() - timedelta(days=90)
@@ -75,7 +75,7 @@ class TestEnhancedInventoryIntegrationService:
             # Add some subscriptions each week
             for i in range(2):
                 entries.append(VariantTrackingEntry(
-                    id=uuid4(),
+                    id=uuid7(),
                     variant_id=variant_id,
                     subscription_id=subscription_id,
                     price_at_time=25.99,
@@ -87,7 +87,7 @@ class TestEnhancedInventoryIntegrationService:
             # Remove some subscriptions occasionally
             if week % 3 == 0:
                 entries.append(VariantTrackingEntry(
-                    id=uuid4(),
+                    id=uuid7(),
                     variant_id=variant_id,
                     subscription_id=subscription_id,
                     price_at_time=25.99,
@@ -227,18 +227,18 @@ class TestEnhancedInventoryIntegrationService:
         # Mock inventory items
         mock_inventory_items = [
             MagicMock(
-                id=uuid4(),
-                variant_id=uuid4(),
-                location_id=uuid4(),
+                id=uuid7(),
+                variant_id=uuid7(),
+                location_id=uuid7(),
                 quantity=5,  # Low stock
                 low_stock_threshold=10,
                 variant=MagicMock(name="Test Variant 1", current_price=25.99),
                 location=MagicMock(name="Warehouse A")
             ),
             MagicMock(
-                id=uuid4(),
-                variant_id=uuid4(),
-                location_id=uuid4(),
+                id=uuid7(),
+                variant_id=uuid7(),
+                location_id=uuid7(),
                 quantity=100,  # Good stock
                 low_stock_threshold=10,
                 variant=MagicMock(name="Test Variant 2", current_price=35.50),
@@ -285,9 +285,9 @@ class TestEnhancedInventoryIntegrationService:
         
         # Create mock inventory item
         inventory_item = MagicMock(
-            id=uuid4(),
-            variant_id=uuid4(),
-            location_id=uuid4(),
+            id=uuid7(),
+            variant_id=uuid7(),
+            location_id=uuid7(),
             quantity=10,
             low_stock_threshold=20,
             variant=MagicMock(name="High Demand Variant", current_price=45.00),
@@ -394,7 +394,7 @@ class TestEnhancedInventoryIntegrationService:
         invalid_data = [
             {"variant_id": "invalid-uuid", "quantity": "not-a-number"},
             {"quantity": 50},  # Missing variant_id
-            {"variant_id": str(uuid4()), "quantity": -10}  # Negative quantity (warning)
+            {"variant_id": str(uuid7()), "quantity": -10}  # Negative quantity (warning)
         ]
         
         result = await service._validate_warehouse_data(invalid_data)
@@ -415,14 +415,14 @@ class TestEnhancedInventoryIntegrationService:
         # Mock reorder suggestions
         reorder_suggestions = [
             {
-                "variant_id": str(uuid4()),
+                "variant_id": str(uuid7()),
                 "variant_name": "Test Product A",
                 "suggested_quantity": 100,
                 "urgency": "high",
                 "financial_analysis": {"suggested_order_value": 2500.0}
             },
             {
-                "variant_id": str(uuid4()),
+                "variant_id": str(uuid7()),
                 "variant_name": "Test Product B",
                 "suggested_quantity": 50,
                 "urgency": "medium",
@@ -481,7 +481,7 @@ class TestEnhancedInventoryIntegrationService:
         
         supplier_orders = [
             {
-                "variant_id": str(uuid4()),
+                "variant_id": str(uuid7()),
                 "variant_name": "Test Product",
                 "suggested_quantity": 100,
                 "supplier_unit_cost": 25.0,

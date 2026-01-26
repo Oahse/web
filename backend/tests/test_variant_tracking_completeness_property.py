@@ -11,7 +11,7 @@ import sys
 import os
 import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
-from uuid import uuid4, UUID
+from core.utils.uuid_utils import uuid7, UUID
 from hypothesis import given, strategies as st, settings, HealthCheck
 from decimal import Decimal
 from datetime import datetime, timedelta
@@ -48,9 +48,9 @@ class TestVariantTrackingCompletenessProperty:
     def sample_variant(self):
         """Sample product variant"""
         return ProductVariant(
-            id=uuid4(),
+            id=uuid7(),
             name="Test Variant",
-            product_id=uuid4(),
+            product_id=uuid7(),
             sku="TEST-VAR-001",
             base_price=25.99,
             sale_price=None,
@@ -62,8 +62,8 @@ class TestVariantTrackingCompletenessProperty:
     def sample_subscription(self):
         """Sample subscription"""
         return Subscription(
-            id=uuid4(),
-            user_id=uuid4(),
+            id=uuid7(),
+            user_id=uuid7(),
             variant_ids=[],
             status="active",
             billing_cycle="monthly"
@@ -188,12 +188,12 @@ class TestVariantTrackingCompletenessProperty:
         """
         # Create sample variants and subscriptions
         variants = [ProductVariant(
-            id=vid, name=f"Variant {i}", product_id=uuid4(), sku=f"TEST-{i}",
+            id=vid, name=f"Variant {i}", product_id=uuid7(), sku=f"TEST-{i}",
             base_price=prices[i % len(prices)], sale_price=None, is_active=True
         ) for i, vid in enumerate(variant_ids)]
         
         subscriptions = [Subscription(
-            id=sid, user_id=uuid4(), variant_ids=[], status="active", billing_cycle="monthly"
+            id=sid, user_id=uuid7(), variant_ids=[], status="active", billing_cycle="monthly"
         ) for sid in subscription_ids]
         
         # Track all added entries
@@ -268,7 +268,7 @@ class TestVariantTrackingCompletenessProperty:
         
         subscription_result = MagicMock()
         subscription_result.scalar_one_or_none.return_value = Subscription(
-            id=valid_subscription_id, user_id=uuid4(), variant_ids=[], status="active"
+            id=valid_subscription_id, user_id=uuid7(), variant_ids=[], status="active"
         )
         
         mock_db.execute.side_effect = [variant_result, subscription_result]
@@ -302,7 +302,7 @@ class TestVariantTrackingCompletenessProperty:
         # Mock database queries - variant exists, subscription not found
         variant_result = MagicMock()
         variant_result.scalar_one_or_none.return_value = ProductVariant(
-            id=valid_variant_id, name="Test Variant", product_id=uuid4(), sku="TEST-001",
+            id=valid_variant_id, name="Test Variant", product_id=uuid7(), sku="TEST-001",
             base_price=25.99, sale_price=None, is_active=True
         )
         
@@ -400,7 +400,7 @@ class TestVariantTrackingCompletenessProperty:
         try:
             # Create multiple subscriptions for testing
             subscriptions = [Subscription(
-                id=uuid4(), user_id=uuid4(), variant_ids=[], status="active"
+                id=uuid7(), user_id=uuid7(), variant_ids=[], status="active"
             ) for _ in timestamps]
             
             for i, timestamp in enumerate(timestamps):
@@ -465,7 +465,7 @@ class TestVariantTrackingCompletenessProperty:
             for i, currency in enumerate(currency_codes):
                 # Create unique subscription for each test
                 subscription = Subscription(
-                    id=uuid4(), user_id=uuid4(), variant_ids=[], status="active"
+                    id=uuid7(), user_id=uuid7(), variant_ids=[], status="active"
                 )
                 
                 # Mock database queries

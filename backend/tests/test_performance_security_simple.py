@@ -6,7 +6,7 @@ import pytest
 import asyncio
 import time
 from unittest.mock import AsyncMock, MagicMock, patch
-from uuid import uuid4
+from core.utils.uuid_utils import uuid7
 from decimal import Decimal
 from datetime import datetime, timedelta
 import sys
@@ -27,7 +27,7 @@ class TestPerformanceAndSecuritySimple:
         """Generate large dataset for performance testing"""
         return [
             {
-                "id": str(uuid4()),
+                "id": str(uuid7()),
                 "price": Decimal(f"{10 + (i % 100)}.{i % 100:02d}"),
                 "name": f"Performance Test Item {i}",
                 "active": True
@@ -153,7 +153,7 @@ class TestPerformanceAndSecuritySimple:
         template_data = {
             "subscriptions": [
                 {
-                    "id": str(uuid4()),
+                    "id": str(uuid7()),
                     "user_name": f"User {i}",
                     "amount": f"{30 + i % 100}.00",
                     "status": "active" if i % 10 != 0 else "cancelled",
@@ -285,8 +285,8 @@ class TestPerformanceAndSecuritySimple:
             
             # Return tokenized representation
             return {
-                "payment_method_id": f"pm_secure_{uuid4().hex[:8]}",
-                "card_fingerprint": f"fp_{uuid4().hex[:12]}",
+                "payment_method_id": f"pm_secure_{uuid7().hex[:8]}",
+                "card_fingerprint": f"fp_{uuid7().hex[:12]}",
                 "last4": payment_data.get("card_number", "0000")[-4:] if "card_number" in payment_data else "0000",
                 "brand": "visa",  # Would be detected by payment processor
                 "tokenized": True,
@@ -357,7 +357,7 @@ class TestPerformanceAndSecuritySimple:
         
         # Test rate limiting
         rate_limiter = RateLimiter(max_requests=5, window_seconds=60)
-        user_id = str(uuid4())
+        user_id = str(uuid7())
         
         # Test normal usage within limits
         for i in range(5):
@@ -439,7 +439,7 @@ class TestPerformanceAndSecuritySimple:
             
             return {
                 "encrypted_data": f"encrypted_{encrypted_hash[:16]}",
-                "encryption_key_id": f"key_{uuid4().hex[:8]}",
+                "encryption_key_id": f"key_{uuid7().hex[:8]}",
                 "algorithm": "AES-256-GCM",
                 "encrypted_at": datetime.utcnow().isoformat()
             }

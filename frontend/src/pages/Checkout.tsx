@@ -6,7 +6,6 @@ import { useNavigate } from 'react-router-dom';
 import { useCart } from '../contexts/CartContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useAuthRedirect } from '../hooks/useAuthRedirect';
-import { useWebSocket } from '../hooks/useWebSocket';
 import { AuthAPI } from '../apis/auth';
 import { CartAPI } from '../apis/cart';
 import { toast } from 'react-hot-toast';
@@ -20,50 +19,10 @@ export const Checkout = () => {
     requireAuth: true,
     message: 'Please login to checkout'
   });
-  const { isConnected } = useWebSocket();
 
   // UI state
   const [loading, setLoading] = useState(false);
-  const [priceUpdateReceived, setPriceUpdateReceived] = useState(false);
   const [stockValidation, setStockValidation] = useState({ valid: true, issues: [] });
-
-  // Listen for price updates via WebSocket
-  useEffect(() => {
-    const handlePriceUpdate = (event) => {
-      const { items, summary, message } = event.detail;
-      
-      // Show detailed toast with price changes
-      if (summary.total_price_change !== 0) {
-        const changeText = summary.total_price_change > 0 
-          ? `increased by ${summary.total_price_change.toFixed(2)}`
-          : `reduced by ${Math.abs(summary.total_price_change).toFixed(2)}`;
-          
-        toast.success(
-          `Cart prices ${changeText}. ${summary.total_items_updated} item(s) updated.`,
-          {
-            duration: 6000,
-            icon: summary.total_price_change > 0 ? '⚠️' : '🎉'
-          }
-        );
-      }
-      
-      // Refresh cart to show updated prices
-      if (refreshCart) {
-        refreshCart();
-      }
-      
-      setPriceUpdateReceived(true);
-      
-      // Reset the flag after a short delay
-      setTimeout(() => setPriceUpdateReceived(false), 3000);
-    };
-
-    window.addEventListener('priceUpdate', handlePriceUpdate);
-    
-    return () => {
-      window.removeEventListener('priceUpdate', handlePriceUpdate);
-    };
-  }, [refreshCart]);
 
   // Handle authentication check
   useEffect(() => {

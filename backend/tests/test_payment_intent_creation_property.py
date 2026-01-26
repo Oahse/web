@@ -10,7 +10,7 @@ import pytest
 import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 from decimal import Decimal
-from uuid import uuid4, UUID
+from core.utils.uuid_utils import uuid7, UUID
 from datetime import datetime, timedelta
 import stripe
 
@@ -73,7 +73,7 @@ class TestPaymentIntentCreationProperty:
     def sample_user(self):
         """Create a sample user for testing"""
         return User(
-            id=uuid4(),
+            id=uuid7(),
             email="test@example.com",
             firstname="Test",
             lastname="User",
@@ -85,8 +85,8 @@ class TestPaymentIntentCreationProperty:
     def sample_order(self):
         """Create a sample order for testing"""
         return Order(
-            id=uuid4(),
-            user_id=uuid4(),
+            id=uuid7(),
+            user_id=uuid7(),
             status="pending",
             total_amount=100.00
         )
@@ -95,8 +95,8 @@ class TestPaymentIntentCreationProperty:
     def sample_payment_method(self):
         """Create a sample payment method for testing"""
         return PaymentMethod(
-            id=uuid4(),
-            user_id=uuid4(),
+            id=uuid7(),
+            user_id=uuid7(),
             stripe_payment_method_id="pm_test_card",
             type="card",
             provider="stripe",
@@ -154,7 +154,7 @@ class TestPaymentIntentCreationProperty:
 
         # Mock Stripe payment intent creation
         mock_stripe_intent = MagicMock()
-        mock_stripe_intent.id = f"pi_test_{uuid4().hex[:10]}"
+        mock_stripe_intent.id = f"pi_test_{uuid7().hex[:10]}"
         mock_stripe_intent.client_secret = f"{mock_stripe_intent.id}_secret"
         mock_stripe_intent.status = "requires_payment_method"
 
@@ -171,7 +171,7 @@ class TestPaymentIntentCreationProperty:
                         order_id=sample_order.id,
                         subtotal=float(subtotal),
                         currency=currency,
-                        shipping_address_id=uuid4() if has_shipping_address else None,
+                        shipping_address_id=uuid7() if has_shipping_address else None,
                         payment_method_id=sample_payment_method.id if has_payment_method else None,
                         expires_in_minutes=expires_in_minutes
                     ))
@@ -267,7 +267,7 @@ class TestPaymentIntentCreationProperty:
         }
 
         mock_stripe_intent = MagicMock()
-        mock_stripe_intent.id = f"pi_test_{uuid4().hex[:10]}"
+        mock_stripe_intent.id = f"pi_test_{uuid7().hex[:10]}"
         mock_stripe_intent.client_secret = f"{mock_stripe_intent.id}_secret"
         mock_stripe_intent.status = "requires_payment_method"
 

@@ -11,7 +11,7 @@ import sys
 import os
 import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
-from uuid import uuid4, UUID
+from core.utils.uuid_utils import uuid7, UUID
 from hypothesis import given, strategies as st, settings, HealthCheck
 from decimal import Decimal
 from datetime import datetime, timedelta
@@ -71,9 +71,9 @@ class TestInventoryPredictionAutomationProperty:
         **Validates: Requirements 14.2**
         """
         # Create test variant and product using mock objects
-        variant_id = uuid4()
+        variant_id = uuid7()
         product = MagicMock()
-        product.id = uuid4()
+        product.id = uuid7()
         product.name = "Test Product"
         product.category = "electronics"
         
@@ -95,9 +95,9 @@ class TestInventoryPredictionAutomationProperty:
             # Create addition entries
             for i in range(additions):
                 entry = MagicMock()
-                entry.id = uuid4()
+                entry.id = uuid7()
                 entry.variant_id = variant_id
-                entry.subscription_id = uuid4()
+                entry.subscription_id = uuid7()
                 entry.action_type = "added"
                 entry.tracking_timestamp = base_date + timedelta(days=i % 7)
                 entry.price_at_time = 25.99
@@ -107,9 +107,9 @@ class TestInventoryPredictionAutomationProperty:
             # Create removal entries
             for i in range(removals):
                 entry = MagicMock()
-                entry.id = uuid4()
+                entry.id = uuid7()
                 entry.variant_id = variant_id
-                entry.subscription_id = uuid4()
+                entry.subscription_id = uuid7()
                 entry.action_type = "removed"
                 entry.tracking_timestamp = base_date + timedelta(days=i % 7)
                 entry.price_at_time = 25.99
@@ -120,8 +120,8 @@ class TestInventoryPredictionAutomationProperty:
         active_subs = []
         for i in range(active_subscriptions):
             subscription = MagicMock()
-            subscription.id = uuid4()
-            subscription.user_id = uuid4()
+            subscription.id = uuid7()
+            subscription.user_id = uuid7()
             subscription.variant_ids = [str(variant_id)]
             subscription.status = "active"
             active_subs.append(subscription)
@@ -262,9 +262,9 @@ class TestInventoryPredictionAutomationProperty:
         for i, (current_stock, threshold, daily_consumption) in enumerate(consumption_rates):
             # Create variant and location using mock objects
             variant = MagicMock()
-            variant.id = uuid4()
+            variant.id = uuid7()
             variant.name = f"Test Variant {i}"
-            variant.product_id = uuid4()
+            variant.product_id = uuid7()
             variant.sku = f"TEST-{i}"
             variant.base_price = 25.99
             variant.current_price = 25.99
@@ -272,14 +272,14 @@ class TestInventoryPredictionAutomationProperty:
             variants.append(variant)
             
             location = MagicMock()
-            location.id = uuid4()
+            location.id = uuid7()
             location.name = f"Warehouse {i}"
             location.address = f"Address {i}"
             locations.append(location)
             
             # Create inventory item using mock objects
             inventory = MagicMock()
-            inventory.id = uuid4()
+            inventory.id = uuid7()
             inventory.variant_id = variant.id
             inventory.location_id = location.id
             inventory.quantity = current_stock
@@ -292,7 +292,7 @@ class TestInventoryPredictionAutomationProperty:
             for day in range(30):  # 30 days of history
                 if daily_consumption > 0:
                     adjustment = MagicMock()
-                    adjustment.id = uuid4()
+                    adjustment.id = uuid7()
                     adjustment.inventory_id = inventory.id
                     adjustment.quantity_change = -int(daily_consumption)
                     adjustment.reason = "consumption"
@@ -302,9 +302,9 @@ class TestInventoryPredictionAutomationProperty:
             # Create variant tracking entries for demand prediction using mock objects
             for week in range(8):  # 8 weeks of tracking
                 entry = MagicMock()
-                entry.id = uuid4()
+                entry.id = uuid7()
                 entry.variant_id = variant.id
-                entry.subscription_id = uuid4()
+                entry.subscription_id = uuid7()
                 entry.action_type = "added"
                 entry.tracking_timestamp = datetime.utcnow() - timedelta(weeks=week)
                 entry.price_at_time = 25.99
@@ -313,8 +313,8 @@ class TestInventoryPredictionAutomationProperty:
             
             # Create active subscriptions using mock objects
             subscription = MagicMock()
-            subscription.id = uuid4()
-            subscription.user_id = uuid4()
+            subscription.id = uuid7()
+            subscription.user_id = uuid7()
             subscription.variant_ids = [str(variant.id)]
             subscription.status = "active"
             all_subscriptions.append(subscription)
@@ -457,11 +457,11 @@ class TestInventoryPredictionAutomationProperty:
         **Validates: Requirements 14.2**
         """
         # Create variant for testing using mock objects
-        variant_id = uuid4()
+        variant_id = uuid7()
         variant = MagicMock()
         variant.id = variant_id
         variant.name = "Seasonal Test Variant"
-        variant.product_id = uuid4()
+        variant.product_id = uuid7()
         variant.sku = "SEASONAL-001"
         variant.base_price = 30.00
         variant.current_price = 30.00
@@ -481,9 +481,9 @@ class TestInventoryPredictionAutomationProperty:
                 daily_demand = adjusted_demand // 7 + (1 if day < adjusted_demand % 7 else 0)
                 for _ in range(daily_demand):
                     entry = MagicMock()
-                    entry.id = uuid4()
+                    entry.id = uuid7()
                     entry.variant_id = variant_id
-                    entry.subscription_id = uuid4()
+                    entry.subscription_id = uuid7()
                     entry.action_type = "added"
                     entry.tracking_timestamp = base_date + timedelta(days=day)
                     entry.price_at_time = 30.00

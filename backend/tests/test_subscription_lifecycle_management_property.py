@@ -11,7 +11,7 @@ import sys
 import os
 import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
-from uuid import uuid4, UUID
+from core.utils.uuid_utils import uuid7, UUID
 from hypothesis import given, strategies as st, settings, HealthCheck
 from decimal import Decimal
 from datetime import datetime, timedelta
@@ -59,13 +59,13 @@ class TestSubscriptionLifecycleManagementProperty:
     ) -> Subscription:
         """Create a mock subscription for testing"""
         subscription = MagicMock()
-        subscription.id = uuid4()
-        subscription.user_id = uuid4()
+        subscription.id = uuid7()
+        subscription.user_id = uuid7()
         subscription.status = status
         subscription.price = price
         subscription.currency = "USD"
         subscription.billing_cycle = billing_cycle
-        subscription.variant_ids = [str(uuid4()) for _ in range(variant_count)]
+        subscription.variant_ids = [str(uuid7()) for _ in range(variant_count)]
         subscription.delivery_type = "standard"
         subscription.paused_at = paused_at
         subscription.cancelled_at = cancelled_at
@@ -95,13 +95,13 @@ class TestSubscriptionLifecycleManagementProperty:
     def create_mock_variant(self, price: float = 50.0) -> ProductVariant:
         """Create a mock product variant"""
         variant = MagicMock()
-        variant.id = uuid4()
-        variant.name = f"Test Variant {uuid4().hex[:8]}"
-        variant.sku = f"TV{uuid4().hex[:6].upper()}"
+        variant.id = uuid7()
+        variant.name = f"Test Variant {uuid7().hex[:8]}"
+        variant.sku = f"TV{uuid7().hex[:6].upper()}"
         variant.base_price = Decimal(str(price))
         variant.sale_price = None
         variant.is_active = True
-        variant.product_id = uuid4()
+        variant.product_id = uuid7()
         return variant
 
     def create_mock_cost_breakdown(self, total_amount: float = 120.0) -> CostBreakdown:
@@ -350,7 +350,7 @@ class TestSubscriptionLifecycleManagementProperty:
         subscription_service._process_subscription_refund = AsyncMock(return_value={
             "refund_processed": refund_amount > 0,
             "refund_amount": refund_amount,
-            "refund_id": str(uuid4()) if refund_amount > 0 else None
+            "refund_id": str(uuid7()) if refund_amount > 0 else None
         })
         subscription_service._send_subscription_cancelled_email = AsyncMock()
         
@@ -491,7 +491,7 @@ class TestSubscriptionLifecycleManagementProperty:
         old_variant_ids = [UUID(v_id) for v_id in subscription.variant_ids]
         
         # Create new variants
-        new_variant_ids = [uuid4() for _ in range(new_variant_count)]
+        new_variant_ids = [uuid7() for _ in range(new_variant_count)]
         new_variants = [self.create_mock_variant(new_total_price / new_variant_count) for _ in new_variant_ids]
         
         # Create new cost breakdown
@@ -762,7 +762,7 @@ class TestSubscriptionLifecycleManagementProperty:
                         state_history.append("cancelled")
                         
                     elif operation == "swap" and current_status in ["active", "trialing", "paused"]:
-                        new_variant_ids = [uuid4(), uuid4()]
+                        new_variant_ids = [uuid7(), uuid7()]
                         result = asyncio.run(subscription_service.swap_subscription_variants(
                             subscription_id=subscription.id,
                             user_id=subscription.user_id,

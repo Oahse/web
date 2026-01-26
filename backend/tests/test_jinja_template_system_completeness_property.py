@@ -14,7 +14,7 @@ import tempfile
 import shutil
 from pathlib import Path
 from unittest.mock import patch, MagicMock
-from uuid import uuid4
+from core.utils.uuid_utils import uuid7
 from hypothesis import given, strategies as st, settings, HealthCheck
 from decimal import Decimal
 from datetime import datetime, timedelta

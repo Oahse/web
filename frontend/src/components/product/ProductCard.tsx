@@ -102,7 +102,7 @@ export const ProductCard = ({
   // Get the display variant (selected variant or first variant or fallback to product)
   const displayVariant = selectedVariant || (product.variants && Array.isArray(product.variants) && product.variants.length > 0 ? product.variants[0] : null);
 
-  const isInCart = cart?.items?.some(item => item.variant.id === displayVariant?.id) || false;
+  const isInCart = cart?.items?.some(item => item.variant?.id === displayVariant?.id) || false;
 
   // Get the primary image from variant or fallback to product image
   const getPrimaryImage = () => {
@@ -340,7 +340,7 @@ export const ProductCard = ({
         <div className={cn('flex items-center justify-between', viewMode === 'list' && 'flex-grow md:flex-row-reverse md:justify-start md:space-x-4 md:space-x-reverse')}>
           <div>
             {salePrice && discountPercentage > 0 ? (
-              <div className="flex items-center">
+              <div className="flex items-center flex-wrap">
                 <span className="font-bold text-primary mr-2 text-sm sm:text-base">
                   {formatCurrency(currentPrice)}
                 </span>
@@ -362,53 +362,94 @@ export const ProductCard = ({
               </div>
             )}
           </div>
-          {/* Show simple add to cart button on mobile for grid view */}
+          
+          {/* Mobile buttons (visible on mobile only) */}
           <div className={cn(
-            'flex items-center gap-2',
+            'flex items-center gap-1.5 sm:gap-2',
             viewMode === 'grid' && 'sm:hidden',
-            viewMode === 'list' && 'hidden'
+            viewMode === 'list' && 'md:hidden'
           )}>
             <button
               onClick={handleAddToCart}
-              className="text-copy-lighter hover:text-white transition-colors bg-primary text-white px-3 py-1.5 rounded-md flex items-center"
-              aria-label={isInCart ? "Remove from cart" : "Add to cart"}>
-              {isInCart ? <CheckIcon size={16} /> : <ShoppingCartIcon size={16} />}
+              disabled={displayVariant?.stock === 0}
+              className={cn(
+                'flex items-center justify-center px-2 py-1.5 rounded-md text-xs font-medium transition-colors min-w-[60px]',
+                displayVariant?.stock === 0 
+                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                  : isInCart
+                    ? 'bg-green-600 text-white'
+                    : 'bg-primary text-white hover:bg-primary-dark'
+              )}
+              aria-label={isInCart ? "In cart" : "Add to cart"}>
+              {isInCart ? (
+                <>
+                  <CheckIcon size={14} />
+                  <span className="ml-1 hidden xs:inline">Added</span>
+                </>
+              ) : (
+                <>
+                  <ShoppingCartIcon size={14} />
+                  <span className="ml-1 hidden xs:inline">Add</span>
+                </>
+              )}
             </button>
+            
             {/* Mobile subscription button */}
             {isAuthenticated && hasActiveSubscriptions && (
               <button
                 onClick={handleAddToSubscription}
-                className="text-white bg-green-600 hover:bg-green-700 px-2 sm:px-3 py-1.5 rounded-md flex items-center transition-colors flex-shrink-0"
-                aria-label="Add to subscription">
-                <CalendarIcon size={16} />
+                className="flex items-center justify-center bg-green-600 hover:bg-green-700 text-white px-2 py-1.5 rounded-md text-xs font-medium transition-colors min-w-[50px]"
+                aria-label="Subscribe">
+                <CalendarIcon size={14} />
+                <span className="ml-1 hidden xs:inline">Sub</span>
               </button>
             )}
           </div>
+
+          {/* Desktop buttons (hidden on mobile) */}
           <div className={cn(
-            'hidden sm:flex items-center gap-2',
-            viewMode === 'list' && 'md:order-1'
+            'hidden items-center gap-2',
+            viewMode === 'grid' && 'sm:flex',
+            viewMode === 'list' && 'md:flex md:order-1'
           )}>
             <button
               onClick={handleAddToCart}
-              className="text-copy-lighter hover:text-white transition-colors bg-primary text-white px-4 py-2 rounded-md flex items-center"
-              aria-label={isInCart ? "Remove from cart" : "Add to cart"}>
-              {isInCart ? <CheckIcon size={18} /> : <ShoppingCartIcon size={18} />}
-              {viewMode === 'list' && <span className="hidden md:inline ml-2">{isInCart ? "In Cart" : "Add to Cart"}</span>}
+              disabled={displayVariant?.stock === 0}
+              className={cn(
+                'flex items-center justify-center px-4 py-2.5 rounded-md text-sm font-medium transition-colors min-w-[120px] whitespace-nowrap',
+                displayVariant?.stock === 0 
+                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                  : isInCart
+                    ? 'bg-green-600 text-white hover:bg-green-700'
+                    : 'bg-primary text-white hover:bg-primary-dark'
+              )}
+              aria-label={isInCart ? "In cart" : "Add to cart"}>
+              {isInCart ? (
+                <>
+                  <CheckIcon size={18} />
+                  <span className="ml-2">In Cart</span>
+                </>
+              ) : (
+                <>
+                  <ShoppingCartIcon size={18} />
+                  <span className="ml-2">Add to Cart</span>
+                </>
+              )}
             </button>
             
             {/* Desktop subscription button */}
             {isAuthenticated && hasActiveSubscriptions && (
               <button
                 onClick={handleAddToSubscription}
-                className="flex items-center text-white bg-green-600 hover:bg-green-700 px-3 sm:px-4 py-2 rounded-md transition-colors flex-shrink-0"
+                className="flex items-center justify-center bg-green-600 hover:bg-green-700 text-white px-4 py-2.5 rounded-md text-sm font-medium transition-colors min-w-[110px] whitespace-nowrap"
                 aria-label="Add to subscription">
-                <CalendarIcon size={18} className="flex-shrink-0" />
-                {viewMode === 'list' && <span className="hidden md:inline ml-2 whitespace-nowrap">Subscribe</span>}
+                <CalendarIcon size={18} />
+                <span className="ml-2">Subscribe</span>
               </button>
             )}
           </div>
           
-          {/* Subscription Button */}
+          {/* Subscription Button (legacy - keeping for compatibility) */}
           {showSubscriptionButton && subscriptionId && (
             <button
               onClick={handleAddToSubscription}

@@ -5,7 +5,7 @@ Test checkout pricing accuracy and validation
 import pytest
 from unittest.mock import AsyncMock, MagicMock
 from decimal import Decimal
-from uuid import uuid4
+from core.utils.uuid_utils import uuid7
 from fastapi import HTTPException
 
 from services.cart import CartService
@@ -33,19 +33,19 @@ class TestCheckoutPricingAccuracy:
     @pytest.fixture
     def sample_cart_data(self):
         return {
-            "user_id": str(uuid4()),
+            "user_id": str(uuid7()),
             "items": {
                 "item1": {
-                    "variant_id": str(uuid4()),
-                    "product_id": str(uuid4()),
+                    "variant_id": str(uuid7()),
+                    "product_id": str(uuid7()),
                     "product_name": "Test Product 1",
                     "quantity": 2,
                     "price_per_unit": 25.99,
                     "total_price": 51.98
                 },
                 "item2": {
-                    "variant_id": str(uuid4()),
-                    "product_id": str(uuid4()),
+                    "variant_id": str(uuid7()),
+                    "product_id": str(uuid7()),
                     "product_name": "Test Product 2",
                     "quantity": 1,
                     "price_per_unit": 39.99,
@@ -99,14 +99,14 @@ class TestCheckoutPricingAccuracy:
     @pytest.mark.asyncio
     async def test_shipping_cost_accuracy(self, cart_service, sample_cart_data):
         """Test shipping cost calculation accuracy"""
-        user_id = uuid4()
+        user_id = uuid7()
         
         # Mock cart data
         cart_service.get_hash = AsyncMock(return_value=sample_cart_data)
         
         # Mock shipping methods
         mock_shipping_method = MagicMock()
-        mock_shipping_method.id = uuid4()
+        mock_shipping_method.id = uuid7()
         mock_shipping_method.name = "Standard Shipping"
         mock_shipping_method.price = 9.99
         mock_shipping_method.is_active = True
@@ -132,13 +132,13 @@ class TestCheckoutPricingAccuracy:
         # Mock validated items
         validated_items = [
             {
-                "variant_id": uuid4(),
+                "variant_id": uuid7(),
                 "quantity": 2,
                 "backend_price": 25.99,
                 "backend_total": 51.98
             },
             {
-                "variant_id": uuid4(),
+                "variant_id": uuid7(),
                 "quantity": 1,
                 "backend_price": 39.99,
                 "backend_total": 39.99

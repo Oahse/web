@@ -2,7 +2,7 @@ from pydantic import BaseModel, Field, ConfigDict, computed_field
 from typing import List, Optional, Dict, Any
 from datetime import datetime
 from uuid import UUID
-from schemas.product import ProductVariantResponse
+from schemas.product import ProductVariantResponse, ProductImageResponse
 
 
 class AddToCartRequest(BaseModel):
@@ -14,14 +14,41 @@ class ApplyPromocodeRequest(BaseModel):
     code: str
 
 
+class EnhancedProductVariantResponse(ProductVariantResponse):
+    """Enhanced variant response for cart items with additional product details"""
+    product_name: Optional[str] = None
+    product_description: Optional[str] = None
+    product_short_description: Optional[str] = None
+    product_slug: Optional[str] = None
+    product_category_id: Optional[str] = None
+    product_rating_average: Optional[float] = None
+    product_rating_count: Optional[int] = None
+    product_is_featured: Optional[bool] = None
+    product_specifications: Optional[Dict[str, Any]] = None
+    product_dietary_tags: Optional[List[str]] = None
+    product_tags: Optional[List[str]] = None
+    product_origin: Optional[str] = None
+    image_count: int = 0
+    inventory_quantity_available: Optional[int] = None
+    inventory_quantity_reserved: Optional[int] = None
+    inventory_reorder_level: Optional[int] = None
+    inventory_last_updated: Optional[str] = None
+
+    model_config = ConfigDict(from_attributes=True, json_encoders={
+        datetime: lambda v: v.isoformat() if v else None
+    })
+
+
 class CartItemResponse(BaseModel):
     id: UUID
-    variant: ProductVariantResponse
+    cart_id: UUID
+    variant: EnhancedProductVariantResponse
     variant_id: UUID  # Add as regular field for easier access
     quantity: int
     price_per_unit: float
     total_price: float
     created_at: str = Field(..., description="ISO format datetime string")
+    updated_at: Optional[str] = Field(None, description="ISO format datetime string")
 
     model_config = ConfigDict(from_attributes=True, json_encoders={
         datetime: lambda v: v.isoformat() if v else None
@@ -29,12 +56,20 @@ class CartItemResponse(BaseModel):
 
 
 class CartResponse(BaseModel):
+    id: Optional[str] = None
+    user_id: Optional[str] = None
     items: List[CartItemResponse]
     subtotal: float
     tax_amount: float
     shipping_amount: float
     total_amount: float
     currency: str = "USD"
+    item_count: int = 0
+    total_items: int = 0
+    created_at: Optional[str] = None
+    updated_at: Optional[str] = None
+    country_code: str = "US"
+    province_code: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
 

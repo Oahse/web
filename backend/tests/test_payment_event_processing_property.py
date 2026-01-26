@@ -50,9 +50,9 @@ class TestPaymentEventProcessingProperty:
         """Create a sample transaction for testing"""
         from models.transaction import Transaction
         return Transaction(
-            id=uuid.uuid4(),
-            user_id=uuid.uuid4(),
-            order_id=uuid.uuid4(),
+            id=uuid7(),
+            user_id=uuid7(),
+            order_id=uuid7(),
             stripe_payment_intent_id="pi_test_123456789",
             amount=Decimal("99.99"),
             currency="USD",

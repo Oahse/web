@@ -3,7 +3,7 @@ Test price update notification system
 """
 import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
-from uuid import uuid4
+from core.utils.uuid_utils import uuid7
 from datetime import datetime
 
 from services.orders import OrderService
@@ -47,8 +47,8 @@ class TestPriceUpdateNotifications:
     async def test_price_update_notification_sent_on_price_change(self, order_service, mock_db_session):
         """Test that price update notification is sent when prices change"""
         
-        user_id = uuid4()
-        variant_id = uuid4()
+        user_id = uuid7()
+        variant_id = uuid7()
         
         # Frontend cart has old price, backend has new price
         cart_item = self.create_mock_cart_item(variant_id, quantity=2, frontend_price=50.0)
@@ -127,7 +127,7 @@ class TestPriceUpdateNotifications:
     async def test_send_price_update_notification(self, mock_kafka_service, order_service):
         """Test sending price update notification via Kafka"""
         
-        user_id = uuid4()
+        user_id = uuid7()
         price_updates = [{
             "product_name": "Test Product",
             "old_price": 100.0,
@@ -165,7 +165,7 @@ class TestPriceUpdateNotifications:
     async def test_no_notification_when_prices_match(self, order_service, mock_db_session):
         """Test that no notification is sent when prices match"""
         
-        variant_id = uuid4()
+        variant_id = uuid7()
         
         # Frontend and backend prices match
         cart_item = self.create_mock_cart_item(variant_id, quantity=1, frontend_price=25.0)
@@ -191,7 +191,7 @@ class TestPriceUpdateNotifications:
     async def test_sale_price_takes_precedence(self, order_service, mock_db_session):
         """Test that sale price takes precedence over base price"""
         
-        variant_id = uuid4()
+        variant_id = uuid7()
         
         # Frontend has base price, backend has sale price
         cart_item = self.create_mock_cart_item(variant_id, quantity=1, frontend_price=100.0)

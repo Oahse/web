@@ -7,7 +7,7 @@ from models.product import Product
 from models.user import User
 from schemas.review import ReviewCreate, ReviewUpdate, ReviewResponse
 from core.exceptions import APIException
-from uuid import uuid4, UUID
+from core.utils.uuid_utils import uuid7, UUID
 from datetime import datetime
 from sqlalchemy.orm import selectinload, load_only
 
@@ -32,7 +32,7 @@ class ReviewService:
                 status_code=400, detail="You have already reviewed this product")
 
         new_review = Review(
-            id=uuid4(),
+            id=uuid7(),
             user_id=user_id,
             **review_data.dict(exclude_unset=True)
         )

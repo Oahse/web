@@ -19,8 +19,8 @@ export const CategoryProvider = ({ children }) => {
 
   useEffect(() => {
     if (data) {
-      // API returns { success: true, data: [...] }
-      const categoriesArray = data.data || data;
+      // API returns { success: true, data: { categories: [...] } }
+      const categoriesArray = data.data?.categories || data.categories || data.data || data;
       setCategories(Array.isArray(categoriesArray) ? categoriesArray : []);
     }
   }, [data]);

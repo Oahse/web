@@ -15,7 +15,7 @@ The loyalty system should:
 import pytest
 import asyncio
 from decimal import Decimal
-from uuid import uuid4, UUID
+from core.utils.uuid_utils import uuid7, UUID
 from datetime import datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 from hypothesis import given, strategies as st, settings, assume, HealthCheck
@@ -66,8 +66,8 @@ def loyalty_account_strategy(draw):
     successful_referrals = draw(st.integers(min_value=0, max_value=referrals_made))  # Fix: ensure successful <= made
     
     return {
-        'id': uuid4(),
-        'user_id': uuid4(),
+        'id': uuid7(),
+        'user_id': uuid7(),
         'tier': tier,
         'total_points': total_points,
         'available_points': available_points,
@@ -83,8 +83,8 @@ def loyalty_account_strategy(draw):
 def subscription_strategy(draw):
     """Generate subscription data"""
     return {
-        'id': uuid4(),
-        'user_id': uuid4(),
+        'id': uuid7(),
+        'user_id': uuid7(),
         'price': float(draw(subscription_value_strategy())),
         'currency': draw(st.sampled_from(['USD', 'EUR', 'GBP', 'CAD'])),
         'billing_cycle': draw(st.sampled_from(['monthly', 'quarterly', 'yearly'])),
@@ -231,7 +231,7 @@ class TestLoyaltySystemIntegrationProperty:
         # Mock the db.add method to set transaction IDs
         def mock_add(obj):
             if hasattr(obj, 'id') and obj.id is None:
-                obj.id = uuid4()
+                obj.id = uuid7()
         
         mock_db.add.side_effect = mock_add
         
@@ -453,7 +453,7 @@ class TestLoyaltySystemIntegrationProperty:
             
             # Mock variants to avoid "No valid product variants found" error
             mock_variant = MagicMock()
-            mock_variant.id = uuid4()
+            mock_variant.id = uuid7()
             mock_variant.base_price = Decimal('25.00')  # Use base_price instead of price
             mock_variant.sale_price = None  # No sale price
             mock_variant.name = "Test Product"
@@ -466,7 +466,7 @@ class TestLoyaltySystemIntegrationProperty:
             
             # Calculate subscription cost with loyalty discount
             cost_breakdown = await cost_calculator.calculate_subscription_cost(
-                variant_ids=[uuid4()],  # Provide at least one variant ID
+                variant_ids=[uuid7()],  # Provide at least one variant ID
                 delivery_type='standard',
                 customer_location='US',
                 currency='USD',

@@ -1,6 +1,6 @@
 import pytest
 from unittest.mock import AsyncMock, MagicMock
-from uuid import uuid4
+from core.utils.uuid_utils import uuid7
 from backend.services.admin import AdminService
 from backend.models.product import ProductVariant
 from backend.models.inventories import Inventory
@@ -14,8 +14,8 @@ async def test_get_all_variants_with_stock():
     db_session = AsyncMock()
     
     # Sample data
-    variant_id = uuid4()
-    product_id = uuid4()
+    variant_id = uuid7()
+    product_id = uuid7()
     sku = "TEST-SKU-001"
     variant_name = "Test Variant"
     base_price = 100.0
@@ -24,7 +24,7 @@ async def test_get_all_variants_with_stock():
 
     # Mock inventory
     mock_inventory = Inventory(
-        id=uuid4(),
+        id=uuid7(),
         variant_id=variant_id,
         quantity_available=quantity_available,
         status="in_stock"

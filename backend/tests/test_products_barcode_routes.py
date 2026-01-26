@@ -1,7 +1,7 @@
 import pytest
 from fastapi.testclient import TestClient
 from unittest.mock import AsyncMock, MagicMock, patch
-from uuid import uuid4
+from core.utils.uuid_utils import uuid7
 from main import app
 from models.user import User
 
@@ -17,13 +17,13 @@ class TestProductsBarcodeRoutes:
     @pytest.fixture
     def sample_variant_id(self):
         """Sample variant ID for testing"""
-        return str(uuid4())
+        return str(uuid7())
 
     @pytest.fixture
     def mock_admin_user(self):
         """Mock admin user"""
         user = MagicMock(spec=User)
-        user.id = uuid4()
+        user.id = uuid7()
         user.email = "admin@test.com"
         user.role = "Admin"
         return user
@@ -32,7 +32,7 @@ class TestProductsBarcodeRoutes:
     def mock_supplier_user(self):
         """Mock supplier user"""
         user = MagicMock(spec=User)
-        user.id = uuid4()
+        user.id = uuid7()
         user.email = "supplier@test.com"
         user.role = "Supplier"
         return user
@@ -41,7 +41,7 @@ class TestProductsBarcodeRoutes:
     def mock_customer_user(self):
         """Mock customer user"""
         user = MagicMock(spec=User)
-        user.id = uuid4()
+        user.id = uuid7()
         user.email = "customer@test.com"
         user.role = "Customer"
         return user
@@ -308,7 +308,7 @@ class TestProductsBarcodeRoutesIntegration:
 
     def test_full_barcode_workflow(self, client, mock_admin_user):
         """Test complete barcode workflow: generate -> retrieve -> update"""
-        variant_id = str(uuid4())
+        variant_id = str(uuid7())
         auth_headers = {"Authorization": "Bearer mock_token"}
 
         with patch('routes.products.get_current_auth_user', return_value=mock_admin_user), \

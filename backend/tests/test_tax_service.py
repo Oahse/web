@@ -1,7 +1,7 @@
 import pytest
 from decimal import Decimal
 from unittest.mock import AsyncMock, patch, MagicMock
-from uuid import uuid4
+from core.utils.uuid_utils import uuid7
 import aiohttp
 import sys
 import os
@@ -29,7 +29,7 @@ class TestTaxService:
         """Create sample address for testing"""
         # Create a simple mock address object
         address = MagicMock()
-        address.id = uuid4()
+        address.id = uuid7()
         address.street = "123 Main St"
         address.city = "San Francisco"
         address.state = "California"
@@ -324,7 +324,7 @@ class TestTaxService:
         
         result = await tax_service.calculate_tax(
             subtotal=Decimal('100.00'),
-            shipping_address_id=uuid4()
+            shipping_address_id=uuid7()
         )
         
         # Should return zero tax as ultimate fallback

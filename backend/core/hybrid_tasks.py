@@ -12,7 +12,7 @@ from uuid import UUID
 from core.config import settings
 from core.arq_worker import (
     enqueue_email, enqueue_payment_processing, 
-    enqueue_inventory_update, enqueue_notification
+    enqueue_inventory_update
 )
 
 logger = logging.getLogger(__name__)
@@ -95,10 +95,7 @@ class HybridTaskManager:
         background_tasks.add_task(self.update_inventory_task, variant_id, action, **kwargs)
     
     # Notification Tasks - Use FastAPI for immediate, ARQ for scheduled
-    async def send_notification_task(self, user_id: str, notification_type: str, **kwargs):
-        """Send notification"""
-        if self.arq_enabled:
-            await enqueue_notification(user_id, notification_type, **kwargs)
+
         else:
             # Fallback to direct notification
             from services.notifications import NotificationService

@@ -7,7 +7,7 @@ import pytest
 from unittest.mock import AsyncMock, MagicMock
 from decimal import Decimal
 from datetime import datetime, timedelta
-from uuid import uuid4, UUID
+from core.utils.uuid_utils import uuid7, UUID
 
 from services.loyalty import LoyaltyService
 from models.loyalty import LoyaltyAccount, PointsTransaction, TierAdvancement
@@ -84,12 +84,12 @@ class TestLoyaltyTierDiscounts:
     @pytest.mark.asyncio
     async def test_calculate_loyalty_discount_bronze(self, loyalty_service):
         """Test loyalty discount calculation for Bronze tier user"""
-        user_id = uuid4()
+        user_id = uuid7()
         base_cost = Decimal("150.00")
         
         # Mock loyalty account with Bronze tier
         mock_account = LoyaltyAccount(
-            id=uuid4(),
+            id=uuid7(),
             user_id=user_id,
             current_tier="Bronze",
             total_points=500,
@@ -116,12 +116,12 @@ class TestLoyaltyTierDiscounts:
     @pytest.mark.asyncio
     async def test_calculate_loyalty_discount_platinum(self, loyalty_service):
         """Test loyalty discount calculation for Platinum tier user"""
-        user_id = uuid4()
+        user_id = uuid7()
         base_cost = Decimal("200.00")
         
         # Mock loyalty account with Platinum tier
         mock_account = LoyaltyAccount(
-            id=uuid4(),
+            id=uuid7(),
             user_id=user_id,
             current_tier="Platinum",
             total_points=20000,
@@ -150,7 +150,7 @@ class TestLoyaltyTierDiscounts:
     @pytest.mark.asyncio
     async def test_calculate_loyalty_discount_no_account(self, loyalty_service):
         """Test loyalty discount for user without loyalty account"""
-        user_id = uuid4()
+        user_id = uuid7()
         base_cost = Decimal("100.00")
         
         # Mock database query returning None (no account)
@@ -232,12 +232,12 @@ class TestPointsCalculations:
     @pytest.mark.asyncio
     async def test_calculate_points_for_purchase(self, loyalty_service):
         """Test points calculation for a purchase"""
-        user_id = uuid4()
+        user_id = uuid7()
         purchase_amount = Decimal("50.00")
         
         # Mock loyalty account with Gold tier
         mock_account = LoyaltyAccount(
-            id=uuid4(),
+            id=uuid7(),
             user_id=user_id,
             current_tier="Gold",
             total_points=8000,

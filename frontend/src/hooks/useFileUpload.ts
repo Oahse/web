@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { uploadMultipleFiles, deleteMultipleFiles } from '../lib/github.jsx';
-import { useErrorHandler } from './useErrorHandler';
+import { useAsyncOperations } from './useAsync.js';
 
 const DEFAULT_MAX_SIZE_KB = 100; // 100kb limit
 const DEFAULT_ALLOWED_TYPES = [
@@ -33,8 +33,8 @@ export const useFileUpload = (options = {}) => {
     uploadedFiles: [],
   });
 
-  const { handleError } = useErrorHandler({
-    toastType: showErrorToast ? 'always' : 'never',
+  const { handleError } = useAsyncOperations({
+    showErrorToast: showErrorToast,
     onError,
   });
 

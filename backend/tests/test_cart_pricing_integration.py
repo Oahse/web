@@ -7,7 +7,7 @@ import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from datetime import datetime, timedelta
 import json
-from uuid import uuid4, UUID
+from core.utils.uuid_utils import uuid7, UUID
 from fastapi import HTTPException
 
 from services.cart import CartService
@@ -37,11 +37,11 @@ class TestCartServicePricing:
     @pytest.fixture
     def sample_cart_data(self):
         return {
-            "user_id": str(uuid4()),
+            "user_id": str(uuid7()),
             "items": {
                 "item1": {
-                    "variant_id": str(uuid4()),
-                    "product_id": str(uuid4()),
+                    "variant_id": str(uuid7()),
+                    "product_id": str(uuid7()),
                     "product_name": "Test Product 1",
                     "variant_name": "Default",
                     "quantity": 2,
@@ -49,8 +49,8 @@ class TestCartServicePricing:
                     "total_price": 50.00
                 },
                 "item2": {
-                    "variant_id": str(uuid4()),
-                    "product_id": str(uuid4()),
+                    "variant_id": str(uuid7()),
+                    "product_id": str(uuid7()),
                     "product_name": "Test Product 2",
                     "variant_name": "Large",
                     "quantity": 1,
@@ -128,7 +128,7 @@ class TestCartServicePricing:
     @pytest.mark.asyncio
     async def test_apply_percentage_promocode(self, cart_service, mock_redis_client):
         """Test applying percentage-based promocode"""
-        user_id = uuid4()
+        user_id = uuid7()
         cart_key = f"cart:{user_id}"
         
         # Mock cart data
@@ -144,7 +144,7 @@ class TestCartServicePricing:
         # Mock promocode service
         with patch('services.cart.PromocodeService') as mock_promo_service:
             mock_promocode = Promocode(
-                id=uuid4(),
+                id=uuid7(),
                 code="SAVE20",
                 discount_type="percentage",
                 value=0.20,  # 20%
@@ -175,7 +175,7 @@ class TestCartServicePricing:
     @pytest.mark.asyncio
     async def test_apply_fixed_promocode(self, cart_service, mock_redis_client):
         """Test applying fixed amount promocode"""
-        user_id = uuid4()
+        user_id = uuid7()
         
         # Mock cart data
         cart_data = {
@@ -190,7 +190,7 @@ class TestCartServicePricing:
         # Mock promocode service
         with patch('services.cart.PromocodeService') as mock_promo_service:
             mock_promocode = Promocode(
-                id=uuid4(),
+                id=uuid7(),
                 code="SAVE15",
                 discount_type="fixed",
                 value=15.00,  # $15 off
@@ -220,7 +220,7 @@ class TestCartServicePricing:
     @pytest.mark.asyncio
     async def test_apply_shipping_promocode(self, cart_service, mock_redis_client):
         """Test applying free shipping promocode"""
-        user_id = uuid4()
+        user_id = uuid7()
         
         # Mock cart data
         cart_data = {
@@ -235,7 +235,7 @@ class TestCartServicePricing:
         # Mock promocode service
         with patch('services.cart.PromocodeService') as mock_promo_service:
             mock_promocode = Promocode(
-                id=uuid4(),
+                id=uuid7(),
                 code="FREESHIP",
                 discount_type="shipping",
                 value=0.00,
@@ -265,7 +265,7 @@ class TestCartServicePricing:
     @pytest.mark.asyncio
     async def test_apply_invalid_promocode(self, cart_service, mock_redis_client):
         """Test applying invalid promocode"""
-        user_id = uuid4()
+        user_id = uuid7()
         
         # Mock cart data
         cart_data = {"items": {}, "subtotal": 100.00}
@@ -289,7 +289,7 @@ class TestCartServicePricing:
     @pytest.mark.asyncio
     async def test_apply_expired_promocode(self, cart_service, mock_redis_client):
         """Test applying expired promocode"""
-        user_id = uuid4()
+        user_id = uuid7()
         
         # Mock cart data
         cart_data = {"items": {}, "subtotal": 100.00}
@@ -301,7 +301,7 @@ class TestCartServicePricing:
         # Mock expired promocode
         with patch('services.cart.PromocodeService') as mock_promo_service:
             mock_promocode = Promocode(
-                id=uuid4(),
+                id=uuid7(),
                 code="EXPIRED",
                 discount_type="percentage",
                 value=0.10,
@@ -322,7 +322,7 @@ class TestCartServicePricing:
     @pytest.mark.asyncio
     async def test_remove_promocode(self, cart_service, mock_redis_client):
         """Test removing promocode from cart"""
-        user_id = uuid4()
+        user_id = uuid7()
         
         # Mock cart data with promocode
         cart_data = {
@@ -353,7 +353,7 @@ class TestCartServicePricing:
     @pytest.mark.asyncio
     async def test_calculate_totals(self, cart_service):
         """Test total calculation with discount"""
-        user_id = uuid4()
+        user_id = uuid7()
         
         # Mock cart response
         mock_cart = MagicMock()
@@ -379,7 +379,7 @@ class TestCartServicePricing:
     @pytest.mark.asyncio
     async def test_free_shipping_threshold(self, cart_service):
         """Test free shipping threshold logic"""
-        user_id = uuid4()
+        user_id = uuid7()
         address = {"city": "Test City", "state": "TS"}
         
         # Mock shipping service
@@ -388,7 +388,7 @@ class TestCartServicePricing:
             
             # Mock standard shipping methods
             mock_method = MagicMock()
-            mock_method.id = uuid4()
+            mock_method.id = uuid7()
             mock_method.name = "Standard Shipping"
             mock_method.price = 10.00
             mock_method.estimated_days = 5
@@ -431,14 +431,14 @@ class TestCartValidationIntegration:
     @pytest.mark.asyncio
     async def test_validate_cart_comprehensive(self, cart_service):
         """Test comprehensive cart validation"""
-        user_id = uuid4()
+        user_id = uuid7()
         
         # Mock Redis cart data
         cart_data = {
             "user_id": str(user_id),
             "items": {
                 "item1": {
-                    "variant_id": str(uuid4()),
+                    "variant_id": str(uuid7()),
                     "quantity": 2,
                     "price_per_unit": 25.00,
                     "total_price": 50.00

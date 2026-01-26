@@ -10,7 +10,8 @@ from models.orders import Order, OrderItem
 from models.subscriptions import Subscription
 from models.inventories import Inventory
 from models.user import User
-from uuid import UUID, uuid4
+from uuid import UUID
+from core.utils.uuid_utils import uuid7
 from datetime import datetime, timedelta
 from typing import Optional, List, Dict, Any
 from enum import Enum
@@ -476,7 +477,7 @@ class PaymentService:
         start_time = time.time()
         
         if not request_id:
-            request_id = str(uuid4())
+            request_id = str(uuid7())
         
         try:
             # Validate frontend price against backend calculation

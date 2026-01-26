@@ -5,7 +5,7 @@ Test script to verify atomic inventory operations work correctly
 import asyncio
 import sys
 import os
-from uuid import uuid4
+from core.utils.uuid_utils import uuid7
 
 # Add backend to path
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
@@ -101,7 +101,7 @@ async def test_service_methods():
                     variant_id=variant_id,
                     quantity=1,
                     location_id=location_id,
-                    order_id=uuid4()
+                    order_id=uuid7()
                 )
                 print(f"✓ Stock decremented: {result['old_quantity']} -> {result['new_quantity']}")
                 
@@ -111,7 +111,7 @@ async def test_service_methods():
                     variant_id=variant_id,
                     quantity=1,
                     location_id=location_id,
-                    order_id=uuid4()
+                    order_id=uuid7()
                 )
                 print(f"✓ Stock incremented: {result['old_quantity']} -> {result['new_quantity']}")
             

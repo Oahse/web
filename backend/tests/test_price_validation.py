@@ -5,7 +5,7 @@ and never trusts frontend prices
 import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
 from sqlalchemy.ext.asyncio import AsyncSession
-from uuid import uuid4
+from core.utils.uuid_utils import uuid7
 from decimal import Decimal
 
 from services.orders import OrderService
@@ -30,9 +30,9 @@ class TestPriceValidation:
     def checkout_request(self):
         """Sample checkout request"""
         return CheckoutRequest(
-            shipping_address_id=uuid4(),
-            shipping_method_id=uuid4(),
-            payment_method_id=uuid4(),
+            shipping_address_id=uuid7(),
+            shipping_method_id=uuid7(),
+            payment_method_id=uuid7(),
             notes="Test order"
         )
     
@@ -66,7 +66,7 @@ class TestPriceValidation:
         """Test price validation when frontend and backend prices match"""
         order_service = OrderService(mock_db_session)
         
-        variant_id = uuid4()
+        variant_id = uuid7()
         cart_item = self.create_mock_cart_item(variant_id, quantity=2, frontend_price=15.0)
         backend_variant = self.create_mock_variant(variant_id, backend_price=15.0)
         
@@ -92,7 +92,7 @@ class TestPriceValidation:
         """Test price validation when frontend price differs from backend"""
         order_service = OrderService(mock_db_session)
         
-        variant_id = uuid4()
+        variant_id = uuid7()
         # Frontend thinks price is $10, but backend has $12
         cart_item = self.create_mock_cart_item(variant_id, quantity=1, frontend_price=10.0)
         backend_variant = self.create_mock_variant(variant_id, backend_price=12.0)
@@ -125,7 +125,7 @@ class TestPriceValidation:
         """Test that sale price takes precedence over base price"""
         order_service = OrderService(mock_db_session)
         
-        variant_id = uuid4()
+        variant_id = uuid7()
         cart_item = self.create_mock_cart_item(variant_id, quantity=1, frontend_price=20.0)
         # Base price is $20, but sale price is $15
         backend_variant = self.create_mock_variant(variant_id, backend_price=20.0, sale_price=15.0)
@@ -150,7 +150,7 @@ class TestPriceValidation:
         """Test price validation when variant no longer exists"""
         order_service = OrderService(mock_db_session)
         
-        variant_id = uuid4()
+        variant_id = uuid7()
         cart_item = self.create_mock_cart_item(variant_id, quantity=1, frontend_price=10.0)
         
         # Mock cart
@@ -216,8 +216,8 @@ class TestPriceValidation:
     ):
         """Test that checkout process uses backend prices even if frontend sends different prices"""
         
-        user_id = uuid4()
-        variant_id = uuid4()
+        user_id = uuid7()
+        variant_id = uuid7()
         
         # Frontend cart item with manipulated low price
         cart_item = self.create_mock_cart_item(variant_id, quantity=1, frontend_price=1.0)  # Suspiciously low
@@ -251,7 +251,7 @@ class TestPriceValidation:
         async def capture_payment_amount(*args, **kwargs):
             nonlocal charged_amount
             charged_amount = kwargs.get('amount') or args[1]  # amount is second positional arg
-            return {"status": "succeeded", "payment_intent_id": str(uuid4())}
+            return {"status": "succeeded", "payment_intent_id": str(uuid7())}
         
         mock_payment_service.return_value.process_payment.side_effect = capture_payment_amount
         
@@ -262,7 +262,7 @@ class TestPriceValidation:
         # Create order service and mock dependencies
         order_service = OrderService(mock_db_session)
         order_service.inventory_service = AsyncMock()
-        order_service.inventory_service.get_inventory_item_by_variant_id.return_value = MagicMock(location_id=uuid4())
+        order_service.inventory_service.get_inventory_item_by_variant_id.return_value = MagicMock(location_id=uuid7())
         order_service.inventory_service.adjust_stock = AsyncMock()
         order_service._format_order_response = AsyncMock()
         

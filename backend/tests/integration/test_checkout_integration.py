@@ -7,7 +7,7 @@ import pytest
 import asyncio
 from unittest.mock import AsyncMock, patch, MagicMock
 from sqlalchemy.ext.asyncio import AsyncSession
-from uuid import uuid4
+from core.utils.uuid_utils import uuid7
 from decimal import Decimal
 from datetime import datetime
 
@@ -48,7 +48,7 @@ class TestCheckoutIntegration:
     def user_data(self):
         """Test user data"""
         return {
-            "id": uuid4(),
+            "id": uuid7(),
             "email": "test@example.com",
             "first_name": "Test",
             "last_name": "User"
@@ -58,8 +58,8 @@ class TestCheckoutIntegration:
     def product_variant(self):
         """Test product variant"""
         return ProductVariant(
-            id=uuid4(),
-            product_id=uuid4(),
+            id=uuid7(),
+            product_id=uuid7(),
             name="Test Product",
             base_price=Decimal("29.99"),
             sku="TEST-001",
@@ -70,13 +70,13 @@ class TestCheckoutIntegration:
     def cart_with_items(self, user_data, product_variant):
         """Cart with test items"""
         cart = Cart(
-            id=uuid4(),
+            id=uuid7(),
             user_id=user_data["id"],
             session_id=None
         )
         
         cart_item = CartItem(
-            id=uuid4(),
+            id=uuid7(),
             cart_id=cart.id,
             variant_id=product_variant.id,
             quantity=2,
@@ -90,9 +90,9 @@ class TestCheckoutIntegration:
     def checkout_request(self):
         """Test checkout request"""
         return CheckoutRequest(
-            shipping_address_id=uuid4(),
-            shipping_method_id=uuid4(),
-            payment_method_id=uuid4(),
+            shipping_address_id=uuid7(),
+            shipping_method_id=uuid7(),
+            payment_method_id=uuid7(),
             notes="Test order"
         )
 
@@ -100,9 +100,9 @@ class TestCheckoutIntegration:
     def mock_inventory(self, product_variant):
         """Mock inventory with sufficient stock"""
         return Inventory(
-            id=uuid4(),
+            id=uuid7(),
             variant_id=product_variant.id,
-            location_id=uuid4(),
+            location_id=uuid7(),
             quantity_available=100
         )
 
@@ -110,7 +110,7 @@ class TestCheckoutIntegration:
     def mock_payment_method(self, user_data):
         """Mock payment method"""
         return PaymentMethod(
-            id=uuid4(),
+            id=uuid7(),
             user_id=user_data["id"],
             type="card",
             provider="stripe",
@@ -123,7 +123,7 @@ class TestCheckoutIntegration:
     def mock_shipping_method(self):
         """Mock shipping method"""
         return ShippingMethod(
-            id=uuid4(),
+            id=uuid7(),
             name="Standard Shipping",
             price=Decimal("5.99"),
             estimated_days=3
@@ -133,7 +133,7 @@ class TestCheckoutIntegration:
     def mock_address(self, user_data):
         """Mock shipping address"""
         return Address(
-            id=uuid4(),
+            id=uuid7(),
             user_id=user_data["id"],
             street="123 Test St",
             city="Test City",
@@ -185,13 +185,13 @@ class TestCheckoutIntegration:
         mock_payment_service.process_payment.return_value = {
             "status": "succeeded",
             "payment_intent_id": "pi_test_123",
-            "transaction_id": str(uuid4())
+            "transaction_id": str(uuid7())
         }
         mock_payment_service_class.return_value = mock_payment_service
         
         # Mock inventory service
         mock_inventory_service_instance = AsyncMock()
-        mock_inventory_service_instance.reserve_inventory.return_value = {"success": True, "reservation_id": uuid4()}
+        mock_inventory_service_instance.reserve_inventory.return_value = {"success": True, "reservation_id": uuid7()}
         mock_inventory_service_instance.decrement_stock_on_purchase.return_value = {"success": True}
         mock_inventory_service.return_value = mock_inventory_service_instance
         
@@ -572,7 +572,7 @@ class TestCheckoutIntegration:
         
         # Create existing order
         existing_order = Order(
-            id=uuid4(),
+            id=uuid7(),
             user_id=user_id,
             order_number="ORD-123456",
             order_status="confirmed",

@@ -1,32 +1,30 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, delete, and_, func
+from sqlalchemy import select, delete, and_, func, update
 from sqlalchemy.orm import selectinload
 from fastapi import HTTPException
 from typing import Optional, Dict, Any, List
-from uuid import UUID, uuid4
+from uuid import UUID
+from core.utils.uuid_utils import uuid7
 from decimal import Decimal
-from datetime import datetime, timedelta
-import secrets
+from datetime import datetime
 import logging
-import json
 
-from models.product import ProductVariant
+from models.cart import Cart, CartItem
+from models.product import ProductVariant, Product
 from models.user import User
 from services.tax import TaxService
-from core.redis import RedisService, RedisKeyManager
 from core.config import settings
 
 logger = logging.getLogger(__name__)
 
 
-class CartService(RedisService):
+class CartService:
     """
-    Redis-based cart service for MVP
-    Uses Redis for cart storage with ARQ background tasks
+    PostgreSQL-based cart service
+    Uses PostgreSQL for persistent cart storage
     """
     
     def __init__(self, db: AsyncSession):
-        super().__init__()
         self.db = db
         self.tax_service = TaxService(db)
 
@@ -38,26 +36,14 @@ class CartService(RedisService):
         province_code: Optional[str] = None
     ) -> Dict[str, Any]:
         """
-        Get cart from Redis
-        For authenticated users, use user_id as key
-        For guests, use session_id as key
+        Get cart from PostgreSQL
+        For authenticated users, use user_id
+        For guests, session-based carts are not supported in PostgreSQL version
         """
-        if user_id:
-            cart_key = RedisKeyManager.cart_key(str(user_id))
-        elif session_id:
-            cart_key = RedisKeyManager.cart_key(f"guest:{session_id}")
-        else:
-            # Generate new session for guest
-            session_id = secrets.token_urlsafe(32)
-            cart_key = RedisKeyManager.cart_key(f"guest:{session_id}")
-        
-        # Get cart from Redis
-        cart_data = await self.get_hash(cart_key)
-        
-        if not cart_data:
-            # Create empty cart
-            cart_data = {
-                "user_id": str(user_id) if user_id else None,
+        if not user_id:
+            # Return empty cart for guests - they need to login to use cart
+            return {
+                "user_id": None,
                 "session_id": session_id,
                 "items": [],
                 "subtotal": 0.0,
@@ -69,17 +55,181 @@ class CartService(RedisService):
                 "country_code": country_code,
                 "province_code": province_code
             }
-            
-            # Store in Redis with appropriate TTL
-            ttl = settings.REDIS_CART_TTL_USER if user_id else settings.REDIS_CART_TTL_GUEST
-            await self.set_hash(cart_key, cart_data, ttl)
-        else:
-            # Update location if provided
-            if country_code != cart_data.get('country_code') or province_code != cart_data.get('province_code'):
-                cart_data['country_code'] = country_code
-                cart_data['province_code'] = province_code
-                await self._update_cart_totals(cart_data, cart_key)
+
+        # Get or create cart for authenticated user
+        result = await self.db.execute(
+            select(Cart)
+            .options(
+                selectinload(Cart.items).selectinload(CartItem.variant).selectinload(ProductVariant.images),
+                selectinload(Cart.items).selectinload(CartItem.variant).selectinload(ProductVariant.product),
+                selectinload(Cart.items).selectinload(CartItem.product)
+            )
+            .where(Cart.user_id == user_id)
+        )
+        cart = result.scalar_one_or_none()
+
+        if not cart:
+            # Create new cart
+            cart = Cart(user_id=user_id)
+            self.db.add(cart)
+            await self.db.commit()
+            await self.db.refresh(cart)
+
+        # Calculate totals
+        subtotal = sum(item.total_price for item in cart.items)
         
+        # Calculate tax if location provided
+        tax_amount = 0.0
+        if country_code and subtotal > 0:
+            try:
+                tax_rate = await self.tax_service.get_tax_rate(country_code, province_code)
+                if tax_rate:
+                    tax_amount = float(subtotal) * tax_rate.tax_rate
+            except Exception as e:
+                logger.warning(f"Failed to calculate tax: {e}")
+
+        # For now, shipping is 0 - can be calculated based on items/location
+        shipping_amount = 0.0
+        total_amount = float(subtotal) + tax_amount + shipping_amount
+
+        # Convert cart to dict format expected by frontend
+        cart_data = {
+            "id": str(cart.id),
+            "user_id": str(cart.user_id),
+            "items": [],
+            "subtotal": float(subtotal),
+            "tax_amount": tax_amount,
+            "shipping_amount": shipping_amount,
+            "total_amount": total_amount,
+            "item_count": len(cart.items),
+            "total_items": sum(item.quantity for item in cart.items),
+            "currency": "USD",  # Can be made configurable
+            "created_at": cart.created_at.isoformat() if cart.created_at else None,
+            "updated_at": cart.updated_at.isoformat() if cart.updated_at else None,
+            "country_code": country_code,
+            "province_code": province_code
+        }
+
+        # Enrich cart items with detailed variant data
+        for item in cart.items:
+            variant = item.variant
+            product = item.product or variant.product if variant else None
+            
+            item_data = {
+                "id": str(item.id),
+                "cart_id": str(item.cart_id),
+                "variant_id": str(item.variant_id),
+                "quantity": item.quantity,
+                "price_per_unit": float(item.price_per_unit),
+                "total_price": float(item.total_price),
+                "created_at": item.created_at.isoformat() if item.created_at else None,
+                "updated_at": item.updated_at.isoformat() if item.updated_at else None
+            }
+
+            # Add comprehensive variant data if available
+            if variant:
+                # Calculate discount information
+                discount_percentage = 0
+                if variant.sale_price and variant.sale_price < variant.base_price:
+                    discount_percentage = round(((variant.base_price - variant.sale_price) / variant.base_price) * 100, 2)
+                
+                variant_dict = {
+                    'id': str(variant.id),
+                    'product_id': str(variant.product_id),
+                    'sku': variant.sku,
+                    'name': variant.name,
+                    'base_price': float(variant.base_price),
+                    'sale_price': float(variant.sale_price) if variant.sale_price else None,
+                    'current_price': float(variant.current_price),
+                    'discount_percentage': discount_percentage,
+                    'stock': variant.stock,
+                    'is_active': variant.is_active,
+                    'attributes': variant.attributes or {},
+                    'barcode': variant.barcode,
+                    'qr_code': variant.qr_code,
+                    'created_at': variant.created_at.isoformat() if variant.created_at else None,
+                    'updated_at': variant.updated_at.isoformat() if variant.updated_at else None,
+                    'images': [],
+                    'primary_image': None,
+                    'image_count': len(variant.images) if variant.images else 0
+                }
+                
+                # Add detailed product information
+                if product:
+                    variant_dict.update({
+                        'product_name': product.name,
+                        'product_description': product.description,
+                        'product_short_description': product.short_description,
+                        'product_slug': product.slug,
+                        'product_category_id': str(product.category_id),
+                        'product_rating_average': product.rating_average,
+                        'product_rating_count': product.rating_count,
+                        'product_is_featured': product.is_featured,
+                        'product_specifications': product.specifications,
+                        'product_dietary_tags': product.dietary_tags,
+                        'product_tags': product.tags.split(",") if product.tags else [],
+                        'product_origin': product.origin
+                    })
+                
+                # Process images with detailed information
+                if variant.images:
+                    # Sort images by sort_order, then by is_primary (primary first)
+                    sorted_images = sorted(variant.images, key=lambda x: (not x.is_primary, x.sort_order))
+                    
+                    variant_dict['images'] = [
+                        {
+                            'id': str(img.id),
+                            'variant_id': str(img.variant_id),
+                            'url': img.url,
+                            'alt_text': img.alt_text or f"{variant.name} - Image {img.sort_order + 1}",
+                            'is_primary': img.is_primary,
+                            'sort_order': img.sort_order,
+                            'format': img.format,
+                            'created_at': img.created_at.isoformat() if img.created_at else None
+                        }
+                        for img in sorted_images
+                    ]
+                    
+                    # Set primary image (first primary image or first image)
+                    primary_img = next((img for img in sorted_images if img.is_primary), sorted_images[0] if sorted_images else None)
+                    if primary_img:
+                        variant_dict['primary_image'] = {
+                            'id': str(primary_img.id),
+                            'variant_id': str(primary_img.variant_id),
+                            'url': primary_img.url,
+                            'alt_text': primary_img.alt_text or f"{variant.name} - Primary Image",
+                            'is_primary': primary_img.is_primary,
+                            'sort_order': primary_img.sort_order,
+                            'format': primary_img.format,
+                            'created_at': primary_img.created_at.isoformat() if primary_img.created_at else None
+                        }
+                else:
+                    # Provide fallback image information
+                    variant_dict['images'] = []
+                    variant_dict['primary_image'] = {
+                        'id': None,
+                        'variant_id': str(variant.id),
+                        'url': '/placeholder-product.jpg',  # Fallback image
+                        'alt_text': f"{variant.name} - No Image Available",
+                        'is_primary': True,
+                        'sort_order': 0,
+                        'format': 'jpg',
+                        'created_at': None
+                    }
+                
+                # Add inventory information
+                if hasattr(variant, 'inventory') and variant.inventory:
+                    variant_dict.update({
+                        'inventory_quantity_available': variant.inventory.quantity_available,
+                        'inventory_quantity_reserved': variant.inventory.quantity_reserved,
+                        'inventory_reorder_level': variant.inventory.reorder_level,
+                        'inventory_last_updated': variant.inventory.updated_at.isoformat() if variant.inventory.updated_at else None
+                    })
+                
+                item_data['variant'] = variant_dict
+
+            cart_data['items'].append(item_data)
+
         return cart_data
 
     async def add_to_cart(
@@ -89,8 +239,11 @@ class CartService(RedisService):
         quantity: int = 1,
         session_id: Optional[str] = None
     ) -> Dict[str, Any]:
-        """Add item to cart in Redis"""
+        """Add item to cart in PostgreSQL"""
         
+        if not user_id:
+            raise HTTPException(status_code=401, detail="User must be authenticated to add items to cart")
+
         # Get variant to check availability and get current price
         result = await self.db.execute(
             select(ProductVariant)
@@ -110,58 +263,55 @@ class CartService(RedisService):
                 status_code=400, 
                 detail=f"Insufficient stock. Only {variant.stock} items available"
             )
-        
-        # Get cart
-        cart_data = await self.get_cart(user_id, session_id)
-        cart_key = RedisKeyManager.cart_key(
-            str(user_id) if user_id else f"guest:{cart_data['session_id']}"
+
+        # Get or create cart
+        result = await self.db.execute(
+            select(Cart).where(Cart.user_id == user_id)
         )
+        cart = result.scalar_one_or_none()
         
+        if not cart:
+            cart = Cart(user_id=user_id)
+            self.db.add(cart)
+            await self.db.flush()  # Get the cart ID
+
         # Check if item already exists in cart
-        items = cart_data.get('items', [])
-        existing_item = None
-        for item in items:
-            if item['variant_id'] == str(variant_id):
-                existing_item = item
-                break
-        
+        result = await self.db.execute(
+            select(CartItem).where(
+                and_(
+                    CartItem.cart_id == cart.id,
+                    CartItem.variant_id == variant_id
+                )
+            )
+        )
+        existing_item = result.scalar_one_or_none()
+
         if existing_item:
             # Update existing item
-            new_quantity = existing_item['quantity'] + quantity
+            new_quantity = existing_item.quantity + quantity
             if variant.stock < new_quantity:
                 raise HTTPException(
                     status_code=400,
-                    detail=f"Cannot add {quantity} more items. Only {variant.stock - existing_item['quantity']} more available"
+                    detail=f"Cannot add {quantity} more items. Only {variant.stock - existing_item.quantity} more available"
                 )
             
-            existing_item['quantity'] = new_quantity
-            existing_item['price_per_unit'] = float(variant.current_price)
-            existing_item['total_price'] = existing_item['quantity'] * existing_item['price_per_unit']
+            existing_item.quantity = new_quantity
+            existing_item.price_per_unit = variant.current_price
         else:
             # Add new item
-            new_item = {
-                "id": str(uuid4()),
-                "variant_id": str(variant_id),
-                "product_id": str(variant.product_id),
-                "quantity": quantity,
-                "price_per_unit": float(variant.current_price),
-                "total_price": quantity * float(variant.current_price),
-                "product_name": variant.product.name if variant.product else "Unknown Product",
-                "variant_name": variant.name or "Default",
-                "added_at": datetime.utcnow().isoformat()
-            }
-            items.append(new_item)
+            new_item = CartItem(
+                cart_id=cart.id,
+                product_id=variant.product_id,
+                variant_id=variant_id,
+                quantity=quantity,
+                price_per_unit=variant.current_price
+            )
+            self.db.add(new_item)
+
+        await self.db.commit()
         
-        cart_data['items'] = items
-        cart_data['updated_at'] = datetime.utcnow().isoformat()
-        
-        # Update totals
-        await self._update_cart_totals(cart_data, cart_key)
-        
-        # Schedule background task for inventory check using ARQ
-        await self._enqueue_inventory_check(variant_id, quantity)
-        
-        return cart_data
+        # Return updated cart
+        return await self.get_cart(user_id=user_id)
 
     async def update_cart_item_quantity(
         self,
@@ -170,36 +320,30 @@ class CartService(RedisService):
         quantity: int = 1,
         session_id: Optional[str] = None
     ) -> Dict[str, Any]:
-        """Update cart item quantity in Redis"""
+        """Update cart item quantity"""
         
-        if quantity <= 0:
-            return await self.remove_from_cart_by_item_id(user_id, cart_item_id, session_id)
-        
-        # Get cart
-        cart_data = await self.get_cart(user_id, session_id)
-        cart_key = RedisKeyManager.cart_key(
-            str(user_id) if user_id else f"guest:{cart_data['session_id']}"
-        )
-        
-        # Find item by cart_item_id
-        items = cart_data.get('items', [])
-        item_to_update = None
-        for item in items:
-            if item['id'] == str(cart_item_id):
-                item_to_update = item
-                break
-        
-        if not item_to_update:
-            raise HTTPException(status_code=404, detail="Cart item not found")
-        
-        # Check stock availability
+        if not user_id:
+            raise HTTPException(status_code=401, detail="User must be authenticated")
+
+        # Get cart item
         result = await self.db.execute(
-            select(ProductVariant)
-            .options(selectinload(ProductVariant.inventory))
-            .where(ProductVariant.id == UUID(item_to_update['variant_id']))
+            select(CartItem)
+            .options(selectinload(CartItem.variant))
+            .join(Cart)
+            .where(
+                and_(
+                    CartItem.id == cart_item_id,
+                    Cart.user_id == user_id
+                )
+            )
         )
-        variant = result.scalar_one_or_none()
+        cart_item = result.scalar_one_or_none()
         
+        if not cart_item:
+            raise HTTPException(status_code=404, detail="Cart item not found")
+
+        # Check stock availability
+        variant = cart_item.variant
         if not variant:
             raise HTTPException(status_code=404, detail="Product variant not found")
         
@@ -208,19 +352,15 @@ class CartService(RedisService):
                 status_code=400,
                 detail=f"Insufficient stock. Only {variant.stock} items available"
             )
-        
+
         # Update item
-        item_to_update['quantity'] = quantity
-        item_to_update['price_per_unit'] = float(variant.current_price)
-        item_to_update['total_price'] = quantity * float(variant.current_price)
+        cart_item.quantity = quantity
+        cart_item.price_per_unit = variant.current_price
         
-        cart_data['items'] = items
-        cart_data['updated_at'] = datetime.utcnow().isoformat()
+        await self.db.commit()
         
-        # Update totals
-        await self._update_cart_totals(cart_data, cart_key)
-        
-        return cart_data
+        # Return updated cart
+        return await self.get_cart(user_id=user_id)
 
     async def remove_from_cart_by_item_id(
         self,
@@ -228,29 +368,31 @@ class CartService(RedisService):
         cart_item_id: UUID = None,
         session_id: Optional[str] = None
     ) -> Dict[str, Any]:
-        """Remove item from cart by cart_item_id"""
+        """Remove item from cart by item ID"""
         
-        # Get cart
-        cart_data = await self.get_cart(user_id, session_id)
-        cart_key = RedisKeyManager.cart_key(
-            str(user_id) if user_id else f"guest:{cart_data['session_id']}"
+        if not user_id:
+            raise HTTPException(status_code=401, detail="User must be authenticated")
+
+        # Delete cart item
+        result = await self.db.execute(
+            delete(CartItem)
+            .where(
+                and_(
+                    CartItem.id == cart_item_id,
+                    CartItem.cart_id.in_(
+                        select(Cart.id).where(Cart.user_id == user_id)
+                    )
+                )
+            )
         )
         
-        # Remove item by cart_item_id
-        items = cart_data.get('items', [])
-        original_length = len(items)
-        items = [item for item in items if item['id'] != str(cart_item_id)]
-        
-        if len(items) == original_length:
+        if result.rowcount == 0:
             raise HTTPException(status_code=404, detail="Cart item not found")
+
+        await self.db.commit()
         
-        cart_data['items'] = items
-        cart_data['updated_at'] = datetime.utcnow().isoformat()
-        
-        # Update totals
-        await self._update_cart_totals(cart_data, cart_key)
-        
-        return cart_data
+        # Return updated cart
+        return await self.get_cart(user_id=user_id)
 
     async def clear_cart(
         self,
@@ -259,92 +401,74 @@ class CartService(RedisService):
     ) -> Dict[str, Any]:
         """Clear all items from cart"""
         
-        cart_key = RedisKeyManager.cart_key(
-            str(user_id) if user_id else f"guest:{session_id}"
+        if not user_id:
+            raise HTTPException(status_code=401, detail="User must be authenticated")
+
+        # Delete all cart items for user
+        await self.db.execute(
+            delete(CartItem)
+            .where(
+                CartItem.cart_id.in_(
+                    select(Cart.id).where(Cart.user_id == user_id)
+                )
+            )
         )
         
-        # Get current cart to preserve metadata
-        cart_data = await self.get_cart(user_id, session_id)
+        await self.db.commit()
         
-        # Clear items and reset totals
-        cart_data['items'] = []
-        cart_data['subtotal'] = 0.0
-        cart_data['tax_amount'] = 0.0
-        cart_data['shipping_amount'] = 0.0
-        cart_data['total_amount'] = 0.0
-        cart_data['updated_at'] = datetime.utcnow().isoformat()
-        
-        # Update in Redis
-        ttl = settings.REDIS_CART_TTL_USER if user_id else settings.REDIS_CART_TTL_GUEST
-        await self.set_hash(cart_key, cart_data, ttl)
-        
-        return cart_data
+        # Return empty cart
+        return await self.get_cart(user_id=user_id)
 
     async def get_cart_item_count(
         self,
         user_id: Optional[UUID] = None,
         session_id: Optional[str] = None
     ) -> int:
-        """Get total item count in cart"""
+        """Get total number of items in cart"""
         
-        cart_data = await self.get_cart(user_id, session_id)
-        items = cart_data.get('items', [])
-        return sum(item['quantity'] for item in items)
+        if not user_id:
+            return 0
 
-    async def merge_carts(self, user_id: UUID, guest_session_id: str) -> Dict[str, Any]:
-        """Merge guest cart with user cart when user logs in"""
+        result = await self.db.execute(
+            select(func.coalesce(func.sum(CartItem.quantity), 0))
+            .select_from(CartItem)
+            .join(Cart)
+            .where(Cart.user_id == user_id)
+        )
         
-        user_cart_key = RedisKeyManager.cart_key(str(user_id))
-        guest_cart_key = RedisKeyManager.cart_key(f"guest:{guest_session_id}")
+        return result.scalar() or 0
+
+    async def merge_guest_cart(
+        self,
+        user_id: UUID,
+        guest_cart_data: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """
+        Merge guest cart with user cart after login
+        Since PostgreSQL version doesn't support guest carts,
+        this is mainly for compatibility
+        """
+        # For PostgreSQL version, just return the user's existing cart
+        return await self.get_cart(user_id=user_id)
+
+    async def get_checkout_summary(
+        self,
+        user_id: Optional[UUID] = None,
+        session_id: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """Get cart summary for checkout"""
         
-        # Get both carts
-        user_cart = await self.get_hash(user_cart_key) or {"items": []}
-        guest_cart = await self.get_hash(guest_cart_key)
+        cart_data = await self.get_cart(user_id=user_id, session_id=session_id)
         
-        if not guest_cart or not guest_cart.get('items'):
-            # No guest cart to merge, return user cart
-            return await self.get_cart(user_id)
-        
-        # Merge items
-        user_items = user_cart.get('items', [])
-        guest_items = guest_cart.get('items', [])
-        
-        # Create a map of user cart items by variant_id
-        user_items_map = {item['variant_id']: item for item in user_items}
-        
-        # Merge guest items
-        for guest_item in guest_items:
-            variant_id = guest_item['variant_id']
-            if variant_id in user_items_map:
-                # Item exists in user cart, add quantities
-                user_items_map[variant_id]['quantity'] += guest_item['quantity']
-                user_items_map[variant_id]['total_price'] = (
-                    user_items_map[variant_id]['quantity'] * 
-                    user_items_map[variant_id]['price_per_unit']
-                )
-            else:
-                # New item, add to user cart
-                user_items.append(guest_item)
-                user_items_map[variant_id] = guest_item
-        
-        # Update user cart
-        merged_cart = {
-            "user_id": str(user_id),
-            "session_id": None,
-            "items": list(user_items_map.values()),
-            "created_at": user_cart.get('created_at', datetime.utcnow().isoformat()),
-            "updated_at": datetime.utcnow().isoformat(),
-            "country_code": guest_cart.get('country_code', 'US'),
-            "province_code": guest_cart.get('province_code')
+        # Add checkout-specific information
+        checkout_summary = {
+            **cart_data,
+            "can_checkout": len(cart_data["items"]) > 0 and cart_data["total_amount"] > 0,
+            "checkout_url": "/checkout",
+            "estimated_delivery": "3-5 business days"  # Can be made dynamic
         }
         
-        # Update totals
-        await self._update_cart_totals(merged_cart, user_cart_key)
-        
-        # Delete guest cart
-        await self.delete_key(guest_cart_key)
-        
-        return merged_cart
+        return checkout_summary
 
     async def validate_cart(
         self,
@@ -353,210 +477,149 @@ class CartService(RedisService):
         country_code: str = 'US',
         province_code: Optional[str] = None
     ) -> Dict[str, Any]:
-        """Comprehensive cart validation"""
+        """Validate cart items for stock and pricing"""
         
-        cart_data = await self.get_cart(user_id, session_id, country_code, province_code)
-        items = cart_data.get('items', [])
-        
-        if not items:
-            return {
-                "valid": False,
-                "can_checkout": False,
-                "issues": [{"severity": "error", "message": "Cart is empty"}],
-                "cart": cart_data
-            }
-        
+        cart_data = await self.get_cart(
+            user_id=user_id, 
+            session_id=session_id,
+            country_code=country_code,
+            province_code=province_code
+        )
         issues = []
-        valid_items = []
         
-        # Validate each item
-        for item in items:
-            try:
-                result = await self.db.execute(
-                    select(ProductVariant)
-                    .options(selectinload(ProductVariant.inventory), selectinload(ProductVariant.product))
-                    .where(ProductVariant.id == UUID(item['variant_id']))
-                )
-                variant = result.scalar_one_or_none()
-                
-                if not variant:
-                    issues.append({
-                        "severity": "error",
-                        "message": f"Product variant {item['variant_id']} not found",
-                        "item_id": item['id']
-                    })
-                    continue
-                
-                if not variant.is_active:
-                    issues.append({
-                        "severity": "error",
-                        "message": f"Product '{item['product_name']}' is no longer available",
-                        "item_id": item['id']
-                    })
-                    continue
-                
-                if variant.stock < item['quantity']:
-                    issues.append({
-                        "severity": "error",
-                        "message": f"Insufficient stock for '{item['product_name']}'. Only {variant.stock} available",
-                        "item_id": item['id'],
-                        "available_quantity": variant.stock
-                    })
-                    continue
-                
-                # Check price changes
-                current_price = float(variant.current_price)
-                if abs(current_price - item['price_per_unit']) > 0.01:
-                    issues.append({
-                        "severity": "warning",
-                        "message": f"Price changed for '{item['product_name']}'. Was ${item['price_per_unit']:.2f}, now ${current_price:.2f}",
-                        "item_id": item['id'],
-                        "old_price": item['price_per_unit'],
-                        "new_price": current_price
-                    })
-                    # Update price in cart
-                    item['price_per_unit'] = current_price
-                    item['total_price'] = item['quantity'] * current_price
-                
-                valid_items.append(item)
-                
-            except Exception as e:
-                logger.error(f"Error validating cart item {item['id']}: {e}")
+        for item in cart_data["items"]:
+            variant = item.get("variant")
+            if not variant:
                 issues.append({
+                    "item_id": item["id"],
                     "severity": "error",
-                    "message": f"Error validating item: {str(e)}",
-                    "item_id": item['id']
+                    "message": "Product variant not found"
                 })
-        
-        # Update cart with valid items and recalculate totals
-        cart_data['items'] = valid_items
-        if valid_items != items:  # Items were modified
-            cart_key = RedisKeyManager.cart_key(
-                str(user_id) if user_id else f"guest:{cart_data['session_id']}"
-            )
-            await self._update_cart_totals(cart_data, cart_key)
-        
-        error_count = len([issue for issue in issues if issue.get("severity") == "error"])
-        can_checkout = error_count == 0 and len(valid_items) > 0
-        
+                continue
+                
+            # Check stock
+            if variant["stock"] < item["quantity"]:
+                issues.append({
+                    "item_id": item["id"],
+                    "severity": "warning",
+                    "message": f"Only {variant['stock']} items available, but {item['quantity']} requested"
+                })
+            
+            # Check if price changed
+            if abs(float(item["price_per_unit"]) - float(variant["current_price"])) > 0.01:
+                issues.append({
+                    "item_id": item["id"],
+                    "severity": "info",
+                    "message": f"Price changed from ${item['price_per_unit']:.2f} to ${variant['current_price']:.2f}"
+                })
+
         return {
-            "valid": error_count == 0,
-            "can_checkout": can_checkout,
+            "valid": len([i for i in issues if i["severity"] == "error"]) == 0,
+            "can_checkout": len([i for i in issues if i["severity"] in ["error", "warning"]]) == 0,
             "issues": issues,
-            "cart": cart_data
+            "cart": cart_data,
+            "summary": {
+                "total_items": len(cart_data["items"]),
+                "total_amount": cart_data["total_amount"],
+                "issues_count": len(issues)
+            },
+            "validation_timestamp": datetime.utcnow().isoformat()
         }
 
-    async def _update_cart_totals(self, cart_data: Dict[str, Any], cart_key: str):
-        """Update cart totals and save to Redis"""
-        
-        items = cart_data.get('items', [])
-        
-        # Calculate subtotal
-        subtotal = sum(item['total_price'] for item in items)
-        cart_data['subtotal'] = subtotal
-        
-        # Calculate shipping (free over $100)
-        shipping_amount = 0.0 if subtotal >= 100 else 9.99
-        cart_data['shipping_amount'] = shipping_amount
-        
-        # Calculate tax
-        tax_amount = 0.0
-        try:
-            country = cart_data.get('country_code', 'US')
-            province = cart_data.get('province_code')
-            
-            tax_rate = await self.tax_service.get_tax_rate(country, province)
-            if tax_rate:
-                taxable_amount = subtotal + shipping_amount
-                tax_amount = taxable_amount * float(tax_rate)
-        except Exception as e:
-            logger.warning(f"Tax calculation failed: {e}")
-        
-        cart_data['tax_amount'] = tax_amount
-        cart_data['total_amount'] = subtotal + shipping_amount + tax_amount
-        
-        # Save to Redis
-        user_id = cart_data.get('user_id')
-        ttl = settings.REDIS_CART_TTL_USER if user_id else settings.REDIS_CART_TTL_GUEST
-        await self.set_hash(cart_key, cart_data, ttl)
-
-    async def _enqueue_inventory_check(self, variant_id: UUID, requested_quantity: int):
-        """Enqueue inventory check task using hybrid approach"""
-        try:
-            from core.hybrid_tasks import update_inventory_hybrid
-            await update_inventory_hybrid(
-                None,  # No background_tasks, use ARQ
-                str(variant_id), 
-                "check_low_stock",
-                use_arq=True,  # Use ARQ for reliability
-                requested_quantity=requested_quantity
-            )
-        except Exception as e:
-            logger.error(f"Failed to enqueue inventory check for variant {variant_id}: {e}")
-
-    async def _check_inventory_levels(self, variant_id: UUID, requested_quantity: int):
-        """Background task to check inventory levels and send alerts if needed"""
-        try:
-            # Create a new database session for the background task
-            from core.database import AsyncSessionDB
-            async with AsyncSessionDB() as db:
-                result = await db.execute(
-                    select(ProductVariant)
-                    .options(selectinload(ProductVariant.inventory))
-                    .where(ProductVariant.id == variant_id)
-                )
-                variant = result.scalar_one_or_none()
-                
-                if variant and variant.stock <= 10:  # Low stock threshold
-                    logger.warning(f"Low stock alert: Variant {variant_id} has only {variant.stock} items left")
-                    # Here you could send notifications, update analytics, etc.
-                    
-        except Exception as e:
-            logger.error(f"Error checking inventory levels for variant {variant_id}: {e}")
-
-    # Additional methods for compatibility with existing routes
-    async def apply_promocode(self, user_id: Optional[UUID], code: str, session_id: Optional[str] = None):
-        """Apply promocode to cart - placeholder for future implementation"""
-        # TODO: Implement promocode logic
-        raise HTTPException(status_code=501, detail="Promocode functionality not implemented yet")
-
-    async def remove_promocode(self, user_id: Optional[UUID], session_id: Optional[str] = None):
-        """Remove promocode from cart - placeholder for future implementation"""
-        # TODO: Implement promocode logic
-        raise HTTPException(status_code=501, detail="Promocode functionality not implemented yet")
-
-    async def get_shipping_options(self, user_id: Optional[UUID], address: dict, session_id: Optional[str] = None):
-        """Get shipping options - placeholder for future implementation"""
-        # TODO: Implement shipping options logic
+    async def apply_promocode(
+        self,
+        user_id: Optional[UUID] = None,
+        code: str = None,
+        session_id: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """Apply promocode to cart (placeholder implementation)"""
+        # This would integrate with a promocode service
+        # For now, return cart without changes
+        cart_data = await self.get_cart(user_id=user_id, session_id=session_id)
         return {
-            "options": [
-                {"id": "standard", "name": "Standard Shipping", "price": 9.99, "days": "5-7"},
-                {"id": "express", "name": "Express Shipping", "price": 19.99, "days": "2-3"}
+            **cart_data,
+            "promocode_applied": False,
+            "message": "Promocode functionality not yet implemented"
+        }
+
+    async def remove_promocode(
+        self,
+        user_id: Optional[UUID] = None,
+        session_id: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """Remove promocode from cart (placeholder implementation)"""
+        # This would integrate with a promocode service
+        # For now, return cart without changes
+        cart_data = await self.get_cart(user_id=user_id, session_id=session_id)
+        return {
+            **cart_data,
+            "promocode_removed": True,
+            "message": "Promocode removed"
+        }
+
+    async def get_shipping_options(
+        self,
+        user_id: Optional[UUID] = None,
+        address: Dict[str, Any] = None,
+        session_id: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """Get shipping options for cart (placeholder implementation)"""
+        # This would integrate with shipping service
+        return {
+            "shipping_options": [
+                {
+                    "id": "standard",
+                    "name": "Standard Shipping",
+                    "description": "3-5 business days",
+                    "price": 5.99,
+                    "estimated_days": "3-5"
+                },
+                {
+                    "id": "express",
+                    "name": "Express Shipping",
+                    "description": "1-2 business days",
+                    "price": 12.99,
+                    "estimated_days": "1-2"
+                }
             ]
         }
 
-    async def calculate_totals(self, user_id: Optional[UUID], data: dict, session_id: Optional[str] = None):
-        """Calculate cart totals with additional data"""
-        cart_data = await self.get_cart(user_id, session_id)
+    async def calculate_totals(
+        self,
+        user_id: Optional[UUID] = None,
+        data: Dict[str, Any] = None,
+        session_id: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """Calculate cart totals with shipping and tax"""
+        cart_data = await self.get_cart(user_id=user_id, session_id=session_id)
+        
+        # Extract shipping method from data
+        shipping_cost = 0.0
+        if data and "shipping_method_id" in data:
+            shipping_options = await self.get_shipping_options(user_id, session_id=session_id)
+            for option in shipping_options.get("shipping_options", []):
+                if option["id"] == data["shipping_method_id"]:
+                    shipping_cost = option["price"]
+                    break
+        
+        # Recalculate totals
+        subtotal = cart_data["subtotal"]
+        tax_amount = cart_data["tax_amount"]
+        total_amount = subtotal + tax_amount + shipping_cost
+        
         return {
-            "subtotal": cart_data['subtotal'],
-            "tax_amount": cart_data['tax_amount'],
-            "shipping_amount": cart_data['shipping_amount'],
-            "total_amount": cart_data['total_amount']
+            **cart_data,
+            "shipping_amount": shipping_cost,
+            "total_amount": total_amount,
+            "calculation_timestamp": datetime.utcnow().isoformat()
         }
 
-    async def get_checkout_summary(self, user_id: Optional[UUID], session_id: Optional[str] = None):
-        """Get checkout summary"""
-        cart_data = await self.get_cart(user_id, session_id)
-        return {
-            "cart": cart_data,
-            "item_count": len(cart_data.get('items', [])),
-            "summary": {
-                "subtotal": cart_data['subtotal'],
-                "shipping_amount": cart_data['shipping_amount'],
-                "tax_amount": cart_data['tax_amount'],
-                "total_amount": cart_data['total_amount'],
-                "free_shipping_eligible": cart_data['subtotal'] >= 100,
-                "free_shipping_remaining": max(0, 100 - cart_data['subtotal']) if cart_data['subtotal'] < 100 else 0
-            }
-        }
+    async def merge_carts(
+        self,
+        user_id: UUID,
+        session_id: str
+    ) -> Dict[str, Any]:
+        """Merge guest cart with user cart after login"""
+        # For PostgreSQL version, just return the user's existing cart
+        # since we don't support guest carts in this implementation
+        return await self.get_cart(user_id=user_id)

@@ -1,3 +1,5 @@
+
+use short polling i the suppliers and admin pages for specific ui changes. this is used only when the supplier ot the admin has the tab open. in case of any erro have a wait time
 ==============
 8. observabilty from day one
 use structured logging

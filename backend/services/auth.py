@@ -187,21 +187,7 @@ class AuthService:
         print(user_data, '---')
         new_user = await user_service.create_user(user_data, background_tasks)
 
-        # --- Send Notification to Admin for New User Registration ---
-        admin_user_query = select(User.id).where(User.role == "Admin").limit(1)
-        admin_user_id = (await self.db.execute(admin_user_query)).scalar_one_or_none()
 
-        if admin_user_id:
-            # Lazy import to avoid circular import
-            from services.notifications import NotificationService
-            notification_service = NotificationService(self.db)
-            await notification_service.create_notification(
-                user_id=str(admin_user_id),
-                message=f"New user registered: {new_user.email} ({new_user.firstname} {new_user.lastname}).",
-                type="info",
-                related_id=str(new_user.id)
-            )
-        # --- End Notification ---
 
         return UserResponse.from_orm(new_user)
 

@@ -8,7 +8,6 @@ import { CartProvider } from './contexts/CartContext';
 import { WishlistProvider } from './contexts/WishlistContext';
 import { SubscriptionProvider } from './contexts/SubscriptionContext';
 import { ThemeProvider } from './contexts/ThemeContext';
-import { RawWebSocketProvider } from './contexts/WebSocketContext';
 import { FontLoader } from './components/ui/FontLoader';
 import { Toaster } from 'react-hot-toast';
 import { GoogleOAuthProvider } from '@react-oauth/google';
@@ -148,7 +147,6 @@ export const App: React.FC = () => {
                 <SubscriptionProvider>
                   <WishlistProvider>
                   <NotificationProvider>
-                    <RawWebSocketProvider autoConnect={false}>
                       <CategoryProvider>
                       <FontLoader />
                       <OfflineIndicator />
@@ -549,7 +547,6 @@ export const App: React.FC = () => {
                         </Elements>
                       </BrowserRouter>
                       </CategoryProvider>
-                    </RawWebSocketProvider>
                   </NotificationProvider>
                 </WishlistProvider>
                 </SubscriptionProvider>

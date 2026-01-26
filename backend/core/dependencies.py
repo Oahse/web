@@ -5,7 +5,8 @@ from core.database import get_db
 from models.user import User
 from services.auth import AuthService
 from typing import Optional, Dict, Any, List
-from uuid import UUID, uuid4
+from uuid import UUID
+from core.utils.uuid_utils import uuid7
 from datetime import datetime, timedelta
 import asyncio
 from core.redis import RedisService, RedisKeyManager
@@ -25,7 +26,7 @@ class DistributedLock:
         self.redis_service = redis_service
         self.lock_key = lock_key
         self.timeout = timeout
-        self.lock_value = str(uuid4())  # Unique value to identify this lock instance
+        self.lock_value = str(uuid7())  # Unique value to identify this lock instance
         self.acquired = False
     
     async def __aenter__(self):

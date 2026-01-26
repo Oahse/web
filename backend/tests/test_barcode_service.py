@@ -1,7 +1,7 @@
 import pytest
 import asyncio
 from unittest.mock import AsyncMock, MagicMock
-from uuid import uuid4
+from core.utils.uuid_utils import uuid7
 from sqlalchemy.ext.asyncio import AsyncSession
 import sys
 import os
@@ -31,7 +31,7 @@ class TestBarcodeService:
     def sample_variant(self):
         """Sample product variant for testing"""
         variant = MagicMock(spec=ProductVariant)
-        variant.id = uuid4()
+        variant.id = uuid7()
         variant.sku = "TEST-SKU-001"
         variant.name = "Test Variant"
         variant.base_price = 29.99
@@ -111,7 +111,7 @@ class TestBarcodeService:
         mock_result.scalar_one_or_none.return_value = None
         mock_db.execute.return_value = mock_result
 
-        variant_id = uuid4()
+        variant_id = uuid7()
         
         with pytest.raises(APIException, match="Product variant not found"):
             await barcode_service.generate_variant_codes(variant_id)
@@ -175,14 +175,14 @@ class TestBarcodeService:
         mock_result.scalar_one_or_none.return_value = None
         mock_db.execute.return_value = mock_result
 
-        variant_id = uuid4()
+        variant_id = uuid7()
         
         with pytest.raises(APIException, match="Product variant not found"):
             await barcode_service.update_variant_codes(variant_id, barcode="test")
 
     def test_generate_product_url_qr(self, barcode_service):
         """Test product URL QR code generation"""
-        product_id = uuid4()
+        product_id = uuid7()
         result = barcode_service.generate_product_url_qr(product_id)
         
         assert result.startswith("data:image/png;base64,")
@@ -212,7 +212,7 @@ class TestBarcodeServiceIntegration:
     def sample_variant(self):
         """Sample product variant for testing"""
         variant = MagicMock(spec=ProductVariant)
-        variant.id = uuid4()
+        variant.id = uuid7()
         variant.sku = "TEST-SKU-001"
         variant.name = "Test Variant"
         variant.base_price = 29.99
@@ -256,7 +256,7 @@ class TestBarcodeServiceIntegration:
         variants = []
         for i in range(3):
             variant = MagicMock(spec=ProductVariant)
-            variant.id = uuid4()
+            variant.id = uuid7()
             variant.sku = f"TEST-SKU-{i:03d}"
             variant.name = f"Test Variant {i}"
             variant.current_price = 29.99

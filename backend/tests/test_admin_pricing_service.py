@@ -1,6 +1,6 @@
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
-from uuid import uuid4
+from core.utils.uuid_utils import uuid7
 from decimal import Decimal
 from datetime import datetime
 import sys
@@ -36,7 +36,7 @@ class TestAdminPricingService:
     def sample_pricing_config(self):
         """Sample pricing configuration"""
         return PricingConfig(
-            id=uuid4(),
+            id=uuid7(),
             subscription_percentage=10.0,
             delivery_costs={
                 "standard": 10.0,
@@ -52,7 +52,7 @@ class TestAdminPricingService:
                 "default": "USD",
                 "supported": ["USD", "EUR", "GBP", "CAD"]
             },
-            updated_by=uuid4(),
+            updated_by=uuid7(),
             version="1.0",
             is_active="active",
             change_reason="Test configuration"
@@ -63,8 +63,8 @@ class TestAdminPricingService:
         """Sample subscription"""
         # Create a simple mock object instead of importing the model
         subscription = MagicMock()
-        subscription.id = uuid4()
-        subscription.user_id = uuid4()
+        subscription.id = uuid7()
+        subscription.user_id = uuid7()
         subscription.price = Decimal('100.00')
         subscription.billing_cycle = "monthly"
         subscription.status = "active"
@@ -93,12 +93,12 @@ class TestAdminPricingService:
 
         # Mock the _create_default_pricing_config method
         default_config = PricingConfig(
-            id=uuid4(),
+            id=uuid7(),
             subscription_percentage=10.0,
             delivery_costs={"standard": 10.0, "express": 25.0, "overnight": 50.0},
             tax_rates={"US": 0.08, "CA": 0.13, "UK": 0.20},
             currency_settings={"default": "USD", "supported": ["USD", "EUR", "GBP", "CAD"]},
-            updated_by=uuid4(),
+            updated_by=uuid7(),
             version="1.0",
             is_active="active",
             change_reason="Initial default configuration"
@@ -115,7 +115,7 @@ class TestAdminPricingService:
 
     async def test_update_subscription_percentage_valid(self, admin_pricing_service, mock_db, sample_pricing_config):
         """Test updating subscription percentage with valid value"""
-        admin_user_id = uuid4()
+        admin_user_id = uuid7()
         new_percentage = 15.0
 
         # Mock get_pricing_config
@@ -144,7 +144,7 @@ class TestAdminPricingService:
 
     async def test_update_subscription_percentage_invalid_low(self, admin_pricing_service):
         """Test updating subscription percentage with value too low"""
-        admin_user_id = uuid4()
+        admin_user_id = uuid7()
         invalid_percentage = 0.05  # Below 0.1%
 
         # Call method and expect exception
@@ -158,7 +158,7 @@ class TestAdminPricingService:
 
     async def test_update_subscription_percentage_invalid_high(self, admin_pricing_service):
         """Test updating subscription percentage with value too high"""
-        admin_user_id = uuid4()
+        admin_user_id = uuid7()
         invalid_percentage = 55.0  # Above 50%
 
         # Call method and expect exception
@@ -172,7 +172,7 @@ class TestAdminPricingService:
 
     async def test_update_delivery_costs_valid(self, admin_pricing_service, mock_db, sample_pricing_config):
         """Test updating delivery costs with valid values"""
-        admin_user_id = uuid4()
+        admin_user_id = uuid7()
         new_delivery_costs = {
             "standard": 12.0,
             "express": 30.0,
@@ -203,7 +203,7 @@ class TestAdminPricingService:
 
     async def test_update_delivery_costs_missing_required_type(self, admin_pricing_service):
         """Test updating delivery costs with missing required delivery type"""
-        admin_user_id = uuid4()
+        admin_user_id = uuid7()
         invalid_delivery_costs = {
             "standard": 12.0,
             "express": 30.0
@@ -221,7 +221,7 @@ class TestAdminPricingService:
 
     async def test_update_delivery_costs_negative_value(self, admin_pricing_service):
         """Test updating delivery costs with negative value"""
-        admin_user_id = uuid4()
+        admin_user_id = uuid7()
         invalid_delivery_costs = {
             "standard": -5.0,  # Negative value
             "express": 30.0,
@@ -239,7 +239,7 @@ class TestAdminPricingService:
 
     async def test_preview_pricing_impact_basic(self, admin_pricing_service, mock_db, sample_pricing_config, sample_subscription):
         """Test basic pricing impact preview"""
-        admin_user_id = uuid4()
+        admin_user_id = uuid7()
         proposed_changes = {"subscription_percentage": 15.0}
 
         # Mock get_pricing_config
@@ -264,7 +264,7 @@ class TestAdminPricingService:
 
     async def test_preview_pricing_impact_invalid_percentage(self, admin_pricing_service, sample_pricing_config):
         """Test pricing impact preview with invalid percentage"""
-        admin_user_id = uuid4()
+        admin_user_id = uuid7()
         proposed_changes = {"subscription_percentage": 55.0}  # Invalid
 
         # Mock get_pricing_config

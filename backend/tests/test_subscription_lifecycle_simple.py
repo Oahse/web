@@ -1,6 +1,6 @@
 import pytest
 from unittest.mock import MagicMock
-from uuid import uuid4
+from core.utils.uuid_utils import uuid7
 from datetime import datetime, timedelta
 from decimal import Decimal
 

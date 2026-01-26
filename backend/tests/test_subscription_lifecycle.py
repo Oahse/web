@@ -1,6 +1,6 @@
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
-from uuid import uuid4
+from core.utils.uuid_utils import uuid7
 from decimal import Decimal
 from datetime import datetime, timedelta
 import sys
@@ -38,13 +38,13 @@ class TestSubscriptionLifecycle:
     def sample_subscription(self):
         """Sample subscription"""
         subscription = MagicMock()
-        subscription.id = uuid4()
-        subscription.user_id = uuid4()
+        subscription.id = uuid7()
+        subscription.user_id = uuid7()
         subscription.status = "active"
         subscription.price = 100.0
         subscription.currency = "USD"
         subscription.billing_cycle = "monthly"
-        subscription.variant_ids = [str(uuid4()), str(uuid4())]
+        subscription.variant_ids = [str(uuid7()), str(uuid7())]
         subscription.delivery_type = "standard"
         subscription.paused_at = None
         subscription.cancelled_at = None
@@ -64,7 +64,7 @@ class TestSubscriptionLifecycle:
     def sample_user(self):
         """Sample user"""
         user = MagicMock()
-        user.id = uuid4()
+        user.id = uuid7()
         user.email = "test@example.com"
         user.firstname = "Test"
         return user
@@ -201,7 +201,7 @@ class TestSubscriptionLifecycle:
 
     async def test_swap_subscription_variants_success(self, subscription_service, mock_db, sample_subscription):
         """Test successful variant swap"""
-        new_variant_ids = [uuid4(), uuid4()]
+        new_variant_ids = [uuid7(), uuid7()]
         
         # Mock variant validation
         mock_variants = [MagicMock() for _ in new_variant_ids]
@@ -268,7 +268,7 @@ class TestSubscriptionLifecycle:
         mock_history_records = []
         for i in range(3):
             record = MagicMock()
-            record.id = uuid4()
+            record.id = uuid7()
             record.change_reason = f"test_change_{i}"
             record.effective_date = datetime.utcnow() - timedelta(days=i)
             record.created_at = datetime.utcnow() - timedelta(days=i)

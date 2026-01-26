@@ -18,7 +18,8 @@ from services.cart import CartService
 from services.payments import PaymentService
 from services.inventories import InventoryService 
 from models.inventories import Inventory
-from uuid import UUID, uuid4
+from uuid import UUID
+from core.utils.uuid_utils import uuid7
 from datetime import datetime, timedelta
 from typing import Optional, List, Dict, Any
 from core.config import settings
@@ -355,7 +356,7 @@ class OrderService:
             # Begin transaction - all operations below must succeed or all will be rolled back
             async with self.db.begin():
                 # Generate order number
-                order_number = f"ORD-{datetime.utcnow().strftime('%Y%m%d')}-{str(uuid4())[:8].upper()}"
+                order_number = f"ORD-{datetime.utcnow().strftime('%Y%m%d')}-{str(uuid7())[:8].upper()}"
                 
                 # Extract totals from final_total calculation
                 subtotal = final_total["subtotal"]
@@ -454,7 +455,7 @@ class OrderService:
                         amount=final_total["total_amount"],  # Use backend-calculated total
                         payment_method_id=request.payment_method_id,
                         idempotency_key=payment_idempotency_key,
-                        request_id=str(uuid4())
+                        request_id=str(uuid7())
                     )
 
                     if payment_result.get("status") != "succeeded":

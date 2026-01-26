@@ -12,7 +12,7 @@ The personalized loyalty system should:
 import pytest
 import asyncio
 from decimal import Decimal
-from uuid import uuid4, UUID
+from core.utils.uuid_utils import uuid7, UUID
 from datetime import datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 from hypothesis import given, strategies as st, settings, assume, HealthCheck
@@ -49,8 +49,8 @@ def subscription_history_strategy(draw):
     
     for _ in range(num_subscriptions):
         subscription = {
-            'id': uuid4(),
-            'user_id': uuid4(),
+            'id': uuid7(),
+            'user_id': uuid7(),
             'price': float(draw(st.decimals(min_value=Decimal('10.00'), max_value=Decimal('200.00'), places=2))),
             'currency': draw(st.sampled_from(['USD', 'EUR', 'GBP', 'CAD'])),
             'billing_cycle': draw(st.sampled_from(['monthly', 'quarterly', 'yearly'])),
@@ -72,8 +72,8 @@ def loyalty_account_strategy(draw):
     successful_referrals = draw(st.integers(min_value=0, max_value=referrals_made))
     
     return {
-        'id': uuid4(),
-        'user_id': uuid4(),
+        'id': uuid7(),
+        'user_id': uuid7(),
         'tier': tier,
         'total_points': total_points,
         'available_points': available_points,

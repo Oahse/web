@@ -3,7 +3,7 @@ Simple test for loyalty service functionality without full service stack
 """
 import asyncio
 from decimal import Decimal
-from uuid import uuid4
+from core.utils.uuid_utils import uuid7
 from datetime import datetime
 
 # Simple test to verify loyalty calculations work

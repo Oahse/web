@@ -10,7 +10,7 @@ import pytest
 import sys
 import os
 from unittest.mock import AsyncMock, MagicMock, patch
-from uuid import uuid4, UUID
+from core.utils.uuid_utils import uuid7, UUID
 from hypothesis import given, strategies as st, settings, HealthCheck
 from decimal import Decimal
 from datetime import datetime, timedelta
@@ -56,7 +56,7 @@ class TestComprehensiveStripeIntegrationProperty:
     def sample_user(self):
         """Sample user for testing"""
         return User(
-            id=uuid4(),
+            id=uuid7(),
             email="test@example.com",
             firstname="Test",
             lastname="User",
@@ -69,13 +69,13 @@ class TestComprehensiveStripeIntegrationProperty:
     def sample_subscription(self):
         """Sample subscription for testing"""
         return Subscription(
-            id=uuid4(),
-            user_id=uuid4(),
+            id=uuid7(),
+            user_id=uuid7(),
             plan_id="premium_plan",
             status="active",
             billing_cycle="monthly",
             currency="USD",
-            variant_ids=[uuid4(), uuid4()],
+            variant_ids=[uuid7(), uuid7()],
             delivery_type="standard"
         )
 
@@ -83,8 +83,8 @@ class TestComprehensiveStripeIntegrationProperty:
     def sample_payment_method(self):
         """Sample payment method for testing"""
         return PaymentMethod(
-            id=uuid4(),
-            user_id=uuid4(),
+            id=uuid7(),
+            user_id=uuid7(),
             stripe_payment_method_id="pm_test_card",
             type="card",
             provider="visa",
@@ -112,8 +112,8 @@ class TestComprehensiveStripeIntegrationProperty:
         # Setup cost breakdown
         cost_breakdown = {
             "variant_costs": [
-                {"variant_id": str(uuid4()), "price": float(amount / 2)},
-                {"variant_id": str(uuid4()), "price": float(amount / 2)}
+                {"variant_id": str(uuid7()), "price": float(amount / 2)},
+                {"variant_id": str(uuid7()), "price": float(amount / 2)}
             ],
             "subtotal": float(amount * Decimal('0.9')),
             "admin_percentage": 10.0,
@@ -129,7 +129,7 @@ class TestComprehensiveStripeIntegrationProperty:
 
         # Mock Stripe payment intent creation
         mock_stripe_intent = MagicMock()
-        mock_stripe_intent.id = f"pi_test_{uuid4().hex[:10]}"
+        mock_stripe_intent.id = f"pi_test_{uuid7().hex[:10]}"
         mock_stripe_intent.client_secret = f"{mock_stripe_intent.id}_secret"
         mock_stripe_intent.status = "requires_payment_method"
         mock_stripe_intent.next_action = None
@@ -205,7 +205,7 @@ class TestComprehensiveStripeIntegrationProperty:
         mock_stripe_intent.charges = MagicMock()
         mock_stripe_intent.charges.data = [
             MagicMock(
-                id=f"ch_{uuid4().hex[:10]}",
+                id=f"ch_{uuid7().hex[:10]}",
                 status="succeeded",
                 amount=int(expected_amount * 100),
                 currency=expected_currency.lower(),
@@ -215,7 +215,7 @@ class TestComprehensiveStripeIntegrationProperty:
 
         # Create local payment intent record
         local_payment_intent = PaymentIntent(
-            id=uuid4(),
+            id=uuid7(),
             stripe_payment_intent_id=payment_intent_id,
             user_id=sample_user.id,
             amount_breakdown={"total_amount": float(expected_amount)},
@@ -299,7 +299,7 @@ class TestComprehensiveStripeIntegrationProperty:
             status=subscription_status,
             billing_cycle=billing_cycle,
             currency="USD",
-            variant_ids=[uuid4()],
+            variant_ids=[uuid7()],
             delivery_type="standard"
         )
 
@@ -307,7 +307,7 @@ class TestComprehensiveStripeIntegrationProperty:
         cost_breakdown = {
             "total_amount": 50.00,
             "currency": "USD",
-            "variant_costs": [{"variant_id": str(uuid4()), "price": 45.00}],
+            "variant_costs": [{"variant_id": str(uuid7()), "price": 45.00}],
             "admin_fee": 5.00
         }
 
@@ -322,7 +322,7 @@ class TestComprehensiveStripeIntegrationProperty:
 
         # Mock create_subscription_payment_intent
         mock_payment_result = {
-            "payment_intent_id": f"pi_recurring_{uuid4().hex[:10]}",
+            "payment_intent_id": f"pi_recurring_{uuid7().hex[:10]}",
             "status": "succeeded",
             "requires_action": False,
             "client_secret": "pi_test_secret"
@@ -398,7 +398,7 @@ class TestComprehensiveStripeIntegrationProperty:
 
         # Create local payment intent record
         local_payment_intent = PaymentIntent(
-            id=uuid4(),
+            id=uuid7(),
             stripe_payment_intent_id=payment_intent_id,
             user_id=sample_user.id,
             amount_breakdown={"total_amount": 50.00},
@@ -495,7 +495,7 @@ class TestComprehensiveStripeIntegrationProperty:
 
         # Mock Stripe payment intent creation
         mock_stripe_intent = MagicMock()
-        mock_stripe_intent.id = f"pi_multi_currency_{uuid4().hex[:10]}"
+        mock_stripe_intent.id = f"pi_multi_currency_{uuid7().hex[:10]}"
         mock_stripe_intent.client_secret = f"{mock_stripe_intent.id}_secret"
         mock_stripe_intent.status = "requires_payment_method"
         mock_stripe_intent.next_action = None
@@ -553,11 +553,11 @@ class TestComprehensiveStripeIntegrationProperty:
         **Feature: subscription-payment-enhancements, Property 18: Comprehensive Stripe integration**
         **Validates: Requirements 6.3, 7.2**
         """
-        payment_intent_id = f"pi_monitoring_{uuid4().hex[:10]}"
+        payment_intent_id = f"pi_monitoring_{uuid7().hex[:10]}"
         
         # Create local payment intent record
         local_payment_intent = PaymentIntent(
-            id=uuid4(),
+            id=uuid7(),
             stripe_payment_intent_id=payment_intent_id,
             user_id=sample_user.id,
             amount_breakdown={"total_amount": 50.00},
@@ -677,7 +677,7 @@ class TestComprehensiveStripeIntegrationProperty:
         try:
             # Process each webhook event
             for event_type, event_data in webhook_events:
-                event_id = f"evt_{uuid4().hex[:10]}"
+                event_id = f"evt_{uuid7().hex[:10]}"
                 
                 webhook_event = {
                     "id": event_id,

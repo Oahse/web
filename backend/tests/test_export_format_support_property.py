@@ -17,7 +17,7 @@ import csv
 import io
 from pathlib import Path
 from unittest.mock import patch, MagicMock
-from uuid import uuid4
+from core.utils.uuid_utils import uuid7
 from hypothesis import given, strategies as st, settings, HealthCheck, assume
 from decimal import Decimal
 from datetime import datetime, date, timedelta
@@ -141,7 +141,7 @@ class TestExportFormatSupportProperty:
             amount = amounts[i] if i < len(amounts) else 25.99
             
             subscription = {
-                'id': str(uuid4()),
+                'id': str(uuid7()),
                 'user': {
                     'firstname': firstname,
                     'lastname': lastname,
@@ -343,9 +343,9 @@ class TestExportFormatSupportProperty:
         
         # Add subscription that matches filters
         matching_subscription = {
-            'id': str(uuid4()),
+            'id': str(uuid7()),
             'user': {
-                'id': customer_id if customer_id else str(uuid4()),
+                'id': customer_id if customer_id else str(uuid7()),
                 'firstname': 'Matching',
                 'lastname': 'Customer',
                 'email': 'matching@example.com'
@@ -369,9 +369,9 @@ class TestExportFormatSupportProperty:
         
         # Add subscription that doesn't match filters (different status)
         non_matching_subscription = {
-            'id': str(uuid4()),
+            'id': str(uuid7()),
             'user': {
-                'id': str(uuid4()),
+                'id': str(uuid7()),
                 'firstname': 'Different',
                 'lastname': 'Customer',
                 'email': 'different@example.com'
@@ -497,7 +497,7 @@ class TestExportFormatSupportProperty:
                 total_variant_cost += variant_price
             
             subscription = {
-                'id': str(uuid4()),
+                'id': str(uuid7()),
                 'user': {
                     'firstname': f'Customer{i+1}',
                     'lastname': f'Test{i+1}',
@@ -628,7 +628,7 @@ class TestExportFormatSupportProperty:
         else:
             # Subscription with minimal/missing data
             subscriptions_data = [{
-                'id': str(uuid4()),
+                'id': str(uuid7()),
                 'user': {
                     'firstname': '',
                     'lastname': '',

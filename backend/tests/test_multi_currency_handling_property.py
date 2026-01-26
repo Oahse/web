@@ -9,7 +9,7 @@ This test validates Property 9: Multi-currency cost handling
 import pytest
 import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
-from uuid import uuid4, UUID
+from core.utils.uuid_utils import uuid7, UUID
 from hypothesis import given, strategies as st, settings, HealthCheck
 from decimal import Decimal
 from datetime import datetime, timedelta
@@ -59,7 +59,7 @@ class TestMultiCurrencyHandlingProperty:
     def sample_user(self):
         """Sample user for testing"""
         user = User()
-        user.id = uuid4()
+        user.id = uuid7()
         user.email = "test@example.com"
         user.firstname = "Test"
         user.lastname = "User"
@@ -70,7 +70,7 @@ class TestMultiCurrencyHandlingProperty:
     def sample_pricing_config(self):
         """Sample pricing configuration"""
         config = PricingConfig()
-        config.id = uuid4()
+        config.id = uuid7()
         config.subscription_percentage = 15.0
         config.delivery_costs = {
             "standard": 10.0,
@@ -79,7 +79,7 @@ class TestMultiCurrencyHandlingProperty:
         }
         config.tax_rates = {"US": 0.08, "CA": 0.13, "GB": 0.20, "DE": 0.19}
         config.currency_settings = {"default": "USD"}
-        config.updated_by = uuid4()
+        config.updated_by = uuid7()
         return config
 
     @pytest.fixture
@@ -132,7 +132,7 @@ class TestMultiCurrencyHandlingProperty:
             variant_ids = []
             for i, price in enumerate(variant_prices):
                 variant = MagicMock()
-                variant.id = uuid4()
+                variant.id = uuid7()
                 variant.name = f"Test Variant {i}"
                 variant.sku = f"TEST-{i}"
                 variant.base_price = price
@@ -378,7 +378,7 @@ class TestMultiCurrencyHandlingProperty:
                         from_currency="USD",
                         to_currency=currencies,
                         user_id=user.id,
-                        subscription_id=uuid4()
+                        subscription_id=uuid7()
                     ))
                     
                     # Verify payment processing result
@@ -424,7 +424,7 @@ class TestMultiCurrencyHandlingProperty:
             for base_amount, target_currency, location, delivery_type in subscription_scenarios:
                 # Mock variant with base amount
                 variant = MagicMock()
-                variant.id = uuid4()
+                variant.id = uuid7()
                 variant.name = "Test Product"
                 variant.sku = "TEST-001"
                 variant.base_price = base_amount

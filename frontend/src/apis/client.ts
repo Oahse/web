@@ -337,7 +337,14 @@ class APIClient {
           apiError.message = 'You don\'t have permission to perform this action.';
           break;
         case 404:
-          apiError.message = 'The requested resource was not found.';
+          // Provide more specific 404 messages for cart operations
+          if (error.config?.url?.includes('/cart/items/')) {
+            apiError.message = 'Cart item not found. Your cart may have been updated.';
+          } else if (error.config?.url?.includes('/cart')) {
+            apiError.message = 'Cart not found. Please refresh the page.';
+          } else {
+            apiError.message = 'The requested resource was not found.';
+          }
           break;
         case 422:
           // Keep the specific validation message from backend

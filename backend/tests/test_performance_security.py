@@ -7,7 +7,7 @@ import pytest
 import asyncio
 import time
 from unittest.mock import AsyncMock, MagicMock, patch
-from uuid import uuid4
+from core.utils.uuid_utils import uuid7
 from decimal import Decimal
 from datetime import datetime, timedelta
 import sys
@@ -61,7 +61,7 @@ class TestPerformanceAndSecurity:
         variants = []
         for i in range(1000):  # 1000 variants
             variant = MagicMock()
-            variant.id = uuid4()
+            variant.id = uuid7()
             variant.name = f"Performance Test Variant {i}"
             variant.price = Decimal(f"{10 + (i % 100)}.{i % 100:02d}")
             variant.currency = "USD"
@@ -166,8 +166,8 @@ class TestPerformanceAndSecurity:
         payment_intents = []
         for i in range(50):  # 50 concurrent payments
             intent_data = {
-                "subscription_id": uuid4(),
-                "user_id": uuid4(),
+                "subscription_id": uuid7(),
+                "user_id": uuid7(),
                 "amount": Decimal(f"{30 + i}.00"),
                 "currency": "USD"
             }
@@ -226,7 +226,7 @@ class TestPerformanceAndSecurity:
         subscription_data = []
         for i in range(1000):  # 1000 subscriptions
             subscription_data.append({
-                "id": str(uuid4()),
+                "id": str(uuid7()),
                 "user_name": f"User {i}",
                 "amount": f"{30 + i % 100}.00",
                 "status": "active" if i % 10 != 0 else "cancelled",
@@ -302,8 +302,8 @@ class TestPerformanceAndSecurity:
             operation = {
                 "type": "cost_calculation" if i % 3 == 0 else "recalculation" if i % 3 == 1 else "validation",
                 "variant_count": 10 + (i % 50),  # 10-60 variants
-                "user_id": uuid4(),
-                "subscription_id": uuid4()
+                "user_id": uuid7(),
+                "subscription_id": uuid7()
             }
             operations.append(operation)
         
@@ -320,7 +320,7 @@ class TestPerformanceAndSecurity:
         
         async def mock_recalculation(*args, **kwargs):
             await asyncio.sleep(0.02)  # Simulate longer processing
-            return [{"subscription_id": uuid4(), "cost_difference": 5.00}]
+            return [{"subscription_id": uuid7(), "cost_difference": 5.00}]
         
         cost_calculator.calculate_subscription_cost = mock_cost_calculation
         cost_calculator.recalculate_existing_subscriptions = mock_recalculation
@@ -332,7 +332,7 @@ class TestPerformanceAndSecurity:
         for op in operations:
             if op["type"] == "cost_calculation":
                 task = cost_calculator.calculate_subscription_cost(
-                    variant_ids=[str(uuid4()) for _ in range(op["variant_count"])],
+                    variant_ids=[str(uuid7()) for _ in range(op["variant_count"])],
                     delivery_type="standard",
                     customer_location="US"
                 )
@@ -463,7 +463,7 @@ class TestPerformanceAndSecurity:
         
         # Test that raw card data is never stored
         secure_method = await payment_service._create_secure_payment_method(
-            user_id=uuid4(),
+            user_id=uuid7(),
             payment_data=sensitive_payment_data
         )
         
@@ -475,7 +475,7 @@ class TestPerformanceAndSecurity:
 
     def test_api_rate_limiting_security(self, payment_service):
         """Test API rate limiting for security"""
-        user_id = uuid4()
+        user_id = uuid7()
         
         # Mock rate limiting
         payment_service._check_rate_limit = MagicMock()
@@ -550,7 +550,7 @@ class TestPerformanceAndSecurity:
     async def test_concurrent_security_validation(self, payment_service):
         """Test security validation under concurrent load"""
         # Test concurrent authentication/authorization
-        user_ids = [uuid4() for _ in range(100)]
+        user_ids = [uuid7() for _ in range(100)]
         
         # Mock authentication validation
         async def mock_validate_user_auth(user_id, action):

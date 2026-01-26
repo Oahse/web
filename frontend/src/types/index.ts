@@ -300,19 +300,6 @@ export interface Review {
   updated_at?: string;
 }
 
-// Notification Types
-export interface Notification {
-  id: string;
-  user_id: string;
-  title: string;
-  message: string;
-  type: 'info' | 'success' | 'warning' | 'error' | 'order' | 'payment' | 'shipping';
-  is_read: boolean;
-  link?: string;
-  created_at: string;
-  timestamp?: string;
-}
-
 // Payment Types
 export interface PaymentMethod {
   id: string;
@@ -446,15 +433,6 @@ export interface WishlistContextType {
   removeFromWishlist?: (itemId: string) => Promise<void>;
   isInWishlist: (productId: string, variantId?: string) => boolean;
   refreshWishlists: () => Promise<void>;
-}
-
-export interface NotificationContextType {
-  notifications: Notification[];
-  unreadCount: number;
-  isLoading: boolean;
-  markAsRead: (notificationId: string) => Promise<void>;
-  markAllAsRead: () => Promise<void>;
-  refreshNotifications: () => Promise<void>;
 }
 
 export interface ThemeContextType {

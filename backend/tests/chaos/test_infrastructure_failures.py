@@ -7,7 +7,7 @@ import pytest
 import asyncio
 import random
 from unittest.mock import AsyncMock, MagicMock, patch
-from uuid import uuid4
+from core.utils.uuid_utils import uuid7
 from datetime import datetime, timedelta
 import json
 
@@ -85,7 +85,7 @@ class TestKafkaBrokerFailures:
         if circuit_breaker_open:
             # Events are queued for later processing
             queued_events = []
-            event = {"id": str(uuid4()), "type": "order.created"}
+            event = {"id": str(uuid7()), "type": "order.created"}
             queued_events.append(event)
             
             assert len(queued_events) == 1
@@ -107,7 +107,7 @@ class TestKafkaBrokerFailures:
             fallback_storage = []
             
             event = {
-                "id": str(uuid4()),
+                "id": str(uuid7()),
                 "type": "payment.completed",
                 "timestamp": datetime.utcnow().isoformat(),
                 "stored_locally": True
@@ -129,8 +129,8 @@ class TestKafkaBrokerFailures:
         
         # Events stored during outage
         stored_events = [
-            {"id": str(uuid4()), "type": "order.created", "stored_at": datetime.utcnow()},
-            {"id": str(uuid4()), "type": "payment.completed", "stored_at": datetime.utcnow()}
+            {"id": str(uuid7()), "type": "order.created", "stored_at": datetime.utcnow()},
+            {"id": str(uuid7()), "type": "payment.completed", "stored_at": datetime.utcnow()}
         ]
         
         # Brokers recover

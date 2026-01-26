@@ -11,7 +11,7 @@ import sys
 import os
 import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
-from uuid import uuid4, UUID
+from core.utils.uuid_utils import uuid7, UUID
 from hypothesis import given, strategies as st, settings, HealthCheck
 from decimal import Decimal
 from datetime import datetime, timedelta
@@ -48,9 +48,9 @@ class TestInventoryIntegrationAccuracyProperty:
     def sample_inventory(self):
         """Sample inventory item"""
         return Inventory(
-            id=uuid4(),
-            variant_id=uuid4(),
-            location_id=uuid4(),
+            id=uuid7(),
+            variant_id=uuid7(),
+            location_id=uuid7(),
             quantity=100,
             low_stock_threshold=20,
             created_at=datetime.utcnow(),
@@ -61,9 +61,9 @@ class TestInventoryIntegrationAccuracyProperty:
     def sample_variant(self):
         """Sample product variant"""
         return ProductVariant(
-            id=uuid4(),
+            id=uuid7(),
             name="Test Variant",
-            product_id=uuid4(),
+            product_id=uuid7(),
             sku="TEST-VAR-001",
             base_price=25.99,
             sale_price=None,
@@ -75,7 +75,7 @@ class TestInventoryIntegrationAccuracyProperty:
     def sample_location(self):
         """Sample warehouse location"""
         return WarehouseLocation(
-            id=uuid4(),
+            id=uuid7(),
             name="Main Warehouse",
             address="123 Storage St"
         )
@@ -110,9 +110,9 @@ class TestInventoryIntegrationAccuracyProperty:
         tracking_entries = []
         for i in range(10):  # Create 10 days of consumption data
             entry = VariantTrackingEntry(
-                id=uuid4(),
+                id=uuid7(),
                 variant_id=sample_variant.id,
-                subscription_id=uuid4(),
+                subscription_id=uuid7(),
                 action_type="removed",
                 tracking_timestamp=datetime.utcnow() - timedelta(days=i),
                 price_at_time=25.99
@@ -126,7 +126,7 @@ class TestInventoryIntegrationAccuracyProperty:
         stock_adjustments = []
         for i in range(10):
             adjustment = StockAdjustment(
-                id=uuid4(),
+                id=uuid7(),
                 inventory_id=sample_inventory.id,
                 quantity_change=-int(consumption_rate),
                 reason="consumption",
@@ -204,9 +204,9 @@ class TestInventoryIntegrationAccuracyProperty:
         
         for i, (current_stock, threshold, consumption_rate) in enumerate(inventory_levels):
             variant = ProductVariant(
-                id=uuid4(),
+                id=uuid7(),
                 name=f"Test Variant {i}",
-                product_id=uuid4(),
+                product_id=uuid7(),
                 sku=f"TEST-{i}",
                 base_price=25.99,
                 sale_price=None,
@@ -215,14 +215,14 @@ class TestInventoryIntegrationAccuracyProperty:
             variants.append(variant)
             
             location = WarehouseLocation(
-                id=uuid4(),
+                id=uuid7(),
                 name=f"Warehouse {i}",
                 address=f"Address {i}"
             )
             locations.append(location)
             
             inventory = Inventory(
-                id=uuid4(),
+                id=uuid7(),
                 variant_id=variant.id,
                 location_id=location.id,
                 quantity=current_stock,
@@ -297,9 +297,9 @@ class TestInventoryIntegrationAccuracyProperty:
         """
         # Create sample inventory and variant
         variant = ProductVariant(
-            id=uuid4(),
+            id=uuid7(),
             name="Test Variant",
-            product_id=uuid4(),
+            product_id=uuid7(),
             sku="TEST-001",
             base_price=25.99,
             sale_price=None,
@@ -307,13 +307,13 @@ class TestInventoryIntegrationAccuracyProperty:
         )
         
         location = WarehouseLocation(
-            id=uuid4(),
+            id=uuid7(),
             name="Main Warehouse",
             address="123 Storage St"
         )
         
         inventory = Inventory(
-            id=uuid4(),
+            id=uuid7(),
             variant_id=variant.id,
             location_id=location.id,
             quantity=current_stock,
@@ -326,7 +326,7 @@ class TestInventoryIntegrationAccuracyProperty:
         stock_adjustments = []
         for daily_consumption, days_ago in consumption_data:
             adjustment = StockAdjustment(
-                id=uuid4(),
+                id=uuid7(),
                 inventory_id=inventory.id,
                 quantity_change=-daily_consumption,  # Negative for consumption
                 reason="consumption",
@@ -429,9 +429,9 @@ class TestInventoryIntegrationAccuracyProperty:
         """
         # Create sample data
         variant = ProductVariant(
-            id=uuid4(),
+            id=uuid7(),
             name="Test Variant",
-            product_id=uuid4(),
+            product_id=uuid7(),
             sku="TEST-001",
             base_price=25.99,
             sale_price=None,
@@ -439,9 +439,9 @@ class TestInventoryIntegrationAccuracyProperty:
         )
         
         inventory = Inventory(
-            id=uuid4(),
+            id=uuid7(),
             variant_id=variant.id,
-            location_id=uuid4(),
+            location_id=uuid7(),
             quantity=current_stock,
             low_stock_threshold=20
         )
@@ -450,7 +450,7 @@ class TestInventoryIntegrationAccuracyProperty:
         stock_adjustments = []
         for quantity_sold, days_ago in turnover_data:
             adjustment = StockAdjustment(
-                id=uuid4(),
+                id=uuid7(),
                 inventory_id=inventory.id,
                 quantity_change=-quantity_sold,  # Negative for sales/consumption
                 reason="sale",
@@ -660,13 +660,13 @@ class TestInventoryIntegrationAccuracyProperty:
         variant_ids = []
         
         for i, (current_stock, threshold) in enumerate(stock_levels):
-            variant_id = uuid4()
+            variant_id = uuid7()
             variant_ids.append(variant_id)
             
             variant = ProductVariant(
                 id=variant_id,
                 name=f"Test Variant {i}",
-                product_id=uuid4(),
+                product_id=uuid7(),
                 sku=f"TEST-{i}",
                 base_price=25.99,
                 sale_price=None,
@@ -674,13 +674,13 @@ class TestInventoryIntegrationAccuracyProperty:
             )
             
             location = WarehouseLocation(
-                id=uuid4(),
+                id=uuid7(),
                 name=f"Warehouse {i}",
                 address=f"Address {i}"
             )
             
             inventory = Inventory(
-                id=uuid4(),
+                id=uuid7(),
                 variant_id=variant_id,
                 location_id=location.id,
                 quantity=current_stock,

@@ -7,7 +7,7 @@ import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from datetime import datetime, timedelta
 from decimal import Decimal
-from uuid import uuid4, UUID
+from core.utils.uuid_utils import uuid7, UUID
 from fastapi import HTTPException
 
 from services.cart import CartService
@@ -37,13 +37,13 @@ class TestPricingCalculations:
     def sample_product_variant(self):
         """Sample product variant for testing"""
         product = Product(
-            id=uuid4(),
+            id=uuid7(),
             name="Test Product",
             description="Test Description"
         )
         
         variant = ProductVariant(
-            id=uuid4(),
+            id=uuid7(),
             product_id=product.id,
             product=product,
             name="Default",
@@ -75,9 +75,9 @@ class TestPricingCalculations:
     
     def test_price_fallback_to_base(self):
         """Test price fallback when sale_price is None"""
-        product = Product(id=uuid4(), name="Test Product")
+        product = Product(id=uuid7(), name="Test Product")
         variant = ProductVariant(
-            id=uuid4(),
+            id=uuid7(),
             product_id=product.id,
             product=product,
             name="Default",
@@ -96,13 +96,13 @@ class TestPricingCalculations:
         cart_data = {
             "items": {
                 "item1": {
-                    "variant_id": str(uuid4()),
+                    "variant_id": str(uuid7()),
                     "quantity": 2,
                     "price_per_unit": 50.00,
                     "total_price": 100.00
                 },
                 "item2": {
-                    "variant_id": str(uuid4()),
+                    "variant_id": str(uuid7()),
                     "quantity": 1,
                     "price_per_unit": 30.00,
                     "total_price": 30.00
@@ -150,7 +150,7 @@ class TestPromocodeDiscounts:
     def percentage_promocode(self):
         """10% discount promocode"""
         return Promocode(
-            id=uuid4(),
+            id=uuid7(),
             code="SAVE10",
             description="10% off",
             discount_type="percentage",
@@ -168,7 +168,7 @@ class TestPromocodeDiscounts:
     def fixed_promocode(self):
         """$15 fixed discount promocode"""
         return Promocode(
-            id=uuid4(),
+            id=uuid7(),
             code="SAVE15",
             description="$15 off",
             discount_type="fixed",
@@ -186,7 +186,7 @@ class TestPromocodeDiscounts:
     def shipping_promocode(self):
         """Free shipping promocode"""
         return Promocode(
-            id=uuid4(),
+            id=uuid7(),
             code="FREESHIP",
             description="Free shipping",
             discount_type="shipping",

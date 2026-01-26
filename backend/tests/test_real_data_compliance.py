@@ -5,7 +5,7 @@ Validates that no mock data is used and all integrations use real data sources.
 import pytest
 import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
-from uuid import uuid4
+from core.utils.uuid_utils import uuid7
 from decimal import Decimal
 from datetime import datetime, timedelta
 import sys
@@ -72,7 +72,7 @@ class TestRealDataCompliance:
         real_variants = []
         for i in range(5):
             variant = MagicMock()
-            variant.id = uuid4()
+            variant.id = uuid7()
             variant.price = Decimal(f"{15 + i*5}.99")  # Real-looking prices
             variant.currency = "USD"
             variant.name = f"Real Product Variant {i+1}"
@@ -138,7 +138,7 @@ class TestRealDataCompliance:
     async def test_stripe_handles_all_currency_conversion(self, payment_service, mock_db):
         """Verify Stripe handles all currency conversion, no local mock rates"""
         # Test currency conversion delegation to Stripe
-        user_id = uuid4()
+        user_id = uuid7()
         
         # Mock real Stripe API call for currency conversion
         with patch('stripe.ExchangeRate.retrieve') as mock_stripe_exchange:
@@ -189,8 +189,8 @@ class TestRealDataCompliance:
         real_transactions = []
         for i in range(20):
             transaction = MagicMock()
-            transaction.id = uuid4()
-            transaction.subscription_id = uuid4()
+            transaction.id = uuid7()
+            transaction.subscription_id = uuid7()
             transaction.amount = Decimal(f"{25 + i*3}.{i%100:02d}")
             transaction.currency = "USD"
             transaction.status = "succeeded" if i % 10 != 0 else "failed"
@@ -203,8 +203,8 @@ class TestRealDataCompliance:
         real_subscriptions = []
         for i in range(15):
             subscription = MagicMock()
-            subscription.id = uuid4()
-            subscription.user_id = uuid4()
+            subscription.id = uuid7()
+            subscription.user_id = uuid7()
             subscription.status = "active" if i % 8 != 0 else "cancelled"
             subscription.created_at = datetime.utcnow() - timedelta(days=i*2)
             subscription.cost_breakdown = {
@@ -259,14 +259,14 @@ class TestRealDataCompliance:
         real_inventory_items = []
         for i in range(10):
             item = MagicMock()
-            item.id = uuid4()
-            item.variant_id = uuid4()
+            item.id = uuid7()
+            item.variant_id = uuid7()
             item.current_stock = 50 + i*10  # Real stock levels
             item.reserved_stock = 5 + i
             item.available_stock = item.current_stock - item.reserved_stock
             item.reorder_point = 20
             item.last_updated = datetime.utcnow() - timedelta(hours=i)
-            item.supplier_id = uuid4()
+            item.supplier_id = uuid7()
             real_inventory_items.append(item)
         
         # Mock database to return real inventory data

@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import OrderList from '../components/order/OrderList';
 import OrderDetails from '../components/order/OrderDetails';
 import SupplierOrderDashboard from '../components/supplier/SupplierOrderDashboard';
-import SupplierNotifications from '../components/supplier/SupplierNotifications';
 import { useAuth } from '../contexts/AuthContext';
 import { usePaginatedApi } from '../hooks/useApi';
 import { OrdersAPI } from '../apis';
@@ -152,14 +151,6 @@ const OrderManagement = () => {
           </div>
 
           <div className="flex items-center space-x-4">
-            {/* Supplier-specific notifications component */}
-            {userRole === 'supplier' && user && (
-              <SupplierNotifications
-                supplierId={user.id}
-                onNotificationClick={handleNotificationClick}
-              />
-            )}
-
             {/* Supplier view toggle buttons (List/Dashboard) */}
             {userRole === 'supplier' && (
               <div className="flex bg-gray-100 rounded-lg p-1">

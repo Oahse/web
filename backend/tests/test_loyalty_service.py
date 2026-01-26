@@ -1,7 +1,7 @@
 import pytest
 import asyncio
 from decimal import Decimal
-from uuid import uuid4
+from core.utils.uuid_utils import uuid7
 from datetime import datetime, timedelta
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
@@ -43,7 +43,7 @@ async def db_session():
 async def test_user(db_session: AsyncSession):
     """Create a test user"""
     user = User(
-        id=uuid4(),
+        id=uuid7(),
         email="test@example.com",
         firstname="Test",
         lastname="User",
@@ -112,7 +112,7 @@ class TestLoyaltyService:
         """Test awarding points for subscription"""
         # Create a test subscription
         subscription = Subscription(
-            id=uuid4(),
+            id=uuid7(),
             user_id=test_user.id,
             price=50.0,
             currency="USD",
@@ -212,7 +212,7 @@ class TestLoyaltyService:
         """Test referral bonus processing"""
         # Create referee user
         referee = User(
-            id=uuid4(),
+            id=uuid7(),
             email="referee@example.com",
             firstname="Referee",
             lastname="User",
@@ -223,7 +223,7 @@ class TestLoyaltyService:
         
         # Create subscription that qualifies for referral
         subscription = Subscription(
-            id=uuid4(),
+            id=uuid7(),
             user_id=referee.id,
             price=50.0,  # Above minimum threshold
             currency="USD",

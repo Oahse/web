@@ -3,21 +3,21 @@ Standalone tests for AdminPricingService core functionality
 Tests the key validation and calculation logic without full imports
 """
 import pytest
-from uuid import uuid4
+from core.utils.uuid_utils import uuid7
 from decimal import Decimal
 
 
 class MockPricingConfig:
     """Mock PricingConfig for testing"""
     def __init__(self, **kwargs):
-        self.id = kwargs.get('id', uuid4())
+        self.id = kwargs.get('id', uuid7())
         self.subscription_percentage = kwargs.get('subscription_percentage', 10.0)
         self.delivery_costs = kwargs.get('delivery_costs', {
             "standard": 10.0, "express": 25.0, "overnight": 50.0
         })
         self.tax_rates = kwargs.get('tax_rates', {"US": 0.08, "CA": 0.13, "UK": 0.20})
         self.currency_settings = kwargs.get('currency_settings', {"default": "USD"})
-        self.updated_by = kwargs.get('updated_by', uuid4())
+        self.updated_by = kwargs.get('updated_by', uuid7())
         self.version = kwargs.get('version', "1.0")
         self.is_active = kwargs.get('is_active', "active")
         self.change_reason = kwargs.get('change_reason', "Test")

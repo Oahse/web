@@ -10,15 +10,15 @@ Database initialization + batched seeding script for Banwee API.
 import asyncio
 import argparse
 import random
-import uuid
 from typing import List
 
 from sqlalchemy.ext.asyncio import create_async_engine
-from sqlalchemy import select, func
+from sqlalchemy import select, func, text
 from sqlalchemy.orm import selectinload
 from core.database import db_manager, initialize_db
 from core.config import settings
 from core.utils.encryption import PasswordManager
+from core.utils.uuid_utils import uuid7
 from core.database import Base
 from models.user import User, Address
 from models.product import Product, ProductVariant, ProductImage, Category
@@ -29,7 +29,7 @@ from models.payments import PaymentMethod, Transaction
 from models.promocode import Promocode
 from models.shipping import ShippingMethod
 from models.wishlist import Wishlist, WishlistItem
-from models.notifications import Notification  # Added Notification import
+
 from models.inventories import WarehouseLocation, Inventory  # Added inventory imports
 from models.refunds import Refund, RefundItem  # Added refund imports
 from models.tax_rates import TaxRate  # Added tax rates import
@@ -268,12 +268,15 @@ async def create_tables():
             return
     
     print(f"🔗 Connecting to PostgreSQL: {db_uri.split('@')[-1] if '@' in db_uri else 'database'}")
-    engine = create_async_engine(db_uri, echo=True)
+    engine = create_async_engine(db_uri, echo=False)  # Disable echo for cleaner output
     
     try:
         async with engine.begin() as conn:
-            print("🗑️  Dropping existing tables...")
-            await conn.run_sync(Base.metadata.drop_all)
+            print("🗑️  Dropping existing schema...")
+            # Drop the entire public schema and recreate it to avoid dependency issues
+            await conn.execute(text("DROP SCHEMA IF EXISTS public CASCADE"))
+            await conn.execute(text("CREATE SCHEMA public"))
+            
             print("🏗️  Creating new tables...")
             await conn.run_sync(Base.metadata.create_all)
         await engine.dispose()
@@ -748,7 +751,7 @@ async def seed_sample_data(
                 chosen_payment_method = random.choice(user_payment_methods)
 
                 order_total = 0
-                order_uuid = uuid.uuid4()
+                order_uuid = uuid7()
                 order_number = f"ORD-{str(order_uuid)[:8].upper()}" # Generate a unique order number based on the order_uuid
                 
                 # Generate dummy address data
@@ -775,7 +778,7 @@ async def seed_sample_data(
                     total_amount=0.0, # Will be updated
                     currency="USD",
                     shipping_method=chosen_shipping_method.name,
-                    tracking_number=str(uuid.uuid4()) if random.random() < 0.7 else None,
+                    tracking_number=str(uuid7()) if random.random() < 0.7 else None,
                     carrier=random.choice(["DHL", "FedEx", "UPS", "Local Delivery"]) if random.random() < 0.8 else None,
                     billing_address=dummy_address,
                     shipping_address=dummy_address,
@@ -808,7 +811,7 @@ async def seed_sample_data(
                     user_id=user.id,
                     order_id=order.id,
                     # Generate a dummy ID for seeding
-                    stripe_payment_intent_id=str(uuid.uuid4()),
+                    stripe_payment_intent_id=str(uuid7()),
                     amount=order_total,
                     currency="USD",
                     status="succeeded",
@@ -874,7 +877,7 @@ async def seed_sample_data(
         for i in range(1, 21):  # Create 20 dummy subscriptions
             chosen_user = random.choice(all_users)
             subscription = Subscription(
-                id=uuid.uuid4(),
+                id=uuid7(),
                 user_id=chosen_user.id,
                 plan_id=random.choice(["basic", "premium", "enterprise"]),
                 status=random.choice(["active", "cancelled", "expired"]),
@@ -958,44 +961,6 @@ async def seed_sample_data(
             await session.commit()
             session.expunge_all()
         print(f"⭐ Created {len(reviews_batch)} reviews.")
-
-        # -------- Notifications --------
-        notifications_batch = []
-        all_users_for_notifications = await session.execute(select(User))
-        all_users_for_notifications = all_users_for_notifications.scalars().all()
-
-        notification_messages = [
-            "Welcome to Banwee! Explore our new organic products.",
-            "Your order #12345 has been shipped!",
-            "New product added to your wishlist: Organic Quinoa.",
-            "Your account password was recently changed.",
-            "Special offer: 15% off all cereal crops this week!",
-            "Your review for Premium Wheat has been approved.",
-            "Maintenance alert: Our site will be down for 1 hour tonight.",
-            "Your payment method ending in ****1234 is expiring soon.",
-            # This will be replaced by actual notifications
-            "You have unread messages from support.",
-            "Admin: New user registered: user123@example.com."
-        ]
-
-        for i in range(30):  # Create 30 dummy notifications
-            chosen_user = random.choice(all_users_for_notifications)
-            notification = Notification(
-                user_id=str(chosen_user.id),
-                message=random.choice(notification_messages),
-                read=random.choice([True, False]),
-                type=random.choice(["info", "success", "warning", "error"]),
-                related_id=str(uuid.uuid4()) if random.random(
-                ) < 0.5 else None  # 50% chance of related_id
-            )
-            notifications_batch.append(notification)
-
-        if notifications_batch:
-            session.add_all(notifications_batch)
-            await session.flush()
-            await session.commit()
-            session.expunge_all()
-        print(f"🔔 Created {len(notifications_batch)} notifications.")
 
         # -------- Print plaintext passwords --------
         users_file_path = "users.txt"

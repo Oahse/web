@@ -85,10 +85,8 @@ class User(BaseModel):
     payment_methods = relationship("PaymentMethod", back_populates="user", lazy="select")
     transactions = relationship("Transaction", back_populates="user", lazy="select")
     supplied_products = relationship("Product", back_populates="supplier", lazy="select")
-    notifications = relationship("Notification", back_populates="user", lazy="select")
     payment_intents = relationship("PaymentIntent", back_populates="user", lazy="select")
     loyalty_account = relationship("LoyaltyAccount", back_populates="user", uselist=False, lazy="select")
-    notification_preferences = relationship("NotificationPreference", back_populates="user", uselist=False, lazy="selectin")
     sessions = relationship("UserSession", back_populates="user", lazy="select")
     lifecycle_metrics = relationship("CustomerLifecycleMetrics", back_populates="user", lazy="select")
     
@@ -100,7 +98,6 @@ class User(BaseModel):
     # Inventory and tracking relationships
     stock_adjustments = relationship("StockAdjustment", back_populates="adjusted_by", lazy="select")
     variant_price_changes = relationship("VariantPriceHistory", back_populates="changed_by", lazy="select")
-    notification_history = relationship("NotificationHistory", back_populates="user", lazy="select")
 
     @property
     def full_name(self) -> str:

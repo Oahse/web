@@ -46,15 +46,8 @@ export const Register = () => {
         // First priority: intended destination (from protected route)
         if (intendedDestination && (intendedDestination as any).path !== '/register') {
           const destination = intendedDestination as any;
-          // If the action was to add to cart, redirect to cart page
-          if (destination.action === 'cart') {
-            return '/cart';
-          }
-          // If the action was to add to wishlist, redirect to wishlist page
-          if (destination.action === 'wishlist') {
-            return '/account/wishlist';
-          }
-          // Otherwise redirect to the original path
+          // Always redirect back to the original page where the user was
+          // This allows them to continue their shopping experience
           return destination.path;
         }
         
@@ -69,6 +62,14 @@ export const Register = () => {
         return '/';
       };
       const redirectPath = getRedirectPath();
+      
+      // Show success message based on intended action
+      if (intendedDestination && (intendedDestination as any).action === 'cart') {
+        toast.success('Registration successful! You can now add items to your cart.');
+      } else if (intendedDestination && (intendedDestination as any).action === 'wishlist') {
+        toast.success('Registration successful! You can now add items to your wishlist.');
+      }
+      
       navigate(redirectPath);
       // Clear intended destination after navigation
       if (intendedDestination) {

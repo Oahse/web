@@ -30,7 +30,6 @@ from routes import (
     health_router,
     inventories_router,
     loyalty_router,
-    notifications_router,
     orders_router,
     payments_router,
     products_router,
@@ -45,7 +44,7 @@ from routes import (
     wishlist_router,
 )
 
-from services.notifications import NotificationService 
+
 
 from contextlib import asynccontextmanager
 
@@ -119,6 +118,9 @@ async def lifespan(app: FastAPI):
     # Start notification cleanup task
     asyncio.create_task(run_notification_cleanup())
     
+    # Start notification cleanup task
+    asyncio.create_task(run_notification_cleanup())
+    
     yield
     
     # Shutdown event
@@ -177,7 +179,6 @@ v1_router.include_router(subscriptions_router)
 v1_router.include_router(review_router)
 v1_router.include_router(payments_router)
 v1_router.include_router(wishlist_router)
-v1_router.include_router(notifications_router)
 v1_router.include_router(health_router)
 v1_router.include_router(search_router)
 v1_router.include_router(inventories_router)
@@ -193,20 +194,7 @@ app.include_router(v1_router)
 # Note: WebSocket router disabled for MVP
 # app.include_router(websockets_router)
 
-async def run_notification_cleanup():
-    # Wait a bit for database initialization to complete
-    await asyncio.sleep(5)
-    while True:
-        try:
-            if AsyncSessionDB is not None:
-                async with AsyncSessionDB() as db:
-                    notification_service = NotificationService(db)
-                    await notification_service.delete_old_notifications(days_old=settings.NOTIFICATION_CLEANUP_DAYS)
-        except Exception as e:
-            print(f"Notification cleanup error: {e}")
-            # Continue the loop even if there's an error
-        # Run every X seconds
-        await asyncio.sleep(settings.NOTIFICATION_CLEANUP_INTERVAL_SECONDS)
+
 
 @app.get("/")
 async def read_root():

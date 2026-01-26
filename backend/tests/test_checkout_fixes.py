@@ -5,7 +5,7 @@ import pytest
 import asyncio
 from unittest.mock import AsyncMock, patch, MagicMock
 from sqlalchemy.ext.asyncio import AsyncSession
-from uuid import uuid4
+from core.utils.uuid_utils import uuid7
 from datetime import datetime, timedelta
 
 from services.orders import OrderService
@@ -38,9 +38,9 @@ class TestCheckoutFixes:
     def checkout_request(self):
         """Sample checkout request"""
         return CheckoutRequest(
-            shipping_address_id=uuid4(),
-            shipping_method_id=uuid4(),
-            payment_method_id=uuid4(),
+            shipping_address_id=uuid7(),
+            shipping_method_id=uuid7(),
+            payment_method_id=uuid7(),
             notes="Test order"
         )
     
@@ -48,8 +48,8 @@ class TestCheckoutFixes:
     def mock_inventory(self):
         """Mock inventory with stock"""
         inventory = AsyncMock()
-        inventory.id = uuid4()
-        inventory.variant_id = uuid4()
+        inventory.id = uuid7()
+        inventory.variant_id = uuid7()
         inventory.quantity_available = 10
         inventory.version = 1
         return inventory
@@ -70,7 +70,7 @@ class TestCheckoutFixes:
         result = await inventory_service.reserve_stock_for_order(
             variant_id=variant_id,
             quantity=5,
-            user_id=uuid4(),
+            user_id=uuid7(),
             expires_in_minutes=15
         )
         
@@ -93,9 +93,9 @@ class TestCheckoutFixes:
         # Should retry and eventually succeed
         with patch('asyncio.sleep', new_callable=AsyncMock):
             result = await inventory_service.reserve_stock_for_order(
-                variant_id=uuid4(),
+                variant_id=uuid7(),
                 quantity=1,
-                user_id=uuid4()
+                user_id=uuid7()
             )
         
         # Should indicate retry was suggested
@@ -125,9 +125,9 @@ class TestCheckoutFixes:
             
             with patch('asyncio.sleep', new_callable=AsyncMock):
                 result = await payment_service.process_payment_with_timeout_and_retry(
-                    user_id=uuid4(),
+                    user_id=uuid7(),
                     amount=100.0,
-                    payment_method_id=uuid4(),
+                    payment_method_id=uuid7(),
                     timeout_seconds=1,
                     max_retries=2
                 )
@@ -157,7 +157,7 @@ class TestCheckoutFixes:
         
         # Mock existing order with same idempotency key
         existing_order = AsyncMock()
-        existing_order.id = uuid4()
+        existing_order.id = uuid7()
         existing_order.order_number = "ORD-12345"
         
         mock_result = AsyncMock()
@@ -169,7 +169,7 @@ class TestCheckoutFixes:
             
             # Should return existing order, not create new one
             result = await order_service.place_order(
-                user_id=uuid4(),
+                user_id=uuid7(),
                 request=checkout_request,
                 background_tasks=AsyncMock(),
                 idempotency_key="test_key_123"
@@ -192,7 +192,7 @@ class TestCheckoutFixes:
             # Should raise HTTPException due to validation failure
             with pytest.raises(HTTPException) as exc_info:
                 await order_service.place_order(
-                    user_id=uuid4(),
+                    user_id=uuid7(),
                     request=checkout_request,
                     background_tasks=AsyncMock()
                 )
@@ -225,7 +225,7 @@ class TestCheckoutFixes:
                 # Should raise HTTPException due to price validation failure
                 with pytest.raises(HTTPException) as exc_info:
                     await order_service.place_order(
-                        user_id=uuid4(),
+                        user_id=uuid7(),
                         request=checkout_request,
                         background_tasks=AsyncMock()
                     )
@@ -266,7 +266,7 @@ class TestCheckoutFixes:
                     # Should raise HTTPException and trigger rollback
                     with pytest.raises(HTTPException) as exc_info:
                         await order_service.place_order(
-                            user_id=uuid4(),
+                            user_id=uuid7(),
                             request=checkout_request,
                             background_tasks=AsyncMock()
                         )
@@ -297,16 +297,16 @@ class TestCheckoutFixes:
         
         # First reservation should succeed
         result1 = await inventory_service.reserve_stock_for_order(
-            variant_id=uuid4(),
+            variant_id=uuid7(),
             quantity=1,
-            user_id=uuid4()
+            user_id=uuid7()
         )
         
         # Second reservation should fail (no stock available)
         result2 = await inventory_service.reserve_stock_for_order(
-            variant_id=uuid4(),
+            variant_id=uuid7(),
             quantity=1,
-            user_id=uuid4()
+            user_id=uuid7()
         )
         
         assert result1["success"] is True

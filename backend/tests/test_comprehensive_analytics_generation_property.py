@@ -11,7 +11,7 @@ import sys
 import os
 import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
-from uuid import uuid4, UUID
+from core.utils.uuid_utils import uuid7, UUID
 from hypothesis import given, strategies as st, settings, HealthCheck, assume
 from decimal import Decimal
 from datetime import datetime, timedelta, date
@@ -77,7 +77,7 @@ class TestComprehensiveAnalyticsGenerationProperty:
         # Create users first
         for i in range(num_users):
             user = User(
-                id=uuid4(),
+                id=uuid7(),
                 email=f"user{i}@test.com",
                 firstname=f"User",
                 lastname=f"{i}",
@@ -91,7 +91,7 @@ class TestComprehensiveAnalyticsGenerationProperty:
         for i in range(num_subscriptions):
             user = users[i % len(users)]
             subscription = Subscription(
-                id=uuid4(),
+                id=uuid7(),
                 user_id=user.id,
                 plan_id=f"plan_{i % 5}",  # 5 different plans
                 price=Decimal(str(10.0 + (i * 5) % 200)),  # Varying prices
@@ -267,7 +267,7 @@ class TestComprehensiveAnalyticsGenerationProperty:
         
         for i in range(num_customers):
             user = User(
-                id=uuid4(),
+                id=uuid7(),
                 email=f"customer{i}@test.com",
                 firstname=f"Customer",
                 lastname=f"{i}",
@@ -280,7 +280,7 @@ class TestComprehensiveAnalyticsGenerationProperty:
             num_transactions = min(len(transaction_amounts), (i % 5) + 1)  # 1-5 transactions per user
             for j in range(num_transactions):
                 transaction = Transaction(
-                    id=uuid4(),
+                    id=uuid7(),
                     user_id=user.id,
                     amount=transaction_amounts[j % len(transaction_amounts)],
                     status="succeeded",
@@ -388,7 +388,7 @@ class TestComprehensiveAnalyticsGenerationProperty:
         # Create users for different countries
         for i, country in enumerate(countries):
             user = User(
-                id=uuid4(),
+                id=uuid7(),
                 email=f"user{i}@test.com",
                 firstname=f"User",
                 lastname=f"{i}",
@@ -415,10 +415,10 @@ class TestComprehensiveAnalyticsGenerationProperty:
                 failure_reason = "card_declined"
             
             payment_intent = PaymentIntent(
-                id=uuid4(),
+                id=uuid7(),
                 stripe_payment_intent_id=f"pi_test_{i}",
                 user_id=user.id,
-                subscription_id=uuid4(),
+                subscription_id=uuid7(),
                 amount_breakdown={
                     "total_amount": float(50 + (i * 10) % 500)
                 },

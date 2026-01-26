@@ -11,7 +11,7 @@ import sys
 import os
 import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
-from uuid import uuid4, UUID
+from core.utils.uuid_utils import uuid7, UUID
 from hypothesis import given, strategies as st, settings, HealthCheck
 from decimal import Decimal
 from datetime import datetime
@@ -55,7 +55,7 @@ class TestDynamicCostRecalculationProperty:
     def sample_pricing_config(self):
         """Sample pricing configuration"""
         return PricingConfig(
-            id=uuid4(),
+            id=uuid7(),
             subscription_percentage=10.0,
             delivery_costs={
                 "standard": 10.0,
@@ -71,7 +71,7 @@ class TestDynamicCostRecalculationProperty:
                 "default": "USD",
                 "supported": ["USD", "EUR", "GBP", "CAD"]
             },
-            updated_by=uuid4(),
+            updated_by=uuid7(),
             version="1.0",
             is_active="active"
         )
@@ -79,13 +79,13 @@ class TestDynamicCostRecalculationProperty:
     def create_mock_variant(self, base_price: float, sale_price: float = None) -> ProductVariant:
         """Create a mock product variant"""
         return ProductVariant(
-            id=uuid4(),
-            name=f"Test Variant {uuid4().hex[:8]}",
-            sku=f"TV{uuid4().hex[:6].upper()}",
+            id=uuid7(),
+            name=f"Test Variant {uuid7().hex[:8]}",
+            sku=f"TV{uuid7().hex[:6].upper()}",
             base_price=Decimal(str(base_price)),
             sale_price=Decimal(str(sale_price)) if sale_price else None,
             is_active=True,
-            product_id=uuid4()
+            product_id=uuid7()
         )
 
     def create_mock_subscription(
@@ -96,8 +96,8 @@ class TestDynamicCostRecalculationProperty:
     ) -> Subscription:
         """Create a mock subscription"""
         return Subscription(
-            id=uuid4(),
-            user_id=uuid4(),
+            id=uuid7(),
+            user_id=uuid7(),
             variant_ids=[str(v_id) for v_id in variant_ids],
             delivery_type=delivery_type,
             currency="USD",
@@ -111,7 +111,7 @@ class TestDynamicCostRecalculationProperty:
                 "tax_amount": current_cost * 0.08,
                 "total_amount": current_cost
             },
-            delivery_address_id=uuid4()
+            delivery_address_id=uuid7()
         )
 
     @given(
@@ -424,7 +424,7 @@ class TestDynamicCostRecalculationProperty:
         try:
             # Test recalculation of existing subscriptions
             pricing_changes = {"subscription_percentage": new_admin_percentage}
-            admin_user_id = uuid4()
+            admin_user_id = uuid7()
             
             result = asyncio.run(cost_calculator.recalculate_existing_subscriptions(
                 pricing_changes=pricing_changes,
@@ -538,7 +538,7 @@ class TestDynamicCostRecalculationProperty:
 
         try:
             # Test variant price change propagation
-            admin_user_id = uuid4()
+            admin_user_id = uuid7()
             
             result = asyncio.run(cost_calculator.propagate_variant_price_changes(
                 variant_id=changed_variant.id,

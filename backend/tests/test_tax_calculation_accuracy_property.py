@@ -1,7 +1,7 @@
 import pytest
 from decimal import Decimal
 from unittest.mock import AsyncMock, MagicMock
-from uuid import uuid4
+from core.utils.uuid_utils import uuid7
 import sys
 import os
 from hypothesis import given, strategies as st, settings, HealthCheck
@@ -26,7 +26,7 @@ class TestTaxCalculationAccuracyProperty:
     def create_mock_address(self, country_code: str, state_code: str = None, city: str = None, postal_code: str = None):
         """Create a mock address object"""
         address = MagicMock()
-        address.id = uuid4()
+        address.id = uuid7()
         address.street = "123 Test Street"
         address.city = city or "Test City"
         address.state = state_code or "Test State"

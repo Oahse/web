@@ -10,7 +10,7 @@ import pytest
 import sys
 import os
 from unittest.mock import AsyncMock, MagicMock, patch
-from uuid import uuid4
+from core.utils.uuid_utils import uuid7
 from hypothesis import given, strategies as st, settings, HealthCheck
 from decimal import Decimal
 
@@ -44,7 +44,7 @@ class TestAdminPercentageValidationProperty:
     def sample_pricing_config(self):
         """Sample pricing configuration"""
         return PricingConfig(
-            id=uuid4(),
+            id=uuid7(),
             subscription_percentage=10.0,
             delivery_costs={
                 "standard": 10.0,
@@ -60,7 +60,7 @@ class TestAdminPercentageValidationProperty:
                 "default": "USD",
                 "supported": ["USD", "EUR", "GBP", "CAD"]
             },
-            updated_by=uuid4(),
+            updated_by=uuid7(),
             version="1.0",
             is_active="active",
             change_reason="Test configuration"
@@ -74,7 +74,7 @@ class TestAdminPercentageValidationProperty:
         **Feature: subscription-payment-enhancements, Property 1: Admin percentage validation**
         **Validates: Requirements 1.2**
         """
-        admin_user_id = uuid4()
+        admin_user_id = uuid7()
         
         # Mock get_pricing_config
         admin_pricing_service.get_pricing_config = AsyncMock(return_value=sample_pricing_config)
@@ -120,7 +120,7 @@ class TestAdminPercentageValidationProperty:
         **Feature: subscription-payment-enhancements, Property 1: Admin percentage validation**
         **Validates: Requirements 1.2**
         """
-        admin_user_id = uuid4()
+        admin_user_id = uuid7()
 
         # Test the property: invalid percentages should be rejected
         with pytest.raises(APIException) as exc_info:
@@ -148,7 +148,7 @@ class TestAdminPercentageValidationProperty:
         """
         import math
         
-        admin_user_id = uuid4()
+        admin_user_id = uuid7()
         
         # Skip valid percentages as they are tested in other properties
         if not (math.isnan(percentage) or math.isinf(percentage)) and 0.1 <= percentage <= 50.0:
@@ -228,7 +228,7 @@ class TestAdminPercentageValidationProperty:
         **Feature: subscription-payment-enhancements, Property 1: Admin percentage validation**
         **Validates: Requirements 1.2**
         """
-        admin_user_id = uuid4()
+        admin_user_id = uuid7()
         
         # Mock database operations
         mock_db.add = MagicMock()

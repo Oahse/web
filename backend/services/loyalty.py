@@ -3,7 +3,8 @@ from sqlalchemy.future import select
 from sqlalchemy import desc, func, and_, or_
 from sqlalchemy.orm import selectinload
 from typing import Optional, List, Dict, Any, Tuple
-from uuid import UUID, uuid4
+from uuid import UUID
+from core.utils.uuid_utils import uuid7
 from datetime import datetime, timedelta
 from decimal import Decimal
 import json

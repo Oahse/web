@@ -6,7 +6,7 @@ Tests core pricing logic without complex service dependencies
 import pytest
 from decimal import Decimal
 from datetime import datetime, timedelta
-from uuid import uuid4
+from core.utils.uuid_utils import uuid7
 
 
 class TestBasicPricingCalculations:

@@ -5,7 +5,7 @@ Simplified tests that avoid circular import issues while validating core functio
 import pytest
 import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
-from uuid import uuid4
+from core.utils.uuid_utils import uuid7
 from decimal import Decimal
 from datetime import datetime, timedelta
 import sys
@@ -27,7 +27,7 @@ class TestFinalIntegration:
     def sample_user_data(self):
         """Sample user data for testing"""
         return {
-            "id": str(uuid4()),
+            "id": str(uuid7()),
             "email": "integration@test.com",
             "firstname": "Integration",
             "lastname": "Test",
@@ -39,9 +39,9 @@ class TestFinalIntegration:
     def sample_subscription_data(self):
         """Sample subscription data"""
         return {
-            "id": str(uuid4()),
-            "user_id": str(uuid4()),
-            "variant_ids": [str(uuid4()), str(uuid4())],
+            "id": str(uuid7()),
+            "user_id": str(uuid7()),
+            "variant_ids": [str(uuid7()), str(uuid7())],
             "delivery_type": "standard",
             "status": "active",
             "cost_breakdown": {
@@ -106,8 +106,8 @@ class TestFinalIntegration:
                 "currency": "usd",
                 "customer": "cus_integration_test",
                 "metadata": {
-                    "subscription_id": str(uuid4()),
-                    "user_id": str(uuid4())
+                    "subscription_id": str(uuid7()),
+                    "user_id": str(uuid7())
                 }
             }
             
@@ -203,7 +203,7 @@ class TestFinalIntegration:
                 "email": "john@example.com"
             },
             "subscription": {
-                "id": str(uuid4()),
+                "id": str(uuid7()),
                 "total_amount": 52.38,
                 "currency": "USD",
                 "next_billing_date": "2024-02-15"
@@ -247,7 +247,7 @@ class TestFinalIntegration:
         # Sample loyalty data
         loyalty_data = {
             "account": {
-                "user_id": str(uuid4()),
+                "user_id": str(uuid7()),
                 "total_points": 1250,
                 "tier": "silver",
                 "points_earned_lifetime": 2500,
@@ -418,10 +418,10 @@ class TestFinalIntegration:
             {
                 "event_type": "subscription_created",
                 "timestamp": datetime.utcnow(),
-                "subscription_id": str(uuid4()),
-                "user_id": str(uuid4()),
+                "subscription_id": str(uuid7()),
+                "user_id": str(uuid7()),
                 "data": {
-                    "variant_ids": [str(uuid4()), str(uuid4())],
+                    "variant_ids": [str(uuid7()), str(uuid7())],
                     "initial_cost": 52.38,
                     "billing_cycle": "monthly"
                 }
@@ -429,10 +429,10 @@ class TestFinalIntegration:
             {
                 "event_type": "variant_swapped",
                 "timestamp": datetime.utcnow() + timedelta(days=5),
-                "subscription_id": str(uuid4()),
+                "subscription_id": str(uuid7()),
                 "data": {
-                    "old_variant_ids": [str(uuid4())],
-                    "new_variant_ids": [str(uuid4())],
+                    "old_variant_ids": [str(uuid7())],
+                    "new_variant_ids": [str(uuid7())],
                     "cost_adjustment": -5.00,
                     "new_total": 47.38
                 }
@@ -440,7 +440,7 @@ class TestFinalIntegration:
             {
                 "event_type": "subscription_paused",
                 "timestamp": datetime.utcnow() + timedelta(days=10),
-                "subscription_id": str(uuid4()),
+                "subscription_id": str(uuid7()),
                 "data": {
                     "pause_reason": "customer_request",
                     "prorated_amount": 23.69,
@@ -450,7 +450,7 @@ class TestFinalIntegration:
             {
                 "event_type": "subscription_resumed",
                 "timestamp": datetime.utcnow() + timedelta(days=20),
-                "subscription_id": str(uuid4()),
+                "subscription_id": str(uuid7()),
                 "data": {
                     "pause_duration_days": 10,
                     "resumed_cost": 47.38
@@ -459,7 +459,7 @@ class TestFinalIntegration:
             {
                 "event_type": "subscription_cancelled",
                 "timestamp": datetime.utcnow() + timedelta(days=30),
-                "subscription_id": str(uuid4()),
+                "subscription_id": str(uuid7()),
                 "data": {
                     "cancellation_reason": "customer_request",
                     "refund_amount": 15.79,

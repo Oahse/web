@@ -142,29 +142,7 @@ async def update_inventory_task(ctx: Dict[str, Any], variant_id: str, action: st
         logger.error(f"Failed to update inventory {variant_id} with action {action}: {e}")
         raise
 
-async def send_notification_task(ctx: Dict[str, Any], user_id: str, notification_type: str, **kwargs) -> str:
-    """Send notification background task"""
-    try:
-        from services.notifications import NotificationService
-        from uuid import UUID
-        
-        async with ctx['db_session']() as db:
-            notification_service = NotificationService(db)
-            
-            await notification_service.create_notification(
-                user_id=UUID(user_id),
-                title=kwargs.get('title', ''),
-                message=kwargs.get('message', ''),
-                notification_type=notification_type,
-                data=kwargs.get('data', {})
-            )
-        
-        logger.info(f"Notification sent successfully: {notification_type} to {user_id}")
-        return f"Notification sent: {notification_type} to {user_id}"
-        
-    except Exception as e:
-        logger.error(f"Failed to send notification {notification_type} to {user_id}: {e}")
-        raise
+
 
 async def process_subscription_renewal_task(ctx: Dict[str, Any], subscription_id: str, **kwargs) -> str:
     """Process subscription renewal background task"""
@@ -299,12 +277,7 @@ async def cleanup_old_data_task(ctx: Dict[str, Any], data_type: str, days_old: i
     try:
         if data_type == "expired_carts":
             return await cleanup_expired_carts_task(ctx)
-        elif data_type == "old_notifications":
-            from services.notifications import NotificationService
-            async with ctx['db_session']() as db:
-                notification_service = NotificationService(db)
-                count = await notification_service.delete_old_notifications(days_old)
-                return f"Cleaned up {count} old notifications"
+
         elif data_type == "failed_payments":
             from tasks.payment_retry_tasks import cleanup_old_failed_payments
             await cleanup_old_failed_payments(days_old)
@@ -324,7 +297,7 @@ class WorkerSettings:
         send_email_task,
         process_payment_task,
         update_inventory_task,
-        send_notification_task,
+
         process_subscription_renewal_task,
         retry_failed_payment_task,
         process_subscription_orders_task,
@@ -371,10 +344,7 @@ async def enqueue_inventory_update(variant_id: str, action: str, **kwargs):
     pool = await get_arq_pool()
     await pool.enqueue_job('update_inventory_task', variant_id, action, **kwargs)
 
-async def enqueue_notification(user_id: str, notification_type: str, **kwargs):
-    """Enqueue notification task"""
-    pool = await get_arq_pool()
-    await pool.enqueue_job('send_notification_task', user_id, notification_type, **kwargs)
+
 
 async def enqueue_subscription_renewal(subscription_id: str, **kwargs):
     """Enqueue subscription renewal task"""

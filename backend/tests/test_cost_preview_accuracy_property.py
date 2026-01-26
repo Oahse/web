@@ -11,7 +11,7 @@ import sys
 import os
 import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
-from uuid import uuid4, UUID
+from core.utils.uuid_utils import uuid7, UUID
 from hypothesis import given, strategies as st, settings, HealthCheck
 from decimal import Decimal
 from datetime import datetime
@@ -55,7 +55,7 @@ class TestCostPreviewAccuracyProperty:
     def sample_pricing_config(self):
         """Sample pricing configuration"""
         return PricingConfig(
-            id=uuid4(),
+            id=uuid7(),
             subscription_percentage=10.0,
             delivery_costs={
                 "standard": 10.0,
@@ -71,7 +71,7 @@ class TestCostPreviewAccuracyProperty:
                 "default": "USD",
                 "supported": ["USD", "EUR", "GBP", "CAD"]
             },
-            updated_by=uuid4(),
+            updated_by=uuid7(),
             version="1.0",
             is_active="active",
             change_reason="Test configuration"
@@ -82,7 +82,7 @@ class TestCostPreviewAccuracyProperty:
         """Sample product variants"""
         return [
             ProductVariant(
-                id=uuid4(),
+                id=uuid7(),
                 name="Test Variant 1",
                 sku="TV001",
                 base_price=Decimal('29.99'),
@@ -90,7 +90,7 @@ class TestCostPreviewAccuracyProperty:
                 is_active=True
             ),
             ProductVariant(
-                id=uuid4(),
+                id=uuid7(),
                 name="Test Variant 2", 
                 sku="TV002",
                 base_price=Decimal('19.99'),
@@ -98,7 +98,7 @@ class TestCostPreviewAccuracyProperty:
                 is_active=True
             ),
             ProductVariant(
-                id=uuid4(),
+                id=uuid7(),
                 name="Test Variant 3",
                 sku="TV003", 
                 base_price=Decimal('39.99'),
@@ -112,8 +112,8 @@ class TestCostPreviewAccuracyProperty:
         """Sample active subscriptions"""
         return [
             Subscription(
-                id=uuid4(),
-                user_id=uuid4(),
+                id=uuid7(),
+                user_id=uuid7(),
                 variant_ids=[str(sample_variants[0].id), str(sample_variants[1].id)],
                 price=Decimal('52.47'),  # Calculated price
                 delivery_type="standard",
@@ -133,8 +133,8 @@ class TestCostPreviewAccuracyProperty:
                 }
             ),
             Subscription(
-                id=uuid4(),
-                user_id=uuid4(),
+                id=uuid7(),
+                user_id=uuid7(),
                 variant_ids=[str(sample_variants[2].id)],
                 price=Decimal('58.39'),
                 delivery_type="express",
@@ -181,7 +181,7 @@ class TestCostPreviewAccuracyProperty:
         **Feature: subscription-payment-enhancements, Property 5: Cost preview accuracy**
         **Validates: Requirements 1.7**
         """
-        admin_user_id = uuid4()
+        admin_user_id = uuid7()
         
         # Prepare proposed changes
         proposed_changes = {
@@ -348,7 +348,7 @@ class TestCostPreviewAccuracyProperty:
         **Feature: subscription-payment-enhancements, Property 5: Cost preview accuracy**
         **Validates: Requirements 1.7**
         """
-        admin_user_id = uuid4()
+        admin_user_id = uuid7()
         
         # Mock database operations
         admin_pricing_service.get_pricing_config = AsyncMock(return_value=sample_pricing_config)
@@ -443,7 +443,7 @@ class TestCostPreviewAccuracyProperty:
         **Feature: subscription-payment-enhancements, Property 5: Cost preview accuracy**
         **Validates: Requirements 1.7**
         """
-        admin_user_id = uuid4()
+        admin_user_id = uuid7()
         
         # Ensure the new percentage is within valid range
         new_percentage = max(0.1, min(50.0, base_percentage + percentage_delta))
@@ -546,7 +546,7 @@ class TestCostPreviewAccuracyProperty:
         **Feature: subscription-payment-enhancements, Property 5: Cost preview accuracy**
         **Validates: Requirements 1.7**
         """
-        admin_user_id = uuid4()
+        admin_user_id = uuid7()
         
         # Create new delivery costs by multiplying existing ones
         new_delivery_costs = {

@@ -4,7 +4,8 @@ Painless refund service with automatic processing and intelligent approval
 import logging
 from datetime import datetime, timezone, timedelta
 from typing import Dict, Any, List, Optional
-from uuid import UUID, uuid4
+from uuid import UUID
+from core.utils.uuid_utils import uuid7
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_, or_, desc
 from sqlalchemy.orm import selectinload
@@ -102,8 +103,7 @@ class RefundService:
             await self.db.commit()
             await self.db.refresh(refund)
             
-            # Send notifications
-            await self._send_refund_notifications(refund, "requested")
+
             
             # Refund event handled by hybrid task system
             

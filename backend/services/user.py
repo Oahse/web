@@ -3,7 +3,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, delete, and_, func, text
 from sqlalchemy.orm import selectinload
 from typing import List, Optional, Dict, Any
-from uuid import UUID, uuid4
+from uuid import UUID
+from core.utils.uuid_utils import uuid7
 from models.user import Address, User
 from models.orders import Order
 from core.exceptions import APIException
@@ -253,7 +254,7 @@ class UserService:
         token_expiration = datetime.now() + timedelta(hours=24)  # Token valid for 24 hours
 
         new_user = User(
-            id=uuid4(),
+            id=uuid7(),
             email=user_data.email,
             firstname=user_data.firstname,
             lastname=user_data.lastname,

@@ -4,7 +4,7 @@ Test to verify that checkout process uses a single database transaction
 import pytest
 from unittest.mock import AsyncMock, patch
 from sqlalchemy.ext.asyncio import AsyncSession
-from uuid import uuid4
+from core.utils.uuid_utils import uuid7
 
 from services.orders import OrderService
 from schemas.orders import CheckoutRequest
@@ -27,9 +27,9 @@ class TestCheckoutTransaction:
     def checkout_request(self):
         """Sample checkout request"""
         return CheckoutRequest(
-            shipping_address_id=uuid4(),
-            shipping_method_id=uuid4(),
-            payment_method_id=uuid4(),
+            shipping_address_id=uuid7(),
+            shipping_method_id=uuid7(),
+            payment_method_id=uuid7(),
             notes="Test order"
         )
     
@@ -55,7 +55,7 @@ class TestCheckoutTransaction:
         """Test that checkout process uses a single database transaction"""
         
         # Setup mocks
-        user_id = uuid4()
+        user_id = uuid7()
         
         # Mock cart service
         mock_cart = AsyncMock()
@@ -72,12 +72,12 @@ class TestCheckoutTransaction:
         # Mock payment service
         mock_payment_service.return_value.process_payment.return_value = {
             "status": "succeeded",
-            "payment_intent_id": str(uuid4())
+            "payment_intent_id": str(uuid7())
         }
         
         # Mock inventory service
         mock_inventory_item = AsyncMock()
-        mock_inventory_item.location_id = uuid4()
+        mock_inventory_item.location_id = uuid7()
         
         # Mock activity service
         mock_activity_service.return_value.log_activity = AsyncMock()
@@ -128,7 +128,7 @@ class TestCheckoutTransaction:
     ):
         """Test that checkout rolls back on payment failure"""
         
-        user_id = uuid4()
+        user_id = uuid7()
         
         # Mock the transaction context manager to raise an exception
         mock_db_session.begin.return_value.__aenter__ = AsyncMock(side_effect=Exception("Payment failed"))

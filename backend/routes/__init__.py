@@ -6,7 +6,7 @@ from .cart import router as cart_router
 from .health import router as health_router
 from .inventories import router as inventories_router
 from .loyalty import router as loyalty_router
-from .notifications import router as notifications_router
+
 from .orders import router as orders_router
 from .payments import router as payments_router
 from .products import router as products_router
@@ -29,7 +29,6 @@ __all__ = [
     "health_router",
     "inventories_router",
     "loyalty_router",
-    "notifications_router",
     "orders_router",
     "payments_router",
     "products_router",
