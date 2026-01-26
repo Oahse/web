@@ -184,7 +184,7 @@ The platform features a React-based frontend with TypeScript for type safety, a 
    
    # Optional: Update with your API keys for full functionality
    # - Stripe keys for payment processing
-   # - Mailgun keys for email notifications
+   # - Mailgun keys for email confirmations
    # - Social auth keys for OAuth login
    ```
 
@@ -524,7 +524,6 @@ Key tables include:
 - **cart**: Shopping cart items
 - **wishlist**: Saved products
 - **reviews**: Product reviews and ratings
-- **notifications**: User notifications
 - **activity_logs**: System activity tracking
 - **system_settings**: Configurable application settings
 
@@ -643,7 +642,7 @@ To enable full functionality, add your API keys to `backend/.env`:
 STRIPE_SECRET_KEY=sk_test_your_stripe_secret_key
 STRIPE_PUBLIC_KEY=pk_test_your_stripe_public_key
 
-# Mailgun (for email notifications)
+# Mailgun (for email confirmations)
 MAILGUN_API_KEY=your_mailgun_api_key
 MAILGUN_DOMAIN=mg.yourdomain.com
 MAILGUN_FROM_EMAIL=Banwee <noreply@yourdomain.com>

@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { useNotifications } from '../../contexts/NotificationContext';
 import {
   LayoutDashboardIcon,
   UsersIcon,
@@ -31,7 +30,6 @@ interface AdminLayoutProps {
 
 export const AdminLayout = ({ children }: AdminLayoutProps) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const { notifications, markAllAsRead, markAsRead, unreadCount } = useNotifications();
 
   const location = useLocation();
   const navigate = useNavigate();
@@ -56,7 +54,6 @@ export const AdminLayout = ({ children }: AdminLayoutProps) => {
     { title: 'Users', path: '/admin/users', icon: <UsersIcon size={20} /> },
     { title: 'Shipping Methods', path: '/admin/shipping-methods', icon: <TruckIcon size={20} /> },
     { title: 'Tax Rates', path: '/admin/tax-rates', icon: <Percent size={20} /> },
-    { title: 'Notifications', path: '/admin/notifications', icon: <BellIcon size={20} /> },
     { title: 'Inventory', path: '/admin/inventory', icon: <BoxesIcon size={20} /> },
     { title: 'Locations', path: '/admin/inventory/locations', icon: <MapPinIcon size={20} /> },
     { title: 'Adjustments', path: '/admin/inventory/adjustments', icon: <ArrowUpDownIcon size={20} /> },
@@ -73,10 +70,6 @@ export const AdminLayout = ({ children }: AdminLayoutProps) => {
   const handleLogout = () => {
     (logout as any)();
     navigate('/');
-  };
-
-  const handleMarkAllAsRead = () => {
-    (markAllAsRead as any)();
   };
 
   // Show loading state while checking authentication
@@ -158,72 +151,6 @@ export const AdminLayout = ({ children }: AdminLayoutProps) => {
               </h1>
             </div>
             <div className="flex items-center space-x-4">
-              {/* Notifications */}
-              <div className="relative group">
-                <button
-                  className="p-1 text-copy-lighter hover:text-copy-light">
-                  <BellIcon size={20} />
-                  {unreadCount > 0 && (
-                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center">
-                      {unreadCount}
-                    </span>
-                  )}
-                </button>
-                <div className="absolute right-0 top-full mt-1 w-80 bg-surface rounded-md shadow-lg border-border-light hidden group-hover:block z-20">
-                  <div className="p-2 border-b border-border-light flex justify-between items-center">
-                    <h3 className="font-medium">Notifications</h3>
-                    <button onClick={handleMarkAllAsRead} className="text-xs text-primary hover:underline">
-                      Mark all as read
-                    </button>
-                  </div>
-                  <div className="max-h-60 overflow-y-auto">
-                    {(notifications as any[]).length === 0 ? (
-                      <div className="p-4 text-center text-copy-light text-sm">
-                        No notifications
-                      </div>
-                    ) : (
-                      (notifications as any[]).map((notification: any) => (
-                        <div
-                          key={notification.id}
-                          className={`p-3 border-b border-border-light last:border-0 ${!notification.read ? 'bg-primary/10' : ''
-                            }`}>
-                          <div className="flex items-start justify-between">
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium">{notification.title || notification.message}</p>
-                              {notification.message && notification.title && (
-                                <p className="text-sm text-copy-light">{notification.message}</p>
-                              )}
-                              <p className="text-xs text-copy-lighter mt-1">
-                                {notification.timestamp ? notification.timestamp.toLocaleString() : 
-                                 notification.created_at ? new Date(notification.created_at).toLocaleString() : 'Just now'}
-                              </p>
-                            </div>
-                            {!notification.read && (
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  (markAsRead as any)(notification.id);
-                                }}
-                                className="ml-2 p-1 text-copy-light hover:text-primary"
-                                title="Mark as read"
-                              >
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                  <polyline points="20 6 9 17 4 12"></polyline>
-                                </svg>
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                  <div className="p-2 border-t border-border-light text-center">
-                    <Link to="/admin/notifications" className="text-sm text-primary hover:underline">
-                      View all notifications
-                    </Link>
-                  </div>
-                </div>
-              </div>
               {/* User */}
               <div className="flex items-center">
                 <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold">

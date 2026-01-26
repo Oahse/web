@@ -62,7 +62,7 @@ class WebhookService:
             # Process the verified event
             result = await self._process_webhook_event(event)
             
-            # Publish secure event notification
+            # Publish secure event update
             await self._publish_webhook_event(event, result, security_metadata)
             
             # Log processing completion

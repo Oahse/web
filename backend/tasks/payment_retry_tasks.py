@@ -1,6 +1,6 @@
 """
 Background Tasks for Payment Retry Management using Hybrid approach
-Handles automatic payment retries, cleanup, and notifications
+Handles automatic payment retries and cleanup
 Uses ARQ for scheduled retries and FastAPI BackgroundTasks for immediate processing
 """
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -19,7 +19,6 @@ from models.subscriptions import Subscription
 from models.orders import Order
 from services.payment_failure_handler import PaymentFailureHandler, PaymentFailureReason
 from services.payments import PaymentService
-from services.notifications import NotificationService
 
 logger = logging.getLogger(__name__)
 
@@ -266,15 +265,6 @@ class PaymentRetryTaskManager:
                     if confirmed_intent.status == "succeeded":
                         logger.info(f"Automatic retry succeeded for payment {payment_intent.id}")
                         
-                        # Send success notification
-                        notification_service = NotificationService(db)
-                        await notification_service.create_notification(
-                            user_id=payment_intent.user_id,
-                            message="Your payment has been processed successfully after retry.",
-                            type="success",
-                            related_id=str(payment_intent.id)
-                        )
-                        
                     elif confirmed_intent.status == "failed":
                         logger.warning(f"Automatic retry failed for payment {payment_intent.id}")
                         
@@ -328,15 +318,6 @@ class PaymentRetryTaskManager:
                 order.order_metadata["retry_window_expired_at"] = current_time.isoformat()
                 
                 logger.info(f"Order {order.id} retry window expired, marked as permanently failed")
-                
-                # Send notification to user
-                notification_service = NotificationService(db)
-                await notification_service.create_notification(
-                    user_id=order.user_id,
-                    message="Your order payment retry window has expired. Please place a new order.",
-                    type="warning",
-                    related_id=str(order.id)
-                )
             
             if expired_orders:
                 await db.commit()
@@ -376,15 +357,6 @@ class PaymentRetryTaskManager:
                 subscription.subscription_metadata["grace_period_expired_at"] = current_time.isoformat()
                 
                 logger.info(f"Subscription {subscription.id} cancelled due to expired grace period")
-                
-                # Send notification
-                notification_service = NotificationService(db)
-                await notification_service.create_notification(
-                    user_id=subscription.user_id,
-                    message="Your subscription has been cancelled due to payment issues. Please update your payment method to reactivate.",
-                    type="error",
-                    related_id=str(subscription.id)
-                )
             
             if expired_subscriptions:
                 await db.commit()

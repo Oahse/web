@@ -1,3 +1,6 @@
+/* Google Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@700&family=Roboto:wght@400;500&display=swap');
+
 /* PLEASE NOTE: THESE TAILWIND IMPORTS SHOULD NEVER BE DELETED */
 @import 'tailwindcss/base';
 @import 'tailwindcss/components';
@@ -195,11 +198,47 @@
   }
   
   body {
-    font-family: 'Montserrat', 'Inter', sans-serif;
+    font-family: 'Roboto', sans-serif;
+    font-weight: 400;
     line-height: 1.6;
     color: var(--color-copy);
     background-color: var(--color-background);
     transition: color 0.2s ease, background-color 0.2s ease;
+  }
+
+  /* Typography System */
+  /* Primary headings and product titles - Montserrat Bold (700) */
+  h1, h2, h3, h4, h5, h6,
+  .heading,
+  .product-title,
+  .brand-text {
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 700;
+    line-height: 1.2;
+    color: var(--color-copy);
+  }
+
+  /* Body text and descriptions - Roboto Regular (400) */
+  p, 
+  .body-text,
+  .product-description,
+  .description {
+    font-family: 'Roboto', sans-serif;
+    font-weight: 400;
+    line-height: 1.6;
+    color: var(--color-copy);
+  }
+
+  /* Prices and navigation links - Roboto Medium (500) */
+  .price,
+  .nav-link,
+  .menu-item,
+  .button-text,
+  .link-text {
+    font-family: 'Roboto', sans-serif;
+    font-weight: 500;
+    line-height: 1.4;
+    color: var(--color-copy);
   }
   
   /* Focus styles for accessibility */

@@ -1,5 +1,4 @@
 import React, { Suspense, lazy } from 'react';
-import { NotificationProvider } from './contexts/NotificationContext';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { Layout, AuthLayout } from './components/layout/Layout';
 import { AdminLayout } from './components/admin/AdminLayout';
@@ -24,8 +23,8 @@ const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY);
 
 // Lazy load pages for better performance
 const Home = lazy(() => import('./pages/Home').then((module) => ({ default: module.Home })));
-const ProductList = lazy(() =>
-  import('./pages/ProductList').then((module) => ({ default: module.ProductList }))
+const Products = lazy(() =>
+  import('./pages/Products').then((module) => ({ default: module.default }))
 );
 const ProductDetails = lazy(() =>
   import('./pages/ProductDetails').then((module) => ({ default: module.ProductDetails }))
@@ -70,9 +69,6 @@ const AdminUsers = lazy(() =>
 const AdminOrders = lazy(() =>
   import('./pages/admin/AdminOrders').then((module) => ({ default: module.AdminOrders }))
 );
-const AdminNotifications = lazy(() =>
-  import('./pages/admin/AdminNotifications').then((module) => ({ default: module.AdminNotifications }))
-);
 const AdminRegister = lazy(() =>
   import('./pages/admin/AdminRegister').then((module) => ({ default: module.AdminRegister }))
 );
@@ -113,9 +109,6 @@ const AdminComments = lazy(() => import('./pages/admin/AdminComments').then((mod
 const AdminShippingMethods = lazy(() => import('./pages/admin/AdminShippingMethods').then((module) => ({ default: module.AdminShippingMethods })));
 const AdminShippingMethodForm = lazy(() => import('./pages/admin/AdminShippingMethodForm').then((module) => ({ default: module.AdminShippingMethodForm })));
 const TaxRatesAdmin = lazy(() => import('./pages/admin/TaxRates').then((module) => ({ default: module.TaxRatesAdmin })));
-const Notifications = lazy(() =>
-  import('./pages/account/Notifications').then((module) => ({ default: module.Notifications }))
-);
 const TrackOrder = lazy(() =>
   import('./pages/TrackOrder').then((module) => ({ default: module.TrackOrder }))
 );
@@ -146,7 +139,6 @@ export const App: React.FC = () => {
               <CartProvider>
                 <SubscriptionProvider>
                   <WishlistProvider>
-                  <NotificationProvider>
                       <CategoryProvider>
                       <FontLoader />
                       <OfflineIndicator />
@@ -324,16 +316,6 @@ export const App: React.FC = () => {
                                 }
                               />
 
-                              <Route
-                                path="/admin/notifications"
-                                element={
-                                  <ProtectedRoute requiredRole={['Admin', 'Supplier']}>
-                                    <AdminLayout>
-                                      <AdminNotifications />
-                                    </AdminLayout>
-                                  </ProtectedRoute>
-                                }
-                              />
                               {/* Inventory Management Routes */}
                               <Route
                                   path="/admin/inventory"
@@ -484,12 +466,11 @@ export const App: React.FC = () => {
 
                               <Route path="/" element={<Layout><Home /></Layout>} />
 
-                              <Route path="/products" element={<Layout><ProductList /></Layout>} />
+                              <Route path="/products" element={<Layout><Products /></Layout>} />
                               <Route path="/product/:id" element={<Layout><ProductDetails /></Layout>} />
                               <Route path="/cart" element={<Layout><Cart /></Layout>} />
                               <Route path="/checkout" element={<ProtectedRoute><Layout><Checkout /></Layout></ProtectedRoute>} />
                               <Route path="/account/*" element={<ProtectedRoute><Layout><Account /></Layout></ProtectedRoute>} />
-                              <Route path="/account/notifications" element={<ProtectedRoute><Layout><Notifications /></Layout></ProtectedRoute>} />
                               <Route path="/account/track-order" element={<ProtectedRoute><Layout><TrackOrderSearch /></Layout></ProtectedRoute>} />
                               <Route path="/track-order/:orderId" element={<ProtectedRoute><Layout><TrackOrder /></Layout></ProtectedRoute>} />
                               <Route
@@ -547,7 +528,6 @@ export const App: React.FC = () => {
                         </Elements>
                       </BrowserRouter>
                       </CategoryProvider>
-                  </NotificationProvider>
                 </WishlistProvider>
                 </SubscriptionProvider>
               </CartProvider>

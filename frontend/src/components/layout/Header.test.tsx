@@ -7,7 +7,6 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useCart } from '../../contexts/CartContext';
 import { useWishlist } from '../../contexts/WishlistContext';
 import { SkeletonHeader } from '../ui/SkeletonNavigation';
-import { NotificationBell } from '../ui/NotificationBell';
 import { getCountryByCode } from '../../lib/countries';
 import {
   ChevronDownIcon, SearchIcon, UserIcon, HeartIcon, ShoppingCartIcon,
@@ -36,9 +35,6 @@ vitest.mock('../../contexts/WishlistContext', () => ({
 
 vitest.mock('../ui/SkeletonNavigation', () => ({
   SkeletonHeader: vitest.fn(() => <div data-testid="mock-skeleton-header">Loading Header...</div>),
-}));
-vitest.mock('../ui/NotificationBell', () => ({
-  NotificationBell: vitest.fn(() => <div data-testid="mock-notification-bell"></div>),
 }));
 
 vitest.mock('../../lib/countries', () => ({
@@ -173,11 +169,6 @@ describe('Header Component', () => {
     renderWithRouter(<Header />);
     expect(screen.getByText('Hello, Test')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Account' })).toBeInTheDocument();
-  });
-
-  it('renders NotificationBell', () => {
-    renderWithRouter(<Header />);
-    expect(screen.getByTestId('mock-notification-bell')).toBeInTheDocument();
   });
 
   it('displays wishlist item count', () => {

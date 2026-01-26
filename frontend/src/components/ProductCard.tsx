@@ -1,7 +1,7 @@
 import React from 'react';
 import CartButton from './CartButton';
 
-const ProductCard = ({ product }) => {
+export const ProductCard = ({ product }) => {
   const variant = product.variants?.[0] || product;
   const image = variant.primary_image?.url || variant.images?.[0]?.url || '/placeholder.jpg';
   const price = variant.current_price || variant.base_price;
@@ -28,17 +28,17 @@ const ProductCard = ({ product }) => {
 
       {/* Content */}
       <div className="p-4">
-        <h3 className="font-medium text-gray-900 truncate mb-2">
+        <h3 className="product-title text-base truncate mb-2">
           {product.name}
         </h3>
         
         {/* Price */}
         <div className="flex items-center gap-2 mb-3">
-          <span className="text-lg font-semibold text-gray-900">
+          <span className="price text-lg">
             ${(isOnSale ? salePrice : price).toFixed(2)}
           </span>
           {isOnSale && (
-            <span className="text-sm text-gray-500 line-through">
+            <span className="price text-sm text-gray-500 line-through">
               ${price.toFixed(2)}
             </span>
           )}
@@ -48,8 +48,8 @@ const ProductCard = ({ product }) => {
         {product.rating_average > 0 && (
           <div className="flex items-center gap-1 mb-3 text-sm text-gray-600">
             <span>⭐</span>
-            <span>{product.rating_average.toFixed(1)}</span>
-            <span>({product.rating_count})</span>
+            <span className="body-text">{product.rating_average.toFixed(1)}</span>
+            <span className="body-text">({product.rating_count})</span>
           </div>
         )}
 
@@ -63,12 +63,12 @@ const ProductCard = ({ product }) => {
 
         {/* Stock info */}
         {variant.stock <= 5 && variant.stock > 0 && (
-          <p className="text-xs text-orange-600 mt-2">
+          <p className="body-text text-xs text-orange-600 mt-2">
             Only {variant.stock} left!
           </p>
         )}
         {variant.stock === 0 && (
-          <p className="text-xs text-red-600 mt-2">Out of stock</p>
+          <p className="body-text text-xs text-red-600 mt-2">Out of stock</p>
         )}
       </div>
     </div>

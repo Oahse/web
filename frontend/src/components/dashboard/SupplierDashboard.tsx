@@ -313,7 +313,7 @@ export const SupplierDashboard = () => {
     {
       id: 'inventory-alerts-template',
       name: 'Inventory Alerts',
-      description: 'Low stock and out-of-stock notifications',
+      description: 'Low stock and out-of-stock alerts',
       type: 'custom',
       component: InventoryAlertWidget,
       defaultLayout: { w: 4, h: 5, minW: 3, minH: 4 },

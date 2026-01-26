@@ -207,13 +207,6 @@ export class AuthAPI {
   }
 
   /**
-   * Update notification preferences
-   */
-  static async updateNotificationPreferences(preferences: any) {
-    return await apiClient.put('/users/notification-preferences', preferences);
-  }
-
-  /**
    * Get user's addresses
    */
   static async getAddresses() {

@@ -15,7 +15,7 @@ export const RealTimeWidget = ({
   dataSource,
   chartType = 'line',
   maxDataPoints = 50,
-  updateInterval = 1000,
+  updateInterval = 5000,
   showConnectionStatus = true,
   showControls = true,
   height = 300,
@@ -32,16 +32,10 @@ export const RealTimeWidget = ({
   const [lastUpdate, setLastUpdate] = useState(null);
   const [connectionAttempts, setConnectionAttempts] = useState(0);
   
-  const wsRef = useRef(null);
   const intervalRef = useRef(null);
   const reconnectTimeoutRef = useRef(null);
 
   const cleanup = () => {
-    if (wsRef.current) {
-      wsRef.current.close();
-      wsRef.current = null;
-    }
-    
     if (intervalRef.current) {
       clearInterval(intervalRef.current);
       intervalRef.current = null;
@@ -104,52 +98,12 @@ export const RealTimeWidget = ({
     };
     
     poll();
-    
-    intervalRef.current = setInterval(poll, updateInterval * 2); // Double the update interval to reduce API calls
-  };
-
-  const connectWebSocket = () => {
-    try {
-      wsRef.current = new WebSocket(dataSource);
-      
-      wsRef.current.onopen = () => {
-        setIsConnected(true);
-        setError(null);
-        setConnectionAttempts(0);
-      };
-      
-      wsRef.current.onmessage = (event) => {
-        try {
-          const newDataPoint = JSON.parse(event.data);
-          addDataPoint(newDataPoint);
-        } catch (err) {
-          console.error('Error parsing WebSocket message:', err);
-        }
-      };
-      
-      wsRef.current.onclose = () => {
-        setIsConnected(false);
-      };
-      
-      wsRef.current.onerror = (error) => {
-        setError('WebSocket connection error');
-        setIsConnected(false);
-        console.error('WebSocket error:', error);
-      };
-    } catch (err) {
-      setError('Failed to create WebSocket connection');
-      setIsConnected(false);
-    }
+    intervalRef.current = setInterval(poll, updateInterval);
   };
 
   const connectToDataSource = () => {
     cleanup();
-    
-    if (dataSource.startsWith('ws://') || dataSource.startsWith('wss://')) {
-      connectWebSocket();
-    } else {
-      connectPolling();
-    }
+    connectPolling();
   };
 
   useEffect(() => {
@@ -160,7 +114,7 @@ export const RealTimeWidget = ({
     return () => {
       cleanup();
     };
-  }, [dataSource, isPaused, connectToDataSource]);
+  }, [dataSource, isPaused, updateInterval]);
 
   useEffect(() => {
     if (!isConnected && !isPaused && connectionAttempts < 5) {
@@ -176,7 +130,7 @@ export const RealTimeWidget = ({
         clearTimeout(reconnectTimeoutRef.current);
       }
     };
-  }, [isConnected, isPaused, connectionAttempts, connectToDataSource]);
+  }, [isConnected, isPaused, connectionAttempts]);
 
   const togglePause = () => {
     setIsPaused(prev => {

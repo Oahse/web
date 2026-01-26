@@ -22,14 +22,7 @@ const getAppUrl = () => {
   return import.meta.env.VITE_APP_URL_PROD || import.meta.env.VITE_APP_URL || 'https://www.banwee.com';
 };
 
-const getWebSocketUrl = () => {
-  if (environment === 'local' || environment === 'development') {
-    const devWsUrl = import.meta.env.VITE_WS_URL_DEV || import.meta.env.VITE_WS_URL;
-    return devWsUrl ? `${devWsUrl}/v1/ws` : 'ws://localhost:8000/v1/ws';
-  }
-  const prodWsUrl = import.meta.env.VITE_WS_URL_PROD || import.meta.env.VITE_WS_URL;
-  return prodWsUrl ? `${prodWsUrl}/v1/ws` : 'wss://api.banwee.com/v1/ws';
-};
+
 
 export const config = {
   // Environment
@@ -40,7 +33,6 @@ export const config = {
   // URLs
   apiBaseUrl: getApiBaseUrl(),
   appUrl: getAppUrl(),
-  webSocketUrl: getWebSocketUrl(),
   
   // Application
   appName: import.meta.env.VITE_APP_NAME || 'Banwee',
@@ -54,7 +46,6 @@ export const config = {
   facebookAppId: import.meta.env.VITE_FACEBOOK_APP_ID,
   
   // Feature Flags
-  enableRealTimeNotifications: import.meta.env.VITE_ENABLE_REAL_TIME_NOTIFICATIONS === 'true',
   enableCartPersistence: import.meta.env.VITE_ENABLE_CART_PERSISTENCE === 'true',
   enableAnalytics: import.meta.env.VITE_ENABLE_ANALYTICS === 'true',
   
@@ -82,7 +73,6 @@ if (config.isDevelopment) {
     environment: config.environment,
     apiBaseUrl: config.apiBaseUrl,
     appUrl: config.appUrl,
-    webSocketUrl: config.webSocketUrl,
     debugMode: config.debugMode,
   });
 }

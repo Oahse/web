@@ -307,13 +307,6 @@ export class AdminAPI {
   }
 
   /**
-   * Send system notification
-   */
-  static async sendSystemNotification(notification: any) {
-    return await apiClient.post('/admin/notifications/send', notification, {});
-  }
-
-  /**
    * Get addresses for a specific user
    */
   static async getAddressesByUser(userId: string) {

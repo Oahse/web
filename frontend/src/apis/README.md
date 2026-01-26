@@ -189,7 +189,7 @@ The client automatically handles:
 - Authentication token refresh
 - Network errors
 - API error responses
-- User-friendly error messages via toast notifications
+- User-friendly error messages via toast messages
 
 ```typescript
 try {

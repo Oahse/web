@@ -145,12 +145,8 @@ export const apiService = {
   getProfile: () => api.get('/users/profile'),
   updateProfile: (profileData) => api.put('/users/profile', profileData),
   getAddresses: () => api.get('/users/addresses'),
+  // User Management
   addAddress: (addressData) => api.post('/users/addresses', addressData),
-
-  // Notifications
-  getNotifications: (params) => api.get('/notifications/', { params }),
-  markNotificationRead: (id) => api.put(`/notifications/${id}/read`),
-  markAllNotificationsRead: () => api.put('/notifications/mark-all-read'),
 
   // Wishlist
   getWishlist: () => api.get('/users/wishlist/'),
