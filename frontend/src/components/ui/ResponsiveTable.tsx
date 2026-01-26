@@ -72,7 +72,7 @@ export function ResponsiveTable<T>({
     );
   }
 
-  if (data.length === 0) {
+  if (!data || data.length === 0) {
     return (
       <div className="text-center py-12 px-4 text-copy-light">
         {emptyMessage}

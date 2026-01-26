@@ -185,7 +185,7 @@ export const AdminVariants = () => {
       {/* Variants table */}
       <div className="bg-surface rounded-lg shadow-sm border border-border-light overflow-hidden">
         <ResponsiveTable
-          data={variants}
+          data={variants || []}
           loading={variantsLoading}
           keyExtractor={(variant) => variant.id}
           emptyMessage="No product variants found"

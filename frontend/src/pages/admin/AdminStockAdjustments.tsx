@@ -172,7 +172,7 @@ export const AdminStockAdjustments = () => {
       {/* Adjustments table */}
       <div className="bg-surface rounded-lg shadow-sm border border-border-light overflow-hidden">
         <ResponsiveTable
-          data={paginatedAdjustments}
+          data={paginatedAdjustments || []}
           loading={adjustmentsLoading}
           keyExtractor={(adjustment) => adjustment.id}
           emptyMessage="No stock adjustments found"

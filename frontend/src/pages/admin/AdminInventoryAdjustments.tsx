@@ -192,7 +192,7 @@ export const AdminInventoryAdjustments = () => {
 
         <div className="overflow-x-auto">
           <ResponsiveTable
-            data={adjustments}
+            data={adjustments || []}
             loading={inventoryLoading || adjustmentsLoading}
             keyExtractor={(item) => item.id}
             emptyMessage="No stock adjustments found"

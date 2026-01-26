@@ -240,7 +240,7 @@ export const AdminInventory = () => {
       <div className="bg-surface rounded-lg shadow-sm border border-border-light overflow-hidden">
         <div className="overflow-x-auto">
           <ResponsiveTable
-            data={inventoryItems}
+            data={inventoryItems || []}
             loading={inventoryLoading}
             keyExtractor={(item) => item.id}
             emptyMessage="No inventory items found"

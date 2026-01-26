@@ -142,7 +142,7 @@ export const AdminProducts = () => {
       {/* Products table */}
       <div className="bg-surface rounded-lg shadow-sm border border-border-light overflow-hidden">
         <ResponsiveTable
-          data={products}
+          data={products || []}
           loading={productsLoading}
           keyExtractor={(product) => product.id}
           emptyMessage="No products found"

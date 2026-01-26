@@ -34,6 +34,7 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
     const token = TokenManager.getToken();
     if (!token) {
       setCart(null);
+      setError(null); // Clear any previous errors when not authenticated
       return null;
     }
 
@@ -49,9 +50,16 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
       const cartData = response?.data;
       setCart(cartData);
       return cartData;
-    } catch (err) {
-      setError(err);
-      console.error('Failed to fetch cart:', err);
+    } catch (err: any) {
+      // Handle authentication errors gracefully
+      if (err?.status === 401 || err?.response?.status === 401) {
+        setCart(null);
+        setError(null); // Don't show error for auth issues
+        TokenManager.removeToken(); // Clear invalid token
+      } else {
+        setError(err);
+        console.error('Failed to fetch cart:', err);
+      }
       return null;
     } finally {
       setLoading(false);

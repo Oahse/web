@@ -114,7 +114,7 @@ export const AdminWarehouseLocations = () => {
       {/* Locations table */}
       <div className="bg-surface rounded-lg shadow-sm border border-border-light overflow-hidden">
         <ResponsiveTable
-          data={filteredLocations}
+          data={filteredLocations || []}
           loading={locationsLoading}
           keyExtractor={(location) => location.id}
           emptyMessage="No warehouse locations found"
