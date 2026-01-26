@@ -3,7 +3,8 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { ChevronRightIcon, TrashIcon, MinusIcon, PlusIcon, ShoppingCartIcon, AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
 import { useCart } from '../contexts/CartContext';
 import { useAuth } from '../contexts/AuthContext';
-import { useAuthRedirect } from '../hooks/useAuthRedirect';
+import { useNavigate } from 'react-router-dom';
+import { toast } from 'react-hot-toast';
 import { useLocale } from '../contexts/LocaleContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CartSkeleton } from '../components/ui/CartSkeleton';
@@ -24,14 +25,19 @@ export const Cart = () => {
     getCartSummary
   } = useCart();
   const { isAuthenticated, isLoading: authLoading, setIntendedDestination } = useAuth();
-  const { redirectToLogin } = useAuthRedirect({ 
-    requireAuth: false // Cart doesn't require auth, but checkout does
-  });
   const { formatCurrency } = useLocale();
   const navigate = useNavigate();
   const location = useLocation();
   const [couponCode, setCouponCode] = useState('');
   const [taxLocation, setTaxLocation] = useState<{ country: string; province?: string }>({ country: 'US' });
+
+  // Simple redirect to login function
+  const redirectToLogin = (message?: string) => {
+    if (message) {
+      toast.error(message);
+    }
+    navigate('/login');
+  };
 
   // Get tax location info
   useEffect(() => {

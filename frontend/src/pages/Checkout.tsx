@@ -5,7 +5,6 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCart } from '../contexts/CartContext';
 import { useAuth } from '../contexts/AuthContext';
-import { useAuthRedirect } from '../hooks/useAuthRedirect';
 import { AuthAPI } from '../apis/auth';
 import { CartAPI } from '../apis/cart';
 import { toast } from 'react-hot-toast';
@@ -15,10 +14,6 @@ export const Checkout = () => {
   const navigate = useNavigate();
   const { cart, loading: cartLoading, clearCart, refreshCart } = useCart();
   const { isAuthenticated, isLoading: authLoading } = useAuth();
-  const { shouldRedirect } = useAuthRedirect({
-    requireAuth: true,
-    message: 'Please login to checkout'
-  });
 
   // UI state
   const [loading, setLoading] = useState(false);
@@ -26,11 +21,15 @@ export const Checkout = () => {
 
   // Handle authentication check
   useEffect(() => {
-    // If should redirect, don't continue with checkout logic
-    if (shouldRedirect) {
+    // If not authenticated, redirect to login
+    if (!authLoading && !isAuthenticated) {
+      toast.error('Please login to checkout');
+      navigate('/login');
       return;
     }
-  }, [shouldRedirect]);
+      return;
+    }
+  }, [authLoading, isAuthenticated, navigate]);
 
   // Redirect if cart is empty (only after auth is confirmed)
   useEffect(() => {
@@ -106,8 +105,8 @@ export const Checkout = () => {
     );
   }
 
-  // Don't render anything if should redirect (useAuthRedirect will handle it)
-  if (shouldRedirect) {
+  // Don't render anything if not authenticated (will redirect)
+  if (!isAuthenticated && !authLoading) {
     return null;
   }
 
