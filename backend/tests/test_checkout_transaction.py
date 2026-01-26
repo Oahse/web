@@ -41,10 +41,8 @@ class TestCheckoutTransaction:
     @patch('services.orders.CartService')
     @patch('services.orders.PaymentService')
     @patch('services.orders.ActivityService')
-    @patch('services.orders.get_kafka_producer_service')
     async def test_checkout_uses_single_transaction(
         self,
-        mock_kafka,
         mock_activity_service,
         mock_payment_service,
         mock_cart_service,
@@ -82,9 +80,6 @@ class TestCheckoutTransaction:
         # Mock activity service
         mock_activity_service.return_value.log_activity = AsyncMock()
         
-        # Mock Kafka
-        mock_kafka.return_value.send_message = AsyncMock()
-        
         # Create order service
         order_service = OrderService(mock_db_session)
         
@@ -117,8 +112,6 @@ class TestCheckoutTransaction:
         activity_call_args = mock_activity_service.return_value.log_activity.call_args
         assert activity_call_args.kwargs.get('commit') is False
         
-        # Verify that Kafka messages are sent after transaction (not within)
-        mock_kafka.return_value.send_message.assert_called()
         
     async def test_checkout_rollback_on_payment_failure(
         self,
@@ -153,6 +146,5 @@ if __name__ == "__main__":
     print("1. ✅ Single database transaction wraps entire checkout process")
     print("2. ✅ Order creation, stock adjustment, payment, and logging are atomic")
     print("3. ✅ Automatic rollback on any failure during checkout")
-    print("4. ✅ Kafka notifications sent AFTER successful transaction commit")
-    print("5. ✅ All service methods support transaction control via commit parameter")
-    print("6. ✅ Order cancellation also uses transactions for consistency")
+    print("4. ✅ All service methods support transaction control via commit parameter")
+    print("5. ✅ Order cancellation also uses transactions for consistency")

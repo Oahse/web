@@ -7,7 +7,12 @@ import {
   SearchIcon,
   RefreshCwIcon,
   SettingsIcon,
-  MailIcon
+  MailIcon,
+  EditIcon,
+  PlusIcon,
+  MinusIcon,
+  SaveIcon,
+  XIcon
 } from 'lucide-react';
 import { stockMonitor, StockThreshold, StockAlert } from '../../services/stockMonitoring';
 import { useAsync } from '../../hooks/useAsync';
@@ -29,138 +34,86 @@ interface InventoryItem {
     alt_text?: string;
     is_primary?: boolean;
   }>;
+  base_price: number;
+  sale_price?: number;
+  low_stock_threshold?: number;
+  critical_threshold?: number;
+  out_of_stock_threshold?: number;
 }
 
-interface WarehouseLocation {
-  id: string;
-  name: string;
-  address: string;
-  capacity: number;
-  current_utilization: number;
+interface StockAdjustment {
+  variant_id: string;
+  adjustment_type: 'increase' | 'decrease' | 'set';
+  quantity: number;
+  reason: string;
+  notes?: string;
 }
 
 export const InventoryManager: React.FC = () => {
   // ✅ Using useState for all local state management
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [filteredInventory, setFilteredInventory] = useState<InventoryItem[]>([]);
-  const [warehouses, setWarehouses] = useState<WarehouseLocation[]>([]);
   const [stockAlerts, setStockAlerts] = useState<StockAlert[]>([]);
   const [stockThresholds, setStockThresholds] = useState<StockThreshold[]>([]);
   
   // Filter and search states
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [warehouseFilter, setWarehouseFilter] = useState<string>('all');
   const [sortBy, setSortBy] = useState<string>('product_name');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   
   // UI states
-  const [showThresholdModal, setShowThresholdModal] = useState<boolean>(false);
+  const [showAdjustmentModal, setShowAdjustmentModal] = useState<boolean>(false);
   const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
   const [showAlertsPanel, setShowAlertsPanel] = useState<boolean>(false);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
+  const [editingThresholds, setEditingThresholds] = useState<Record<string, boolean>>({});
+  
+  // Adjustment form state
+  const [adjustment, setAdjustment] = useState<StockAdjustment>({
+    variant_id: '',
+    adjustment_type: 'increase',
+    quantity: 0,
+    reason: '',
+    notes: ''
+  });
 
   const { loading, error, execute: fetchData } = useAsync();
 
-  // Mock API calls (replace with real API calls)
+  // Fetch inventory data from API
   const fetchInventoryData = useCallback(async () => {
-    // Mock inventory data
-    const mockInventory: InventoryItem[] = [
-      {
-        id: '1',
-        variant_id: 'var_1',
-        product_id: 'prod_1',
-        product_name: 'Organic Coffee Beans',
-        variant_name: '1kg Bag',
-        sku: 'OCB-1KG-001',
-        current_stock: 5,
-        reserved_stock: 2,
-        available_stock: 3,
-        warehouse_location: 'Warehouse A',
-        last_updated: new Date().toISOString(),
-        images: [
-          {
-            url: '/images/coffee-beans-1kg.jpg',
-            alt_text: 'Organic Coffee Beans 1kg',
-            is_primary: true
-          }
-        ]
-      },
-      {
-        id: '2',
-        variant_id: 'var_2',
-        product_id: 'prod_1',
-        product_name: 'Organic Coffee Beans',
-        variant_name: '500g Bag',
-        sku: 'OCB-500G-001',
-        current_stock: 0,
-        reserved_stock: 0,
-        available_stock: 0,
-        warehouse_location: 'Warehouse B',
-        last_updated: new Date().toISOString(),
-        images: [
-          {
-            url: '/images/coffee-beans-500g.jpg',
-            alt_text: 'Organic Coffee Beans 500g',
-            is_primary: true
-          }
-        ]
-      },
-      {
-        id: '3',
-        variant_id: 'var_3',
-        product_id: 'prod_2',
-        product_name: 'Premium Tea Leaves',
-        variant_name: 'Earl Grey 100g',
-        sku: 'PTL-EG-100G',
-        current_stock: 25,
-        reserved_stock: 5,
-        available_stock: 20,
-        warehouse_location: 'Warehouse A',
-        last_updated: new Date().toISOString(),
-        images: [
-          {
-            url: '/images/earl-grey-tea.jpg',
-            alt_text: 'Earl Grey Tea 100g',
-            is_primary: true
-          }
-        ]
+    try {
+      const response = await fetch('/v1/inventories', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch inventory data');
       }
-    ];
-
-    const mockWarehouses: WarehouseLocation[] = [
-      {
-        id: 'wh_1',
-        name: 'Warehouse A',
-        address: '123 Storage St, City, State',
-        capacity: 10000,
-        current_utilization: 7500
-      },
-      {
-        id: 'wh_2',
-        name: 'Warehouse B',
-        address: '456 Inventory Ave, City, State',
-        capacity: 15000,
-        current_utilization: 12000
-      }
-    ];
-
-    return { inventory: mockInventory, warehouses: mockWarehouses };
+      
+      const data = await response.json();
+      return data.items || [];
+    } catch (error) {
+      console.error('Error fetching inventory:', error);
+      throw error;
+    }
   }, []);
 
   // Initialize data and stock monitoring
   useEffect(() => {
     fetchData(async () => {
-      const data = await fetchInventoryData();
-      setInventory(data.inventory);
-      setWarehouses(data.warehouses);
+      const inventoryData = await fetchInventoryData();
+      setInventory(inventoryData);
 
       // Initialize stock monitoring for each item
-      data.inventory.forEach(item => {
+      inventoryData.forEach((item: InventoryItem) => {
         stockMonitor.setStockThreshold(item.variant_id, {
-          low_stock_threshold: 10,
-          critical_threshold: 5,
-          out_of_stock_threshold: 0,
+          low_stock_threshold: item.low_stock_threshold || 10,
+          critical_threshold: item.critical_threshold || 5,
+          out_of_stock_threshold: item.out_of_stock_threshold || 0,
           email_notifications_enabled: true
         });
 
@@ -176,7 +129,7 @@ export const InventoryManager: React.FC = () => {
       setStockAlerts(stockMonitor.getAllAlerts());
       setStockThresholds(stockMonitor.getAllThresholds());
 
-      return data;
+      return inventoryData;
     });
   }, [fetchData, fetchInventoryData]);
 
@@ -201,11 +154,6 @@ export const InventoryManager: React.FC = () => {
       });
     }
 
-    // Apply warehouse filter
-    if (warehouseFilter !== 'all') {
-      filtered = filtered.filter(item => item.warehouse_location === warehouseFilter);
-    }
-
     // Apply sorting
     filtered.sort((a, b) => {
       let aValue: any = a[sortBy as keyof InventoryItem];
@@ -224,50 +172,112 @@ export const InventoryManager: React.FC = () => {
     });
 
     setFilteredInventory(filtered);
-  }, [inventory, searchQuery, statusFilter, warehouseFilter, sortBy, sortOrder]);
+  }, [inventory, searchQuery, statusFilter, sortBy, sortOrder]);
 
-  // Handle stock update
-  const handleStockUpdate = async (variantId: string, newStock: number) => {
-    const item = inventory.find(i => i.variant_id === variantId);
-    if (!item) return;
+  // Handle stock adjustment
+  const handleStockAdjustment = async () => {
+    if (!selectedItem) return;
 
-    // Optimistic update
-    const updatedInventory = inventory.map(i =>
-      i.variant_id === variantId
-        ? { ...i, current_stock: newStock, available_stock: newStock - i.reserved_stock }
-        : i
-    );
-    setInventory(updatedInventory);
+    try {
+      const response = await fetch(`/v1/inventories/${selectedItem.variant_id}/adjust`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(adjustment)
+      });
 
-    // Update stock monitoring
-    const alerts = stockMonitor.updateStock(variantId, newStock, item.product_name, item.variant_name);
-    if (alerts.length > 0) {
-      setStockAlerts(prev => [...alerts, ...prev]);
+      if (!response.ok) {
+        throw new Error('Failed to adjust stock');
+      }
+
+      const updatedItem = await response.json();
+      
+      // Update local inventory
+      const updatedInventory = inventory.map(item =>
+        item.variant_id === selectedItem.variant_id
+          ? { ...item, ...updatedItem }
+          : item
+      );
+      setInventory(updatedInventory);
+
+      // Update stock monitoring
+      const alerts = stockMonitor.updateStock(
+        selectedItem.variant_id,
+        updatedItem.current_stock,
+        selectedItem.product_name,
+        selectedItem.variant_name
+      );
+      
+      if (alerts.length > 0) {
+        setStockAlerts(prev => [...alerts, ...prev]);
+      }
+      setStockThresholds(stockMonitor.getAllThresholds());
+
+      toast.success(`Stock adjusted for ${selectedItem.product_name}`);
+      setShowAdjustmentModal(false);
+      setSelectedItem(null);
+      setAdjustment({
+        variant_id: '',
+        adjustment_type: 'increase',
+        quantity: 0,
+        reason: '',
+        notes: ''
+      });
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to adjust stock');
     }
-    setStockThresholds(stockMonitor.getAllThresholds());
-
-    toast.success(`Stock updated for ${item.product_name} (${item.variant_name})`);
   };
 
   // Handle threshold update
-  const handleThresholdUpdate = (variantId: string, thresholds: {
+  const handleThresholdUpdate = async (variantId: string, thresholds: {
     low_stock_threshold: number;
     critical_threshold: number;
     out_of_stock_threshold: number;
-    email_notifications_enabled: boolean;
   }) => {
-    stockMonitor.setStockThreshold(variantId, thresholds);
-    setStockThresholds(stockMonitor.getAllThresholds());
-    toast.success('Stock thresholds updated');
+    try {
+      const response = await fetch(`/v1/inventories/${variantId}/thresholds`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(thresholds)
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update thresholds');
+      }
+
+      // Update local inventory
+      const updatedInventory = inventory.map(item =>
+        item.variant_id === variantId
+          ? { ...item, ...thresholds }
+          : item
+      );
+      setInventory(updatedInventory);
+
+      // Update stock monitoring
+      stockMonitor.setStockThreshold(variantId, {
+        ...thresholds,
+        email_notifications_enabled: true
+      });
+      setStockThresholds(stockMonitor.getAllThresholds());
+
+      toast.success('Stock thresholds updated');
+      setEditingThresholds(prev => ({ ...prev, [variantId]: false }));
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to update thresholds');
+    }
   };
 
   // Refresh data
   const handleRefresh = async () => {
     setIsRefreshing(true);
     try {
-      const data = await fetchInventoryData();
-      setInventory(data.inventory);
-      setWarehouses(data.warehouses);
+      const inventoryData = await fetchInventoryData();
+      setInventory(inventoryData);
       toast.success('Inventory data refreshed');
     } catch (error) {
       toast.error('Failed to refresh data');
@@ -313,7 +323,7 @@ export const InventoryManager: React.FC = () => {
           <div>
             <h1 className="heading text-2xl mb-2">Inventory Management</h1>
             <p className="body-text text-gray-600">
-              Monitor stock levels, manage thresholds, and track inventory across warehouses
+              Monitor stock levels, adjust inventory, and manage thresholds
             </p>
           </div>
           
@@ -420,20 +430,6 @@ export const InventoryManager: React.FC = () => {
             <option value="out_of_stock">Out of Stock</option>
           </select>
 
-          {/* Warehouse Filter */}
-          <select
-            value={warehouseFilter}
-            onChange={(e) => setWarehouseFilter(e.target.value)}
-            className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary"
-          >
-            <option value="all">All Warehouses</option>
-            {warehouses.map(warehouse => (
-              <option key={warehouse.id} value={warehouse.name}>
-                {warehouse.name}
-              </option>
-            ))}
-          </select>
-
           {/* Sort */}
           <select
             value={`${sortBy}:${sortOrder}`}
@@ -450,6 +446,18 @@ export const InventoryManager: React.FC = () => {
             <option value="current_stock:desc">Stock High-Low</option>
             <option value="last_updated:desc">Recently Updated</option>
           </select>
+
+          <div className="flex gap-2">
+            <button
+              onClick={() => {
+                setSelectedItem(null);
+                setShowAdjustmentModal(true);
+              }}
+              className="flex-1 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark"
+            >
+              <span className="button-text">Bulk Adjust</span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -472,7 +480,7 @@ export const InventoryManager: React.FC = () => {
                   Status
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Location
+                  Thresholds
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Actions
@@ -482,6 +490,8 @@ export const InventoryManager: React.FC = () => {
             <tbody className="bg-white divide-y divide-gray-200">
               {filteredInventory.map((item) => {
                 const stockStatus = stockMonitor.getStockStatus(item.variant_id);
+                const isEditingThreshold = editingThresholds[item.variant_id];
+                
                 return (
                   <tr key={item.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap">
@@ -523,28 +533,72 @@ export const InventoryManager: React.FC = () => {
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="body-text text-sm text-gray-900">{item.warehouse_location}</span>
+                      {isEditingThreshold ? (
+                        <div className="space-y-1">
+                          <input
+                            type="number"
+                            placeholder="Low"
+                            defaultValue={item.low_stock_threshold || 10}
+                            className="w-16 px-1 py-1 text-xs border rounded"
+                            id={`low-${item.variant_id}`}
+                          />
+                          <input
+                            type="number"
+                            placeholder="Critical"
+                            defaultValue={item.critical_threshold || 5}
+                            className="w-16 px-1 py-1 text-xs border rounded"
+                            id={`critical-${item.variant_id}`}
+                          />
+                          <div className="flex gap-1">
+                            <button
+                              onClick={() => {
+                                const lowInput = document.getElementById(`low-${item.variant_id}`) as HTMLInputElement;
+                                const criticalInput = document.getElementById(`critical-${item.variant_id}`) as HTMLInputElement;
+                                handleThresholdUpdate(item.variant_id, {
+                                  low_stock_threshold: parseInt(lowInput.value) || 10,
+                                  critical_threshold: parseInt(criticalInput.value) || 5,
+                                  out_of_stock_threshold: 0
+                                });
+                              }}
+                              className="p-1 text-green-600 hover:bg-green-50 rounded"
+                            >
+                              <SaveIcon size={12} />
+                            </button>
+                            <button
+                              onClick={() => setEditingThresholds(prev => ({ ...prev, [item.variant_id]: false }))}
+                              className="p-1 text-red-600 hover:bg-red-50 rounded"
+                            >
+                              <XIcon size={12} />
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="text-xs text-gray-600">
+                          <div>Low: {item.low_stock_threshold || 10}</div>
+                          <div>Critical: {item.critical_threshold || 5}</div>
+                        </div>
+                      )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <div className="flex items-center gap-2">
                         <button
-                          onClick={() => {
-                            setSelectedItem(item);
-                            setShowThresholdModal(true);
-                          }}
+                          onClick={() => setEditingThresholds(prev => ({ ...prev, [item.variant_id]: !prev[item.variant_id] }))}
                           className="text-primary hover:text-primary-dark"
-                          title="Manage thresholds"
+                          title="Edit thresholds"
                         >
                           <SettingsIcon size={16} />
                         </button>
-                        <input
-                          type="number"
-                          min="0"
-                          value={item.current_stock}
-                          onChange={(e) => handleStockUpdate(item.variant_id, parseInt(e.target.value) || 0)}
-                          className="w-20 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-primary"
-                          title="Update stock"
-                        />
+                        <button
+                          onClick={() => {
+                            setSelectedItem(item);
+                            setAdjustment(prev => ({ ...prev, variant_id: item.variant_id }));
+                            setShowAdjustmentModal(true);
+                          }}
+                          className="text-blue-600 hover:text-blue-800"
+                          title="Adjust stock"
+                        >
+                          <EditIcon size={16} />
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -554,6 +608,104 @@ export const InventoryManager: React.FC = () => {
           </table>
         </div>
       </div>
+
+      {/* Stock Adjustment Modal */}
+      {showAdjustmentModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <h3 className="heading text-lg mb-4">
+              {selectedItem ? `Adjust Stock: ${selectedItem.product_name}` : 'Bulk Stock Adjustment'}
+            </h3>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Adjustment Type
+                </label>
+                <select
+                  value={adjustment.adjustment_type}
+                  onChange={(e) => setAdjustment(prev => ({ ...prev, adjustment_type: e.target.value as any }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary"
+                >
+                  <option value="increase">Increase Stock</option>
+                  <option value="decrease">Decrease Stock</option>
+                  <option value="set">Set Stock Level</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Quantity
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  value={adjustment.quantity}
+                  onChange={(e) => setAdjustment(prev => ({ ...prev, quantity: parseInt(e.target.value) || 0 }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Reason
+                </label>
+                <select
+                  value={adjustment.reason}
+                  onChange={(e) => setAdjustment(prev => ({ ...prev, reason: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary"
+                >
+                  <option value="">Select reason...</option>
+                  <option value="restock">Restock</option>
+                  <option value="damaged">Damaged goods</option>
+                  <option value="returned">Customer return</option>
+                  <option value="correction">Inventory correction</option>
+                  <option value="transfer">Warehouse transfer</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Notes (Optional)
+                </label>
+                <textarea
+                  value={adjustment.notes}
+                  onChange={(e) => setAdjustment(prev => ({ ...prev, notes: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary"
+                  rows={3}
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={handleStockAdjustment}
+                disabled={!adjustment.reason || adjustment.quantity <= 0}
+                className="flex-1 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark disabled:opacity-50"
+              >
+                Apply Adjustment
+              </button>
+              <button
+                onClick={() => {
+                  setShowAdjustmentModal(false);
+                  setSelectedItem(null);
+                  setAdjustment({
+                    variant_id: '',
+                    adjustment_type: 'increase',
+                    quantity: 0,
+                    reason: '',
+                    notes: ''
+                  });
+                }}
+                className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Empty State */}
       {filteredInventory.length === 0 && (

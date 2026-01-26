@@ -17,7 +17,6 @@ RUN apk add --no-cache \
     curl \
     python3-dev \
     linux-headers \
-    librdkafka-dev \
     pango-dev \
     cairo-dev \
     gdk-pixbuf-dev \

@@ -102,20 +102,8 @@ class ChaosTestRunner:
         
         chaos_tests = [
             {
-                "file": "tests/chaos/test_payment_kafka_failures.py",
-                "description": "Payment Success with Kafka Failures"
-            },
-            {
-                "file": "tests/chaos/test_kafka_event_duplication.py", 
-                "description": "Kafka Event Duplication and Consumer Crashes"
-            },
-            {
                 "file": "tests/chaos/test_consumer_random_kills.py",
                 "description": "Random Consumer Kills and Recovery"
-            },
-            {
-                "file": "tests/chaos/test_infrastructure_failures.py",
-                "description": "Infrastructure Failures (Kafka/Redis)"
             }
         ]
         
@@ -263,19 +251,9 @@ class ChaosTestRunner:
         # Bonus points for specific resilience indicators
         bonus_points = 0
         
-        # Bonus for handling payment success with Kafka failure
-        payment_kafka_test = next((r for r in self.test_results if "payment_kafka" in r.get("test_file", "")), None)
-        if payment_kafka_test and payment_kafka_test.get("passed", False):
-            bonus_points += 10
-        
         # Bonus for handling consumer crashes
         consumer_test = next((r for r in self.test_results if "consumer_random" in r.get("test_file", "")), None)
         if consumer_test and consumer_test.get("passed", False):
-            bonus_points += 10
-        
-        # Bonus for infrastructure failure handling
-        infra_test = next((r for r in self.test_results if "infrastructure" in r.get("test_file", "")), None)
-        if infra_test and infra_test.get("passed", False):
             bonus_points += 10
         
         total_score = min(100, base_score + bonus_points)

@@ -44,9 +44,19 @@ from routes import (
     wishlist_router,
 )
 
-
-
 from contextlib import asynccontextmanager
+
+async def run_notification_cleanup():
+    """Background task to clean up old notifications"""
+    while True:
+        try:
+            # Clean up old notifications every hour
+            await asyncio.sleep(3600)
+            # Add cleanup logic here if needed
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Notification cleanup error: {e}")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -115,9 +125,6 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.warning(f"Database optimization warning: {e}")
 
-    # Start notification cleanup task
-    asyncio.create_task(run_notification_cleanup())
-    
     # Start notification cleanup task
     asyncio.create_task(run_notification_cleanup())
     
@@ -190,10 +197,6 @@ v1_router.include_router(webhooks_router)
 
 # Include the v1 router into the main app
 app.include_router(v1_router)
-
-
-
-
 
 @app.get("/")
 async def read_root():

@@ -143,7 +143,6 @@ class TestCheckoutIntegration:
             kind="Shipping"
         )
 
-    @patch('services.orders.get_kafka_producer_service')
     @patch('services.orders.PaymentService')
     @patch('services.orders.CartService')
     @patch('services.orders.InventoryService')
@@ -152,7 +151,6 @@ class TestCheckoutIntegration:
         mock_inventory_service,
         mock_cart_service_class,
         mock_payment_service_class,
-        mock_kafka_producer,
         db_session,
         user_data,
         cart_with_items,
@@ -231,11 +229,6 @@ class TestCheckoutIntegration:
 
         db_session.execute.side_effect = mock_db_execute_side_effect
         
-        # Mock Kafka producer
-        mock_producer = AsyncMock()
-        mock_producer.publish_event = AsyncMock()
-        mock_kafka_producer.return_value = mock_producer
-        
         # Create order service and execute checkout
         order_service = OrderService(db_session)
         background_tasks = AsyncMock(spec=BackgroundTasks)
@@ -266,18 +259,13 @@ class TestCheckoutIntegration:
         
         # Verify cart was cleared
         mock_cart_service.clear_cart.assert_called_once_with(user_id)
-        
-        # Verify Kafka event was published
-        mock_producer.publish_event.assert_called()
 
-    @patch('services.orders.get_kafka_producer_service')
     @patch('services.orders.PaymentService')
     @patch('services.orders.CartService')
     async def test_checkout_with_payment_failure(
         self,
         mock_cart_service_class,
         mock_payment_service_class,
-        mock_kafka_producer,
         db_session,
         user_data,
         cart_with_items,
@@ -453,7 +441,6 @@ class TestCheckoutIntegration:
         assert exc_info.value.status_code == 400
         assert "Cart validation failed" in str(exc_info.value.detail)
 
-    @patch('services.orders.get_kafka_producer_service')
     @patch('services.orders.PaymentService')
     @patch('services.orders.CartService')
     @patch('services.orders.InventoryService')
@@ -462,7 +449,6 @@ class TestCheckoutIntegration:
         mock_inventory_service,
         mock_cart_service_class,
         mock_payment_service_class,
-        mock_kafka_producer,
         db_session,
         user_data,
         cart_with_items,
@@ -547,14 +533,12 @@ class TestCheckoutIntegration:
         assert exc_info.value.status_code == 400
         assert "Insufficient inventory" in str(exc_info.value.detail)
 
-    @patch('services.orders.get_kafka_producer_service')
     @patch('services.orders.PaymentService')
     @patch('services.orders.CartService')
     async def test_checkout_idempotency(
         self,
         mock_cart_service_class,
         mock_payment_service_class,
-        mock_kafka_producer,
         db_session,
         user_data,
         cart_with_items,
@@ -641,36 +625,3 @@ class TestCheckoutIntegration:
         # Verify no new processing occurred
         mock_cart_service_class.assert_not_called()
         mock_payment_service_class.assert_not_called()
-
-    @patch('services.orders.get_kafka_producer_service')
-    async def test_checkout_kafka_event_publishing(
-        self,
-        mock_kafka_producer,
-        db_session,
-        user_data,
-        checkout_request
-    ):
-        """Test that checkout publishes appropriate Kafka events"""
-        
-        # Mock successful checkout flow
-        with patch.multiple(
-            'services.orders',
-            CartService=AsyncMock(),
-            PaymentService=AsyncMock(),
-            InventoryService=AsyncMock()
-        ):
-            # Setup mocks for successful flow
-            mock_producer = AsyncMock()
-            mock_producer.publish_event = AsyncMock()
-            mock_kafka_producer.return_value = mock_producer
-            
-            # Create order service
-            order_service = OrderService(db_session)
-            background_tasks = AsyncMock(spec=BackgroundTasks)
-            
-            # Mock all the required database queries and services
-            # This is a simplified test focusing on event publishing
-            
-            # Verify that events would be published
-            # In a real scenario, we'd mock the entire flow and verify specific events
-            assert mock_kafka_producer.called or not mock_kafka_producer.called  # Placeholder assertion

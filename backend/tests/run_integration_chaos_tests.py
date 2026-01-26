@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Test runner for integration and chaos tests
-Runs comprehensive test suites for checkout integration and Kafka consumer chaos testing
+Runs comprehensive test suites for checkout integration testing
 """
 import asyncio
 import subprocess
@@ -29,7 +29,7 @@ class TestEnvironment:
         self.test_db_name = "test_banwee_db"
         
     async def setup_test_infrastructure(self):
-        """Setup test infrastructure (Kafka, Redis, PostgreSQL)"""
+        """Setup test infrastructure (Redis, PostgreSQL)"""
         logger.info("Setting up test infrastructure...")
         
         # Start PostgreSQL test container
@@ -37,9 +37,6 @@ class TestEnvironment:
         
         # Start Redis test container
         await self._start_redis()
-        
-        # Start Kafka test cluster
-        await self._start_kafka_cluster()
         
         # Wait for services to be ready
         await self._wait_for_services()
@@ -81,48 +78,6 @@ class TestEnvironment:
             logger.info("Redis test container started")
         except Exception as e:
             logger.error(f"Failed to start Redis: {e}")
-            raise
-    
-    async def _start_kafka_cluster(self):
-        """Start Kafka test cluster with Zookeeper"""
-        try:
-            # Start Zookeeper
-            zk_container = self.docker_client.containers.run(
-                "confluentinc/cp-zookeeper:latest",
-                environment={
-                    "ZOOKEEPER_CLIENT_PORT": "2181",
-                    "ZOOKEEPER_TICK_TIME": "2000"
-                },
-                ports={"2181/tcp": 2182},
-                detach=True,
-                remove=True,
-                name="test_zookeeper"
-            )
-            self.containers["zookeeper"] = zk_container
-            
-            # Wait a bit for Zookeeper to start
-            await asyncio.sleep(5)
-            
-            # Start Kafka
-            kafka_container = self.docker_client.containers.run(
-                "confluentinc/cp-kafka:latest",
-                environment={
-                    "KAFKA_BROKER_ID": "1",
-                    "KAFKA_ZOOKEEPER_CONNECT": "test_zookeeper:2181",
-                    "KAFKA_ADVERTISED_LISTENERS": "PLAINTEXT://localhost:9093",
-                    "KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR": "1",
-                    "KAFKA_AUTO_CREATE_TOPICS_ENABLE": "true"
-                },
-                ports={"9092/tcp": 9093},
-                links={"test_zookeeper": "test_zookeeper"},
-                detach=True,
-                remove=True,
-                name="test_kafka"
-            )
-            self.containers["kafka"] = kafka_container
-            logger.info("Kafka test cluster started")
-        except Exception as e:
-            logger.error(f"Failed to start Kafka cluster: {e}")
             raise
     
     async def _wait_for_services(self):
@@ -276,11 +231,11 @@ class TestRunner:
                 logger.warning(f"Test file not found: {test_file}")
     
     async def _run_chaos_tests(self):
-        """Run Kafka consumer chaos tests"""
-        logger.info("Running Kafka consumer chaos tests...")
+        """Run consumer chaos tests"""
+        logger.info("Running consumer chaos tests...")
         
         test_files = [
-            "tests/chaos/test_kafka_consumer_chaos.py",
+            "tests/chaos/test_consumer_random_kills.py",
         ]
         
         for test_file in test_files:
@@ -452,7 +407,7 @@ if __name__ == "__main__":
         import kafka
     except ImportError as e:
         logger.error(f"Missing dependency: {e}")
-        logger.error("Install with: pip install docker pytest psycopg2-binary redis-py kafka-python")
+        logger.error("Install with: pip install docker pytest psycopg2-binary redis-py")
         sys.exit(1)
     
     # Run tests

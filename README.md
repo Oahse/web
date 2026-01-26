@@ -112,7 +112,6 @@ The platform features a React-based frontend with TypeScript for type safety, a 
 - **Framework**: FastAPI (Python 3.11+)
 - **Database**: PostgreSQL 16 with SQLAlchemy 2.0 (async)
 - **Caching**: Redis 7
-- **Message Queue**: Apache Kafka for async messaging
 - **Background Tasks**: FastAPI Background Tasks with async/await
 - **Authentication**: JWT with python-jose
 - **Email**: Mailgun API
@@ -125,7 +124,6 @@ The platform features a React-based frontend with TypeScript for type safety, a 
 - **Containerization**: Docker & Docker Compose
 - **Database**: PostgreSQL 16
 - **Cache**: Redis 7
-- **Message Broker**: Apache Kafka
 - **Image CDN**: GitHub + jsDelivr
 
 ---

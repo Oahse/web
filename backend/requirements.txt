@@ -50,9 +50,6 @@ psutil==5.9.8
 # Payment Processing
 stripe==9.1.0
 
-# WebSockets
-websockets==12.0
-
 # Testing
 hypothesis==6.92.1
 
