@@ -1,6 +1,7 @@
 from pydantic import BaseModel, Field, ConfigDict
 from typing import Optional
 from datetime import datetime
+from uuid import UUID
 
 
 class ShippingMethodBase(BaseModel):
@@ -24,7 +25,7 @@ class ShippingMethodUpdate(ShippingMethodBase):
 
 
 class ShippingMethodInDB(ShippingMethodBase):
-    id: str
+    id: UUID
     created_at: datetime
     updated_at: datetime
 

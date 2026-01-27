@@ -323,3 +323,4 @@ export const AdminInventoryAdjustments = () => {
     </div>
   );
 };
+export default AdminInventoryAdjustments;

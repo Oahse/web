@@ -22,104 +22,57 @@ import SupportWidget from './components/support/SupportWidget';
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY);
 
 // Lazy load pages for better performance
-const Home = lazy(() => import('./pages/Home').then((module) => ({ default: module.Home })));
-const Products = lazy(() =>
-  import('./pages/Products').then((module) => ({ default: module.default }))
-);
-const ProductDetails = lazy(() =>
-  import('./pages/ProductDetails').then((module) => ({ default: module.ProductDetails }))
-);
-const Cart = lazy(() => import('./pages/Cart').then((module) => ({ default: module.Cart })));
-const Checkout = lazy(() => import('./pages/Checkout').then((module) => ({ default: module.Checkout })));
-const Account = lazy(() => import('./pages/Account').then((module) => ({ default: module.Account })));
-const Login = lazy(() => import('./pages/Login').then((module) => ({ default: module.Login })));
-const ForgotPassword = lazy(() =>
-  import('./pages/ForgotPassword').then((module) => ({ default: module.ForgotPassword }))
-);
-const Register = lazy(() => import('./pages/Register').then((module) => ({ default: module.Register })));
-const About = lazy(() => import('./pages/About').then((module) => ({ default: module.About })));
-const Contact = lazy(() => import('./pages/Contact').then((module) => ({ default: module.Contact })));
-const FAQ = lazy(() => import('./pages/FAQ').then((module) => ({ default: module.FAQ })));
-const Wishlist = lazy(() => import('./pages/Wishlist').then((module) => ({ default: module.Wishlist })));
-const SubscriptionManagement = lazy(() =>
-  import('./pages/SubscriptionManagement').then((module) => ({ default: module.SubscriptionManagement }))
-);
-const TermsAndConditions = lazy(() =>
-  import('./pages/TermsAndConditions').then((module) => ({ default: module.TermsAndConditions }))
-);
-const PrivacyPolicy = lazy(() =>
-  import('./pages/PrivacyPolicy').then((module) => ({ default: module.PrivacyPolicy }))
-);
-const EmailVerification = lazy(() =>
-  import('./pages/EmailVerification').then((module) => ({ default: module.EmailVerification }))
-);
-const ResetPassword = lazy(() =>
-  import('./pages/ResetPassword').then((module) => ({ default: module.ResetPassword }))
-);
+const Home = lazy(() => import('./pages/Home'));
+const Products = lazy(() => import('./pages/Products'));
+const ProductDetails = lazy(() => import('./pages/ProductDetails'));
+const Cart = lazy(() => import('./pages/Cart'));
+const Checkout = lazy(() => import('./pages/Checkout'));
+const Account = lazy(() => import('./pages/Account'));
+const Login = lazy(() => import('./pages/Login'));
+const ForgotPassword = lazy(() => import('./pages/ForgotPassword'));
+const Register = lazy(() => import('./pages/Register'));
+const About = lazy(() => import('./pages/About'));
+const Contact = lazy(() => import('./pages/Contact'));
+const FAQ = lazy(() => import('./pages/FAQ'));
+const Wishlist = lazy(() => import('./pages/Wishlist'));
+const SubscriptionManagement = lazy(() => import('./pages/SubscriptionManagement'));
+const TermsAndConditions = lazy(() => import('./pages/TermsAndConditions'));
+const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy'));
+const EmailVerification = lazy(() => import('./pages/EmailVerification'));
+const ResetPassword = lazy(() => import('./pages/ResetPassword'));
+
 // Lazy load admin pages
-const AdminDashboard = lazy(() =>
-  import('./pages/admin/AdminDashboard').then((module) => ({ default: module.AdminDashboard }))
-);
-const AdminProducts = lazy(() =>
-  import('./pages/admin/AdminProducts').then((module) => ({ default: module.AdminProducts }))
-);
-const AdminUsers = lazy(() =>
-  import('./pages/admin/AdminUsers').then((module) => ({ default: module.AdminUsers }))
-);
-const AdminOrders = lazy(() =>
-  import('./pages/admin/AdminOrders').then((module) => ({ default: module.AdminOrders }))
-);
-const AdminRegister = lazy(() =>
-  import('./pages/admin/AdminRegister').then((module) => ({ default: module.AdminRegister }))
-);
-const AdminOrderDetail = lazy(() =>
-  import('./pages/admin/AdminOrderDetail').then((module) => ({ default: module.AdminOrderDetail }))
-);
-const AdminProductDetail = lazy(() =>
-  import('./pages/admin/AdminProductDetail').then((module) => ({ default: module.AdminProductDetail }))
-);
-const AdminUserDetail = lazy(() =>
-  import('./pages/admin/AdminUserDetail').then((module) => ({ default: module.AdminUserDetail }))
-);
-const AdminVariants = lazy(() =>
-  import('./pages/admin/AdminVariants').then((module) => ({ default: module.AdminVariants }))
-);
-const AdminNewUser = lazy(() =>
-  import('./pages/admin/AdminNewUser').then((module) => ({ default: module.AdminNewUser }))
-);
-const AdminUserEdit = lazy(() =>
-  import('./pages/admin/AdminUserEdit').then((module) => ({ default: module.AdminUserEdit }))
-);
-const AdminNewProduct = lazy(() =>
-  import('./pages/admin/AdminNewProduct').then((module) => ({ default: module.AdminNewProduct }))
-);
-const AdminProductEdit = lazy(() =>
-  import('./pages/admin/AdminProductEdit').then((module) => ({ default: module.AdminProductEdit }))
-);
+const AdminDashboard = lazy(() => import('./pages/admin/AdminDashboard'));
+const AdminProducts = lazy(() => import('./pages/admin/AdminProducts'));
+const AdminUsers = lazy(() => import('./pages/admin/AdminUsers'));
+const AdminOrders = lazy(() => import('./pages/admin/AdminOrders'));
+const AdminRegister = lazy(() => import('./pages/admin/AdminRegister'));
+const AdminOrderDetail = lazy(() => import('./pages/admin/AdminOrderDetail'));
+const AdminProductDetail = lazy(() => import('./pages/admin/AdminProductDetail'));
+const AdminUserDetail = lazy(() => import('./pages/admin/AdminUserDetail'));
+const AdminVariants = lazy(() => import('./pages/admin/AdminVariants'));
+const AdminNewUser = lazy(() => import('./pages/admin/AdminNewUser'));
+const AdminUserEdit = lazy(() => import('./pages/admin/AdminUserEdit'));
+const AdminNewProduct = lazy(() => import('./pages/admin/AdminNewProduct'));
+const AdminProductEdit = lazy(() => import('./pages/admin/AdminProductEdit'));
 
 // New Inventory Admin Pages
-const AdminInventory = lazy(() => import('./pages/admin/AdminInventory').then((module) => ({ default: module.AdminInventory })));
-const AdminInventoryAdjustments = lazy(() => import('./pages/admin/AdminInventoryAdjustments').then((module) => ({ default: module.AdminInventoryAdjustments })));
-const AdminWarehouseLocations = lazy(() => import('./pages/admin/AdminWarehouseLocations').then((module) => ({ default: module.AdminWarehouseLocations })));
-const AdminWarehouseLocationForm = lazy(() => import('./pages/admin/AdminWarehouseLocationForm').then((module) => ({ default: module.AdminWarehouseLocationForm })));
-const AdminInventoryAdjustmentForm = lazy(() => import('./pages/admin/AdminInventoryAdjustmentForm').then((module) => ({ default: module.AdminInventoryAdjustmentForm })));
-const AdminStockAdjustments = lazy(() => import('./pages/admin/AdminStockAdjustments').then((module) => ({ default: module.AdminStockAdjustments })));
-const AdminInventoryItemForm = lazy(() => import('./pages/admin/AdminInventoryItemForm').then((module) => ({ default: module.AdminInventoryItemForm })));
-const AdminShippingMethods = lazy(() => import('./pages/admin/AdminShippingMethods').then((module) => ({ default: module.AdminShippingMethods })));
-const AdminShippingMethodForm = lazy(() => import('./pages/admin/AdminShippingMethodForm').then((module) => ({ default: module.AdminShippingMethodForm })));
-const TaxRatesAdmin = lazy(() => import('./pages/admin/TaxRates').then((module) => ({ default: module.TaxRatesAdmin })));
-const TrackOrder = lazy(() =>
-  import('./pages/TrackOrder').then((module) => ({ default: module.TrackOrder }))
-);
-const TrackOrderSearch = lazy(() =>
-  import('./components/account/TrackOrder').then((module) => ({ default: module.default }))
-);
-const Support = lazy(() => import('./pages/Support').then((module) => ({ default: module.default })));
+const AdminInventory = lazy(() => import('./pages/admin/AdminInventory'));
+const AdminInventoryAdjustments = lazy(() => import('./pages/admin/AdminInventoryAdjustments'));
+const AdminWarehouseLocations = lazy(() => import('./pages/admin/AdminWarehouseLocations'));
+const AdminWarehouseLocationForm = lazy(() => import('./pages/admin/AdminWarehouseLocationForm'));
+const AdminInventoryAdjustmentForm = lazy(() => import('./pages/admin/AdminInventoryAdjustmentForm'));
+const AdminStockAdjustments = lazy(() => import('./pages/admin/AdminStockAdjustments'));
+const AdminInventoryItemForm = lazy(() => import('./pages/admin/AdminInventoryItemForm'));
+const AdminShippingMethods = lazy(() => import('./pages/admin/AdminShippingMethods'));
+const AdminShippingMethodForm = lazy(() => import('./pages/admin/AdminShippingMethodForm'));
+const TaxRatesAdmin = lazy(() => import('./pages/admin/TaxRates'));
+const TrackOrder = lazy(() => import('./pages/TrackOrder'));
+const TrackOrderSearch = lazy(() => import('./components/account/TrackOrder'));
+const Support = lazy(() => import('./pages/Support'));
 
 // Lazy load supplier pages
-const SupplierDashboard = lazy(() =>
-  import('./components/dashboard/SupplierDashboard').then((module) => ({ default: module.SupplierDashboard }))
-);
+const SupplierDashboard = lazy(() => import('./components/dashboard/SupplierDashboard'));
 
 // Loading component
 const PageLoading: React.FC = () => (

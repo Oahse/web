@@ -62,7 +62,7 @@ class AddressService:
         """Create a new address for a user."""
 
         address = Address(
-
+            id=uuid7(),
             user_id=user_id,
 
             street=street,

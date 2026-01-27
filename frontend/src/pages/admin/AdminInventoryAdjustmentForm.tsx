@@ -360,3 +360,4 @@ export const AdminInventoryAdjustmentForm = () => {
     </div>
   );
 };
+export default AdminInventoryAdjustmentForm;

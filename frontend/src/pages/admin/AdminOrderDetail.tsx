@@ -163,3 +163,4 @@ export const AdminOrderDetail = () => {
     </div>
   );
 };
+export default AdminOrderDetail;

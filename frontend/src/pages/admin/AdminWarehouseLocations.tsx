@@ -195,3 +195,4 @@ export const AdminWarehouseLocations = () => {
     </div>
   );
 };
+export default AdminWarehouseLocations;

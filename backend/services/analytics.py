@@ -7,6 +7,7 @@ import logging
 from datetime import datetime, timezone, timedelta
 from typing import Dict, Any, List, Optional, Tuple
 from uuid import UUID
+from core.utils.uuid_utils import uuid7
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_, or_, desc, asc, text, Integer
 from sqlalchemy.orm import selectinload
@@ -45,6 +46,7 @@ class AnalyticsService:
         """Track an analytics event"""
         try:
             event = AnalyticsEvent(
+                id=uuid7(),
                 session_id=session_id,
                 user_id=user_id,
                 event_type=event_type,
@@ -473,6 +475,7 @@ class AnalyticsService:
             
             if not funnel:
                 funnel = ConversionFunnel(
+                    id=uuid7(),
                     session_id=session_id,
                     user_id=user_id
                 )

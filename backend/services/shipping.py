@@ -2,6 +2,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, delete
 from typing import List, Optional
 from uuid import UUID
+from core.utils.uuid_utils import uuid7
 from models.shipping import ShippingMethod
 from schemas.shipping import ShippingMethodCreate, ShippingMethodUpdate
 from core.exceptions import APIException
@@ -13,6 +14,7 @@ class ShippingService:
 
     async def create_shipping_method(self, shipping_method_data: ShippingMethodCreate) -> ShippingMethod:
         new_shipping_method = ShippingMethod(
+            id=uuid7(),
             **shipping_method_data.dict(exclude_unset=True)
         )
         self.db.add(new_shipping_method)

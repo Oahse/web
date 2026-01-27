@@ -117,9 +117,9 @@ class CartService:
             product = item.product or variant.product if variant else None
             
             item_data = {
-                "id": str(item.id),
-                "cart_id": str(item.cart_id),
-                "variant_id": str(item.variant_id),
+                "id": item.id,
+                "cart_id": item.cart_id,
+                "variant_id": item.variant_id,
                 "quantity": item.quantity,
                 "price_per_unit": float(item.price_per_unit),
                 "total_price": float(item.total_price),
@@ -135,8 +135,8 @@ class CartService:
                     discount_percentage = round(((variant.base_price - variant.sale_price) / variant.base_price) * 100, 2)
                 
                 variant_dict = {
-                    'id': str(variant.id),
-                    'product_id': str(variant.product_id),
+                    'id': variant.id,
+                    'product_id': variant.product_id,
                     'sku': variant.sku,
                     'name': variant.name,
                     'base_price': float(variant.base_price),
@@ -179,8 +179,8 @@ class CartService:
                     
                     variant_dict['images'] = [
                         {
-                            'id': str(img.id),
-                            'variant_id': str(img.variant_id),
+                            'id': img.id,
+                            'variant_id': img.variant_id,
                             'url': img.url,
                             'alt_text': img.alt_text or f"{variant.name} - Image {img.sort_order + 1}",
                             'is_primary': img.is_primary,
@@ -195,8 +195,8 @@ class CartService:
                     primary_img = next((img for img in sorted_images if img.is_primary), sorted_images[0] if sorted_images else None)
                     if primary_img:
                         variant_dict['primary_image'] = {
-                            'id': str(primary_img.id),
-                            'variant_id': str(primary_img.variant_id),
+                            'id': primary_img.id,
+                            'variant_id': primary_img.variant_id,
                             'url': primary_img.url,
                             'alt_text': primary_img.alt_text or f"{variant.name} - Primary Image",
                             'is_primary': primary_img.is_primary,
@@ -209,7 +209,7 @@ class CartService:
                     variant_dict['images'] = []
                     variant_dict['primary_image'] = {
                         'id': None,
-                        'variant_id': str(variant.id),
+                        'variant_id': variant.id,
                         'url': '/placeholder-product.jpg',  # Fallback image
                         'alt_text': f"{variant.name} - No Image Available",
                         'is_primary': True,
@@ -300,6 +300,7 @@ class CartService:
         else:
             # Add new item
             new_item = CartItem(
+                id=uuid7(),
                 cart_id=cart.id,
                 product_id=variant.product_id,
                 variant_id=variant_id,

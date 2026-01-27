@@ -203,3 +203,4 @@ export const AdminNewUser = () => {
     </div>
   );
 };
+export default AdminNewUser;

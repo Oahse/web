@@ -512,3 +512,4 @@ export const AdminOrders = () => {
     </div>
   );
 };
+export default AdminOrders;

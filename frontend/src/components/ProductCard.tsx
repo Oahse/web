@@ -10,7 +10,6 @@ export const ProductCard = ({ product }: { product: any }) => {
   // ✅ Using useState for local state management
   const [isAddingToCart, setIsAddingToCart] = useState<boolean>(false);
   const [isAddingToWishlist, setIsAddingToWishlist] = useState<boolean>(false);
-  const [selectedQuantity, setSelectedQuantity] = useState<number>(1);
   const [imageError, setImageError] = useState<boolean>(false);
   const [imageLoaded, setImageLoaded] = useState<boolean>(false);
   const [stockStatus, setStockStatus] = useState<any>(null);
@@ -76,7 +75,7 @@ export const ProductCard = ({ product }: { product: any }) => {
     return '/placeholder-product.jpg';
   };
 
-  // Handle adding to cart
+  // Handle adding to cart - automatically add 1 quantity
   const handleAddToCart = async (e: React.MouseEvent) => {
     e.preventDefault(); // Prevent navigation if this is inside a Link
     
@@ -85,23 +84,18 @@ export const ProductCard = ({ product }: { product: any }) => {
       return;
     }
 
-    if (selectedQuantity > variant.stock) {
-      toast.error(`Only ${variant.stock} items available`);
-      return;
-    }
-
     setIsAddingToCart(true);
 
     try {
       const cartItem = {
         variant_id: variant.id,
-        quantity: selectedQuantity,
+        quantity: 1, // Always add 1 item
       };
 
       await addToCart(cartItem);
 
       // Update stock monitoring after successful cart addition
-      const newStock = variant.stock - selectedQuantity;
+      const newStock = variant.stock - 1;
       stockMonitor.updateStock(variant.id, newStock, product.name, variant.name);
       
       // Update local stock status
@@ -146,15 +140,7 @@ export const ProductCard = ({ product }: { product: any }) => {
     setImageLoaded(true);
   };
 
-  // Handle quantity change
-  const handleQuantityChange = (newQuantity: number) => {
-    if (newQuantity < 1) return;
-    if (newQuantity > variant.stock) {
-      toast.error(`Only ${variant.stock} items available`);
-      return;
-    }
-    setSelectedQuantity(newQuantity);
-  };
+  // Handle quantity change - removed since we don't need quantity selector
 
   // Get stock status styling
   const getStockStatusStyle = () => {
@@ -171,14 +157,14 @@ export const ProductCard = ({ product }: { product: any }) => {
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border hover:shadow-lg transition-all duration-300 group overflow-hidden">
-      {/* Image Container */}
-      <div className="relative aspect-square overflow-hidden bg-gray-100">
+    <div className="bg-white rounded-lg shadow-sm border hover:shadow-md transition-all duration-300 group overflow-hidden h-full flex flex-col">
+      {/* Image Container - Smaller aspect ratio */}
+      <div className="relative aspect-[4/3] overflow-hidden bg-gray-100">
         <Link to={`/product/${product.id}`} className="block w-full h-full">
           {/* Image Loading Skeleton */}
           {!imageLoaded && (
             <div className="absolute inset-0 bg-gray-200 animate-pulse flex items-center justify-center">
-              <div className="w-8 h-8 border-2 border-gray-300 border-t-transparent rounded-full animate-spin"></div>
+              <div className="w-6 h-6 border-2 border-gray-300 border-t-transparent rounded-full animate-spin"></div>
             </div>
           )}
           
@@ -187,7 +173,7 @@ export const ProductCard = ({ product }: { product: any }) => {
             alt={`${product.name} - ${variant.name}`}
             className={`w-full h-full object-cover transition-all duration-500 ${
               imageLoaded 
-                ? 'opacity-100 group-hover:scale-110' 
+                ? 'opacity-100 group-hover:scale-105' 
                 : 'opacity-0'
             }`}
             onError={handleImageError}
@@ -198,98 +184,98 @@ export const ProductCard = ({ product }: { product: any }) => {
         
         {/* Sale Badge */}
         {isOnSale && (
-          <div className="absolute top-2 left-2 bg-red-500 text-white px-2 py-1 rounded-md text-xs font-semibold shadow-sm animate-pulse">
+          <div className="absolute top-1.5 left-1.5 bg-red-500 text-white px-1.5 py-0.5 rounded text-xs font-semibold shadow-sm">
             -{discount}%
           </div>
         )}
 
         {/* Stock Status Badge */}
         {stockStatus && stockStatus.status !== 'in_stock' && (
-          <div className={`absolute top-2 ${isOnSale ? 'left-16' : 'left-2'} px-2 py-1 rounded-md text-xs font-semibold text-white shadow-sm ${
+          <div className={`absolute top-1.5 ${isOnSale ? 'left-12' : 'left-1.5'} px-1.5 py-0.5 rounded text-xs font-semibold text-white shadow-sm ${
             stockStatus.status === 'out_of_stock' ? 'bg-red-500' :
             stockStatus.status === 'critical' ? 'bg-orange-500' : 'bg-yellow-500'
           }`}>
-            {stockStatus.status === 'out_of_stock' ? 'Out of Stock' :
-             stockStatus.status === 'critical' ? 'Low Stock' : 'Limited'}
+            {stockStatus.status === 'out_of_stock' ? 'Out' :
+             stockStatus.status === 'critical' ? 'Low' : 'Limited'}
           </div>
         )}
 
         {/* Out of Stock Overlay */}
         {(!isInStock || stockStatus?.status === 'out_of_stock') && (
-          <div className="absolute inset-0 bg-black/60 flex items-center justify-center backdrop-blur-sm">
-            <span className="text-white font-semibold text-sm px-3 py-1 bg-black/50 rounded-md">
+          <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+            <span className="text-white font-semibold text-xs px-2 py-1 bg-black/50 rounded">
               Out of Stock
             </span>
           </div>
         )}
 
-        {/* Quick Actions */}
-        <div className="absolute top-2 right-2 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-x-2 group-hover:translate-x-0">
+        {/* Quick Actions - Smaller and positioned better */}
+        <div className="absolute top-1.5 right-1.5 flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-all duration-300">
           {(isInStock && stockStatus?.status !== 'out_of_stock') && (
             <button
               onClick={handleAddToWishlist}
               disabled={isAddingToWishlist}
-              className={`p-2 rounded-full shadow-lg transition-all duration-200 transform hover:scale-110 ${
+              className={`p-1.5 rounded-full shadow-md transition-all duration-200 transform hover:scale-110 ${
                 isWishlisted 
-                  ? 'bg-red-500 text-white shadow-red-200' 
-                  : 'bg-white/95 backdrop-blur-sm hover:bg-white text-gray-600 hover:text-red-500'
+                  ? 'bg-red-500 text-white' 
+                  : 'bg-white/90 hover:bg-white text-gray-600 hover:text-red-500'
               } disabled:opacity-50 disabled:cursor-not-allowed`}
               title={isWishlisted ? 'In wishlist' : 'Add to wishlist'}
             >
               {isAddingToWishlist ? (
-                <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin"></div>
+                <div className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin"></div>
               ) : (
-                <HeartIcon size={16} className={isWishlisted ? 'fill-current' : ''} />
+                <HeartIcon size={12} className={isWishlisted ? 'fill-current' : ''} />
               )}
             </button>
           )}
 
           <Link
             to={`/product/${product.id}`}
-            className="p-2 bg-white/95 backdrop-blur-sm hover:bg-white text-gray-600 hover:text-primary rounded-full shadow-lg transition-all duration-200 transform hover:scale-110"
+            className="p-1.5 bg-white/90 hover:bg-white text-gray-600 hover:text-primary rounded-full shadow-md transition-all duration-200 transform hover:scale-110"
             title="View details"
           >
-            <EyeIcon size={16} />
+            <EyeIcon size={12} />
           </Link>
         </div>
       </div>
 
-      {/* Content */}
-      <div className="p-3 sm:p-4 space-y-3">
-        <Link to={`/product/${product.id}`}>
-          <h3 className="product-title text-sm sm:text-base line-clamp-2 hover:text-primary transition-colors duration-200 leading-tight">
+      {/* Content - More compact */}
+      <div className="p-2 sm:p-3 space-y-2 flex-1 flex flex-col">
+        <Link to={`/product/${product.id}`} className="flex-1">
+          <h3 className="text-xs sm:text-sm font-medium line-clamp-2 hover:text-primary transition-colors duration-200 leading-tight">
             {product.name}
           </h3>
         </Link>
         
         {/* Variant name if different from product name */}
         {variant.name && variant.name !== product.name && (
-          <p className="body-text text-xs text-gray-500 truncate">
+          <p className="text-xs text-gray-500 truncate">
             {variant.name}
           </p>
         )}
         
         {/* Price */}
-        <div className="flex items-center gap-2">
-          <span className="price text-lg sm:text-xl">
+        <div className="flex items-center gap-1.5">
+          <span className="text-sm sm:text-base font-semibold text-gray-900">
             ${(isOnSale ? salePrice : price).toFixed(2)}
           </span>
           {isOnSale && (
-            <span className="price text-sm text-gray-500 line-through">
+            <span className="text-xs text-gray-500 line-through">
               ${price.toFixed(2)}
             </span>
           )}
         </div>
 
-        {/* Rating */}
-        {product.rating_average > 0 && (
-          <div className="flex items-center gap-1 text-sm">
+        {/* Rating - More compact */}
+        {product.rating > 0 && (
+          <div className="flex items-center gap-1">
             <div className="flex items-center">
               {[...Array(5)].map((_, i) => (
                 <span
                   key={i}
                   className={`text-xs ${
-                    i < Math.floor(product.rating_average)
+                    i < Math.floor(product.rating)
                       ? 'text-yellow-400'
                       : 'text-gray-300'
                   }`}
@@ -298,8 +284,8 @@ export const ProductCard = ({ product }: { product: any }) => {
                 </span>
               ))}
             </div>
-            <span className="body-text text-gray-600 text-xs">
-              {product.rating_average.toFixed(1)} ({product.rating_count})
+            <span className="text-xs text-gray-600">
+              {product.rating.toFixed(1)} ({product.review_count})
             </span>
           </div>
         )}
@@ -311,29 +297,11 @@ export const ProductCard = ({ product }: { product: any }) => {
           </div>
         )}
 
-        {/* Quantity Selector (only if in stock) */}
-        {isInStock && stockStatus?.status !== 'out_of_stock' && (
-          <div className="hidden sm:block">
-            <label className="block text-xs font-medium text-gray-700 mb-1">
-              Quantity
-            </label>
-            <select
-              value={selectedQuantity}
-              onChange={(e) => handleQuantityChange(parseInt(e.target.value))}
-              className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-primary focus:border-transparent transition-colors"
-            >
-              {Array.from({ length: Math.min(variant.stock, 10) }, (_, i) => i + 1).map(num => (
-                <option key={num} value={num}>{num}</option>
-              ))}
-            </select>
-          </div>
-        )}
-
-        {/* Add to Cart Button */}
+        {/* Add to Cart Button - Compact */}
         <button
           onClick={handleAddToCart}
           disabled={!isInStock || isAddingToCart || stockStatus?.status === 'out_of_stock'}
-          className={`w-full flex items-center justify-center gap-2 px-3 py-2 sm:py-2.5 rounded-lg font-medium text-sm transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98] ${
+          className={`w-full flex items-center justify-center gap-1.5 px-2 py-1.5 sm:py-2 rounded-md font-medium text-xs sm:text-sm transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98] ${
             isInStock && stockStatus?.status !== 'out_of_stock'
               ? 'bg-primary text-white hover:bg-primary-dark shadow-sm hover:shadow-md'
               : 'bg-gray-100 text-gray-500 cursor-not-allowed'
@@ -341,13 +309,13 @@ export const ProductCard = ({ product }: { product: any }) => {
         >
           {isAddingToCart ? (
             <>
-              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-              <span className="button-text">Adding...</span>
+              <div className="w-3 h-3 border border-white border-t-transparent rounded-full animate-spin"></div>
+              <span>Adding...</span>
             </>
           ) : (
             <>
-              <ShoppingCartIcon size={16} />
-              <span className="button-text">
+              <ShoppingCartIcon size={14} />
+              <span>
                 {!isInStock || stockStatus?.status === 'out_of_stock' ? 'Out of Stock' : 'Add to Cart'}
               </span>
             </>
@@ -356,8 +324,8 @@ export const ProductCard = ({ product }: { product: any }) => {
 
         {/* Additional stock info */}
         {isInStock && stockStatus?.status === 'critical' && (
-          <p className="body-text text-xs text-orange-600 text-center font-medium animate-pulse">
-            Only {variant.stock} left - Order soon!
+          <p className="text-xs text-orange-600 text-center font-medium">
+            Only {variant.stock} left!
           </p>
         )}
       </div>

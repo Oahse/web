@@ -374,3 +374,5 @@ export const AdminProducts = () => {
       />
     </div>;
 };
+
+export default AdminProducts;

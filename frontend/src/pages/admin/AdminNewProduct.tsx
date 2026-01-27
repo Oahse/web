@@ -578,3 +578,4 @@ export const AdminNewProduct = () => {
     </div>
   );
 };
+export default AdminNewProduct;

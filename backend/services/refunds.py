@@ -63,6 +63,7 @@ class RefundService:
             
             # Create refund record
             refund = Refund(
+                id=uuid7(), 
                 order_id=order_id,
                 user_id=user_id,
                 refund_number=refund_number,

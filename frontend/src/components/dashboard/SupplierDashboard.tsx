@@ -487,3 +487,4 @@ export const SupplierDashboard = () => {
     </div>
   );
 };
+export default SupplierDashboard;

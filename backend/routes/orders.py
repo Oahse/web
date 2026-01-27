@@ -305,6 +305,11 @@ async def validate_checkout(
                     if cart.items:
                         logger.error(f"First item type: {type(cart.items[0])}")
                         logger.error(f"First item: {cart.items[0]}")
+                elif isinstance(cart, dict) and 'items' in cart:
+                    logger.error(f"Cart['items'] type: {type(cart['items'])}")
+                    if cart['items']:
+                        logger.error(f"First item type: {type(cart['items'][0])}")
+                        logger.error(f"First item: {cart['items'][0]}")
                 validation_errors.append(f"Failed to calculate totals: {str(e)}")
                 validation_results["can_proceed"] = False
         

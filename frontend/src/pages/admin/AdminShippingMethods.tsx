@@ -302,3 +302,4 @@ export const AdminShippingMethods = () => {
     </div>
   );
 };
+export default AdminShippingMethods;

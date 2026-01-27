@@ -755,6 +755,7 @@ class ProductService:
         """Create a new product."""
         # Create product
         db_product = Product(
+            id=uuid7(),
             name=product_data.name,
             description=product_data.description,
             category_id=product_data.category_id,
@@ -776,6 +777,7 @@ class ProductService:
             
             # Create variant first to get the ID
             db_variant = ProductVariant(
+                id=uuid7(),
                 product_id=db_product.id,
                 sku=final_sku,
                 name=variant_data.name,
@@ -826,6 +828,7 @@ class ProductService:
             if not default_location:
                 # Create default warehouse if it doesn't exist
                 default_location = WarehouseLocation(
+                    id=uuid7(),
                     name="Default",
                     address="Default Location",
                     description="Default warehouse location for inventory"
@@ -838,6 +841,7 @@ class ProductService:
             
             # Create inventory record - ALWAYS, even if stock is 0
             inventory = Inventory(
+                id=uuid7(),
                 variant_id=db_variant.id,
                 location_id=default_location.id,
                 quantity_available=stock_quantity,
@@ -853,6 +857,7 @@ class ProductService:
                 from models.product import ProductImage
                 for img_idx, image_url in enumerate(variant_data.image_urls):
                     db_image = ProductImage(
+                        id=uuid7(),
                         variant_id=db_variant.id,
                         url=image_url,
                         is_primary=(img_idx == 0),  # First image is primary

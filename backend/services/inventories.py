@@ -6,6 +6,7 @@ from sqlalchemy import select, func, and_, or_
 from sqlalchemy.orm import selectinload, joinedload
 from typing import Optional, List, Dict, Any
 from uuid import UUID
+from core.utils.uuid_utils import uuid7
 from datetime import datetime, timedelta
 from models.inventories import Inventory, WarehouseLocation, StockAdjustment
 from models.product import ProductVariant, Product, ProductImage
@@ -31,7 +32,7 @@ class InventoryService:
 
     # --- WarehouseLocation CRUD ---
     async def create_warehouse_location(self, location_data: WarehouseLocationCreate) -> WarehouseLocationResponse:
-        new_location = WarehouseLocation(**location_data.model_dump())
+        new_location = WarehouseLocation(id=uuid7(), **location_data.model_dump())
         self.db.add(new_location)
         await self.db.commit()
         await self.db.refresh(new_location)
@@ -372,7 +373,7 @@ class InventoryService:
         if not variant:
             raise APIException(status_code=404, message="Product variant not found.")
 
-        new_inventory = Inventory(**inventory_data.model_dump())
+        new_inventory = Inventory(id=uuid7(), **inventory_data.model_dump())
         self.db.add(new_inventory)
         await self.db.commit()
         await self.db.refresh(new_inventory)

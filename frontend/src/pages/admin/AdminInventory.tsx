@@ -359,3 +359,4 @@ export const AdminInventory = () => {
   );
 };
 
+export default AdminInventory;

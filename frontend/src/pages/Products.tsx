@@ -1,12 +1,12 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { SearchIcon, FilterIcon, XIcon } from 'lucide-react';
 import { useAsync } from '../hooks/useAsync';
-import { ProductsAPI } from '../apis';
+import { ProductsAPI, CategoriesAPI } from '../apis';
 import { ProductCard } from '../components/ProductCard';
 import { SkeletonProductCard } from '../components/ui/SkeletonProductCard';
-import { Error } from '../components/Error';
-import { useCategories } from '../contexts/CategoryContext';
+import { Select } from '../components/ui/Select';
+import { themeClasses, combineThemeClasses, getInputClasses, getButtonClasses } from '../lib/themeClasses';
 
 const Products = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -19,13 +19,47 @@ const Products = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [showFilters, setShowFilters] = useState(false);
   const [productsData, setProductsData] = useState<any>(null);
+  const [categories, setCategories] = useState<any[]>([]);
 
-  const { loading, error, execute: fetchProducts } = useAsync();
-  const { categories } = useCategories();
+  const { loading, error, execute: fetchProducts } = useAsync({
+    showErrorToast: false, // Disable error toasts
+    showSuccessToast: false, // Disable success toasts
+    onError: (error) => {
+      // Log error to console instead of showing toast
+      console.error('Failed to fetch products:', error);
+    }
+  });
+  
+  const { execute: fetchCategories } = useAsync({
+    showErrorToast: false, // Disable error toasts
+    showSuccessToast: false, // Disable success toasts
+    onError: (error) => {
+      // Log error to console instead of showing toast
+      console.error('Failed to fetch categories:', error);
+    }
+  });
 
-  const buildSearchParams = useCallback(() => {
+  // Fetch categories on component mount
+  useEffect(() => {
+    fetchCategories(async () => {
+      const response = await CategoriesAPI.getCategories();
+      setCategories(response.data?.categories || []);
+      return response.data;
+    });
+  }, [fetchCategories]);
+
+  const sortOptions = [
+    { value: 'created_at:desc', label: 'Newest First' },
+    { value: 'created_at:asc', label: 'Oldest First' },
+    { value: 'name:asc', label: 'Name A-Z' },
+    { value: 'name:desc', label: 'Name Z-A' },
+    { value: 'price:asc', label: 'Price Low to High' },
+    { value: 'price:desc', label: 'Price High to Low' },
+  ];
+
+  useEffect(() => {
     const [sortBy, sortOrder] = sortOption.split(':');
-    return {
+    const params = {
       q: searchQuery || undefined,
       category: selectedCategories.length > 0 ? selectedCategories.join(',') : undefined,
       min_price: priceRange[0] > 0 ? priceRange[0] : undefined,
@@ -35,16 +69,13 @@ const Products = () => {
       page: currentPage,
       limit: 20,
     };
-  }, [searchQuery, selectedCategories, sortOption, priceRange, currentPage]);
 
-  useEffect(() => {
-    const params = buildSearchParams();
     fetchProducts(async () => {
       const response = await ProductsAPI.getProducts(params);
       setProductsData(response.data);
       return response.data;
     });
-  }, [buildSearchParams, fetchProducts]);
+  }, [searchQuery, selectedCategories, sortOption, priceRange, currentPage, fetchProducts]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -85,7 +116,18 @@ const Products = () => {
   };
 
   const retryFetch = () => {
-    const params = buildSearchParams();
+    const [sortBy, sortOrder] = sortOption.split(':');
+    const params = {
+      q: searchQuery || undefined,
+      category: selectedCategories.length > 0 ? selectedCategories.join(',') : undefined,
+      min_price: priceRange[0] > 0 ? priceRange[0] : undefined,
+      max_price: priceRange[1] < 1000 ? priceRange[1] : undefined,
+      sort_by: sortBy,
+      sort_order: sortOrder,
+      page: currentPage,
+      limit: 20,
+    };
+
     fetchProducts(async () => {
       const response = await ProductsAPI.getProducts(params);
       setProductsData(response.data);
@@ -93,26 +135,21 @@ const Products = () => {
     });
   };
 
-  if (error && !productsData) {
-    return (
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        <Error message="Failed to load products" onRetry={retryFetch} />
-      </div>
-    );
-  }
+  // Don't show error UI, just log to console and show skeleton
+  const shouldShowSkeleton = loading || (error && !productsData);
 
-  const products = productsData?.items || [];
+  const products = productsData?.data || [];
   const totalProducts = productsData?.total || 0;
   const totalPages = Math.ceil(totalProducts / 20);
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-4 sm:py-8">
+    <div className={combineThemeClasses(themeClasses.layout.container, 'py-4 sm:py-8')}>
       {/* Header */}
       <div className="mb-6 sm:mb-8">
-        <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 mb-2">
+        <h1 className={combineThemeClasses(themeClasses.text.heading, 'text-2xl sm:text-3xl lg:text-4xl mb-2')}>
           Products
         </h1>
-        <p className="text-gray-600 text-sm sm:text-base">
+        <p className={combineThemeClasses(themeClasses.text.secondary, 'text-sm sm:text-base')}>
           {loading && !productsData ? 'Loading products...' : `${totalProducts} products available`}
         </p>
       </div>
@@ -122,18 +159,24 @@ const Products = () => {
         {/* Search Bar */}
         <form onSubmit={handleSearch} className="flex gap-2">
           <div className="flex-1 relative">
-            <SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+            <SearchIcon className={combineThemeClasses(themeClasses.text.muted, 'absolute left-3 top-1/2 transform -translate-y-1/2')} size={20} />
             <input
               type="text"
               placeholder="Search products..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 sm:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-colors text-sm sm:text-base"
+              className={combineThemeClasses(
+                getInputClasses('default'),
+                'pl-10 pr-4 py-2.5 sm:py-3 text-sm sm:text-base'
+              )}
             />
           </div>
           <button
             type="submit"
-            className="px-4 sm:px-6 py-2.5 sm:py-3 bg-primary text-white rounded-lg hover:bg-primary-dark transition-all duration-200 font-medium text-sm sm:text-base whitespace-nowrap"
+            className={combineThemeClasses(
+              getButtonClasses('primary'),
+              'px-4 sm:px-6 py-2.5 sm:py-3 text-sm sm:text-base whitespace-nowrap'
+            )}
           >
             Search
           </button>
@@ -143,48 +186,55 @@ const Products = () => {
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
           <button
             onClick={() => setShowFilters(!showFilters)}
-            className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm sm:text-base"
+            className={combineThemeClasses(
+              getButtonClasses('outline'),
+              'flex items-center gap-2 text-sm sm:text-base'
+            )}
           >
             <FilterIcon size={16} />
             <span>Filters</span>
             {(selectedCategories.length > 0 || priceRange[0] > 0 || priceRange[1] < 1000) && (
-              <span className="bg-primary text-white text-xs px-2 py-0.5 rounded-full">
+              <span className={combineThemeClasses(themeClasses.background.primary, themeClasses.text.inverse, 'text-xs px-2 py-0.5 rounded-full')}>
                 {selectedCategories.length + (priceRange[0] > 0 || priceRange[1] < 1000 ? 1 : 0)}
               </span>
             )}
           </button>
 
-          <select
-            value={sortOption}
-            onChange={(e) => setSortOption(e.target.value)}
-            className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary transition-colors text-sm sm:text-base min-w-[180px]"
-          >
-            <option value="created_at:desc">Newest First</option>
-            <option value="created_at:asc">Oldest First</option>
-            <option value="name:asc">Name A-Z</option>
-            <option value="name:desc">Name Z-A</option>
-            <option value="price:asc">Price Low to High</option>
-            <option value="price:desc">Price High to Low</option>
-          </select>
+          {/* Custom Sort Select */}
+          <div className="w-full sm:w-auto sm:min-w-[180px]">
+            <Select
+              options={sortOptions}
+              value={sortOption}
+              onChange={(e) => setSortOption(e.target.value)}
+              size="md"
+              fullWidth
+            />
+          </div>
         </div>
 
         {/* Filters Panel */}
         {showFilters && (
-          <div className="bg-white border border-gray-200 rounded-lg p-4 sm:p-6 space-y-4 sm:space-y-6 shadow-sm">
+          <div className={combineThemeClasses(
+            themeClasses.card.base,
+            'p-4 sm:p-6 space-y-4 sm:space-y-6'
+          )}>
             {/* Categories */}
             {categories && categories.length > 0 && (
               <div>
-                <h3 className="font-semibold text-gray-900 mb-3 text-sm sm:text-base">Categories</h3>
+                <h3 className={combineThemeClasses(themeClasses.text.heading, 'mb-3 text-sm sm:text-base')}>
+                  Categories
+                </h3>
                 <div className="flex flex-wrap gap-2">
                   {categories.map((category) => (
                     <button
                       key={category.id}
                       onClick={() => handleCategoryChange(category.id)}
-                      className={`px-3 py-1.5 rounded-full text-sm transition-all duration-200 ${
+                      className={combineThemeClasses(
+                        'px-3 py-1.5 rounded-full text-sm transition-all duration-200',
                         selectedCategories.includes(category.id)
-                          ? 'bg-primary text-white shadow-sm'
-                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                      }`}
+                          ? combineThemeClasses(themeClasses.background.primary, themeClasses.text.inverse, themeClasses.shadow.sm)
+                          : combineThemeClasses(themeClasses.background.elevated, themeClasses.text.secondary, themeClasses.interactive.hover)
+                      )}
                     >
                       {category.name}
                     </button>
@@ -195,27 +245,33 @@ const Products = () => {
 
             {/* Price Range */}
             <div>
-              <h3 className="font-semibold text-gray-900 mb-3 text-sm sm:text-base">Price Range</h3>
+              <h3 className={combineThemeClasses(themeClasses.text.heading, 'mb-3 text-sm sm:text-base')}>
+                Price Range
+              </h3>
               <div className="flex items-center gap-3">
                 <div className="flex-1">
-                  <label className="block text-xs text-gray-600 mb-1">Min Price</label>
+                  <label className={combineThemeClasses(themeClasses.text.muted, 'block text-xs mb-1')}>
+                    Min Price
+                  </label>
                   <input
                     type="number"
                     placeholder="0"
                     value={priceRange[0]}
                     onChange={(e) => setPriceRange([parseInt(e.target.value) || 0, priceRange[1]])}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-transparent"
+                    className={combineThemeClasses(getInputClasses('default'), 'text-sm')}
                   />
                 </div>
-                <span className="text-gray-400 mt-5">—</span>
+                <span className={combineThemeClasses(themeClasses.text.muted, 'mt-5')}>—</span>
                 <div className="flex-1">
-                  <label className="block text-xs text-gray-600 mb-1">Max Price</label>
+                  <label className={combineThemeClasses(themeClasses.text.muted, 'block text-xs mb-1')}>
+                    Max Price
+                  </label>
                   <input
                     type="number"
                     placeholder="1000"
                     value={priceRange[1]}
                     onChange={(e) => setPriceRange([priceRange[0], parseInt(e.target.value) || 1000])}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-transparent"
+                    className={combineThemeClasses(getInputClasses('default'), 'text-sm')}
                   />
                 </div>
               </div>
@@ -224,7 +280,11 @@ const Products = () => {
             {/* Clear Filters */}
             <button
               onClick={clearFilters}
-              className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-800 transition-colors"
+              className={combineThemeClasses(
+                'flex items-center gap-2 text-sm transition-colors',
+                themeClasses.text.secondary,
+                themeClasses.interactive.hover
+              )}
             >
               <XIcon size={16} />
               Clear all filters
@@ -233,10 +293,13 @@ const Products = () => {
         )}
       </div>
 
-      {/* Products Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3 sm:gap-4 lg:gap-6">
-        {loading && !productsData ? (
-          // Show skeleton cards while loading
+      {/* Products Grid - Theme responsive with smaller cards */}
+      <div className={combineThemeClasses(
+        'grid gap-2 sm:gap-3 lg:gap-4',
+        'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8'
+      )}>
+        {shouldShowSkeleton ? (
+          // Show skeleton cards while loading or on error
           Array.from({ length: 20 }).map((_, index) => (
             <SkeletonProductCard key={index} />
           ))
@@ -246,19 +309,28 @@ const Products = () => {
             <ProductCard key={product.id} product={product} />
           ))
         ) : (
-          // Show empty state
+          // Show empty state - Theme responsive
           <div className="col-span-full text-center py-12 sm:py-16">
             <div className="max-w-md mx-auto">
-              <div className="w-16 h-16 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
-                <SearchIcon size={24} className="text-gray-400" />
+              <div className={combineThemeClasses(
+                themeClasses.background.elevated,
+                themeClasses.border.default,
+                'w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center border'
+              )}>
+                <SearchIcon size={24} className={themeClasses.text.muted} />
               </div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">No products found</h3>
-              <p className="text-gray-600 mb-4">
+              <h3 className={combineThemeClasses(themeClasses.text.heading, 'text-lg mb-2')}>
+                No products found
+              </h3>
+              <p className={combineThemeClasses(themeClasses.text.secondary, 'mb-4')}>
                 Try adjusting your search or filter criteria
               </p>
               <button
                 onClick={clearFilters}
-                className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"
+                className={combineThemeClasses(
+                  getButtonClasses('primary'),
+                  'transition-all duration-200 hover:scale-105'
+                )}
               >
                 Clear filters
               </button>
@@ -274,7 +346,10 @@ const Products = () => {
             <button
               onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
               disabled={currentPage === 1}
-              className="px-3 sm:px-4 py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors text-sm sm:text-base"
+              className={combineThemeClasses(
+                getButtonClasses('outline'),
+                'px-3 sm:px-4 py-2 text-sm sm:text-base'
+              )}
             >
               Previous
             </button>
@@ -289,11 +364,12 @@ const Products = () => {
                   <button
                     key={pageNum}
                     onClick={() => setCurrentPage(pageNum)}
-                    className={`px-3 py-2 rounded-lg text-sm sm:text-base transition-colors ${
+                    className={combineThemeClasses(
+                      'px-3 py-2 rounded-lg text-sm sm:text-base transition-colors',
                       currentPage === pageNum
-                        ? 'bg-primary text-white'
-                        : 'hover:bg-gray-100 text-gray-700'
-                    }`}
+                        ? combineThemeClasses(themeClasses.background.primary, themeClasses.text.inverse)
+                        : combineThemeClasses(themeClasses.interactive.hover, themeClasses.text.primary)
+                    )}
                   >
                     {pageNum}
                   </button>
@@ -304,7 +380,10 @@ const Products = () => {
             <button
               onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
               disabled={currentPage === totalPages}
-              className="px-3 sm:px-4 py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors text-sm sm:text-base"
+              className={combineThemeClasses(
+                getButtonClasses('outline'),
+                'px-3 sm:px-4 py-2 text-sm sm:text-base'
+              )}
             >
               Next
             </button>
@@ -314,9 +393,14 @@ const Products = () => {
 
       {/* Loading indicator for pagination */}
       {loading && productsData && (
-        <div className="fixed bottom-4 right-4 bg-primary text-white px-4 py-2 rounded-lg shadow-lg z-50">
+        <div className={combineThemeClasses(
+          themeClasses.background.primary,
+          themeClasses.text.inverse,
+          themeClasses.shadow.lg,
+          'fixed bottom-4 right-4 px-4 py-2 rounded-lg z-50'
+        )}>
           <div className="flex items-center gap-2">
-            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+            <div className={combineThemeClasses(themeClasses.loading.spinner, 'w-4 h-4 border-copy-inverse border-t-transparent')}></div>
             <span className="text-sm font-medium">Loading...</span>
           </div>
         </div>

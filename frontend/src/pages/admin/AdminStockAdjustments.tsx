@@ -287,3 +287,4 @@ export const AdminStockAdjustments = () => {
     </div>
   );
 };
+export default AdminStockAdjustments;

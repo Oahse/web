@@ -147,3 +147,4 @@ export const AdminWarehouseLocationForm = () => {
     </div>
   );
 };
+export default AdminWarehouseLocationForm;

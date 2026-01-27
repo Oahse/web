@@ -371,3 +371,4 @@ export const AdminVariants = () => {
     </div>
   );
 };
+export default AdminVariants;

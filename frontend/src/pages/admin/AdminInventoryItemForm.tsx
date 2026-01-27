@@ -125,3 +125,4 @@ export const AdminInventoryItemForm = () => {
     </div>
   );
 };
+export default AdminInventoryItemForm;

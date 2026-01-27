@@ -111,6 +111,7 @@ class LoyaltyService:
             if not loyalty_account:
                 # Create new loyalty account
                 loyalty_account = LoyaltyAccount(
+                    id=uuid7(),
                     user_id=user_id,
                     tier="bronze",
                     tier_benefits=self.tier_config["bronze"]["benefits"]
@@ -276,6 +277,7 @@ class LoyaltyService:
             
             # Create points transaction
             transaction = PointsTransaction(
+                id=uuid7(),
                 loyalty_account_id=loyalty_account.id,
                 subscription_id=subscription_id,
                 transaction_type="earned",
@@ -401,6 +403,7 @@ class LoyaltyService:
             
             # Create referrer bonus transaction
             referrer_transaction = PointsTransaction(
+                id=uuid7(),
                 loyalty_account_id=referrer_account.id,
                 subscription_id=subscription_id,
                 transaction_type="referral",
@@ -418,6 +421,7 @@ class LoyaltyService:
             
             # Create referee bonus transaction
             referee_transaction = PointsTransaction(
+                id=uuid7(),
                 loyalty_account_id=referee_account.id,
                 subscription_id=subscription_id,
                 transaction_type="bonus",
@@ -666,6 +670,7 @@ class LoyaltyService:
             
             # Create redemption transaction
             transaction = PointsTransaction(
+                id=uuid7(),
                 loyalty_account_id=loyalty_account.id,
                 transaction_type="redeemed",
                 points_amount=-points_to_redeem,  # Negative for redemption
@@ -776,6 +781,7 @@ class LoyaltyService:
                 
                 # Create advancement transaction
                 advancement_transaction = PointsTransaction(
+                    id=uuid7(),
                     loyalty_account_id=loyalty_account.id,
                     transaction_type="bonus",
                     points_amount=0,  # No points awarded, just tracking

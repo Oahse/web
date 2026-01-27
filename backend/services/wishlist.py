@@ -3,6 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, delete
 from sqlalchemy.orm import selectinload
 from uuid import UUID
+from core.utils.uuid_utils import uuid7
 from typing import List, Optional
 import logging
 
@@ -63,6 +64,7 @@ class WishlistService:
             await self._clear_default_wishlist(user_id)
 
         new_wishlist = Wishlist(
+            id=uuid7(),
             user_id=user_id,
             name=payload.name,
             is_default=payload.is_default
@@ -136,6 +138,7 @@ class WishlistService:
                 raise HTTPException(status_code=404, detail="Variant not found")
 
             new_item = WishlistItem(
+                id=uuid7(),
                 wishlist_id=wishlist_id,
                 product_id=payload.product_id,
                 variant_id=payload.variant_id,

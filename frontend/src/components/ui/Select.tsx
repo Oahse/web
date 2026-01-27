@@ -1,6 +1,7 @@
 import React, { forwardRef } from 'react';
 import { cn } from '../../lib/utils';
 import { ChevronDownIcon } from 'lucide-react';
+import { themeClasses, combineThemeClasses, getInputClasses } from '../../lib/themeClasses';
 
 interface SelectOption {
   value: string;
@@ -14,6 +15,7 @@ interface SelectProps extends Omit<React.SelectHTMLAttributes<HTMLSelectElement>
   options: SelectOption[];
   size?: 'sm' | 'md' | 'lg';
   fullWidth?: boolean;
+  variant?: 'default' | 'outline' | 'filled';
 }
 
 export const Select = forwardRef<HTMLSelectElement, SelectProps>(({
@@ -24,47 +26,66 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(({
   options,
   size = 'md',
   fullWidth = false,
+  variant = 'default',
   ...props
 }, ref) => {
   const sizeStyles = {
-    sm: 'py-1 text-sm',
-    md: 'py-2',
+    sm: 'py-1.5 text-sm',
+    md: 'py-2.5 text-sm sm:text-base',
     lg: 'py-3 text-lg'
   };
 
+  const variantStyles = {
+    default: getInputClasses(error ? 'error' : 'default'),
+    outline: combineThemeClasses(
+      'border-2 bg-transparent',
+      error ? themeClasses.border.error : themeClasses.border.default,
+      'focus:border-primary focus:ring-primary/20'
+    ),
+    filled: combineThemeClasses(
+      themeClasses.background.elevated,
+      'border-transparent focus:border-primary focus:ring-primary/20'
+    )
+  };
+
   return (
-    <div className={cn('mb-4', fullWidth && 'w-full')}>
+    <div className={combineThemeClasses('relative', fullWidth && 'w-full', !label && 'mb-0')}>
       {label && (
-        <label htmlFor={props.id} className="block text-sm font-medium text-copy mb-1">
+        <label htmlFor={props.id} className={combineThemeClasses(themeClasses.text.primary, 'block text-sm font-medium mb-2')}>
           {label}
         </label>
       )}
       <div className="relative">
         <select 
           ref={ref} 
-          className={cn(
-            'w-full appearance-none px-4 border rounded-md focus:outline-none focus:ring-1 transition-colors pr-10 bg-surface text-copy', 
-            sizeStyles[size], 
-            error 
-              ? 'border-error focus:border-error focus:ring-error/50' 
-              : 'border-border focus:border-primary focus:ring-primary/50 hover:border-border-strong', 
+          className={combineThemeClasses(
+            'w-full appearance-none px-4 rounded-lg focus:outline-none focus:ring-2 transition-all duration-200 pr-10',
+            sizeStyles[size],
+            variantStyles[variant],
+            props.disabled && themeClasses.input.disabled,
             className
           )} 
           {...props}
         >
           {options.map(option => (
-            <option key={option.value} value={option.value}>
+            <option key={option.value} value={option.value} className={combineThemeClasses(themeClasses.background.surface, themeClasses.text.primary)}>
               {option.label}
             </option>
           ))}
         </select>
         <ChevronDownIcon 
-          size={16} 
-          className="absolute right-3 top-1/2 transform -translate-y-1/2 text-copy-light pointer-events-none" 
+          size={size === 'sm' ? 14 : size === 'lg' ? 18 : 16} 
+          className={combineThemeClasses(
+            themeClasses.text.muted,
+            'absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none transition-colors'
+          )} 
         />
       </div>
       {(helperText || error) && (
-        <p className={cn('mt-1 text-xs', error ? 'text-error' : 'text-copy-light')}>
+        <p className={combineThemeClasses(
+          'mt-2 text-xs',
+          error ? themeClasses.text.error : themeClasses.text.muted
+        )}>
           {error || helperText}
         </p>
       )}

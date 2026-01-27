@@ -264,3 +264,4 @@ export const AdminShippingMethodForm = () => {
     </div>
   );
 };
+export default AdminShippingMethodForm;

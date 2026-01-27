@@ -25,3 +25,4 @@ export const AdminUserEdit = () => {
     </div>
   );
 };
+export default AdminUserEdit;

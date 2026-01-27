@@ -367,3 +367,4 @@ export const AdminUsers = () => {
     </div>
   );
 };
+export default AdminUsers;

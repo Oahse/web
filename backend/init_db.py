@@ -306,6 +306,7 @@ async def seed_sample_data(
         categories = []
         for cat_id, cat_data in FILTER_CATEGORIES.items():
             cat = Category(
+                id=uuid7(),
                 name=cat_data['name'],
                 image_url=cat_data['image_url'],
                 description=f"{cat_data['name']} category including: {', '.join(cat_data['keywords'][:5])}...",
@@ -416,6 +417,7 @@ async def seed_sample_data(
             pm = PasswordManager()
             hashed = pm.hash_password(pwd_plain)
             user = User(
+                id=uuid7(),
                 email=email,
                 firstname=fname,
                 lastname=lname,
@@ -443,6 +445,7 @@ async def seed_sample_data(
             pm = PasswordManager()
             hashed = pm.hash_password(pwd_plain)
             user = User(
+                id=uuid7(),
                 email=email,
                 firstname=fname,
                 lastname=lname,
@@ -595,6 +598,7 @@ async def seed_sample_data(
                 k=random.randint(1, 3))
 
             product = Product(
+                id=uuid7(),
                 name=product_name,
                 slug=slug, # Add this line
                 description=f"High-quality {keyword.lower()} sourced directly from trusted suppliers in {origin_country}. Perfect for cooking, baking, and everyday use. Rich in nutrients and carefully processed to maintain freshness. Our {product_name.lower()} is {', '.join(dietary_tags)}, ensuring you get the best quality African products delivered fresh to your door.",
@@ -634,6 +638,7 @@ async def seed_sample_data(
                         base_price * random.uniform(0.7, 0.9), 2)
 
                 variant = ProductVariant(
+                    id=uuid7(),
                     product_id=product.id,
                     sku=sku,
                     name=variant_name,
@@ -651,6 +656,7 @@ async def seed_sample_data(
                 for img_idx in range(num_images):
                     img_url = random.choice(image_urls)
                     image = ProductImage(
+                        id=uuid7(),
                         variant_id=variant.id,
                         url=img_url,
                         alt_text=f"{product.name} - {variant.name}",
@@ -694,6 +700,7 @@ async def seed_sample_data(
                 stock_quantity = 0
             
             inventory = Inventory(
+                id=uuid7(),
                 variant_id=variant.id,
                 location_id=main_warehouse.id,
                 quantity_available=stock_quantity,
@@ -796,6 +803,7 @@ async def seed_sample_data(
                     chosen_variant = random.choice(all_variants)
                     item_total = chosen_variant.base_price * 1
                     order_item = OrderItem(
+                        id=uuid7(),
                         order_id=order.id,
                         variant_id=chosen_variant.id,
                         quantity=1,
@@ -808,6 +816,7 @@ async def seed_sample_data(
                 order.total_amount = order_total
 
                 transaction = Transaction(
+                    id=uuid7(),
                     user_id=user.id,
                     order_id=order.id,
                     # Generate a dummy ID for seeding
@@ -844,6 +853,7 @@ async def seed_sample_data(
 
             # Create a wishlist for the user
             wishlist = Wishlist(
+                id=uuid7(),
                 user_id=user.id,
                 name=f"{user.firstname}'s Wishlist",
                 is_default=True
@@ -855,6 +865,7 @@ async def seed_sample_data(
             for i in range(random.randint(0, 3)):
                 chosen_product = random.choice(all_products_for_wishlist)
                 wishlist_item = WishlistItem(
+                    id=uuid7(),
                     wishlist_id=wishlist.id,
                     product_id=chosen_product.id,
                     quantity=1  # Default quantity for wishlist item
@@ -923,6 +934,7 @@ async def seed_sample_data(
                     break
                 chosen_user = random.choice(all_users)
                 review = Review(
+                    id=uuid7(),
                     product_id=product.id,
                     user_id=chosen_user.id,
                     # Featured products get better ratings
@@ -945,6 +957,7 @@ async def seed_sample_data(
                         break
                     chosen_user = random.choice(all_users)
                     review = Review(
+                        id=uuid7(),
                         product_id=product.id,
                         user_id=chosen_user.id,
                         rating=random.randint(3, 5),  # Generally good ratings

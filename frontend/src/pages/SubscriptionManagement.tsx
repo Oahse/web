@@ -334,3 +334,5 @@ export const SubscriptionManagement = () => {
     </div>
   );
 };
+
+export default SubscriptionManagement;

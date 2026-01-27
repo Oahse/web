@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, forwardRef } from 'react';
-import { ChevronDownIcon, SearchIcon, CheckIcon } from 'lucide-react';
+import { ChevronDownIcon, SearchIcon, CheckIcon, XIcon } from 'lucide-react';
 import { cn } from '../../lib/utils';
-import './SearchableSelect.css';
+import { themeClasses, combineThemeClasses, getInputClasses } from '../../lib/themeClasses';
 
 interface Option {
   value: string;
@@ -24,6 +24,7 @@ interface SearchableSelectProps {
   fullWidth?: boolean;
   allowClear?: boolean;
   noOptionsMessage?: string;
+  variant?: 'default' | 'outline' | 'filled';
 }
 
 export const SearchableSelect = forwardRef<HTMLInputElement, SearchableSelectProps>(({
@@ -40,7 +41,8 @@ export const SearchableSelect = forwardRef<HTMLInputElement, SearchableSelectPro
   size = 'md',
   fullWidth = false,
   allowClear = false,
-  noOptionsMessage = "No options found"
+  noOptionsMessage = "No options found",
+  variant = 'default'
 }, ref) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -62,9 +64,22 @@ export const SearchableSelect = forwardRef<HTMLInputElement, SearchableSelectPro
 
   // Size styles
   const sizeStyles = {
-    sm: 'py-1 text-sm',
-    md: 'py-2',
+    sm: 'py-1.5 text-sm',
+    md: 'py-2.5 text-sm sm:text-base',
     lg: 'py-3 text-lg'
+  };
+
+  const variantStyles = {
+    default: getInputClasses(error ? 'error' : 'default'),
+    outline: combineThemeClasses(
+      'border-2 bg-transparent',
+      error ? themeClasses.border.error : themeClasses.border.default,
+      'focus-within:border-primary focus-within:ring-primary/20'
+    ),
+    filled: combineThemeClasses(
+      themeClasses.background.elevated,
+      'border-transparent focus-within:border-primary focus-within:ring-primary/20'
+    )
   };
 
   // Handle click outside to close dropdown
@@ -156,30 +171,28 @@ export const SearchableSelect = forwardRef<HTMLInputElement, SearchableSelectPro
   };
 
   return (
-    <div className={cn('relative', fullWidth && 'w-full')} ref={containerRef}>
+    <div className={combineThemeClasses('relative', fullWidth && 'w-full')} ref={containerRef}>
       {label && (
-        <label className="block text-sm font-medium text-copy mb-1">
+        <label className={combineThemeClasses(themeClasses.text.primary, 'block text-sm font-medium mb-2')}>
           {label}
-          {required && <span className="text-error ml-1">*</span>}
+          {required && <span className={combineThemeClasses(themeClasses.text.error, 'ml-1')}>*</span>}
         </label>
       )}
       
       <div className="relative">
         <div
-          className={cn(
-            'w-full flex items-center border rounded-md cursor-pointer transition-colors',
+          className={combineThemeClasses(
+            'w-full flex items-center rounded-lg cursor-pointer transition-all duration-200',
             sizeStyles[size],
-            error 
-              ? 'border-error focus-within:border-error focus-within:ring-1 focus-within:ring-error/50' 
-              : 'border-border focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/50 hover:border-border-strong',
-            disabled && 'opacity-50 cursor-not-allowed bg-surface-disabled',
-            !disabled && 'bg-surface',
+            variantStyles[variant],
+            disabled && themeClasses.input.disabled,
+            !disabled && themeClasses.interactive.hover,
             className
           )}
           onClick={handleInputClick}
         >
           <div className="flex-1 flex items-center px-3">
-            <SearchIcon size={16} className="text-copy-light mr-2 flex-shrink-0" />
+            <SearchIcon size={size === 'sm' ? 14 : size === 'lg' ? 18 : 16} className={combineThemeClasses(themeClasses.text.muted, 'mr-2 flex-shrink-0')} />
             
             {isOpen ? (
               <input
@@ -188,13 +201,17 @@ export const SearchableSelect = forwardRef<HTMLInputElement, SearchableSelectPro
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder={placeholder}
-                className="flex-1 bg-transparent outline-none text-copy placeholder-copy-light searchable-select-input"
+                className={combineThemeClasses(
+                  'flex-1 bg-transparent outline-none',
+                  themeClasses.text.primary,
+                  'placeholder:' + themeClasses.text.muted
+                )}
                 disabled={disabled}
               />
             ) : (
-              <span className={cn(
+              <span className={combineThemeClasses(
                 'flex-1 truncate',
-                selectedOption ? 'text-copy' : 'text-copy-light'
+                selectedOption ? themeClasses.text.primary : themeClasses.text.muted
               )}>
                 {selectedOption ? selectedOption.label : placeholder}
               </span>
@@ -209,15 +226,20 @@ export const SearchableSelect = forwardRef<HTMLInputElement, SearchableSelectPro
                   e.stopPropagation();
                   handleClear();
                 }}
-                className="p-1 hover:bg-surface-hover rounded text-copy-light hover:text-copy"
+                className={combineThemeClasses(
+                  'p-1 rounded transition-colors',
+                  themeClasses.text.muted,
+                  themeClasses.interactive.hover
+                )}
               >
-                ×
+                <XIcon size={14} />
               </button>
             )}
             <ChevronDownIcon 
-              size={16} 
-              className={cn(
-                'text-copy-light transition-transform',
+              size={size === 'sm' ? 14 : size === 'lg' ? 18 : 16} 
+              className={combineThemeClasses(
+                themeClasses.text.muted,
+                'transition-transform duration-200',
                 isOpen && 'rotate-180'
               )} 
             />
@@ -226,34 +248,37 @@ export const SearchableSelect = forwardRef<HTMLInputElement, SearchableSelectPro
 
         {/* Dropdown */}
         {isOpen && (
-          <div className="absolute z-50 w-full mt-1 bg-surface border border-border rounded-md shadow-lg max-h-60 overflow-auto searchable-select-dropdown">
+          <div className={combineThemeClasses(
+            themeClasses.card.elevated,
+            'absolute z-50 w-full mt-1 max-h-60 overflow-auto'
+          )}>
             {filteredOptions.length > 0 ? (
               <ul ref={listRef} className="py-1">
                 {filteredOptions.map((option, index) => (
                   <li
                     key={option.value}
-                    className={cn(
-                      'px-3 py-2 cursor-pointer flex items-center justify-between searchable-select-option',
+                    className={combineThemeClasses(
+                      'px-3 py-2 cursor-pointer flex items-center justify-between transition-colors',
                       index === highlightedIndex && 'bg-primary/10',
                       option.value === value && 'bg-primary/5',
-                      'hover:bg-surface-hover'
+                      themeClasses.interactive.hover
                     )}
                     onClick={() => handleSelect(option.value)}
                   >
                     <div className="flex-1">
-                      <div className="text-copy">{option.label}</div>
+                      <div className={themeClasses.text.primary}>{option.label}</div>
                       {option.description && (
-                        <div className="text-xs text-copy-light">{option.description}</div>
+                        <div className={combineThemeClasses(themeClasses.text.muted, 'text-xs')}>{option.description}</div>
                       )}
                     </div>
                     {option.value === value && (
-                      <CheckIcon size={16} className="text-primary ml-2" />
+                      <CheckIcon size={16} className={combineThemeClasses(themeClasses.text.success, 'ml-2')} />
                     )}
                   </li>
                 ))}
               </ul>
             ) : (
-              <div className="px-3 py-2 text-copy-light text-center">
+              <div className={combineThemeClasses(themeClasses.text.muted, 'px-3 py-2 text-center')}>
                 {noOptionsMessage}
               </div>
             )}
@@ -263,9 +288,9 @@ export const SearchableSelect = forwardRef<HTMLInputElement, SearchableSelectPro
 
       {/* Helper text or error */}
       {(helperText || error) && (
-        <p className={cn(
-          'mt-1 text-xs',
-          error ? 'text-error' : 'text-copy-light'
+        <p className={combineThemeClasses(
+          'mt-2 text-xs',
+          error ? themeClasses.text.error : themeClasses.text.muted
         )}>
           {error || helperText}
         </p>

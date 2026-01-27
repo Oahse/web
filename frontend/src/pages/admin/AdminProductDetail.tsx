@@ -362,3 +362,4 @@ export const AdminProductDetail = () => {
     </div>
   );
 };
+export default AdminProductDetail;
