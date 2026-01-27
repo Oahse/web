@@ -123,7 +123,7 @@ export const ProductDetails = () => {
 
   // Fetch product data
   useEffect(() => {
-    if (id) {
+    if (id && id !== 'search') {
       fetchProduct(() => ProductsAPI.getProduct(id));
       fetchRelatedProducts(() => ProductsAPI.getRecommendedProducts(id, 4));
     }
@@ -140,7 +140,7 @@ export const ProductDetails = () => {
 
   // Fetch reviews when product ID, filters, or page change
   useEffect(() => {
-    if (id) {
+    if (id && id !== 'search') {
       const params = new URLSearchParams();
       params.append('page', reviewsPage.toString());
       params.append('limit', '10');
@@ -186,7 +186,7 @@ export const ProductDetails = () => {
     setQuantity(Math.max(1, newQuantity));
   };
 
-  if (!id) {
+  if (!id || id === 'search') {
     return <div>Product not found</div>;
   }
 
@@ -864,7 +864,7 @@ export const ProductDetails = () => {
             {relatedError && (
               <ErrorMessage
                 error={relatedError}
-                onRetry={() => fetchRelatedProducts(() => ProductsAPI.getRecommendedProducts(id || '', 4))}
+                onRetry={() => fetchRelatedProducts(() => ProductsAPI.getRecommendedProducts(id && id !== 'search' ? id : '', 4))}
                 className="mb-6"
               />
             )}

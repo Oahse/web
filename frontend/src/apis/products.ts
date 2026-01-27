@@ -38,7 +38,12 @@ export class ProductsAPI {
    * Search products (advanced search with fuzzy matching)
    */
   static async searchProducts(query, filters) {
-    const params = new URLSearchParams({ q: query });
+    // Ensure query is provided and not empty
+    if (!query || query.trim().length < 2) {
+      return { data: { products: [], count: 0 } };
+    }
+
+    const params = new URLSearchParams({ q: query.trim() });
     
     if (filters?.category_id) params.append('category_id', filters.category_id);
     if (filters?.min_price !== undefined) params.append('min_price', filters.min_price.toString());
@@ -124,9 +129,12 @@ export class ProductsAPI {
    * Get recommended products
    */
   static async getRecommendedProducts(productId, limit = 10) {
-    const url = productId 
-      ? `/products/${productId}/recommendations?limit=${limit}`
-      : `/products/recommendations?limit=${limit}`;
+    // If no productId provided, return empty results
+    if (!productId) {
+      return { data: [] };
+    }
+
+    const url = `/products/${productId}/recommendations?limit=${limit}`;
     return await apiClient.get(url);
   }
 

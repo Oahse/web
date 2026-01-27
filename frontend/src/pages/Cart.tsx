@@ -106,6 +106,7 @@ export const Cart = () => {
   // Enhanced quantity change handler with optimistic updates
   const handleQuantityChange = useCallback(async (id: string, quantity: number) => {
     // Check authentication for cart operations
+    // console.log(id,'item_id-----')
     if (!isAuthenticated) {
       setIntendedDestination({ 
         path: location.pathname,
@@ -364,7 +365,6 @@ export const Cart = () => {
             <div className="flex items-center border border-border rounded-md">
               <button
                 onClick={() => handleQuantityChange(item.id, item.quantity - 1)}
-                // disabled={item.quantity <= 1 || isProcessing}
                 className="px-2 py-1 text-copy-light hover:text-primary disabled:opacity-50 disabled:cursor-not-allowed"
                 aria-label="Decrease quantity">
                 <MinusIcon size={14} />

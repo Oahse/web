@@ -30,7 +30,6 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
   const [cart, setCart] = useState<Cart | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<any>(null);
-  const [updateTrigger, setUpdateTrigger] = useState<number>(0);
   
   // Safely get navigation hooks
   let navigate: any = null;
@@ -44,10 +43,6 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
     console.warn('Navigation hooks not available in CartProvider:', error);
   }
 
-  // Force update function to trigger re-renders
-  const forceUpdate = useCallback(() => {
-    setUpdateTrigger(prev => prev + 1);
-  }, []);
 
   // Helper function to handle authentication errors
   const handleAuthError = useCallback((error: any) => {
@@ -213,7 +208,6 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
       // Update with backend response to ensure consistency - ensure new object reference
       const newCart = { ...response?.data };
       setCart(newCart);
-      forceUpdate(); // Force re-render
       toast.success(`${itemName} removed from cart`);
     } catch (error: any) {
       // Revert optimistic update on error
@@ -242,8 +236,6 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
       throw new Error('Item not found in cart');
     }
 
-    // Store previous cart for rollback
-    const previousCart = cart;
 
     // Optimistic update: Update quantity immediately in UI
     if (cart) {
@@ -266,12 +258,10 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
       const response = await CartAPI.updateCartItem(itemId, quantity, token);
       // Update with backend response to ensure consistency - ensure new object reference
       const newCart = { ...response?.data };
+      console.log(newCart,'=======dsdsdsinc')
       setCart(newCart);
-      forceUpdate(); // Force re-render
       toast.success('Cart updated');
     } catch (error: any) {
-      // Revert optimistic update on error
-      setCart(previousCart);
       handleCartSyncError(error, fetchCart);
       throw error;
     }
@@ -287,9 +277,6 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
     }
 
     if (!cart?.items?.length) throw new Error('Cart is already empty');
-
-    // Store previous cart for rollback
-    const previousCart = cart;
 
     // Optimistic update: Clear cart immediately in UI
     const optimisticCart = { 
@@ -309,11 +296,8 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
       // Update with backend response to ensure consistency - ensure new object reference
       const newCart = { ...(response?.data || optimisticCart) };
       setCart(newCart);
-      forceUpdate(); // Force re-render
       toast.success('Cart cleared');
     } catch (error: any) {
-      // Revert optimistic update on error
-      setCart(previousCart);
       handleAuthError(error);
       throw error;
     }

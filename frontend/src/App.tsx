@@ -417,6 +417,7 @@ export const App: React.FC = () => {
                               <Route path="/" element={<Layout><Home /></Layout>} />
 
                               <Route path="/products" element={<Layout><Products /></Layout>} />
+                              <Route path="/products/search" element={<Layout><Products /></Layout>} />
                               <Route path="/products/:id" element={<Layout><ProductDetails /></Layout>} />
                               <Route path="/cart" element={<Layout><Cart /></Layout>} />
                               <Route path="/checkout" element={<ProtectedRoute><Layout><Checkout /></Layout></ProtectedRoute>} />

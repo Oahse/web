@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useCart } from '../../contexts/CartContext';
 import { useWishlist } from '../../contexts/WishlistContext';
@@ -37,6 +37,8 @@ export const Header = ({
   const [selectedCountry, setSelectedCountry] = useState('US'); // Default to US
   const [selectedLanguage, setSelectedLanguage] = useState('en'); // Default to English
   const navigate = useNavigate();
+  const location = useLocation();
+  const isProductsPage = location.pathname.endsWith('/products');
 
   useEffect(() => {
     const adInterval = setInterval(() => {
@@ -150,7 +152,7 @@ export const Header = ({
   const handleSearch = (e) => {
     e.preventDefault();
     if (searchTerm.trim()) {
-      navigate(`/products/search?q=${encodeURIComponent(searchTerm)}`);
+      navigate(`/products?q=${encodeURIComponent(searchTerm)}`);
     }
   };
 
@@ -256,6 +258,7 @@ export const Header = ({
             </Link>
 
             {/* Search Bar - Desktop */}
+            {!isProductsPage && ( 
             <div className="hidden md:flex flex-grow max-w-xl mx-8">
               <form onSubmit={handleSearch} className="flex w-full">
                 <input
@@ -271,7 +274,7 @@ export const Header = ({
                   <SearchIcon size={20} />
                 </button>
               </form>
-            </div>
+            </div>)}
 
             {/* User Actions */}
             <div className="flex items-center space-x-4 md:space-x-6">
@@ -325,9 +328,10 @@ export const Header = ({
               </button>
 
               {/* Mobile search button */}
+              {!isProductsPage && ( 
               <button className="md:hidden p-1 z-10" onClick={onSearchClick}>
                 <SearchIcon size={24} />
-              </button>
+              </button>)}
             </div>
           </div>
         </div>

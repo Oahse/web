@@ -24,7 +24,7 @@ export const analyzeCartError = (error: any): CartSyncError => {
     if (message.includes('Cart item not found')) {
       return {
         type: 'item_not_found',
-        message: 'This item is no longer in your cart. Your cart has been updated.',
+        message: message,
         shouldRefresh: true
       };
     }
@@ -32,7 +32,7 @@ export const analyzeCartError = (error: any): CartSyncError => {
     if (message.includes('Cart not found') || message.includes('expired')) {
       return {
         type: 'cart_expired',
-        message: 'Your cart has expired. Please add items again.',
+        message: message,
         shouldRefresh: true
       };
     }

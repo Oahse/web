@@ -33,7 +33,7 @@ export const MobileSearch = ({
   const handleSearch = (e) => {
     e.preventDefault();
     if (searchTerm.trim()) {
-      navigate(`/products/search?q=${encodeURIComponent(searchTerm)}`);
+      navigate(`/products?q=${encodeURIComponent(searchTerm)}`);
       onClose();
     }
   };
@@ -81,7 +81,7 @@ export const MobileSearch = ({
                   className="px-3 py-1 bg-background rounded-full text-sm hover:bg-border"
                   onClick={() => {
                     setSearchTerm(term);
-                    navigate(`/products/search?q=${encodeURIComponent(term)}`);
+                    navigate(`/products?q=${encodeURIComponent(term)}`);
                     onClose();
                   }}
                 >
@@ -105,7 +105,7 @@ export const MobileSearch = ({
                     key={index}
                     className="px-3 py-2 bg-background rounded-md text-sm hover:bg-border text-left"
                     onClick={() => {
-                      navigate(`/products/category/${category.slug}`);
+                      navigate(`/products?category=${encodeURIComponent(category.name)}`);
                       onClose();
                     }}
                   >

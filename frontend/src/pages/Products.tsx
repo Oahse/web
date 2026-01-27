@@ -168,7 +168,7 @@ const Products = () => {
               onChange={(e) => setSearchQuery(e.target.value)}
               className={combineThemeClasses(
                 getInputClasses('default'),
-                'pl-10 pr-4 py-2.5 sm:py-3 text-sm sm:text-base'
+                'pl-10 pr-4 py-2 sm:py-2.5 text-sm sm:text-base'
               )}
             />
           </div>
@@ -176,7 +176,7 @@ const Products = () => {
             type="submit"
             className={combineThemeClasses(
               getButtonClasses('primary'),
-              'px-4 sm:px-6 py-2.5 sm:py-3 text-sm sm:text-base whitespace-nowrap'
+              'px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm whitespace-nowrap'
             )}
           >
             Search

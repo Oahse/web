@@ -133,7 +133,7 @@ describe('MobileSearch Component', () => {
     fireEvent.click(cerealCropsButton);
 
     await waitFor(() => {
-      expect(navigate).toHaveBeenCalledWith('/products/category/cereal-crops');
+      expect(navigate).toHaveBeenCalledWith('/products?category=Cereal%20Crops');
       expect(mockOnClose).toHaveBeenCalledTimes(1);
     });
   });
