@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useCallback, useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { TokenManager } from '../apis/client';
 import { CartAPI } from '../apis/cart';
 import { Cart, AddToCartRequest } from '../types';
@@ -28,6 +29,23 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
   const [cart, setCart] = useState<Cart | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<any>(null);
+  
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  // Helper function to handle authentication errors
+  const handleAuthError = useCallback((error: any) => {
+    if (error.message === 'User must be authenticated to add items to cart' || 
+        error.message === 'User must be authenticated') {
+      navigate("/login", {
+        replace: true,
+        state: { from: location },
+      });
+    } else {
+      console.error(error);
+      toast.error(error.message || 'Failed to perform cart operation');
+    }
+  }, [navigate, location]);
 
   // Fetch cart data
   const fetchCart = useCallback(async () => {
@@ -55,7 +73,7 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
       if (err?.status === 401 || err?.response?.status === 401) {
         setCart(null);
         setError(null); // Don't show error for auth issues
-        TokenManager.removeToken(); // Clear invalid token
+        TokenManager.clearTokens(); // Clear invalid token
       } else {
         setError(err);
         console.error('Failed to fetch cart:', err);
@@ -89,7 +107,9 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
   const addItem = useCallback(async (item: AddToCartRequest): Promise<boolean> => {
     const token = TokenManager.getToken();
     if (!token) {
-      throw new Error('User must be authenticated to add items to cart');
+      const error = new Error('User must be authenticated to add items to cart');
+      handleAuthError(error);
+      throw error;
     }
 
     // Only send the required fields to the backend
@@ -104,15 +124,19 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
       toast.success(`Added ${item.quantity || 1} item${(item.quantity || 1) > 1 ? 's' : ''} to cart`);
       return true;
     } catch (error: any) {
-      toast.error(error.message || 'Failed to add item to cart');
+      handleAuthError(error);
       throw error;
     }
-  }, [cart]);
+  }, [handleAuthError]);
 
   // ✅ Optimistic remove item with useState
   const removeItem = useCallback(async (itemId: string): Promise<void> => {
     const token = TokenManager.getToken();
-    if (!token) throw new Error('User must be authenticated');
+    if (!token) {
+      const error = new Error('User must be authenticated');
+      handleAuthError(error);
+      throw error;
+    }
 
     const item = cart?.items?.find(i => i.id === itemId);
     const itemName = item?.variant?.product_name || item?.variant?.name || 'Item';
@@ -136,15 +160,19 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
     } catch (error: any) {
       // Revert optimistic update
       setCart(previousCart);
-      toast.error(error.message || 'Failed to remove item from cart');
+      handleAuthError(error);
       throw error;
     }
-  }, [cart]);
+  }, [cart, handleAuthError]);
 
   // ✅ Optimistic update quantity with useState
   const updateQuantity = useCallback(async (itemId: string, quantity: number): Promise<void> => {
     const token = TokenManager.getToken();
-    if (!token) throw new Error('User must be authenticated');
+    if (!token) {
+      const error = new Error('User must be authenticated');
+      handleAuthError(error);
+      throw error;
+    }
 
     if (quantity <= 0) throw new Error('Quantity must be greater than 0');
 
@@ -171,15 +199,19 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
     } catch (error: any) {
       // Revert optimistic update
       setCart(previousCart);
-      toast.error(error.message || 'Failed to update cart');
+      handleAuthError(error);
       throw error;
     }
-  }, [cart]);
+  }, [cart, handleAuthError]);
 
   // ✅ Optimistic clear cart with useState
   const clearCart = useCallback(async () => {
     const token = TokenManager.getToken();
-    if (!token) throw new Error('User must be authenticated');
+    if (!token) {
+      const error = new Error('User must be authenticated');
+      handleAuthError(error);
+      throw error;
+    }
 
     if (!cart?.items?.length) throw new Error('Cart is already empty');
 
@@ -195,10 +227,10 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
     } catch (error: any) {
       // Revert optimistic update
       setCart(previousCart);
-      toast.error(error.message || 'Failed to clear cart');
+      handleAuthError(error);
       throw error;
     }
-  }, [cart]);
+  }, [cart, handleAuthError]);
 
   const totalItems = cart?.items?.reduce((sum, item) => sum + item.quantity, 0) || 0;
   const items = cart?.items || [];

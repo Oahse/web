@@ -107,7 +107,8 @@ export const ProductCard = ({ product }: { product: any }) => {
       setStockStatus(status);
       
     } catch (error: any) {
-      toast.error(error.message || 'Failed to add item to cart');
+      // CartContext handles auth redirects and error messages
+      console.error('Failed to add item to cart:', error);
     } finally {
       setIsAddingToCart(false);
     }
@@ -344,7 +345,7 @@ export const ProductCard = ({ product }: { product: any }) => {
         )}
 
         {/* Stock Status - Theme-aware */}
-        {stockStatus && (
+        {/* {stockStatus && (
           <div className={`text-xs font-medium ${
             stockStatus.status === 'in_stock' ? 'text-green-600 dark:text-green-400' :
             stockStatus.status === 'low_stock' ? 'text-yellow-600 dark:text-yellow-400' :
@@ -354,14 +355,14 @@ export const ProductCard = ({ product }: { product: any }) => {
           }`}>
             {stockStatus.message}
           </div>
-        )}
+        )} */}
 
         {/* Add to Cart Button - Fully responsive and theme-aware */}
         <button
           onClick={handleAddToCart}
           disabled={!isInStock || isAddingToCart || stockStatus?.status === 'out_of_stock'}
           className={combineThemeClasses(
-            'w-full flex items-center justify-center gap-1 sm:gap-1.5 px-2 py-1.5 sm:py-2 rounded-md font-medium text-xs sm:text-sm transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98]',
+            'w-full bg-primary-dark dark:bg-primary-light flex items-center justify-center gap-1 sm:gap-1.5 px-2 py-1.5 sm:py-2 rounded-md font-medium text-xs sm:text-sm transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98]',
             themeClasses.interactive.disabled,
             isInStock && stockStatus?.status !== 'out_of_stock'
               ? combineThemeClasses(
@@ -402,7 +403,7 @@ export const ProductCard = ({ product }: { product: any }) => {
             onClick={handleAddToSubscription}
             disabled={!isInStock || isAddingToSubscription || stockStatus?.status === 'out_of_stock'}
             className={combineThemeClasses(
-              'w-full flex items-center justify-center gap-1 sm:gap-1.5 px-2 py-1.5 sm:py-2 rounded-md font-medium text-xs sm:text-sm transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98]',
+              'w-full bg-primary-dark dark:bg-primary-light flex items-center justify-center gap-1 sm:gap-1.5 px-2 py-1.5 sm:py-2 rounded-md font-medium text-xs sm:text-sm transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98]',
               themeClasses.interactive.disabled,
               isInStock && stockStatus?.status !== 'out_of_stock'
                 ? combineThemeClasses(
