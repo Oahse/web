@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { SearchIcon, FilterIcon, XIcon } from 'lucide-react';
 import { useAsync } from '../hooks/useAsync';
@@ -46,7 +46,7 @@ const Products = () => {
       setCategories(response.data?.categories || []);
       return response.data;
     });
-  }, [fetchCategories]);
+  }, []); // Remove fetchCategories from dependencies to prevent repeat calls
 
   const sortOptions = [
     { value: 'created_at:desc', label: 'Newest First' },
@@ -57,6 +57,7 @@ const Products = () => {
     { value: 'price:desc', label: 'Price High to Low' },
   ];
 
+  // Fetch products when filters change
   useEffect(() => {
     const [sortBy, sortOrder] = sortOption.split(':');
     const params = {
@@ -75,7 +76,7 @@ const Products = () => {
       setProductsData(response.data);
       return response.data;
     });
-  }, [searchQuery, selectedCategories, sortOption, priceRange, currentPage, fetchProducts]);
+  }, [searchQuery, selectedCategories, sortOption, priceRange, currentPage]); // Remove fetchProducts from dependencies
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();

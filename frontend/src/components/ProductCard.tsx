@@ -5,6 +5,7 @@ import { useWishlist } from '../contexts/WishlistContext';
 import { stockMonitor } from '../services/stockMonitoring';
 import { toast } from 'react-hot-toast';
 import { Link } from 'react-router-dom';
+import { themeClasses, combineThemeClasses } from '../lib/themeClasses';
 
 export const ProductCard = ({ product }: { product: any }) => {
   // ✅ Using useState for local state management
@@ -142,29 +143,43 @@ export const ProductCard = ({ product }: { product: any }) => {
 
   // Handle quantity change - removed since we don't need quantity selector
 
-  // Get stock status styling
+  // Get stock status styling - Theme-aware
   const getStockStatusStyle = () => {
     if (!stockStatus) return '';
     
     const styles: Record<string, string> = {
-      in_stock: 'text-green-600',
-      low_stock: 'text-yellow-600',
-      critical: 'text-orange-600',
-      out_of_stock: 'text-red-600'
+      in_stock: 'text-green-600 dark:text-green-400',
+      low_stock: 'text-yellow-600 dark:text-yellow-400',
+      critical: 'text-orange-600 dark:text-orange-400',
+      out_of_stock: 'text-red-600 dark:text-red-400'
     };
     
-    return styles[stockStatus.status] || 'text-gray-600';
+    return styles[stockStatus.status] || combineThemeClasses(themeClasses.text.muted);
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border hover:shadow-md transition-all duration-300 group overflow-hidden h-full flex flex-col">
-      {/* Image Container - Smaller aspect ratio */}
-      <div className="relative aspect-[4/3] overflow-hidden bg-gray-100">
+    <div className={combineThemeClasses(
+      themeClasses.card.base,
+      themeClasses.border.default,
+      themeClasses.shadow.sm,
+      'hover:shadow-md transition-all duration-300 group overflow-hidden h-full flex flex-col'
+    )}>
+      {/* Image Container - Responsive aspect ratio */}
+      <div className={combineThemeClasses(
+        themeClasses.background.elevated,
+        'relative aspect-[4/3] overflow-hidden'
+      )}>
         <Link to={`/product/${product.id}`} className="block w-full h-full">
           {/* Image Loading Skeleton */}
           {!imageLoaded && (
-            <div className="absolute inset-0 bg-gray-200 animate-pulse flex items-center justify-center">
-              <div className="w-6 h-6 border-2 border-gray-300 border-t-transparent rounded-full animate-spin"></div>
+            <div className={combineThemeClasses(
+              themeClasses.background.surface,
+              'absolute inset-0 animate-pulse flex items-center justify-center'
+            )}>
+              <div className={combineThemeClasses(
+                themeClasses.loading.spinner,
+                'w-4 h-4 sm:w-6 sm:h-6'
+              )}></div>
             </div>
           )}
           
@@ -182,16 +197,16 @@ export const ProductCard = ({ product }: { product: any }) => {
           />
         </Link>
         
-        {/* Sale Badge */}
+        {/* Sale Badge - Responsive sizing */}
         {isOnSale && (
-          <div className="absolute top-1.5 left-1.5 bg-red-500 text-white px-1.5 py-0.5 rounded text-xs font-semibold shadow-sm">
+          <div className="absolute top-1 left-1 sm:top-1.5 sm:left-1.5 bg-red-500 text-white px-1 py-0.5 sm:px-1.5 sm:py-0.5 rounded text-xs font-semibold shadow-sm">
             -{discount}%
           </div>
         )}
 
-        {/* Stock Status Badge */}
+        {/* Stock Status Badge - Responsive positioning */}
         {stockStatus && stockStatus.status !== 'in_stock' && (
-          <div className={`absolute top-1.5 ${isOnSale ? 'left-12' : 'left-1.5'} px-1.5 py-0.5 rounded text-xs font-semibold text-white shadow-sm ${
+          <div className={`absolute top-1 sm:top-1.5 ${isOnSale ? 'left-8 sm:left-12' : 'left-1 sm:left-1.5'} px-1 py-0.5 sm:px-1.5 sm:py-0.5 rounded text-xs font-semibold text-white shadow-sm ${
             stockStatus.status === 'out_of_stock' ? 'bg-red-500' :
             stockStatus.status === 'critical' ? 'bg-orange-500' : 'bg-yellow-500'
           }`}>
@@ -209,65 +224,82 @@ export const ProductCard = ({ product }: { product: any }) => {
           </div>
         )}
 
-        {/* Quick Actions - Smaller and positioned better */}
-        <div className="absolute top-1.5 right-1.5 flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-all duration-300">
+        {/* Quick Actions - Responsive sizing and positioning */}
+        <div className="absolute top-1 right-1 sm:top-1.5 sm:right-1.5 flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-all duration-300">
           {(isInStock && stockStatus?.status !== 'out_of_stock') && (
             <button
               onClick={handleAddToWishlist}
               disabled={isAddingToWishlist}
-              className={`p-1.5 rounded-full shadow-md transition-all duration-200 transform hover:scale-110 ${
+              className={combineThemeClasses(
+                'p-1 sm:p-1.5 rounded-full shadow-md transition-all duration-200 transform hover:scale-110 disabled:opacity-50 disabled:cursor-not-allowed',
                 isWishlisted 
                   ? 'bg-red-500 text-white' 
-                  : 'bg-white/90 hover:bg-white text-gray-600 hover:text-red-500'
-              } disabled:opacity-50 disabled:cursor-not-allowed`}
+                  : combineThemeClasses(
+                      themeClasses.background.surface,
+                      themeClasses.text.secondary,
+                      'hover:bg-white dark:hover:bg-gray-700 hover:text-red-500'
+                    )
+              )}
               title={isWishlisted ? 'In wishlist' : 'Add to wishlist'}
             >
               {isAddingToWishlist ? (
-                <div className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin"></div>
+                <div className={combineThemeClasses(themeClasses.loading.spinner, 'w-2.5 h-2.5 sm:w-3 sm:h-3')}></div>
               ) : (
-                <HeartIcon size={12} className={isWishlisted ? 'fill-current' : ''} />
+                <HeartIcon size={10} className={`sm:w-3 sm:h-3 ${isWishlisted ? 'fill-current' : ''}`} />
               )}
             </button>
           )}
 
           <Link
             to={`/product/${product.id}`}
-            className="p-1.5 bg-white/90 hover:bg-white text-gray-600 hover:text-primary rounded-full shadow-md transition-all duration-200 transform hover:scale-110"
+            className={combineThemeClasses(
+              themeClasses.background.surface,
+              themeClasses.text.secondary,
+              'hover:bg-white dark:hover:bg-gray-700 hover:text-primary',
+              'p-1 sm:p-1.5 rounded-full shadow-md transition-all duration-200 transform hover:scale-110'
+            )}
             title="View details"
           >
-            <EyeIcon size={12} />
+            <EyeIcon size={10} className="sm:w-3 sm:h-3" />
           </Link>
         </div>
       </div>
 
-      {/* Content - More compact */}
-      <div className="p-2 sm:p-3 space-y-2 flex-1 flex flex-col">
+      {/* Content - Responsive padding and spacing */}
+      <div className="p-2 sm:p-3 space-y-1.5 sm:space-y-2 flex-1 flex flex-col">
         <Link to={`/product/${product.id}`} className="flex-1">
-          <h3 className="text-xs sm:text-sm font-medium line-clamp-2 hover:text-primary transition-colors duration-200 leading-tight">
+          <h3 className={combineThemeClasses(
+            themeClasses.text.heading,
+            themeClasses.interactive.hover,
+            'text-xs sm:text-sm font-medium line-clamp-2 transition-colors duration-200 leading-tight'
+          )}>
             {product.name}
           </h3>
         </Link>
         
         {/* Variant name if different from product name */}
         {variant.name && variant.name !== product.name && (
-          <p className="text-xs text-gray-500 truncate">
+          <p className={combineThemeClasses(themeClasses.text.muted, 'text-xs truncate')}>
             {variant.name}
           </p>
         )}
         
-        {/* Price */}
-        <div className="flex items-center gap-1.5">
-          <span className="text-sm sm:text-base font-semibold text-gray-900">
+        {/* Price - Responsive sizing */}
+        <div className="flex items-center gap-1 sm:gap-1.5">
+          <span className={combineThemeClasses(
+            themeClasses.text.heading,
+            'text-sm sm:text-base font-semibold'
+          )}>
             ${(isOnSale ? salePrice : price).toFixed(2)}
           </span>
           {isOnSale && (
-            <span className="text-xs text-gray-500 line-through">
+            <span className={combineThemeClasses(themeClasses.text.muted, 'text-xs line-through')}>
               ${price.toFixed(2)}
             </span>
           )}
         </div>
 
-        {/* Rating - More compact */}
+        {/* Rating - Responsive and theme-aware */}
         {product.rating > 0 && (
           <div className="flex items-center gap-1">
             <div className="flex items-center">
@@ -276,56 +308,72 @@ export const ProductCard = ({ product }: { product: any }) => {
                   key={i}
                   className={`text-xs ${
                     i < Math.floor(product.rating)
-                      ? 'text-yellow-400'
-                      : 'text-gray-300'
+                      ? 'text-yellow-400 dark:text-yellow-300'
+                      : combineThemeClasses(themeClasses.text.muted)
                   }`}
                 >
                   ★
                 </span>
               ))}
             </div>
-            <span className="text-xs text-gray-600">
+            <span className={combineThemeClasses(themeClasses.text.secondary, 'text-xs')}>
               {product.rating.toFixed(1)} ({product.review_count})
             </span>
           </div>
         )}
 
-        {/* Stock Status */}
+        {/* Stock Status - Theme-aware */}
         {stockStatus && (
           <div className={`text-xs font-medium ${getStockStatusStyle()}`}>
             {stockStatus.message}
           </div>
         )}
 
-        {/* Add to Cart Button - Compact */}
+        {/* Add to Cart Button - Fully responsive and theme-aware */}
         <button
           onClick={handleAddToCart}
           disabled={!isInStock || isAddingToCart || stockStatus?.status === 'out_of_stock'}
-          className={`w-full flex items-center justify-center gap-1.5 px-2 py-1.5 sm:py-2 rounded-md font-medium text-xs sm:text-sm transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98] ${
+          className={combineThemeClasses(
+            'w-full flex items-center justify-center gap-1 sm:gap-1.5 px-2 py-1.5 sm:py-2 rounded-md font-medium text-xs sm:text-sm transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98]',
+            themeClasses.interactive.disabled,
             isInStock && stockStatus?.status !== 'out_of_stock'
-              ? 'bg-primary text-white hover:bg-primary-dark shadow-sm hover:shadow-md'
-              : 'bg-gray-100 text-gray-500 cursor-not-allowed'
-          } disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none`}
+              ? combineThemeClasses(
+                  themeClasses.background.primary,
+                  themeClasses.text.inverse,
+                  themeClasses.shadow.sm,
+                  'hover:shadow-md hover:bg-primary-dark dark:hover:bg-primary-light'
+                )
+              : combineThemeClasses(
+                  themeClasses.background.disabled,
+                  themeClasses.text.muted,
+                  'cursor-not-allowed'
+                )
+          )}
         >
           {isAddingToCart ? (
             <>
-              <div className="w-3 h-3 border border-white border-t-transparent rounded-full animate-spin"></div>
-              <span>Adding...</span>
+              <div className={combineThemeClasses(themeClasses.loading.spinner, 'w-3 h-3 border-current border-t-transparent')}></div>
+              <span className="hidden sm:inline">Adding...</span>
+              <span className="sm:hidden">...</span>
             </>
           ) : (
             <>
-              <ShoppingCartIcon size={14} />
-              <span>
+              <ShoppingCartIcon size={12} className="sm:w-3.5 sm:h-3.5" />
+              <span className="hidden sm:inline">
                 {!isInStock || stockStatus?.status === 'out_of_stock' ? 'Out of Stock' : 'Add to Cart'}
+              </span>
+              <span className="sm:hidden">
+                {!isInStock || stockStatus?.status === 'out_of_stock' ? 'Out' : 'Add'}
               </span>
             </>
           )}
         </button>
 
-        {/* Additional stock info */}
-        {isInStock && stockStatus?.status === 'critical' && (
-          <p className="text-xs text-orange-600 text-center font-medium">
-            Only {variant.stock} left!
+        {/* Additional stock info - Responsive */}
+        {isInStock && stockStatus?.status === 'critical' && variant.stock && (
+          <p className="text-xs text-orange-600 dark:text-orange-400 text-center font-medium">
+            <span className="hidden sm:inline">Only {variant.stock} left!</span>
+            <span className="sm:hidden">{variant.stock} left!</span>
           </p>
         )}
       </div>

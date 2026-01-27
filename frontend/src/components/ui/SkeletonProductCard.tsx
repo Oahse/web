@@ -9,55 +9,104 @@ export const SkeletonProductCard: React.FC = () => {
       themeClasses.border.default,
       'overflow-hidden animate-pulse h-full flex flex-col'
     )}>
-      {/* Image Skeleton - Smaller aspect ratio */}
+      {/* Image Skeleton - Responsive aspect ratio */}
       <div className="relative aspect-[4/3]">
         <div className={combineThemeClasses(
           themeClasses.background.elevated,
-          'absolute inset-0 bg-gradient-to-r animate-shimmer bg-[length:200%_100%]'
+          themeClasses.loading.shimmer,
+          'absolute inset-0'
         )}></div>
         
-        {/* Sale Badge Skeleton */}
-        <div className="absolute top-1.5 left-1.5">
-          <Skeleton className={combineThemeClasses(themeClasses.background.surface, 'w-8 h-4 rounded')} />
+        {/* Sale Badge Skeleton - Responsive */}
+        <div className="absolute top-1 left-1 sm:top-1.5 sm:left-1.5">
+          <Skeleton 
+            width="1.5rem" 
+            height="0.75rem" 
+            className="sm:w-8 sm:h-4 rounded"
+          />
         </div>
         
-        {/* Quick Actions Skeleton */}
-        <div className="absolute top-1.5 right-1.5 flex flex-col gap-1">
-          <Skeleton className={combineThemeClasses(themeClasses.background.surface, 'w-6 h-6 rounded-full')} />
-          <Skeleton className={combineThemeClasses(themeClasses.background.surface, 'w-6 h-6 rounded-full')} />
+        {/* Quick Actions Skeleton - Responsive */}
+        <div className="absolute top-1 right-1 sm:top-1.5 sm:right-1.5 flex flex-col gap-1">
+          <Skeleton 
+            width="1.25rem" 
+            height="1.25rem" 
+            variant="circular"
+            className="sm:w-6 sm:h-6"
+          />
+          <Skeleton 
+            width="1.25rem" 
+            height="1.25rem" 
+            variant="circular"
+            className="sm:w-6 sm:h-6"
+          />
         </div>
       </div>
 
-      {/* Content Skeleton - More compact */}
-      <div className="p-2 sm:p-3 space-y-2 flex-1 flex flex-col">
-        {/* Title Skeleton */}
+      {/* Content Skeleton - Responsive padding */}
+      <div className="p-2 sm:p-3 space-y-1.5 sm:space-y-2 flex-1 flex flex-col">
+        {/* Title Skeleton - Responsive */}
         <div className="space-y-1 flex-1">
-          <Skeleton className={combineThemeClasses(themeClasses.background.surface, 'w-full h-3')} />
-          <Skeleton className={combineThemeClasses(themeClasses.background.surface, 'w-3/4 h-3')} />
+          <Skeleton 
+            width="100%" 
+            height="0.75rem" 
+            className="sm:h-3.5"
+          />
+          <Skeleton 
+            width="75%" 
+            height="0.75rem" 
+            className="sm:h-3.5"
+          />
         </div>
         
-        {/* Price Skeleton */}
-        <div className="flex items-center gap-1.5">
-          <Skeleton className={combineThemeClasses(themeClasses.background.surface, 'w-12 h-4')} />
-          <Skeleton className={combineThemeClasses(themeClasses.background.surface, 'w-8 h-3')} />
+        {/* Price Skeleton - Responsive */}
+        <div className="flex items-center gap-1 sm:gap-1.5">
+          <Skeleton 
+            width="3rem" 
+            height="1rem" 
+            className="sm:w-16 sm:h-5"
+          />
+          <Skeleton 
+            width="2rem" 
+            height="0.75rem" 
+            className="sm:w-10 sm:h-3.5"
+          />
         </div>
 
-        {/* Rating Skeleton */}
+        {/* Rating Skeleton - Responsive */}
         <div className="flex items-center gap-1">
           <div className="flex gap-0.5">
             {[...Array(5)].map((_, i) => (
-              <Skeleton key={i} className={combineThemeClasses(themeClasses.background.surface, 'w-2.5 h-2.5')} />
+              <Skeleton 
+                key={i} 
+                width="0.625rem" 
+                height="0.625rem" 
+                variant="circular"
+                className="sm:w-3 sm:h-3"
+              />
             ))}
           </div>
-          <Skeleton className={combineThemeClasses(themeClasses.background.surface, 'w-8 h-2.5')} />
+          <Skeleton 
+            width="2rem" 
+            height="0.625rem" 
+            className="sm:w-10 sm:h-3"
+          />
         </div>
 
-        {/* Button Skeleton */}
-        <Skeleton className={combineThemeClasses(themeClasses.background.surface, 'w-full h-7 sm:h-8 rounded-md')} />
+        {/* Button Skeleton - Responsive */}
+        <Skeleton 
+          width="100%" 
+          height="1.5rem" 
+          className="sm:h-8 rounded-md"
+        />
 
-        {/* Stock Info Skeleton */}
+        {/* Stock Info Skeleton - Responsive */}
         <div className="text-center">
-          <Skeleton className={combineThemeClasses(themeClasses.background.surface, 'w-16 h-2.5 mx-auto')} />
+          <Skeleton 
+            width="3rem" 
+            height="0.625rem" 
+            className="sm:w-16 sm:h-3 mx-auto"
+          />
         </div>
       </div>
     </div>

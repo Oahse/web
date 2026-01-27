@@ -16,7 +16,6 @@ import { CategoryProvider } from './contexts/CategoryContext';
 import { LocaleProvider } from './contexts/LocaleContext';
 import { ProtectedRoute } from './components/routing/ProtectedRoute';
 import ErrorBoundary from './components/common/ErrorBoundary';
-import { OfflineIndicator } from './components/common/OfflineIndicator';
 import SupportWidget from './components/support/SupportWidget';
 
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY);
@@ -93,7 +92,6 @@ export const App: React.FC = () => {
                   <WishlistProvider>
                       <CategoryProvider>
                       <FontLoader />
-                      <OfflineIndicator />
                       <Toaster
                         position="top-right"
                         toastOptions={{
