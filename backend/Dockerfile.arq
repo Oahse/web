@@ -1,0 +1,36 @@
+# Lightweight ARQ Worker Dockerfile
+FROM python:3.11-alpine
+
+# Set working directory
+WORKDIR /app
+
+# Install only essential system dependencies for ARQ worker
+RUN apk add --no-cache \
+    gcc \
+    musl-dev \
+    postgresql-dev \
+    libffi-dev \
+    openssl-dev
+
+# Copy Python dependency requirements file
+COPY requirements.txt .
+
+# Install Python dependencies
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy only the essential files needed for ARQ worker
+COPY core/ core/
+COPY tasks/ tasks/
+COPY services/ services/
+COPY models/ models/
+COPY schemas/ schemas/
+COPY alembic/ alembic/
+COPY alembic.ini .
+COPY start_arq_worker.py .
+COPY __init__.py .
+
+# Set Python path
+ENV PYTHONPATH=/app
+
+# Command to start ARQ worker
+CMD ["python", "start_arq_worker.py"]

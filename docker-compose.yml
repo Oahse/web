@@ -114,13 +114,12 @@ services:
       retries: 3
       start_period: 40s
 
-  # ARQ Worker Service
+  # ARQ Worker Service - Lightweight
   arq_worker:
     build:
       context: ./backend
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.arq
     container_name: banwee_arq_worker
-    command: python start_arq_worker.py
     env_file:
       - ./backend/.env.local
     environment:
@@ -130,9 +129,6 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    volumes:
-      - ./backend:/app
-      - /app/.venv
     networks:
       - banwee_network
     restart: unless-stopped
