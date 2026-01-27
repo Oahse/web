@@ -215,12 +215,12 @@ export class StockMonitoringService {
   // Send stock alert email (mock implementation)
   private async sendStockAlertEmail(emailData: any): Promise<void> {
     // In a real implementation, this would call your email service API
-    console.log('Sending stock alert email:', emailData);
+    // console.log('Sending stock alert email:', emailData);
     
     // Mock API call
     return new Promise((resolve) => {
       setTimeout(() => {
-        console.log(`Stock alert email sent for ${emailData.threshold.product_name}`);
+        // console.log(`Stock alert email sent for ${emailData.threshold.product_name}`);
         resolve();
       }, 1000);
     });

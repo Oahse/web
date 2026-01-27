@@ -8,7 +8,14 @@
     "build": "vite build",
     "lint": "eslint . --ext js,jsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview",
-    "test": "vitest"
+    "test": "vitest",
+    "test:cart": "node run-cart-tests.js",
+    "test:cart:watch": "vitest --watch src/contexts/__tests__/CartContext.test.tsx src/test/integration/cart-page-comprehensive.test.tsx src/test/integration/product-card-cart-integration.test.tsx src/test/integration/cart-realtime-updates.test.tsx",
+    "test:cart:coverage": "vitest --coverage src/contexts/__tests__/CartContext.test.tsx src/test/integration/cart-page-comprehensive.test.tsx src/test/integration/product-card-cart-integration.test.tsx src/test/integration/cart-realtime-updates.test.tsx",
+    "test:cart:context": "vitest src/contexts/__tests__/CartContext.test.tsx",
+    "test:cart:page": "vitest src/test/integration/cart-page-comprehensive.test.tsx",
+    "test:cart:product": "vitest src/test/integration/product-card-cart-integration.test.tsx",
+    "test:cart:realtime": "vitest src/test/integration/cart-realtime-updates.test.tsx"
   },
   "dependencies": {
     "@greatsumini/react-facebook-login": "^3.4.0",
@@ -65,6 +72,7 @@
     "identity-obj-proxy": "^3.0.0",
     "msw": "^1.2.1",
     "postcss": "^8.4.21",
+    "tsx": "^4.19.2",
     "typescript": "^5.9.3",
     "vite": "^4.1.0",
     "vitest": "^4.0.2"

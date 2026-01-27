@@ -9,7 +9,7 @@ import { SubscriptionProvider } from './contexts/SubscriptionContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { FontLoader } from './components/ui/FontLoader';
 import { Toaster } from 'react-hot-toast';
-import { GoogleOAuthProvider } from '@react-oauth/google';
+import GoogleOAuthProvider from './providers/GoogleOAuthProvider';
 import { Elements } from '@stripe/react-stripe-js';
 import { loadStripe } from '@stripe/stripe-js';
 import { CategoryProvider } from './contexts/CategoryContext';
@@ -83,7 +83,7 @@ const PageLoading: React.FC = () => (
 export const App: React.FC = () => {
   return (
     <ErrorBoundary>
-      <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID || 'placeholder_google_client_id'}>
+      <GoogleOAuthProvider>
         <AuthProvider>
           <ThemeProvider>
             <LocaleProvider>

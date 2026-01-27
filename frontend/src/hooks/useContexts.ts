@@ -1,27 +1,18 @@
 import { useContext } from 'react';
 import { AuthContext } from '../contexts/AuthContext';
-import { CartContext } from '../contexts/CartContext';
 import { WishlistContext } from '../contexts/WishlistContext';
 import { SkeletonContext } from '../contexts/SkeletonContext';
 import { ThemeContext } from '../contexts/ThemeContext';
 
 /**
  * Consolidated context hooks - all simple context wrappers in one place
- * Replaces: useAuth, useCart, useWishlist, useSkeletonContext, useTheme
+ * Note: useCart is exported directly from CartContext to avoid conflicts
  */
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (context === undefined) {
     throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
-};
-
-export const useCart = () => {
-  const context = useContext(CartContext);
-  if (context === undefined) {
-    throw new Error('useCart must be used within a CartProvider');
   }
   return context;
 };

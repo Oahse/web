@@ -14,8 +14,13 @@ interface GoogleOAuthProviderProps {
 const GoogleOAuthProvider = ({ children }: GoogleOAuthProviderProps) => {
   const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
-  if (!clientId) {
-    console.warn('Google OAuth Client ID not found. Social login with Google will not work.');
+  // Check if client ID is valid (not empty, not placeholder, and follows Google's format)
+  const isValidClientId = clientId && 
+    clientId !== 'placeholder_google_client_id' && 
+    clientId.includes('.googleusercontent.com');
+
+  if (!isValidClientId) {
+    console.warn('Google OAuth Client ID not found or invalid. Social login with Google will not work.');
     return <>{children}</>;
   }
 

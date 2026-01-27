@@ -11,9 +11,11 @@ export { useAuth, useAuthRedirect, useAuthenticatedAction } from './useAuth';
 // Context hooks
 export {
   useAuth as useAuthContext,
-  useCart,
   useWishlist
 } from './useContexts';
+
+// Cart hook - exported directly from CartContext
+export { useCart } from '../contexts/CartContext';
 
 // =============================================================================
 // SPECIALIZED HOOKS - Keep these separate

@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback} from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { ChevronRightIcon, TrashIcon, MinusIcon, PlusIcon, ShoppingCartIcon, AlertCircle, CheckCircle, Loader2, RefreshCwIcon } from 'lucide-react';
+import { ChevronRightIcon, TrashIcon, MinusIcon, PlusIcon, ShoppingCartIcon, AlertCircle, CheckCircle, Loader2} from 'lucide-react';
 import { useCart } from '../contexts/CartContext';
 import { useAuth } from '../hooks/useAuth';
 import { toast } from 'react-hot-toast';
@@ -16,8 +16,6 @@ export const Cart = () => {
     updateQuantity, 
     clearCart, 
     loading,
-    refreshCart,
-    updateTrigger
   } = useCart();
   const { isAuthenticated, isLoading: authLoading, setIntendedDestination } = useAuth();
   const { formatCurrency } = useLocale();
@@ -27,23 +25,13 @@ export const Cart = () => {
   const [taxLocation, setTaxLocation] = useState<{ country: string; province?: string }>({ country: 'US' });
   const [processingItems, setProcessingItems] = useState<Set<string>>(new Set());
   const [clearingCart, setClearingCart] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
-
-  // Use cart items directly from context - memoized to ensure proper updates
-  const cartItems = useMemo(() => cart?.items || [], [cart?.items]);
   
-  // Local functions to replace missing ones
-  const fetchCart = refreshCart;
-
-  // Refresh cart when component mounts or when navigating to cart page
-  useEffect(() => {
-    if (isAuthenticated) {
-      fetchCart();
-    }
-  }, [isAuthenticated]); // Remove fetchCart dependency to avoid stale closures
+  // Use cart items directly from context - this ensures the component re-renders when cart object changes
+  var cartItems = cart?.items || [];
+  
   
   const validateForCheckout = () => {
-    if (!cartItems.length) {
+    if (!cart?.items.length) {
       toast.error('Your cart is empty');
       return false;
     }
@@ -74,35 +62,19 @@ export const Cart = () => {
   
   const { subtotal, tax, shipping, total } = getCartSummary();
 
-  // Simple redirect to login function
-  const redirectToLogin = (message?: string) => {
-    if (message) {
-      toast.error(message);
-    }
-    navigate('/login');
-  };
-
+  
   // Get tax location info
   useEffect(() => {
     const country = localStorage.getItem('detected_country') || 'US';
     const province = localStorage.getItem('detected_province') || undefined;
     setTaxLocation({ country, province });
+    
   }, [cart]); // Update when cart changes (which includes tax recalculation)
-
+  
   // Enhanced remove item handler
   const handleRemoveItem = useCallback(async (id: string) => {
     if (!id) {
       toast.error('Invalid item ID');
-      return;
-    }
-
-    // Check authentication for cart operations
-    if (!isAuthenticated) {
-      setIntendedDestination({ 
-        path: location.pathname,
-        action: 'cart'
-      });
-      redirectToLogin('Please login to modify your cart');
       return;
     }
     
@@ -121,8 +93,6 @@ export const Cart = () => {
       }
     }
 
-    // Add to processing items
-    setProcessingItems(prev => new Set(prev).add(id));
     
     try {
       await removeItem(String(id));
@@ -130,15 +100,8 @@ export const Cart = () => {
       console.error('Failed to remove item:', error);
       const errorMessage = error?.message || 'Failed to remove item. Please try again.';
       toast.error(errorMessage);
-    } finally {
-      // Remove from processing items
-      setProcessingItems(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(id);
-        return newSet;
-      });
-    }
-  }, [cartItems, isAuthenticated, setIntendedDestination, redirectToLogin, location.pathname, removeItem]);
+    } 
+  }, [cartItems, isAuthenticated, setIntendedDestination, location.pathname, removeItem]);
 
   // Enhanced quantity change handler with optimistic updates
   const handleQuantityChange = useCallback(async (id: string, quantity: number) => {
@@ -148,7 +111,7 @@ export const Cart = () => {
         path: location.pathname,
         action: 'cart'
       });
-      redirectToLogin('Please login to update your cart');
+      navigate('/login');
       return;
     }
 
@@ -158,9 +121,6 @@ export const Cart = () => {
       return;
     }
 
-    // Add to processing items
-    setProcessingItems(prev => new Set(prev).add(id));
-
     try {
       await updateQuantity(String(id), quantity);
     } catch (error: any) {
@@ -168,19 +128,8 @@ export const Cart = () => {
       const errorMessage = error?.message || 'Failed to update cart. Please try again.';
       toast.error(errorMessage);
       
-      // Refresh cart to get latest state if there was an error
-      if (error?.message?.includes('not found') || error?.message?.includes('expired') || error?.status === 404 || error?.statusCode === 404) {
-        await fetchCart();
-      }
-    } finally {
-      // Remove from processing items
-      setProcessingItems(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(id);
-        return newSet;
-      });
-    }
-  }, [isAuthenticated, setIntendedDestination, redirectToLogin, location.pathname, updateQuantity, fetchCart, handleRemoveItem]);
+    } 
+  }, [isAuthenticated, setIntendedDestination, location.pathname, updateQuantity, handleRemoveItem]);
 
   // Enhanced clear cart handler
   const handleClearCart = useCallback(async () => {
@@ -189,7 +138,7 @@ export const Cart = () => {
         path: location.pathname,
         action: 'cart'
       });
-      redirectToLogin('Please login to clear your cart');
+      navigate('/login');
       return;
     }
 
@@ -209,7 +158,7 @@ export const Cart = () => {
     } finally {
       setClearingCart(false);
     }
-  }, [isAuthenticated, setIntendedDestination, redirectToLogin, location.pathname, cartItems.length, clearCart]);
+  }, [isAuthenticated, setIntendedDestination,location.pathname, cartItems.length, clearCart]);
 
   // Enhanced coupon application
   const handleApplyCoupon = async (e: React.FormEvent) => {
@@ -220,7 +169,7 @@ export const Cart = () => {
         path: location.pathname,
         action: 'cart'
       });
-      redirectToLogin('Please login to apply coupons');
+      navigate('/login');
       return;
     }
     
@@ -257,7 +206,7 @@ export const Cart = () => {
         path: '/checkout',
         action: 'checkout'
       });
-      redirectToLogin('Please login to proceed to checkout');
+      navigate('/login');
       return;
     }
 
@@ -268,7 +217,7 @@ export const Cart = () => {
 
     // Navigate to checkout
     navigate('/checkout');
-  }, [isAuthenticated, setIntendedDestination, redirectToLogin, validateForCheckout, navigate]);
+  }, [isAuthenticated, setIntendedDestination, validateForCheckout, navigate]);
 
   // Show loading state while cart or auth is loading
   if (loading || authLoading) {
@@ -415,8 +364,9 @@ export const Cart = () => {
             <div className="flex items-center border border-border rounded-md">
               <button
                 onClick={() => handleQuantityChange(item.id, item.quantity - 1)}
-                disabled={item.quantity <= 1 || isProcessing}
-                className="px-2 py-1 text-copy-light hover:text-primary disabled:opacity-50 disabled:cursor-not-allowed">
+                // disabled={item.quantity <= 1 || isProcessing}
+                className="px-2 py-1 text-copy-light hover:text-primary disabled:opacity-50 disabled:cursor-not-allowed"
+                aria-label="Decrease quantity">
                 <MinusIcon size={14} />
               </button>
               <input
@@ -433,7 +383,8 @@ export const Cart = () => {
               <button
                 onClick={() => handleQuantityChange(item.id, item.quantity + 1)}
                 disabled={isProcessing || (item.variant?.stock !== undefined && item.quantity >= item.variant.stock)}
-                className="px-2 py-1 text-copy-light hover:text-primary disabled:opacity-50 disabled:cursor-not-allowed">
+                className="px-2 py-1 text-copy-light hover:text-primary disabled:opacity-50 disabled:cursor-not-allowed"
+                aria-label="Increase quantity">
                 <PlusIcon size={14} />
               </button>
             </div>
@@ -446,7 +397,7 @@ export const Cart = () => {
       </motion.div>
     );
   });
-
+  
   return (
     <div className="container mx-auto px-4 py-8 text-copy" key={`cart-${cart?.id || 'empty'}-${cartItems.length}`}>
       {/* Breadcrumb */}
@@ -460,21 +411,6 @@ export const Cart = () => {
 
       <h1 className="text-2xl md:text-3xl font-bold text-copy mb-6 flex items-center justify-between">
         <span>Your Shopping Cart</span>
-        <button
-          onClick={() => {
-            setRefreshing(true);
-            fetchCart().finally(() => setRefreshing(false));
-          }}
-          className="text-sm bg-primary hover:bg-primary-dark text-white px-3 py-1 rounded-md transition-colors flex items-center"
-          disabled={refreshing || loading}
-        >
-          {refreshing ? (
-            <Loader2 size={16} className="animate-spin mr-1" />
-          ) : (
-            <RefreshCwIcon size={16} className="mr-1" />
-          )}
-          Refresh
-        </button>
       </h1>
 
       {cartItems.length === 0 ? (

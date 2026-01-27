@@ -16,9 +16,7 @@ interface CartContextType {
   clearCart: () => Promise<void>;
   totalItems: number;
   items: Cart['items'];
-  refreshCart: () => Promise<void>;
   validateCart: () => Promise<void>;
-  updateTrigger?: number;
 }
 
 export const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -34,8 +32,17 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
   const [error, setError] = useState<any>(null);
   const [updateTrigger, setUpdateTrigger] = useState<number>(0);
   
-  const navigate = useNavigate();
-  const location = useLocation();
+  // Safely get navigation hooks
+  let navigate: any = null;
+  let location: any = null;
+  
+  try {
+    navigate = useNavigate();
+    location = useLocation();
+  } catch (error) {
+    // Navigation hooks not available (e.g., during testing or outside Router)
+    console.warn('Navigation hooks not available in CartProvider:', error);
+  }
 
   // Force update function to trigger re-renders
   const forceUpdate = useCallback(() => {
@@ -46,10 +53,15 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
   const handleAuthError = useCallback((error: any) => {
     if (error.message === 'User must be authenticated to add items to cart' || 
         error.message === 'User must be authenticated') {
-      navigate("/login", {
-        replace: true,
-        state: { from: location },
-      });
+      if (navigate && location) {
+        navigate("/login", {
+          replace: true,
+          state: { from: location },
+        });
+      } else {
+        // Fallback if navigation is not available
+        window.location.href = '/login';
+      }
     } else {
       console.error(error);
       toast.error(error.message || 'Failed to perform cart operation');
@@ -112,21 +124,12 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
     }
   }, [fetchCart]);
 
-  // Refresh cart function
-  const refreshCart = useCallback(async () => {
-    await fetchCart();
-  }, [fetchCart]);
 
   // Initial cart fetch and periodic updates
   useEffect(() => {
+    // Fetch immediately on mount
     fetchCart();
-    
-    // Poll cart every 30 seconds if user is authenticated
-    const interval = setInterval(() => {
-      if (TokenManager.getToken()) {
-        fetchCart();
-      }
-    }, 30000);
+
 
     // Validate cart every 5 minutes to catch sync issues
     const validationInterval = setInterval(() => {
@@ -135,24 +138,15 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
       }
     }, 300000); // 5 minutes
 
-    // Refresh cart when window regains focus (handles multiple tabs)
-    const handleFocus = () => {
-      if (TokenManager.getToken()) {
-        fetchCart();
-      }
-    };
-    
-    window.addEventListener('focus', handleFocus);
 
     return () => {
-      clearInterval(interval);
       clearInterval(validationInterval);
-      window.removeEventListener('focus', handleFocus);
     };
-  }, [fetchCart, validateCart, cart?.items]);
+  }, [validateCart]);
+  
 
   // ✅ Optimistic add item with useState first
-  const addItem = useCallback(async (item: AddToCartRequest): Promise<boolean> => {
+  const addItem = async (item: AddToCartRequest): Promise<boolean> => {
     const token = TokenManager.getToken();
     if (!token) {
       const error = new Error('User must be authenticated to add items to cart');
@@ -160,8 +154,6 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
       throw error;
     }
 
-    // Store previous cart for rollback
-    const previousCart = cart;
 
     try {
       // Always call backend first to get complete cart data
@@ -173,19 +165,16 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
       // Update state with complete backend response - ensure new object reference
       const newCart = { ...response?.data };
       setCart(newCart);
-      forceUpdate(); // Force re-render
       toast.success(`Added ${item.quantity || 1} item${(item.quantity || 1) > 1 ? 's' : ''} to cart`);
       return true;
     } catch (error: any) {
-      // Revert to previous cart on error
-      setCart(previousCart);
       handleAuthError(error);
       throw error;
     }
-  }, [cart, handleAuthError]);
+  };
 
   // ✅ Optimistic remove item with useState first
-  const removeItem = useCallback(async (itemId: string): Promise<void> => {
+  const removeItem = async (itemId: string): Promise<void> => {
     const token = TokenManager.getToken();
     if (!token) {
       const error = new Error('User must be authenticated');
@@ -209,14 +198,14 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
     if (cart) {
       const newItems = cart.items.filter(i => i.id !== itemId);
       const newSubtotal = newItems.reduce((sum, i) => sum + i.total_price, 0);
-      const optimisticCart = {
+      
+      setCart({
         ...cart,
         items: newItems,
         total_items: newItems.reduce((sum, i) => sum + i.quantity, 0),
         subtotal: newSubtotal,
         item_count: newItems.length
-      };
-      setCart(optimisticCart);
+      });
     }
 
     try {
@@ -232,10 +221,10 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
       handleCartSyncError(error, fetchCart);
       throw error;
     }
-  }, [cart, handleAuthError, fetchCart]);
+  };
 
   // ✅ Optimistic update quantity with useState first
-  const updateQuantity = useCallback(async (itemId: string, quantity: number): Promise<void> => {
+  const updateQuantity = async (itemId: string, quantity: number): Promise<void> => {
     const token = TokenManager.getToken();
     if (!token) {
       const error = new Error('User must be authenticated');
@@ -264,13 +253,13 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
           : item
       );
       const newSubtotal = newItems.reduce((sum, i) => sum + i.total_price, 0);
-      const optimisticCart = {
+      
+      setCart({
         ...cart,
         items: newItems,
         total_items: newItems.reduce((sum, i) => sum + i.quantity, 0),
         subtotal: newSubtotal
-      };
-      setCart(optimisticCart);
+      });
     }
 
     try {
@@ -286,10 +275,10 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
       handleCartSyncError(error, fetchCart);
       throw error;
     }
-  }, [cart, handleAuthError, fetchCart]);
+  };
 
   // ✅ Optimistic clear cart with useState first
-  const clearCart = useCallback(async () => {
+  const clearCart = async () => {
     const token = TokenManager.getToken();
     if (!token) {
       const error = new Error('User must be authenticated');
@@ -328,7 +317,7 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
       handleAuthError(error);
       throw error;
     }
-  }, [cart, handleAuthError]);
+  };
 
   const totalItems = cart?.items?.reduce((sum, item) => sum + item.quantity, 0) || 0;
   const items = cart?.items || [];
@@ -345,9 +334,7 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
         clearCart,
         totalItems,
         items,
-        refreshCart,
         validateCart,
-        updateTrigger, // Add trigger to force re-renders
       }}
     >
       {children}
