@@ -93,7 +93,7 @@ export const ProductDetails = () => {
   const [sortBy, setSortBy] = useState(undefined);
   const [reviewsPage, setReviewsPage] = useState(1);
 
-  const { addItem: addToCart, removeItem: removeFromCart, updateQuantity, cart } = useCart();
+  const { addItem: addToCart, removeItem: removeFromCart, updateQuantity, cart, refreshCart } = useCart();
   const { addItem: addToWishlist, removeItem: removeFromWishlist, isInWishlist, defaultWishlist } = useWishlist();
   const { executeWithAuth } = useAuth();
   const { isAuthenticated, hasActiveSubscriptions } = useSubscriptionAction();
@@ -242,8 +242,12 @@ export const ProductDetails = () => {
   
   const isInWishlistState = isInWishlist(product.id, selectedVariant?.id);
 
-  // Get cart item quantity with null checks
-  const cartItem = cart?.items?.find(item => item?.variant?.id === selectedVariant?.id);
+  // Get cart item quantity with null checks and validation
+  const cartItem = cart?.items?.find(item => 
+    item?.variant?.id === selectedVariant?.id && 
+    item?.id && 
+    item?.quantity > 0
+  );
   const cartQuantity = cartItem?.quantity || 0;
 
   // Check if product is in wishlist
@@ -492,12 +496,30 @@ export const ProductDetails = () => {
                     <div className="flex items-center space-x-2">
                       <button
                         onClick={async () => {
-                          if (!selectedVariant) return;
-                          const newQuantity = Math.max(0, cartQuantity - 1);
-                          if (newQuantity === 0) {
-                            if (cartItem) await removeFromCart(cartItem.id);
-                          } else {
-                            if (cartItem) await updateQuantity(cartItem.id, newQuantity);
+                          if (!selectedVariant || !cartItem) return;
+                          
+                          try {
+                            console.log('Updating cart item:', { 
+                              cartItemId: cartItem.id, 
+                              currentQuantity: cartQuantity, 
+                              newQuantity: cartQuantity - 1,
+                              variantId: selectedVariant.id 
+                            });
+                            const newQuantity = Math.max(0, cartQuantity - 1);
+                            if (newQuantity === 0) {
+                              await removeFromCart(cartItem.id);
+                            } else {
+                              await updateQuantity(cartItem.id, newQuantity);
+                            }
+                          } catch (error: any) {
+                            console.error('Failed to update cart:', error);
+                            // If cart item not found, refresh cart and show message
+                            if (error?.status === 404 || error?.statusCode === 404 || error?.message?.includes('not found')) {
+                              toast.error('Cart item not found. Refreshing cart...');
+                              await refreshCart();
+                            } else {
+                              toast.error(error?.message || 'Failed to update cart');
+                            }
                           }
                         }}
                         className="bg-gray-200 hover:bg-gray-300 text-gray-700 p-2 rounded-md transition-colors"
@@ -509,8 +531,26 @@ export const ProductDetails = () => {
                       </span>
                       <button
                         onClick={async () => {
-                          if (!selectedVariant) return;
-                          if (cartItem) await updateQuantity(cartItem.id, cartQuantity + 1);
+                          if (!selectedVariant || !cartItem) return;
+                          
+                          try {
+                            console.log('Updating cart item:', { 
+                              cartItemId: cartItem.id, 
+                              currentQuantity: cartQuantity, 
+                              newQuantity: cartQuantity + 1,
+                              variantId: selectedVariant.id 
+                            });
+                            await updateQuantity(cartItem.id, cartQuantity + 1);
+                          } catch (error: any) {
+                            console.error('Failed to update cart:', error);
+                            // If cart item not found, refresh cart and show message
+                            if (error?.status === 404 || error?.statusCode === 404 || error?.message?.includes('not found')) {
+                              toast.error('Cart item not found. Refreshing cart...');
+                              await refreshCart();
+                            } else {
+                              toast.error(error?.message || 'Failed to update cart');
+                            }
+                          }
                         }}
                         disabled={selectedVariant && cartQuantity >= selectedVariant.stock}
                         className="bg-primary hover:bg-primary-dark text-white p-2 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"

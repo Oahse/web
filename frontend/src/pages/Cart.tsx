@@ -101,7 +101,7 @@ export const Cart = () => {
       toast.error(errorMessage);
       
       // Refresh cart to get latest state if there was an error
-      if (error?.message?.includes('not found') || error?.message?.includes('expired')) {
+      if (error?.message?.includes('not found') || error?.message?.includes('expired') || error?.status === 404 || error?.statusCode === 404) {
         await fetchCart();
       }
     } finally {

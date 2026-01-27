@@ -344,7 +344,7 @@ export const AdminProductDetail = () => {
             <h2 className="text-lg font-semibold text-main mb-4">Actions</h2>
             <div className="space-y-2">
               <Link
-                to={`/product/${product.id}`}
+                to={`/products/${product.id}`}
                 className="block w-full text-center px-4 py-2 border border-border rounded-md hover:bg-surface-hover text-copy"
               >
                 View as Customer

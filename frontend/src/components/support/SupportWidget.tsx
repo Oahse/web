@@ -36,7 +36,7 @@ const SupportWidget: React.FC<SupportWidgetProps> = ({ className }) => {
       orderNumber = searchParams.get('order') || undefined;
     } else if (path.includes('/payment') || path.includes('/billing')) {
       issueType = 'payment';
-    } else if (path.includes('/products') || path.includes('/product/')) {
+    } else if (path.includes('/products') || path.includes('/products/')) {
       issueType = 'product';
       // Extract product ID from URL
       const productMatch = path.match(/\/product\/([^\/]+)/);

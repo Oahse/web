@@ -97,7 +97,7 @@ image_urls = [
     # Grains and cereals
     "https://images.unsplash.com/photo-1586201375761-83865001e31c?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80",
     "https://images.unsplash.com/photo-1574323347407-f5e1c0cf4b7e?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80",
-    "https://images.unsplash.com/photo-1547496614-54c9948c22a9?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80",
+    "https://images.unsplash.com/photo-1574323347407-f5e1c0cf4b7e?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80",
     # Fruits and vegetables
     "https://images.unsplash.com/photo-1559181567-c3190ca9959b?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80",
     "https://images.unsplash.com/photo-1610832958506-aa56368176cf?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80",

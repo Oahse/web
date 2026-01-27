@@ -247,7 +247,7 @@ export const ProductCard = ({
       whileHover={{ y: -5 }}
       transition={{ duration: 0.2 }}>
       <div className={cn('relative', viewMode === 'list' && 'w-full md:w-1/3 flex-shrink-0 mb-4 md:mb-0 md:mr-4')}>
-        <Link to={`/product/${product.id}`}>
+        <Link to={`/products/${product.id}`}>
           <img
             src={displayImage}
             alt={displayVariant ? `${product.name} - ${displayVariant.name}` : product.name}
@@ -315,7 +315,7 @@ export const ProductCard = ({
               </button>
             )}
             <Link
-              to={`/product/${product.id}`}
+              to={`/products/${product.id}`}
               className="w-9 h-9 rounded-full bg-surface text-copy flex items-center justify-center hover:bg-primary hover:text-white transition-colors"
               aria-label="View product">
               <EyeIcon size={16} />
@@ -325,7 +325,7 @@ export const ProductCard = ({
       </div>
       <div className={cn('p-3 sm:p-4', viewMode === 'list' && 'flex-grow')}>
         <span className="text-xs text-copy-lighter">{product.category}</span>
-        <Link to={`/product/${product.id}`}>
+        <Link to={`/products/${product.id}`}>
           <h3 className="font-medium text-sm sm:text-base text-copy hover:text-primary transition-colors mb-1 line-clamp-2 h-10 sm:h-12">
             {product.name}
           </h3>

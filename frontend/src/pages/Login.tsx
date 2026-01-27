@@ -48,19 +48,24 @@ export const Login = ({ isInitialLoading = false }) => {
 
   /**
    * Determines the appropriate redirect path after successful login.
-   * Checks for intended destination, 'redirect' parameter in the URL, or defaults based on user role.
+   * Checks for intended destination, 'from' state, 'redirect' parameter in the URL, or defaults based on user role.
    * @returns {string} The path to redirect to.
    */
   const getRedirectPath = useCallback((user: any) => {
-    // First priority: intended destination (from protected route)
+    // First priority: Check if user was redirected from another page (like cart operations)
+    if (location.state?.from?.pathname && location.state.from.pathname !== '/login') {
+      console.log('Redirecting back to:', location.state.from.pathname);
+      return location.state.from.pathname + (location.state.from.search || '');
+    }
+    
+    // Second priority: intended destination (from protected route)
     if (intendedDestination && (intendedDestination as any).path !== '/login') {
       const destination = intendedDestination as any;
-      // Always redirect back to the original page where the user was
-      // This allows them to continue their shopping experience
+      console.log('Redirecting to intended destination:', destination.path);
       return destination.path;
     }
     
-    // Second priority: redirect query parameter (decode it)
+    // Third priority: redirect query parameter (decode it)
     const params = new URLSearchParams(location.search);
     const redirect = params.get('redirect');
     if (redirect) {
@@ -72,10 +77,10 @@ export const Login = ({ isInitialLoading = false }) => {
       }
     }
     
-    // Third priority: role-based default
+    // Fourth priority: role-based default (only if no other redirect is specified)
     if (user?.role === 'Admin' || user?.role === 'Supplier') return '/admin';
     return '/account';
-  }, [location.search, intendedDestination]);
+  }, [location.search, location.state, intendedDestination]);
 
   /**
    * Effect hook to redirect authenticated users.
@@ -83,9 +88,12 @@ export const Login = ({ isInitialLoading = false }) => {
    */
   useEffect(() => {
     if (isAuthenticated) {
-      const path = redirectPath || getRedirectPath({ role: isAdmin ? 'Admin' : isSupplier ? 'Supplier' : 'Customer' });
-      navigate(path, { replace: true });
-      setRedirectPath(null); // Clear redirect path after navigation
+      // Only redirect if we don't have a specific redirect from login form submission
+      // This prevents the useEffect from overriding the form submission redirect
+      if (!redirectPath) {
+        const path = getRedirectPath({ role: isAdmin ? 'Admin' : isSupplier ? 'Supplier' : 'Customer' });
+        navigate(path, { replace: true });
+      }
       // Clear intended destination after navigation
       if (intendedDestination) {
         setIntendedDestination(null);
@@ -119,17 +127,27 @@ export const Login = ({ isInitialLoading = false }) => {
       
       // Attempt to log in the user through the AuthContext with remember me preference
       const user = await login(email, password, rememberMe);
-      // Navigate to intended destination or default path
+      
+      // Get the redirect path immediately after successful login
       const path = getRedirectPath(user);
       
-      // Show success message based on intended action
-      if (intendedDestination && (intendedDestination as any).action === 'cart') {
+      // Show success message based on redirect context
+      if (location.state?.from?.pathname) {
+        toast.success('Login successful! Redirecting you back to continue shopping.');
+      } else if (intendedDestination && (intendedDestination as any).action === 'cart') {
         toast.success('Login successful! You can now add items to your cart.');
       } else if (intendedDestination && (intendedDestination as any).action === 'wishlist') {
         toast.success('Login successful! You can now add items to your wishlist.');
+      } else {
+        toast.success('Login successful!');
       }
       
+      // Set the redirect path to prevent useEffect from overriding it
+      setRedirectPath(path);
+      
+      // Navigate immediately
       navigate(path, { replace: true });
+      
       // Clear intended destination after navigation
       if (intendedDestination) {
         setIntendedDestination(null);
@@ -157,10 +175,13 @@ export const Login = ({ isInitialLoading = false }) => {
     <div className="container mx-auto px-4 py-12 text-copy">
       <div className="max-w-md mx-auto bg-surface p-8 rounded-lg shadow-sm border border-border-light">
         {/* Show message if redirected from another page */}
-        {location.search.includes('redirect=') && (
+        {(location.search.includes('redirect=') || location.state?.from?.pathname) && (
           <div className="mb-4 p-3 bg-primary/10 border border-primary/30 rounded-md">
             <p className="text-sm text-copy">
-              Please log in to continue to your requested page.
+              {location.state?.from?.pathname 
+                ? 'Please log in to continue with your cart operation.'
+                : 'Please log in to continue to your requested page.'
+              }
             </p>
           </div>
         )}
@@ -263,12 +284,19 @@ export const Login = ({ isInitialLoading = false }) => {
             // Handle successful social login
             const path = getRedirectPath(user);
             
-            // Show success message based on intended action
-            if (intendedDestination && (intendedDestination as any).action === 'cart') {
+            // Show success message based on redirect context
+            if (location.state?.from?.pathname) {
+              toast.success('Login successful! Redirecting you back to continue shopping.');
+            } else if (intendedDestination && (intendedDestination as any).action === 'cart') {
               toast.success('Login successful! You can now add items to your cart.');
             } else if (intendedDestination && (intendedDestination as any).action === 'wishlist') {
               toast.success('Login successful! You can now add items to your wishlist.');
+            } else {
+              toast.success('Login successful!');
             }
+            
+            // Set the redirect path to prevent useEffect from overriding it
+            setRedirectPath(path);
             
             navigate(path, { replace: true });
             if (intendedDestination) {

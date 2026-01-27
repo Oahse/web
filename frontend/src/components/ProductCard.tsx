@@ -22,10 +22,10 @@ export const ProductCard = ({ product }: { product: any }) => {
   const { addItem: addToWishlist, isInWishlist } = useWishlist();
 
   const variant = product.variants?.[0] || product;
-  const price = variant.current_price || variant.base_price;
-  const salePrice = variant.sale_price;
-  const isOnSale = salePrice && salePrice < price;
-  const discount = isOnSale ? Math.round(((price - salePrice) / price) * 100) : 0;
+  const price = variant.current_price || variant.base_price || 0;
+  const salePrice = variant.sale_price || 0;
+  const isOnSale = salePrice && salePrice > 0 && salePrice < price;
+  const discount = isOnSale && price > 0 ? Math.round(((price - salePrice) / price) * 100) : 0;
   const isInStock = variant.stock > 0;
   const isWishlisted = isInWishlist(product.id, variant.id);
 
@@ -191,7 +191,7 @@ export const ProductCard = ({ product }: { product: any }) => {
         themeClasses.background.elevated,
         'relative aspect-[4/3] overflow-hidden'
       )}>
-        <Link to={`/product/${product.id}`} className="block w-full h-full">
+        <Link to={`/products/${product.id}`} className="block w-full h-full">
           {/* Image Loading Skeleton */}
           {!imageLoaded && (
             <div className={combineThemeClasses(
@@ -273,7 +273,7 @@ export const ProductCard = ({ product }: { product: any }) => {
           )}
 
           <Link
-            to={`/product/${product.id}`}
+            to={`/products/${product.id}`}
             className={combineThemeClasses(
               themeClasses.background.surface,
               themeClasses.text.secondary,
@@ -289,7 +289,7 @@ export const ProductCard = ({ product }: { product: any }) => {
 
       {/* Content - Responsive padding and spacing */}
       <div className="p-2 sm:p-3 space-y-1.5 sm:space-y-2 flex-1 flex flex-col">
-        <Link to={`/product/${product.id}`} className="flex-1">
+        <Link to={`/products/${product.id}`} className="flex-1">
           <h3 className={combineThemeClasses(
             themeClasses.text.heading,
             themeClasses.interactive.hover,
@@ -312,9 +312,9 @@ export const ProductCard = ({ product }: { product: any }) => {
             themeClasses.text.heading,
             'text-sm sm:text-base font-semibold'
           )}>
-            ${(isOnSale ? salePrice : price).toFixed(2)}
+            ${((isOnSale ? salePrice : price) || 0).toFixed(2)}
           </span>
-          {isOnSale && (
+          {isOnSale && price > 0 && (
             <span className={combineThemeClasses(themeClasses.text.muted, 'text-xs line-through')}>
               ${price.toFixed(2)}
             </span>
@@ -322,14 +322,14 @@ export const ProductCard = ({ product }: { product: any }) => {
         </div>
 
         {/* Rating - Responsive and theme-aware */}
-        {product.rating > 0 && (
+        {product.rating && product.rating > 0 && (
           <div className="flex items-center gap-1">
             <div className="flex items-center">
               {[...Array(5)].map((_, i) => (
                 <span
                   key={i}
                   className={`text-xs ${
-                    i < Math.floor(product.rating)
+                    i < Math.floor(product.rating || 0)
                       ? 'text-yellow-400 dark:text-yellow-300'
                       : combineThemeClasses(themeClasses.text.muted)
                   }`}
@@ -339,7 +339,7 @@ export const ProductCard = ({ product }: { product: any }) => {
               ))}
             </div>
             <span className={combineThemeClasses(themeClasses.text.secondary, 'text-xs')}>
-              {product.rating.toFixed(1)} ({product.review_count})
+              {(product.rating || 0).toFixed(1)} ({product.review_count || 0})
             </span>
           </div>
         )}

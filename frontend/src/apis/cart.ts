@@ -122,7 +122,19 @@ export class CartAPI {
   }
 
   static async validateCart(access_token) {
-    return await apiClient.post('/cart/validate', {}, {
+    const country = localStorage.getItem('detected_country') || 'US';
+    const province = localStorage.getItem('detected_province');
+    
+    const params = new URLSearchParams();
+    if (country) params.append('country', country);
+    if (province && province !== 'null' && province !== 'undefined') {
+      params.append('province', province);
+    }
+    
+    const queryString = params.toString();
+    const url = queryString ? `/cart/validate?${queryString}` : '/cart/validate';
+    
+    return await apiClient.post(url, {}, {
       headers: { 'Authorization': `Bearer ${access_token}` },
     });
   }

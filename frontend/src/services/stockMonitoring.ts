@@ -100,7 +100,7 @@ export class StockMonitoringService {
         }
 
         // Show toast notification
-        this.showToastNotification(alert);
+        // this.showToastNotification(alert);
       }
     }
 

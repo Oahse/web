@@ -109,7 +109,7 @@ export const Wishlist = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {defaultWishlist.items.map((item) => (
           <div key={item.id} className="bg-surface rounded-lg shadow-sm overflow-hidden flex flex-col">
-            <Link to={`/product/${item.product_id}`} className="block relative h-48 overflow-hidden">
+            <Link to={`/products/${item.product_id}`} className="block relative h-48 overflow-hidden">
               <img
                 src={item.variant?.primary_image?.url || item.variant?.images?.[0]?.url || PLACEHOLDER_IMAGES.medium}
                 alt={item.product?.name || item.variant?.name || "Product Image"}
@@ -130,7 +130,7 @@ export const Wishlist = () => {
               </button>
             </Link>
             <div className="p-4 flex-grow flex flex-col">
-              <Link to={`/product/${item.product_id}`}>
+              <Link to={`/products/${item.product_id}`}>
                 <h2 className="text-lg font-semibold text-main hover:text-primary line-clamp-2 mb-1">
                   {item.product?.name}
                 </h2>

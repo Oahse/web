@@ -4,6 +4,7 @@ import { TokenManager } from '../apis/client';
 import { CartAPI } from '../apis/cart';
 import { Cart, AddToCartRequest } from '../types';
 import { toast } from 'react-hot-toast';
+import { handleCartSyncError, validateCartItem } from '../utils/cartSync';
 
 interface CartContextType {
   cart: Cart | null;
@@ -16,6 +17,7 @@ interface CartContextType {
   totalItems: number;
   items: Cart['items'];
   refreshCart: () => Promise<void>;
+  validateCart: () => Promise<void>;
 }
 
 export const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -84,6 +86,24 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
     }
   }, []);
 
+  // Validate cart function
+  const validateCart = useCallback(async () => {
+    const token = TokenManager.getToken();
+    if (!token) return;
+
+    try {
+      const response = await CartAPI.validateCart(token);
+      if (response?.data) {
+        setCart(response.data);
+        toast.success('Cart synchronized');
+      }
+    } catch (error: any) {
+      console.error('Failed to validate cart:', error);
+      // If validation fails, just refresh the cart
+      await fetchCart();
+    }
+  }, [fetchCart]);
+
   // Refresh cart function
   const refreshCart = useCallback(async () => {
     await fetchCart();
@@ -100,8 +120,28 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
       }
     }, 30000);
 
-    return () => clearInterval(interval);
-  }, [fetchCart]);
+    // Validate cart every 5 minutes to catch sync issues
+    const validationInterval = setInterval(() => {
+      if (TokenManager.getToken() && cart?.items && cart.items.length > 0) {
+        validateCart();
+      }
+    }, 300000); // 5 minutes
+
+    // Refresh cart when window regains focus (handles multiple tabs)
+    const handleFocus = () => {
+      if (TokenManager.getToken()) {
+        fetchCart();
+      }
+    };
+    
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      clearInterval(interval);
+      clearInterval(validationInterval);
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, [fetchCart, validateCart, cart?.items]);
 
   // ✅ Optimistic add item with useState
   const addItem = useCallback(async (item: AddToCartRequest): Promise<boolean> => {
@@ -139,6 +179,12 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
     }
 
     const item = cart?.items?.find(i => i.id === itemId);
+    if (!item) {
+      toast.error('Item not found in cart. Refreshing cart...');
+      await fetchCart();
+      throw new Error('Item not found in cart');
+    }
+
     const itemName = item?.variant?.product_name || item?.variant?.name || 'Item';
 
     // Optimistic update using setState
@@ -160,10 +206,12 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
     } catch (error: any) {
       // Revert optimistic update
       setCart(previousCart);
-      handleAuthError(error);
+      
+      // Handle cart sync errors with user-friendly messages
+      handleCartSyncError(error, fetchCart);
       throw error;
     }
-  }, [cart, handleAuthError]);
+  }, [cart, handleAuthError, fetchCart]);
 
   // ✅ Optimistic update quantity with useState
   const updateQuantity = useCallback(async (itemId: string, quantity: number): Promise<void> => {
@@ -175,6 +223,14 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
     }
 
     if (quantity <= 0) throw new Error('Quantity must be greater than 0');
+
+    // Check if item exists in current cart
+    const itemExists = validateCartItem(cart, itemId);
+    if (!itemExists) {
+      toast.error('Item not found in cart. Refreshing cart...');
+      await fetchCart();
+      throw new Error('Item not found in cart');
+    }
 
     // Optimistic update using setState
     const previousCart = cart;
@@ -199,10 +255,12 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
     } catch (error: any) {
       // Revert optimistic update
       setCart(previousCart);
-      handleAuthError(error);
+      
+      // Handle cart sync errors with user-friendly messages
+      handleCartSyncError(error, fetchCart);
       throw error;
     }
-  }, [cart, handleAuthError]);
+  }, [cart, handleAuthError, fetchCart]);
 
   // ✅ Optimistic clear cart with useState
   const clearCart = useCallback(async () => {
@@ -248,6 +306,7 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
         totalItems,
         items,
         refreshCart,
+        validateCart,
       }}
     >
       {children}
