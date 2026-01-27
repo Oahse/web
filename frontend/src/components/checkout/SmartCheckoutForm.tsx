@@ -10,6 +10,7 @@ import { OrdersAPI } from '../../apis/orders';
 import { AuthAPI } from '../../apis/auth';
 import { CartAPI } from '../../apis/cart';
 import { TokenManager } from '../../apis/client';
+import { PaymentsAPI } from '../../apis/payments'; // Import PaymentsAPI
 import { toast } from 'react-hot-toast';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
@@ -267,7 +268,7 @@ export const SmartCheckoutForm: React.FC<SmartCheckoutFormProps> = ({ onSuccess 
       // Fetch addresses and payment methods in parallel
       const [addressesRes, paymentsRes] = await Promise.all([
         AuthAPI.getAddresses(),
-        AuthAPI.getPaymentMethods()
+        PaymentsAPI.getPaymentMethods()
       ]);
 
       const defaultAddress = addressesRes.data?.find((addr: any) => addr.is_default) || addressesRes.data?.[0];

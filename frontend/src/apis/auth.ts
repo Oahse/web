@@ -234,49 +234,7 @@ export class AuthAPI {
     return await apiClient.delete(`/auth/addresses/${addressId}`);
   }
 
-  /**
-   * Get user's payment methods
-   */
-  static async getPaymentMethods() {
-    return await apiClient.get('/payments/methods');
-  }
 
-  /**
-   * Add payment method
-   */
-  static async addPaymentMethod(paymentMethod: any) {
-    return await apiClient.post('/payments/methods', paymentMethod);
-  }
-
-  /**
-   * Update payment method
-   */
-  static async updatePaymentMethod(paymentMethodId: string, paymentMethod: any) {
-    return await apiClient.put(`/payments/methods/${paymentMethodId}`, paymentMethod);
-  }
-
-  /**
-   * Delete payment method
-   */
-  static async deletePaymentMethod(paymentMethodId: string) {
-    return await apiClient.delete(`/payments/methods/${paymentMethodId}`);
-  }
-
-  /**
-   * Set default payment method
-   */
-  static async setDefaultPaymentMethod(paymentMethodId: string) {
-    return await apiClient.put(`/payments/methods/${paymentMethodId}/default`);
-  }
-
-
-
-  /**
-   * Get user's default payment method
-   */
-  static async getDefaultPaymentMethod() {
-    return await apiClient.get('/payments/methods/default');
-  }
 }
 
 export default AuthAPI;
