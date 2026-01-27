@@ -27,17 +27,20 @@ export const Cart = () => {
   const [processingItems, setProcessingItems] = useState<Set<string>>(new Set());
   const [clearingCart, setClearingCart] = useState(false);
 
+  // Use cart items directly from context - no local state needed
+  const cartItems = cart?.items || [];
+  
   // Local functions to replace missing ones
   const fetchCart = refreshCart;
   
   const validateForCheckout = () => {
-    if (!items.length) {
+    if (!cartItems.length) {
       toast.error('Your cart is empty');
       return false;
     }
     
-    // Check for out of stock items
-    const outOfStockItems = items.filter(item => 
+    // Check for out of stock cartItems
+    const outOfStockItems = cartItems.filter(item => 
       item.variant?.stock !== undefined && item.variant.stock < item.quantity
     );
     
@@ -49,11 +52,10 @@ export const Cart = () => {
     return true;
   };
 
-  const items = cart?.items || [];
   
   // Calculate cart summary locally
   const getCartSummary = () => {
-    const subtotal = cart?.subtotal || items.reduce((sum, item) => sum + item.total_price, 0);
+    const subtotal = cart?.subtotal || cartItems.reduce((sum, item) => sum + item.total_price, 0);
     const tax = cart?.tax_amount || 0;
     const shipping = cart?.shipping_amount || (subtotal >= 100 ? 0 : 10); // Free shipping over $100
     const total = cart?.total_amount || (subtotal + tax + shipping);
@@ -132,7 +134,7 @@ export const Cart = () => {
     }
     
     // Find item for confirmation
-    const item = items.find(item => item.id === id);
+    const item = cartItems.find(item => item.id === id);
     const itemName = item?.variant?.product_name || item?.variant?.name || 'this item';
     
     // Confirm removal for expensive items or multiple quantities
@@ -163,7 +165,7 @@ export const Cart = () => {
         return newSet;
       });
     }
-  }, [items, isAuthenticated, setIntendedDestination, redirectToLogin, location.pathname, removeItem]);
+  }, [cartItems, isAuthenticated, setIntendedDestination, redirectToLogin, location.pathname, removeItem]);
 
   // Enhanced clear cart handler
   const handleClearCart = useCallback(async () => {
@@ -177,7 +179,7 @@ export const Cart = () => {
     }
 
     // Confirm clear action
-    if (!window.confirm(`Are you sure you want to remove all ${items.length} items from your cart?`)) {
+    if (!window.confirm(`Are you sure you want to remove all ${cartItems.length} items from your cart?`)) {
       return;
     }
 
@@ -192,7 +194,7 @@ export const Cart = () => {
     } finally {
       setClearingCart(false);
     }
-  }, [isAuthenticated, setIntendedDestination, redirectToLogin, location.pathname, items.length, clearCart]);
+  }, [isAuthenticated, setIntendedDestination, redirectToLogin, location.pathname, cartItems.length, clearCart]);
 
   // Enhanced coupon application
   const handleApplyCoupon = async (e: React.FormEvent) => {
@@ -259,11 +261,12 @@ export const Cart = () => {
   }
 
   // Enhanced cart item component with loading states
-  const CartItemRow = ({ item }: { item: any }) => {
+  const CartItemRow = React.forwardRef<HTMLDivElement, { item: typeof cartItems[0] }>(({ item }, ref) => {
     const isProcessing = processingItems.has(item.id);
     
     return (
       <motion.div 
+        ref={ref}
         key={item.id} 
         className="p-4"
         initial={{ opacity: 1 }}
@@ -299,8 +302,9 @@ export const Cart = () => {
                     alt={item.variant?.product_name || (item.variant as any)?.product?.name || item.variant?.name || 'Product'} 
                     className="w-full h-full object-cover"
                     onError={(e) => {
-                      e.currentTarget.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="0 0 80 80"%3E%3Crect width="80" height="80" fill="%23f3f4f6"/%3E%3Cpath d="M40 25c-5.5 0-10 4.5-10 10s4.5 10 10 10 10-4.5 10-10-4.5-10-10-10zm0 15c-2.8 0-5-2.2-5-5s2.2-5 5-5 5 2.2 5 5-2.2 5-5 5z" fill="%239ca3af"/%3E%3Cpath d="M55 20H25c-2.8 0-5 2.2-5 5v30c0 2.8 2.2 5 5 5h30c2.8 0 5-2.2 5-5V25c0-2.8-2.2-5-5-5zm0 35H25V25h30v30z" fill="%239ca3af"/%3E%3C/svg%3E';
-                      e.currentTarget.onerror = null;
+                      const target = e.currentTarget;
+                      target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="0 0 80 80"%3E%3Crect width="80" height="80" fill="%23f3f4f6"/%3E%3Cpath d="M40 25c-5.5 0-10 4.5-10 10s4.5 10 10 10 10-4.5 10-10-4.5-10-10-10zm0 15c-2.8 0-5-2.2-5-5s2.2-5 5-5 5 2.2 5 5-2.2 5-5 5z" fill="%239ca3af"/%3E%3Cpath d="M55 20H25c-2.8 0-5 2.2-5 5v30c0 2.8 2.2 5 5 5h30c2.8 0 5-2.2 5-5V25c0-2.8-2.2-5-5-5zm0 35H25V25h30v30z" fill="%239ca3af"/%3E%3C/svg%3E';
+                      target.onerror = null;
                     }}
                     loading="lazy"
                   />
@@ -385,7 +389,7 @@ export const Cart = () => {
             <div>
               <span className="font-medium text-primary">{formatCurrency(item.price_per_unit)}</span>
               {/* Show discount if applicable */}
-              {item.variant?.discount_percentage > 0 && (
+              {item.variant?.discount_percentage && item.variant.discount_percentage > 0 && (
                 <div className="text-xs text-gray-500 line-through">
                   {formatCurrency(item.variant.base_price)}
                 </div>
@@ -413,7 +417,7 @@ export const Cart = () => {
               />
               <button
                 onClick={() => handleQuantityChange(item.id, item.quantity + 1)}
-                disabled={isProcessing || (item.variant?.stock && item.quantity >= item.variant.stock)}
+                disabled={isProcessing || (item.variant?.stock !== undefined && item.quantity >= item.variant.stock)}
                 className="px-2 py-1 text-copy-light hover:text-primary disabled:opacity-50 disabled:cursor-not-allowed">
                 <PlusIcon size={14} />
               </button>
@@ -426,7 +430,7 @@ export const Cart = () => {
         </div>
       </motion.div>
     );
-  };
+  });
 
   return (
     <div className="container mx-auto px-4 py-8 text-copy">
@@ -441,7 +445,7 @@ export const Cart = () => {
 
       <h1 className="text-2xl md:text-3xl font-bold text-copy mb-6">Your Shopping Cart</h1>
 
-      {items.length === 0 ? (
+      {cartItems.length === 0 ? (
         <div className="text-center py-12">
           <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-background flex items-center justify-center">
             <ShoppingCartIcon size={32} className="text-copy-lighter" />
@@ -467,7 +471,7 @@ export const Cart = () => {
               </div>
               <div className="divide-y divide-border-light">
                 <AnimatePresence mode="popLayout">
-                  {items.map((item) => (
+                  {cartItems.map((item) => (
                     <CartItemRow key={item.id} item={item} />
                   ))}
                 </AnimatePresence>
@@ -476,14 +480,14 @@ export const Cart = () => {
                 <div className="flex items-center">
                   <button
                     onClick={handleClearCart}
-                    disabled={clearingCart || items.length === 0}
+                    disabled={clearingCart || cartItems.length === 0}
                     className="text-sm text-error hover:text-error-dark flex items-center disabled:opacity-50 disabled:cursor-not-allowed">
                     {clearingCart ? (
                       <Loader2 size={14} className="mr-1 animate-spin" />
                     ) : (
                       <TrashIcon size={14} className="mr-1" />
                     )}
-                    Clear Cart ({items.length})
+                    Clear Cart ({cartItems.length})
                   </button>
                 </div>
                 <Link to="/products" className="text-sm text-primary hover:underline flex items-center">

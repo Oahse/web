@@ -143,13 +143,43 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
     };
   }, [fetchCart, validateCart, cart?.items]);
 
-  // ✅ Optimistic add item with useState
+  // ✅ Optimistic add item with useState first
   const addItem = useCallback(async (item: AddToCartRequest): Promise<boolean> => {
     const token = TokenManager.getToken();
     if (!token) {
       const error = new Error('User must be authenticated to add items to cart');
       handleAuthError(error);
       throw error;
+    }
+
+    // Store previous cart for rollback
+    const previousCart = cart;
+
+    // Optimistic update: Update useState first
+    if (cart) {
+      // Check if item already exists
+      const existingItemIndex = cart.items.findIndex(i => i.variant_id === item.variant_id);
+      
+      if (existingItemIndex >= 0) {
+        // Update existing item quantity
+        const newItems = [...cart.items];
+        const existingItem = newItems[existingItemIndex];
+        newItems[existingItemIndex] = {
+          ...existingItem,
+          quantity: existingItem.quantity + (item.quantity || 1),
+          total_price: (existingItem.quantity + (item.quantity || 1)) * existingItem.price_per_unit
+        };
+        
+        const optimisticCart = {
+          ...cart,
+          items: newItems,
+          total_items: newItems.reduce((sum, i) => sum + i.quantity, 0)
+        };
+        setCart(optimisticCart);
+      } else {
+        // For new items, we'll let the backend response handle the addition
+        // since we don't have all the variant data locally
+      }
     }
 
     // Only send the required fields to the backend
@@ -160,16 +190,19 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
 
     try {
       const response = await CartAPI.addToCart(requestData, token);
+      // Backend returns full cart with all variant fields
       setCart(response?.data);
       toast.success(`Added ${item.quantity || 1} item${(item.quantity || 1) > 1 ? 's' : ''} to cart`);
       return true;
     } catch (error: any) {
+      // Revert optimistic update on error
+      setCart(previousCart);
       handleAuthError(error);
       throw error;
     }
-  }, [handleAuthError]);
+  }, [cart, handleAuthError]);
 
-  // ✅ Optimistic remove item with useState
+  // ✅ Optimistic remove item with useState first
   const removeItem = useCallback(async (itemId: string): Promise<void> => {
     const token = TokenManager.getToken();
     if (!token) {
@@ -187,20 +220,22 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
 
     const itemName = item?.variant?.product_name || item?.variant?.name || 'Item';
 
-    // Optimistic update using setState
+    // Optimistic update using setState FIRST
     const previousCart = cart;
     if (cart) {
       const newItems = cart.items.filter(i => i.id !== itemId);
       const optimisticCart = {
         ...cart,
         items: newItems,
-        total_items: newItems.reduce((sum, i) => sum + i.quantity, 0)
+        total_items: newItems.reduce((sum, i) => sum + i.quantity, 0),
+        subtotal: newItems.reduce((sum, i) => sum + i.total_price, 0)
       };
       setCart(optimisticCart);
     }
 
     try {
       const response = await CartAPI.removeFromCart(itemId, token);
+      // Backend returns updated cart with all variant fields
       setCart(response?.data);
       toast.success(`${itemName} removed from cart`);
     } catch (error: any) {
@@ -213,7 +248,7 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
     }
   }, [cart, handleAuthError, fetchCart]);
 
-  // ✅ Optimistic update quantity with useState
+  // ✅ Optimistic update quantity with useState first
   const updateQuantity = useCallback(async (itemId: string, quantity: number): Promise<void> => {
     const token = TokenManager.getToken();
     if (!token) {
@@ -232,7 +267,7 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
       throw new Error('Item not found in cart');
     }
 
-    // Optimistic update using setState
+    // Optimistic update using setState FIRST
     const previousCart = cart;
     if (cart) {
       const newItems = cart.items.map(item => 
@@ -243,13 +278,15 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
       const optimisticCart = {
         ...cart,
         items: newItems,
-        total_items: newItems.reduce((sum, i) => sum + i.quantity, 0)
+        total_items: newItems.reduce((sum, i) => sum + i.quantity, 0),
+        subtotal: newItems.reduce((sum, i) => sum + i.total_price, 0)
       };
       setCart(optimisticCart);
     }
 
     try {
       const response = await CartAPI.updateCartItem(itemId, quantity, token);
+      // Backend returns updated cart with all variant fields
       setCart(response?.data);
       toast.success('Cart updated');
     } catch (error: any) {
@@ -262,7 +299,7 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
     }
   }, [cart, handleAuthError, fetchCart]);
 
-  // ✅ Optimistic clear cart with useState
+  // ✅ Optimistic clear cart with useState first
   const clearCart = useCallback(async () => {
     const token = TokenManager.getToken();
     if (!token) {
@@ -273,13 +310,22 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
 
     if (!cart?.items?.length) throw new Error('Cart is already empty');
 
-    // Optimistic update using setState
+    // Optimistic update using setState FIRST
     const previousCart = cart;
-    const optimisticCart = { ...cart, items: [], total_items: 0 };
+    const optimisticCart = { 
+      ...cart, 
+      items: [], 
+      total_items: 0,
+      subtotal: 0,
+      tax_amount: 0,
+      shipping_amount: 0,
+      total_amount: 0
+    };
     setCart(optimisticCart);
 
     try {
       const response = await CartAPI.clearCart(token);
+      // Backend returns empty cart with all fields properly set
       setCart(response?.data || optimisticCart);
       toast.success('Cart cleared');
     } catch (error: any) {

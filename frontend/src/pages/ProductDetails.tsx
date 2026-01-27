@@ -250,6 +250,60 @@ export const ProductDetails = () => {
   );
   const cartQuantity = cartItem?.quantity || 0;
 
+  // Helper function to handle cart operations with better error handling
+  const handleCartOperation = async (operation: 'increment' | 'decrement') => {
+    if (!selectedVariant) {
+      toast.error('Please select a variant');
+      return;
+    }
+
+    if (!cartItem) {
+      toast.error('Item not found in cart. Refreshing...');
+      await refreshCart();
+      return;
+    }
+
+    try {
+      console.log(`Cart ${operation}:`, { 
+        cartItemId: cartItem.id, 
+        currentQuantity: cartQuantity, 
+        variantId: selectedVariant.id 
+      });
+
+      if (operation === 'decrement') {
+        const newQuantity = Math.max(0, cartQuantity - 1);
+        if (newQuantity === 0) {
+          await removeFromCart(cartItem.id);
+        } else {
+          await updateQuantity(cartItem.id, newQuantity);
+        }
+      } else {
+        await updateQuantity(cartItem.id, cartQuantity + 1);
+      }
+    } catch (error: any) {
+      console.error(`Failed to ${operation} cart:`, error);
+      
+      // Handle 404 errors (item not found)
+      if (error?.status === 404 || error?.statusCode === 404 || error?.message?.includes('not found')) {
+        toast.error('Cart item not found. Refreshing cart...');
+        await refreshCart();
+        
+        // For increment operations, try to add the item fresh
+        if (operation === 'increment') {
+          try {
+            await addToCart({ variant_id: String(selectedVariant.id), quantity: 1 });
+            toast.success('Item re-added to cart');
+          } catch (addError) {
+            console.error('Failed to re-add item:', addError);
+            toast.error('Failed to add item to cart');
+          }
+        }
+      } else {
+        toast.error(error?.message || `Failed to ${operation} cart item`);
+      }
+    }
+  };
+
   // Check if product is in wishlist
 
 
@@ -495,33 +549,7 @@ export const ProductDetails = () => {
                   {cartQuantity > 0 ? (
                     <div className="flex items-center space-x-2">
                       <button
-                        onClick={async () => {
-                          if (!selectedVariant || !cartItem) return;
-                          
-                          try {
-                            console.log('Updating cart item:', { 
-                              cartItemId: cartItem.id, 
-                              currentQuantity: cartQuantity, 
-                              newQuantity: cartQuantity - 1,
-                              variantId: selectedVariant.id 
-                            });
-                            const newQuantity = Math.max(0, cartQuantity - 1);
-                            if (newQuantity === 0) {
-                              await removeFromCart(cartItem.id);
-                            } else {
-                              await updateQuantity(cartItem.id, newQuantity);
-                            }
-                          } catch (error: any) {
-                            console.error('Failed to update cart:', error);
-                            // If cart item not found, refresh cart and show message
-                            if (error?.status === 404 || error?.statusCode === 404 || error?.message?.includes('not found')) {
-                              toast.error('Cart item not found. Refreshing cart...');
-                              await refreshCart();
-                            } else {
-                              toast.error(error?.message || 'Failed to update cart');
-                            }
-                          }
-                        }}
+                        onClick={() => handleCartOperation('decrement')}
                         className="bg-gray-200 hover:bg-gray-300 text-gray-700 p-2 rounded-md transition-colors"
                       >
                         <MinusIcon size={16} />
@@ -530,28 +558,7 @@ export const ProductDetails = () => {
                         In Cart ({cartQuantity})
                       </span>
                       <button
-                        onClick={async () => {
-                          if (!selectedVariant || !cartItem) return;
-                          
-                          try {
-                            console.log('Updating cart item:', { 
-                              cartItemId: cartItem.id, 
-                              currentQuantity: cartQuantity, 
-                              newQuantity: cartQuantity + 1,
-                              variantId: selectedVariant.id 
-                            });
-                            await updateQuantity(cartItem.id, cartQuantity + 1);
-                          } catch (error: any) {
-                            console.error('Failed to update cart:', error);
-                            // If cart item not found, refresh cart and show message
-                            if (error?.status === 404 || error?.statusCode === 404 || error?.message?.includes('not found')) {
-                              toast.error('Cart item not found. Refreshing cart...');
-                              await refreshCart();
-                            } else {
-                              toast.error(error?.message || 'Failed to update cart');
-                            }
-                          }
-                        }}
+                        onClick={() => handleCartOperation('increment')}
                         disabled={selectedVariant && cartQuantity >= selectedVariant.stock}
                         className="bg-primary hover:bg-primary-dark text-white p-2 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       >

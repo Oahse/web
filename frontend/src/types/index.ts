@@ -80,10 +80,26 @@ export interface ProductVariant {
   qr_code?: string;
   images: ProductImage[];
   primary_image?: ProductImage;
-  product_name?: string;
-  product_description?: string;
+  image_count?: number;
   created_at: string;
   updated_at?: string;
+  // Enhanced product information for cart items
+  product_name?: string;
+  product_description?: string;
+  product_short_description?: string;
+  product_slug?: string;
+  product_category_id?: string;
+  product_rating_average?: number;
+  product_rating_count?: number;
+  product_is_featured?: boolean;
+  product_specifications?: Record<string, any>;
+  product_dietary_tags?: string[];
+  product_tags?: string[];
+  product_origin?: string;
+  // Enhanced inventory information
+  inventory_quantity_available?: number;
+  inventory_reorder_level?: number;
+  inventory_last_updated?: string;
 }
 
 export interface Category {
