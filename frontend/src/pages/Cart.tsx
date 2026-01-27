@@ -41,16 +41,6 @@ export const Cart = () => {
       fetchCart();
     }
   }, [isAuthenticated]); // Remove fetchCart dependency to avoid stale closures
-
-  // Add effect to log cart changes for debugging
-  useEffect(() => {
-    console.log('Cart page detected cart change:', {
-      itemCount: cartItems.length,
-      cartId: cart?.id,
-      updateTrigger,
-      timestamp: new Date().toISOString()
-    });
-  }, [cart, cartItems, updateTrigger]);
   
   const validateForCheckout = () => {
     if (!cartItems.length) {
