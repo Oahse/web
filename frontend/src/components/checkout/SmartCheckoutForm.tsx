@@ -705,11 +705,11 @@ export const SmartCheckoutForm: React.FC<SmartCheckoutFormProps> = ({ onSuccess 
                 <h3 className="text-lg font-semibold mb-4">Shipping Method</h3>
                 <div className="space-y-3">
                   {safeShippingMethods.length > 0 ? (
-                    safeShippingMethods.map((method) => (
+                    (cart?.shipping_amount || 0) === 0 ? (
                       <label
-                        key={method.id}
+                        key={safeShippingMethods[0].id}
                         className={`block p-4 border rounded-lg cursor-pointer transition-colors ${
-                          formData.shipping_method_id === method.id
+                          formData.shipping_method_id === safeShippingMethods[0].id
                             ? 'border-primary bg-primary/10'
                             : 'border hover:border-strong'
                         }`}
@@ -717,40 +717,87 @@ export const SmartCheckoutForm: React.FC<SmartCheckoutFormProps> = ({ onSuccess 
                         <input
                           type="radio"
                           name="shipping_method"
-                          value={method.id}
-                          checked={formData.shipping_method_id === method.id}
-                          onChange={(e) => setFormData(prev => ({ ...prev, shipping_method_id: e.target.value }))}
+                          value={safeShippingMethods[0].id}
+                          checked={formData.shipping_method_id === safeShippingMethods[0].id}
+                          onChange={() =>
+                            setFormData(prev => ({
+                              ...prev,
+                              shipping_method_id: safeShippingMethods[0].id,
+                            }))
+                          }
                           className="sr-only"
                         />
                         <div className="flex items-center justify-between">
                           <div>
                             <div className="font-medium text-copy">
-                              {method.name}
+                              {safeShippingMethods[0].name}
                             </div>
                             <div className="text-sm text-copy-light">
-                              {method.delivery_days || method.estimated_days} business days
+                              {safeShippingMethods[0].delivery_days ||
+                                safeShippingMethods[0].estimated_days}{' '}
+                              business days
                             </div>
                           </div>
-                          <div className="text-lg font-semibold text-copy">
-                            {formatCurrency(method.price)}
-                          </div>
+                          <div className="text-lg font-semibold text-copy">Free</div>
                         </div>
                       </label>
-                    ))
+                    ) : (
+                      safeShippingMethods.map(method => (
+                        <label
+                          key={method.id}
+                          className={`block p-4 border rounded-lg cursor-pointer transition-colors ${
+                            formData.shipping_method_id === method.id
+                              ? 'border-primary bg-primary/10'
+                              : 'border hover:border-strong'
+                          }`}
+                        >
+                          <input
+                            type="radio"
+                            name="shipping_method"
+                            value={method.id}
+                            checked={formData.shipping_method_id === method.id}
+                            onChange={() =>
+                              setFormData(prev => ({ ...prev, shipping_method_id: method.id }))
+                            }
+                            className="sr-only"
+                          />
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <div className="font-medium text-copy">{method.name}</div>
+                              <div className="text-sm text-copy-light">
+                                {method.delivery_days || method.estimated_days} business days
+                              </div>
+                            </div>
+                            <div className="text-lg font-semibold text-copy">
+                              {formatCurrency(method.price)}
+                            </div>
+                          </div>
+                        </label>
+                      ))
+                    )
                   ) : (
                     <div className="text-center py-8">
                       <div className="bg-surface rounded-lg p-6 border border-border">
                         <div className="text-copy-light mb-4">
-                          <svg className="w-12 h-12 mx-auto mb-3 text-copy-lighter" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                          <svg
+                            className="w-12 h-12 mx-auto mb-3 text-copy-lighter"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
+                            />
                           </svg>
                           <p className="text-copy">No shipping methods available</p>
-                          <p className="text-copy-light text-sm">Please select a shipping address first or try refreshing the page.</p>
+                          <p className="text-copy-light text-sm">
+                            Please select a shipping address first or try refreshing the page.
+                          </p>
                         </div>
-                        <Button
-                          onClick={() => setCurrentStep(1)}
-                          variant="outline"
-                        >
+                        <Button onClick={() => setCurrentStep(1)} variant="outline">
                           Go Back to Address
                         </Button>
                       </div>
@@ -1052,7 +1099,7 @@ export const SmartCheckoutForm: React.FC<SmartCheckoutFormProps> = ({ onSuccess 
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-copy-light">
-                    Shipping {(cart.shipping_amount || 0) === 0 ? '(Free)' : ''}
+                    Shipping {(cart.shipping_amount || 0) === 0 ? '(Economy)' : ''}
                   </span>
                   <span className="text-copy">
                     {(cart.shipping_amount || 0) === 0 ? 'Free' : formatCurrency(cart.shipping_amount || 0)}
