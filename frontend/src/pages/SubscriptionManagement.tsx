@@ -11,6 +11,7 @@ import { AutoRenewToggle } from '../components/subscription/AutoRenewToggle';
 import { Button } from '../components/ui/Button';
 import { toast } from 'react-hot-toast';
 import { themeClasses, combineThemeClasses, getButtonClasses } from '../lib/themeClasses';
+import { ConfirmationModal } from '../components/ui/ConfirmationModal';
 
 export const SubscriptionManagement = () => {
   const { subscriptionId } = useParams();
@@ -32,6 +33,8 @@ export const SubscriptionManagement = () => {
   const [isPausing, setIsPausing] = useState(false);
   const [pauseReason, setPauseReason] = useState('');
   const [subscriptionError, setSubscriptionError] = useState<string | null>(null);
+  const [showRemoveProductModal, setShowRemoveProductModal] = useState(false);
+  const [productToRemove, setProductToRemove] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) {
@@ -46,8 +49,8 @@ export const SubscriptionManagement = () => {
       return;
     }
     
-    // Validate UUID format
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    // Validate UUID format (more permissive for different UUID versions)
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     if (!uuidRegex.test(subscriptionId)) {
       console.error('Invalid subscription ID format:', subscriptionId);
       toast.error('Invalid subscription ID format');
@@ -228,12 +231,15 @@ export const SubscriptionManagement = () => {
   };
 
   const handleRemoveProduct = async (variantId: string) => {
-    if (!window.confirm('Are you sure you want to remove this product from your subscription?')) {
-      return;
-    }
+    setProductToRemove(variantId);
+    setShowRemoveProductModal(true);
+  };
+
+  const confirmRemoveProduct = async () => {
+    if (!productToRemove) return;
 
     try {
-      const success = await removeProductsFromSubscription(subscriptionId!, [variantId]);
+      const success = await removeProductsFromSubscription(subscriptionId!, [productToRemove]);
       if (success) {
         await loadSubscriptionData(); // Refresh subscription data
         toast.success('Product removed from subscription successfully');
@@ -241,6 +247,9 @@ export const SubscriptionManagement = () => {
     } catch (error) {
       console.error('Failed to remove product:', error);
       toast.error('Failed to remove product from subscription');
+    } finally {
+      setShowRemoveProductModal(false);
+      setProductToRemove(null);
     }
   };
 
@@ -855,6 +864,21 @@ export const SubscriptionManagement = () => {
           </div>
         </div>
       )}
+
+      {/* Remove Product Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={showRemoveProductModal}
+        onClose={() => {
+          setShowRemoveProductModal(false);
+          setProductToRemove(null);
+        }}
+        onConfirm={confirmRemoveProduct}
+        title="Remove Product"
+        message="Are you sure you want to remove this product from your subscription? This action cannot be undone."
+        confirmText="Remove Product"
+        cancelText="Keep Product"
+        variant="danger"
+      />
     </div>
   );
 };

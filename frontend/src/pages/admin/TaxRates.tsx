@@ -3,6 +3,7 @@ import { PlusIcon, PencilIcon, TrashIcon, SearchIcon, FilterIcon } from 'lucide-
 import { toast } from 'react-hot-toast';
 import { Select } from '../../components/ui/Select';
 import { SearchableSelect } from '../../components/ui/SearchableSelect';
+import { ConfirmationModal } from '../../components/ui/ConfirmationModal';
 import { getCountryOptions, getProvinceOptions, getCountryByCode } from '../../data/countries';
 import TaxAPI, { TaxRate, TaxType, Country } from '../../apis/tax';
 
@@ -13,6 +14,8 @@ export const TaxRatesAdmin = () => {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingRate, setEditingRate] = useState<TaxRate | null>(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [rateToDelete, setRateToDelete] = useState<string | null>(null);
   
   // Filters
   const [searchTerm, setSearchTerm] = useState('');
@@ -158,14 +161,22 @@ export const TaxRatesAdmin = () => {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this tax rate?')) return;
+    setRateToDelete(id);
+    setShowDeleteModal(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!rateToDelete) return;
     
     try {
-      await TaxAPI.deleteTaxRate(id);
+      await TaxAPI.deleteTaxRate(rateToDelete);
       toast.success('Tax rate deleted successfully');
       fetchTaxRates();
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'Failed to delete tax rate');
+    } finally {
+      setShowDeleteModal(false);
+      setRateToDelete(null);
     }
   };
 
@@ -529,6 +540,21 @@ export const TaxRatesAdmin = () => {
           </div>
         </div>
       )}
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={showDeleteModal}
+        onClose={() => {
+          setShowDeleteModal(false);
+          setRateToDelete(null);
+        }}
+        onConfirm={confirmDelete}
+        title="Delete Tax Rate"
+        message="Are you sure you want to delete this tax rate? This action cannot be undone."
+        confirmText="Delete"
+        cancelText="Cancel"
+        variant="danger"
+      />
     </div>
   );
 };

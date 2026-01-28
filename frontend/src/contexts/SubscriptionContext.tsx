@@ -27,7 +27,7 @@ interface SubscriptionContextType {
   refreshSubscriptions: () => Promise<void>;
   createSubscription: (data: any) => Promise<Subscription | null>;
   updateSubscription: (subscriptionId: string, data: any) => Promise<Subscription | null>;
-  cancelSubscription: (subscriptionId: string) => Promise<boolean>;
+  cancelSubscription: (subscriptionId: string, reason?: string) => Promise<boolean>;
   activateSubscription: (subscriptionId: string) => Promise<boolean>;
   pauseSubscription: (subscriptionId: string, reason?: string) => Promise<boolean>;
   resumeSubscription: (subscriptionId: string) => Promise<boolean>;
@@ -128,14 +128,14 @@ export const SubscriptionProvider: React.FC<SubscriptionProviderProps> = ({ chil
     }
   }, [isAuthenticated, refreshSubscriptions]);
 
-  const cancelSubscription = useCallback(async (subscriptionId: string): Promise<boolean> => {
+  const cancelSubscription = useCallback(async (subscriptionId: string, reason?: string): Promise<boolean> => {
     if (!isAuthenticated) {
       toast.error('Please log in to cancel subscription');
       return false;
     }
 
     try {
-      await SubscriptionAPI.deleteSubscription(subscriptionId);
+      await SubscriptionAPI.cancelSubscription(subscriptionId, reason);
       
       // Optimistically update the state
       setSubscriptions(prev => prev.filter(sub => sub.id !== subscriptionId));

@@ -13,6 +13,7 @@ import { toast } from 'react-hot-toast';
 import { Product } from '../../types';
 import { AutoRenewToggle } from '../subscription/AutoRenewToggle';
 import { SubscriptionCard } from '../subscription/SubscriptionCard';
+import { ConfirmationModal } from '../ui/ConfirmationModal';
 
 interface NewSubscriptionData {
   plan_id: string;
@@ -47,6 +48,8 @@ export const MySubscriptions = () => {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedProducts, setSelectedProducts] = useState<Set<string>>(new Set());
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [showActivateModal, setShowActivateModal] = useState<boolean>(false);
+  const [subscriptionToActivate, setSubscriptionToActivate] = useState<string | null>(null);
 
   // New subscription form state - use user's detected currency
   const [newSubscription, setNewSubscription] = useState<NewSubscriptionData>({
@@ -185,13 +188,21 @@ export const MySubscriptions = () => {
   };
 
   const handleActivateSubscription = async (subscriptionId: string) => {
-    if (!confirm('Are you sure you want to activate this subscription?')) return;
+    setSubscriptionToActivate(subscriptionId);
+    setShowActivateModal(true);
+  };
+
+  const confirmActivateSubscription = async () => {
+    if (!subscriptionToActivate) return;
     
     try {
-      await activateSubscription(subscriptionId);
+      await activateSubscription(subscriptionToActivate);
     } catch (error) {
       console.error('Failed to activate subscription:', error);
       toast.error('Failed to activate subscription');
+    } finally {
+      setShowActivateModal(false);
+      setSubscriptionToActivate(null);
     }
   };
 
@@ -226,6 +237,7 @@ export const MySubscriptions = () => {
     return true;
   });
 
+  // Early returns after all hooks
   if (loading) {
     return (
       <div className="text-center p-6">
@@ -629,6 +641,22 @@ export const MySubscriptions = () => {
           </div>
         </div>
       )}
+
+      {/* Activate Subscription Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={showActivateModal}
+        onClose={() => {
+          setShowActivateModal(false);
+          setSubscriptionToActivate(null);
+        }}
+        onConfirm={confirmActivateSubscription}
+        title="Activate Subscription"
+        message="Are you sure you want to activate this subscription? This will start billing according to your subscription plan."
+        confirmText="Activate"
+        cancelText="Cancel"
+        variant="info"
+        loading={false}
+      />
     </div>
   );
 };

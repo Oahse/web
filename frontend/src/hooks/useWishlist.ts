@@ -89,15 +89,17 @@ export const useEnhancedWishlist = () => {
 
   /**
    * Enhanced clear wishlist with confirmation and authentication
+   * Returns a function that components can call after their own confirmation
    */
-  const enhancedClearWishlist = useCallback(async () => {
+  const enhancedClearWishlist = useCallback(async (skipConfirmation = false) => {
     if (!items.length) {
       toast.error('Wishlist is already empty');
       return false;
     }
 
-    // Confirm clear action
-    if (!window.confirm(`Are you sure you want to remove all ${items.length} items from your wishlist?`)) {
+    // Skip confirmation if explicitly requested (when component handles it)
+    if (!skipConfirmation) {
+      // This should be handled by the calling component now
       return false;
     }
 

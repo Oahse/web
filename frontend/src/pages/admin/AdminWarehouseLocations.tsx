@@ -6,12 +6,15 @@ import { AdminAPI } from '../../apis';
 import ErrorMessage from '../../components/common/ErrorMessage';
 import { ResponsiveTable } from '../../components/ui/ResponsiveTable';
 import { Pagination } from '../../components/ui/Pagination';
+import { ConfirmationModal } from '../../components/ui/ConfirmationModal';
 import { toast } from 'react-hot-toast';
 
 export const AdminWarehouseLocations = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [submittedSearchTerm, setSubmittedSearchTerm] = useState('');
   const [loadingAction, setLoadingAction] = useState<string | null>(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [locationToDelete, setLocationToDelete] = useState<{id: string, name: string} | null>(null);
 
   const apiCall = useCallback((page: number, limit: number) => {
     return AdminAPI.getWarehouseLocations({
@@ -45,20 +48,28 @@ export const AdminWarehouseLocations = () => {
   };
 
   const handleDeleteLocation = useCallback(async (locationId: string, locationName: string) => {
-    if (window.confirm(`Are you sure you want to delete the location "${locationName}"? This action cannot be undone.`)) {
-      setLoadingAction(locationId);
-      try {
-        await AdminAPI.deleteWarehouseLocation(locationId);
-        toast.success(`Location "${locationName}" deleted successfully!`);
-        await fetchLocations();
-      } catch (err: any) {
-        toast.error(`Failed to delete location: ${err.message || 'Unknown error'}`);
-      } finally {
-        setLoadingAction(null);
-      }
-    }
-  }, [fetchLocations]);
+    setLocationToDelete({ id: locationId, name: locationName });
+    setShowDeleteModal(true);
+  }, []);
 
+  const confirmDeleteLocation = useCallback(async () => {
+    if (!locationToDelete) return;
+    
+    setLoadingAction(locationToDelete.id);
+    try {
+      await AdminAPI.deleteWarehouseLocation(locationToDelete.id);
+      toast.success(`Location "${locationToDelete.name}" deleted successfully!`);
+      await fetchLocations();
+    } catch (err: any) {
+      toast.error(`Failed to delete location: ${err.message || 'Unknown error'}`);
+    } finally {
+      setLoadingAction(null);
+      setShowDeleteModal(false);
+      setLocationToDelete(null);
+    }
+  }, [locationToDelete, fetchLocations]);
+
+  // Early returns after all hooks
   if (locationsError) {
     return (
       <div className="p-6">
@@ -191,6 +202,22 @@ export const AdminWarehouseLocations = () => {
         showingEnd={Math.min(endIndex, totalLocations || locations.length)}
         itemName="locations"
         className="mt-6"
+      />
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={showDeleteModal}
+        onClose={() => {
+          setShowDeleteModal(false);
+          setLocationToDelete(null);
+        }}
+        onConfirm={confirmDeleteLocation}
+        title="Delete Location"
+        message={`Are you sure you want to delete the location "${locationToDelete?.name}"? This action cannot be undone.`}
+        confirmText="Delete"
+        cancelText="Cancel"
+        variant="danger"
+        loading={loadingAction === locationToDelete?.id}
       />
     </div>
   );

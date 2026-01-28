@@ -8,6 +8,7 @@ import { useLocale } from '../contexts/LocaleContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CartSkeleton } from '../components/ui/CartSkeleton';
 import { validation } from '../lib/validation';
+import { ConfirmationModal } from '../components/ui/ConfirmationModal';
 
 export const Cart = () => {
   const { 
@@ -24,6 +25,9 @@ export const Cart = () => {
   const [couponCode, setCouponCode] = useState('');
   const [taxLocation, setTaxLocation] = useState<{ country: string; province?: string }>({ country: 'US' });
   const [clearingCart, setClearingCart] = useState(false);
+  const [showRemoveItemModal, setShowRemoveItemModal] = useState(false);
+  const [showClearCartModal, setShowClearCartModal] = useState(false);
+  const [itemToRemove, setItemToRemove] = useState<{ id: string; name: string; message: string } | null>(null);
   
   // Use cart items directly from context - this ensures the component re-renders when cart object changes
   var cartItems = cart?.items || [];
@@ -92,12 +96,16 @@ export const Cart = () => {
         ? `Remove all ${item.quantity} units of "${itemName}" from your cart?`
         : `Remove "${itemName}" from your cart?`;
         
-      if (!window.confirm(confirmMessage)) {
-        return;
-      }
+      setItemToRemove({
+        id,
+        name: itemName,
+        message: confirmMessage
+      });
+      setShowRemoveItemModal(true);
+      return;
     }
 
-    
+    // For inexpensive single items, remove directly
     try {
       await removeItem(String(id));
     } catch (error: any) {
@@ -106,6 +114,21 @@ export const Cart = () => {
       toast.error(errorMessage);
     } 
   }, [cartItems, isAuthenticated, setIntendedDestination, location.pathname, removeItem]);
+
+  const confirmRemoveItem = async () => {
+    if (!itemToRemove) return;
+
+    try {
+      await removeItem(String(itemToRemove.id));
+    } catch (error: any) {
+      console.error('Failed to remove item:', error);
+      const errorMessage = error?.message || 'Failed to remove item. Please try again.';
+      toast.error(errorMessage);
+    } finally {
+      setShowRemoveItemModal(false);
+      setItemToRemove(null);
+    }
+  };
 
   // Enhanced quantity change handler with optimistic updates
   const handleQuantityChange = useCallback(async (id: string, quantity: number) => {
@@ -147,11 +170,11 @@ export const Cart = () => {
       return;
     }
 
-    // Confirm clear action
-    if (!window.confirm(`Are you sure you want to remove all ${cartItems.length} items from your cart?`)) {
-      return;
-    }
+    // Show confirmation modal
+    setShowClearCartModal(true);
+  }, [isAuthenticated, setIntendedDestination, location.pathname, navigate]);
 
+  const confirmClearCart = async () => {
     setClearingCart(true);
     
     try {
@@ -162,8 +185,9 @@ export const Cart = () => {
       toast.error(errorMessage);
     } finally {
       setClearingCart(false);
+      setShowClearCartModal(false);
     }
-  }, [isAuthenticated, setIntendedDestination,location.pathname, cartItems.length, clearCart]);
+  };
 
   // Enhanced coupon application
   const handleApplyCoupon = async (e: React.FormEvent) => {
@@ -512,6 +536,34 @@ export const Cart = () => {
           </div>
         </div>
       )}
+
+      {/* Remove Item Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={showRemoveItemModal}
+        onClose={() => {
+          setShowRemoveItemModal(false);
+          setItemToRemove(null);
+        }}
+        onConfirm={confirmRemoveItem}
+        title="Remove Item"
+        message={itemToRemove?.message || 'Are you sure you want to remove this item from your cart?'}
+        confirmText="Remove Item"
+        cancelText="Keep Item"
+        variant="warning"
+      />
+
+      {/* Clear Cart Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={showClearCartModal}
+        onClose={() => setShowClearCartModal(false)}
+        onConfirm={confirmClearCart}
+        title="Clear Cart"
+        message={`Are you sure you want to remove all ${cartItems.length} items from your cart? This action cannot be undone.`}
+        confirmText="Clear Cart"
+        cancelText="Keep Items"
+        variant="danger"
+        loading={clearingCart}
+      />
     </div>
   );
 };

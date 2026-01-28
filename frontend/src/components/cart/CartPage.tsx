@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useCart } from '../../hooks/useCart';
 import { useAuth } from '../../hooks/useAuth';
 import { useLocale } from '../../contexts/LocaleContext';
+import { ConfirmationModal } from '../ui/ConfirmationModal';
 import { toast } from 'react-hot-toast';
 import { Trash2, Plus, Minus, ShoppingBag } from 'lucide-react';
 
@@ -102,6 +103,7 @@ const CartPage = () => {
   const { formatCurrency } = useLocale();
   const { user } = useAuth();
   const { cart, loading, items, totalItems, addItem, removeItem, updateQuantity, clearCart } = useCart();
+  const [showClearModal, setShowClearModal] = useState(false);
 
   const handleUpdate = async (itemId, quantity) => {
     try {
@@ -120,14 +122,19 @@ const CartPage = () => {
   };
 
   const handleClear = async () => {
-    if (!confirm('Clear cart?')) return;
+    setShowClearModal(true);
+  };
+
+  const confirmClearCart = async () => {
     try {
       await clearCart();
+      setShowClearModal(false);
     } catch (error) {
       toast.error(error.message || 'Failed to clear');
     }
   };
 
+  // Early returns after all hooks
   if (!user) {
     return (
       <div className="max-w-4xl mx-auto px-4 py-8 text-center">
@@ -247,6 +254,19 @@ const CartPage = () => {
           </div>
         </div>
       </div>
+
+      {/* Clear Cart Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={showClearModal}
+        onClose={() => setShowClearModal(false)}
+        onConfirm={confirmClearCart}
+        title="Clear Cart"
+        message="Are you sure you want to clear your cart? This will remove all items."
+        confirmText="Clear Cart"
+        cancelText="Cancel"
+        variant="warning"
+        loading={loading}
+      />
     </div>
   );
 };

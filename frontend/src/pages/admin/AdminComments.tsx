@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useApi } from '../../hooks/useAsync';
 import { AdminAPI } from '../../apis';
 import ErrorMessage from '../../components/common/ErrorMessage';
+import { ConfirmationModal } from '../../components/ui/ConfirmationModal';
 import { toast } from 'react-hot-toast';
 import { CommentResponse } from '../../types';
 import { Link } from 'react-router-dom';
@@ -13,6 +14,8 @@ export const AdminComments = () => {
   const [totalPages, setTotalPages] = useState(1);
   const [filterApproved, setFilterApproved] = useState<boolean | undefined>(undefined);
   const [loadingAction, setLoadingAction] = useState<string | null>(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [commentToDelete, setCommentToDelete] = useState<string | null>(null);
 
   // Assuming a new API method in AdminAPI to get all comments
   // This will need to be added to frontend/src/apis/admin.ts later
@@ -68,21 +71,29 @@ export const AdminComments = () => {
   }, [loadComments]);
 
   const handleDeleteComment = useCallback(async (commentId: string) => {
-    if (window.confirm('Are you sure you want to delete this comment? This action cannot be undone.')) {
-      setLoadingAction(commentId);
-      try {
-        // AdminAPI.deleteComment will be implemented later
-        await AdminAPI.deleteComment(commentId);
-        toast.success('Comment deleted successfully!');
-        loadComments();
-      } catch (err: any) {
-        toast.error(`Failed to delete comment: ${err.message || 'Unknown error'}`);
-      } finally {
-        setLoadingAction(null);
-      }
-    }
-  }, [loadComments]);
+    setCommentToDelete(commentId);
+    setShowDeleteModal(true);
+  }, []);
 
+  const confirmDeleteComment = useCallback(async () => {
+    if (!commentToDelete) return;
+    
+    setLoadingAction(commentToDelete);
+    try {
+      // AdminAPI.deleteComment will be implemented later
+      await AdminAPI.deleteComment(commentToDelete);
+      toast.success('Comment deleted successfully!');
+      loadComments();
+    } catch (err: any) {
+      toast.error(`Failed to delete comment: ${err.message || 'Unknown error'}`);
+    } finally {
+      setLoadingAction(null);
+      setShowDeleteModal(false);
+      setCommentToDelete(null);
+    }
+  }, [commentToDelete, loadComments]);
+
+  // Early returns after all hooks
   if (loading && !fetchedComments) {
     return (
       <div className="p-6">
@@ -187,6 +198,22 @@ export const AdminComments = () => {
           </div>
         </div>
       )}
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={showDeleteModal}
+        onClose={() => {
+          setShowDeleteModal(false);
+          setCommentToDelete(null);
+        }}
+        onConfirm={confirmDeleteComment}
+        title="Delete Comment"
+        message="Are you sure you want to delete this comment? This action cannot be undone."
+        confirmText="Delete"
+        cancelText="Cancel"
+        variant="danger"
+        loading={loadingAction === commentToDelete}
+      />
     </div>
   );
 };

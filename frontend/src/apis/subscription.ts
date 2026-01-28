@@ -45,8 +45,13 @@ class SubscriptionAPI {
     return apiClient.put(`/subscriptions/${subscriptionId}`, data);
   }
 
-  async deleteSubscription(subscriptionId: string) {
-    return apiClient.delete(`/subscriptions/${subscriptionId}`);
+  async deleteSubscription(subscriptionId: string, reason?: string) {
+    const data = reason ? { cancellation_reason: reason } : {};
+    return apiClient.delete(`/subscriptions/${subscriptionId}`, { data });
+  }
+
+  async cancelSubscription(subscriptionId: string, reason?: string) {
+    return this.deleteSubscription(subscriptionId, reason);
   }
 
   async addProductsToSubscription(subscriptionId: string, variantIds: string[]) {
