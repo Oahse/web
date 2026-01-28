@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { QrCodeIcon, DownloadIcon, ShareIcon, XIcon } from 'lucide-react';
+import { NotificationModal } from '../ui/NotificationModal';
 
 export const QRCodeModal = ({
   data,
@@ -12,6 +13,7 @@ export const QRCodeModal = ({
   className = '',
 }) => {
   const canvasRef = useRef(null);
+  const [showNotification, setShowNotification] = React.useState(false);
 
   const generateQRCode = (text, canvas) => {
     const ctx = canvas.getContext('2d');
@@ -96,7 +98,7 @@ export const QRCodeModal = ({
               await navigator.clipboard.write([
                 new ClipboardItem({ 'image/png': blob })
               ]);
-              alert('QR code copied to clipboard!');
+              setShowNotification(true);
             } catch (error) {
               console.error('Error copying to clipboard:', error);
             }
@@ -174,6 +176,17 @@ export const QRCodeModal = ({
           </button>
         </div>
       </motion.div>
+
+      {/* Notification Modal */}
+      <NotificationModal
+        isOpen={showNotification}
+        onClose={() => setShowNotification(false)}
+        title="Success"
+        message="QR code copied to clipboard!"
+        variant="success"
+        autoClose={true}
+        autoCloseDelay={3000}
+      />
     </motion.div>
   );
 };

@@ -7,6 +7,7 @@ import React, { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { MessageCircle, Phone, Mail, Clock, User, ShoppingBag } from 'lucide-react';
 import { User as UserType } from '../../types';
+import { NotificationModal } from '../ui/NotificationModal';
 
 interface SupportOption {
   id: string;
@@ -33,6 +34,7 @@ const CustomerSupport: React.FC<CustomerSupportProps> = ({
 }) => {
   const { user } = useAuth() as { user: UserType | null };
   const [isLoading, setIsLoading] = useState(false);
+  const [showNotification, setShowNotification] = useState(false);
 
   // WhatsApp Business number (replace with your actual number)
   const WHATSAPP_BUSINESS_NUMBER = '+1234567890'; // Replace with actual number
@@ -145,7 +147,7 @@ Please help me with my inquiry. Thank you!`;
       // Fallback to copying message to clipboard
       const message = decodeURIComponent(generateWhatsAppMessage(messageType));
       navigator.clipboard.writeText(message).then(() => {
-        alert('Message copied to clipboard! Please paste it in WhatsApp.');
+        setShowNotification(true);
       });
     } finally {
       setIsLoading(false);
@@ -282,6 +284,17 @@ Please help me with my inquiry. Thank you!`;
           </div>
         </div>
       )}
+
+      {/* Notification Modal */}
+      <NotificationModal
+        isOpen={showNotification}
+        onClose={() => setShowNotification(false)}
+        title="Message Copied"
+        message="Message copied to clipboard! Please paste it in WhatsApp."
+        variant="success"
+        autoClose={true}
+        autoCloseDelay={3000}
+      />
     </div>
   );
 };

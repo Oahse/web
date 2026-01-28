@@ -20,6 +20,17 @@ interface SupportContext {
   customMessage?: string;
 }
 
+interface NotificationData {
+  title: string;
+  message: string;
+  variant: 'success' | 'info' | 'warning';
+}
+
+interface WhatsAppResult {
+  success: boolean;
+  notification?: NotificationData;
+}
+
 const useWhatsAppSupport = () => {
   const { user } = useAuth() as { user: User | null };
 
@@ -193,10 +204,25 @@ ${config.defaultMessage} Thank you for your help! 😊`;
       if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
         // Copy message to clipboard as fallback
         navigator.clipboard.writeText(message).then(() => {
-          alert(`WhatsApp couldn't open automatically. Message copied to clipboard!\n\nPlease paste it in WhatsApp: ${config.businessNumber}`);
+          // Return notification data instead of showing alert
+          return {
+            success: true,
+            notification: {
+              title: 'Message Copied',
+              message: `WhatsApp couldn't open automatically. Message copied to clipboard!\n\nPlease paste it in WhatsApp: ${config.businessNumber}`,
+              variant: 'info' as const
+            }
+          };
         }).catch(() => {
-          // Final fallback - show message in alert
-          alert(`Please send this message to ${config.businessNumber} on WhatsApp:\n\n${message}`);
+          // Return notification data for final fallback
+          return {
+            success: false,
+            notification: {
+              title: 'Manual Action Required',
+              message: `Please send this message to ${config.businessNumber} on WhatsApp:\n\n${message}`,
+              variant: 'warning' as const
+            }
+          };
         });
       }
 
@@ -214,15 +240,20 @@ ${config.defaultMessage} Thank you for your help! 😊`;
         });
       }
 
-      return true;
+      return { success: true };
     } catch (error) {
       console.error('Error opening WhatsApp:', error);
       
-      // Fallback error handling
+      // Return notification data for error handling
       const fallbackMessage = generateSupportMessage(context);
-      alert(`Error opening WhatsApp. Please contact us at ${config.businessNumber} with this message:\n\n${fallbackMessage}`);
-      
-      return false;
+      return {
+        success: false,
+        notification: {
+          title: 'Error Opening WhatsApp',
+          message: `Error opening WhatsApp. Please contact us at ${config.businessNumber} with this message:\n\n${fallbackMessage}`,
+          variant: 'warning' as const
+        }
+      };
     }
   }, [generateSupportMessage, config, user]);
 

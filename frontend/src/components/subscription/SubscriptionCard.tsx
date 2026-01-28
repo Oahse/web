@@ -7,8 +7,10 @@ import {
   PauseIcon,
   PlayIcon,
   TrashIcon,
-  PackageIcon
-} from 'lucide-react';
+  PackageIcon,
+  ReceiptIcon,
+  TruckIcon,
+  PercentIcon
 } from 'lucide-react';
 import { themeClasses, combineThemeClasses, getButtonClasses } from '../../lib/themeClasses';
 import { useLocale } from '../../contexts/LocaleContext';
@@ -25,10 +27,26 @@ interface SubscriptionCardProps {
     auto_renew: boolean;
     next_billing_date?: string;
     current_period_end?: string;
+    tax_rate_applied?: number;
+    tax_amount?: number;
+    delivery_cost_applied?: number;
+    cost_breakdown?: {
+      subtotal: number;
+      tax_amount: number;
+      tax_rate: number;
+      delivery_cost: number;
+      delivery_type: string;
+      total_amount: number;
+      admin_fee?: number;
+      loyalty_discount?: number;
+    };
     products?: Array<{
       id: string;
       name: string;
       price: number;
+      current_price?: number;
+      base_price?: number;
+      sale_price?: number;
       image?: string;
       primary_image?: { url: string };
       images?: Array<{ url: string; is_primary?: boolean }>;
@@ -125,11 +143,23 @@ export const SubscriptionCard: React.FC<SubscriptionCardProps> = ({
                   {subscription.status.charAt(0).toUpperCase() + subscription.status.slice(1)}
                 </span>
               </div>
+              
+              {/* Compact cost info */}
+              {(subscription.tax_amount || subscription.delivery_cost_applied) && (
+                <div className="flex items-center space-x-3 mt-1 text-xs text-gray-600">
+                  {subscription.tax_amount && (
+                    <span>Tax: {formatCurrency(subscription.tax_amount, subscription.currency)}</span>
+                  )}
+                  {subscription.delivery_cost_applied && (
+                    <span>Shipping: {formatCurrency(subscription.delivery_cost_applied, subscription.currency)}</span>
+                  )}
+                </div>
+              )}
             </div>
           </div>
           
           <Link
-            to={`/account/subscriptions/${subscription.id}`}
+            to={`/subscription/${subscription.id}/manage`}
             className={combineThemeClasses(getButtonClasses('outline'), 'text-sm')}
           >
             Manage
@@ -182,6 +212,96 @@ export const SubscriptionCard: React.FC<SubscriptionCardProps> = ({
                 </div>
               )}
             </div>
+
+            {/* Cost Breakdown */}
+            {(subscription.cost_breakdown || subscription.tax_amount || subscription.delivery_cost_applied) && (
+              <div className="mt-3 p-3 bg-gray-50 rounded-lg border">
+                <div className="flex items-center gap-2 mb-2">
+                  <ReceiptIcon className={combineThemeClasses(themeClasses.text.muted, 'w-4 h-4')} />
+                  <h4 className={combineThemeClasses(themeClasses.text.heading, 'text-sm font-medium')}>
+                    Cost Breakdown
+                  </h4>
+                </div>
+                <div className="space-y-1 text-xs">
+                  {/* Subtotal */}
+                  {subscription.cost_breakdown?.subtotal && (
+                    <div className="flex justify-between items-center">
+                      <span className={themeClasses.text.secondary}>Subtotal:</span>
+                      <span className={themeClasses.text.primary}>
+                        {formatCurrency(subscription.cost_breakdown.subtotal, subscription.currency)}
+                      </span>
+                    </div>
+                  )}
+                  
+                  {/* Tax */}
+                  {(subscription.cost_breakdown?.tax_amount || subscription.tax_amount) && (
+                    <div className="flex justify-between items-center">
+                      <div className="flex items-center gap-1">
+                        <PercentIcon className="w-3 h-3 text-gray-500" />
+                        <span className={themeClasses.text.secondary}>
+                          Tax {subscription.cost_breakdown?.tax_rate ? `(${(subscription.cost_breakdown.tax_rate * 100).toFixed(1)}%)` : 
+                               subscription.tax_rate_applied ? `(${(subscription.tax_rate_applied * 100).toFixed(1)}%)` : ''}:
+                        </span>
+                      </div>
+                      <span className={themeClasses.text.primary}>
+                        {formatCurrency(
+                          subscription.cost_breakdown?.tax_amount || subscription.tax_amount || 0, 
+                          subscription.currency
+                        )}
+                      </span>
+                    </div>
+                  )}
+                  
+                  {/* Shipping */}
+                  {(subscription.cost_breakdown?.delivery_cost || subscription.delivery_cost_applied) && (
+                    <div className="flex justify-between items-center">
+                      <div className="flex items-center gap-1">
+                        <TruckIcon className="w-3 h-3 text-gray-500" />
+                        <span className={themeClasses.text.secondary}>
+                          Shipping {subscription.cost_breakdown?.delivery_type ? `(${subscription.cost_breakdown.delivery_type})` : ''}:
+                        </span>
+                      </div>
+                      <span className={themeClasses.text.primary}>
+                        {formatCurrency(
+                          subscription.cost_breakdown?.delivery_cost || subscription.delivery_cost_applied || 0, 
+                          subscription.currency
+                        )}
+                      </span>
+                    </div>
+                  )}
+                  
+                  {/* Admin Fee */}
+                  {subscription.cost_breakdown?.admin_fee && subscription.cost_breakdown.admin_fee > 0 && (
+                    <div className="flex justify-between items-center">
+                      <span className={themeClasses.text.secondary}>Admin Fee:</span>
+                      <span className={themeClasses.text.primary}>
+                        {formatCurrency(subscription.cost_breakdown.admin_fee, subscription.currency)}
+                      </span>
+                    </div>
+                  )}
+                  
+                  {/* Loyalty Discount */}
+                  {subscription.cost_breakdown?.loyalty_discount && subscription.cost_breakdown.loyalty_discount > 0 && (
+                    <div className="flex justify-between items-center">
+                      <span className={themeClasses.text.secondary}>Loyalty Discount:</span>
+                      <span className="text-green-600">
+                        -{formatCurrency(subscription.cost_breakdown.loyalty_discount, subscription.currency)}
+                      </span>
+                    </div>
+                  )}
+                  
+                  {/* Total */}
+                  {subscription.cost_breakdown?.total_amount && (
+                    <div className="flex justify-between items-center pt-1 border-t border-gray-200 font-medium">
+                      <span className={themeClasses.text.primary}>Total:</span>
+                      <span className={themeClasses.text.primary}>
+                        {formatCurrency(subscription.cost_breakdown.total_amount, subscription.currency)}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Right: Status + Actions */}
@@ -307,7 +427,7 @@ export const SubscriptionCard: React.FC<SubscriptionCardProps> = ({
                       {product.name}
                     </p>
                     <p className={combineThemeClasses(themeClasses.text.muted, 'text-xs')}>
-                      {formatCurrency(product.price, subscription.currency)}
+                      {formatCurrency(product.current_price || product.base_price || product.price || 0, subscription.currency)}
                     </p>
                   </div>
                 </div>
@@ -329,7 +449,7 @@ export const SubscriptionCard: React.FC<SubscriptionCardProps> = ({
             Created {formatDate(subscription.created_at)}
           </span>
           <Link
-            to={`/account/subscriptions/${subscription.id}`}
+            to={`/subscription/${subscription.id}/manage`}
             className={combineThemeClasses(getButtonClasses('primary'), 'text-sm')}
           >
             Manage Subscription

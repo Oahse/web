@@ -134,7 +134,7 @@ export const SubscriptionProductCard: React.FC<SubscriptionProductCardProps> = (
           )}
           <div className="flex items-center mt-2 space-x-4">
             <span className={combineThemeClasses(themeClasses.text.heading, 'font-semibold')}>
-              {formatCurrency(product.price, product.currency)}
+              {formatCurrency(product.current_price || product.base_price || product.price || 0, product.currency)}
             </span>
             {product.stock !== undefined && (
               <span className={combineThemeClasses(
@@ -284,7 +284,7 @@ export const SubscriptionProductCard: React.FC<SubscriptionProductCardProps> = (
 
         <div className="flex items-center justify-between">
           <span className={combineThemeClasses(themeClasses.text.heading, 'font-bold text-lg')}>
-            {formatCurrency(product.price, product.currency)}
+            {formatCurrency(product.current_price || product.base_price || product.price || 0, product.currency)}
           </span>
           
           {showActions && onQuantityChange && (

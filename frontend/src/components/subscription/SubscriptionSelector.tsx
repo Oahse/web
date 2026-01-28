@@ -133,7 +133,7 @@ export const SubscriptionSelector: React.FC<SubscriptionSelectorProps> = ({
                           <div className={`text-xs sm:text-sm ${themeClasses.textMuted} flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4 mt-1`}>
                             <span className="flex items-center gap-1">
                               <CreditCardIcon className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
-                              <span className="truncate">{formatCurrency(subscription.price)} / {formatBillingCycle(subscription.billing_cycle)}</span>
+                              <span className="truncate">{formatCurrency(subscription.price || 0)} / {formatBillingCycle(subscription.billing_cycle)}</span>
                             </span>
                             {subscription.next_billing_date && (
                               <span className="flex items-center gap-1">

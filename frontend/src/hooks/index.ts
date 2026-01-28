@@ -25,7 +25,7 @@ export { useAnalytics } from './useAnalytics';
 export { useCategories } from './useCategories';
 export { useFileUpload } from './useFileUpload';
 export { useSubscription, useSubscriptionAction } from './useSubscription';
-export { useWhatsAppSupport } from './useWhatsAppSupport';
+export { default as useWhatsAppSupport } from './useWhatsAppSupport';
 export { useSkeleton } from './useSkeleton';
 export { useUI } from './useUI';
 export { useData } from './useData';

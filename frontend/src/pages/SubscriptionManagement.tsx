@@ -15,7 +15,7 @@ import { themeClasses, combineThemeClasses, getButtonClasses } from '../lib/them
 export const SubscriptionManagement = () => {
   const { subscriptionId } = useParams();
   const { user } = useAuth();
-  const { updateSubscription, cancelSubscription, addProductsToSubscription, removeProductsFromSubscription } = useSubscription();
+  const { updateSubscription, cancelSubscription, activateSubscription, pauseSubscription, resumeSubscription, addProductsToSubscription, removeProductsFromSubscription } = useSubscription();
   const { currency, formatCurrency } = useLocale();
   const [subscription, setSubscription] = useState(null);
   const [availableProducts, setAvailableProducts] = useState([]);
@@ -26,6 +26,11 @@ export const SubscriptionManagement = () => {
   const [isAddingProducts, setIsAddingProducts] = useState(false);
   const [showCancelDialog, setShowCancelDialog] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
+  const [showActivateDialog, setShowActivateDialog] = useState(false);
+  const [isActivating, setIsActivating] = useState(false);
+  const [showPauseDialog, setShowPauseDialog] = useState(false);
+  const [isPausing, setIsPausing] = useState(false);
+  const [pauseReason, setPauseReason] = useState('');
 
   useEffect(() => {
     if (subscriptionId) {
@@ -147,6 +152,54 @@ export const SubscriptionManagement = () => {
       toast.error('Failed to cancel subscription');
     } finally {
       setIsCancelling(false);
+    }
+  };
+
+  const handleActivateSubscription = async () => {
+    try {
+      setIsActivating(true);
+      const success = await activateSubscription(subscriptionId);
+      if (success) {
+        setShowActivateDialog(false);
+        await loadSubscriptionData(); // Refresh subscription data
+        toast.success('Subscription activated successfully');
+      }
+    } catch (error) {
+      console.error('Failed to activate subscription:', error);
+      toast.error('Failed to activate subscription');
+    } finally {
+      setIsActivating(false);
+    }
+  };
+
+  const handlePauseSubscription = async () => {
+    try {
+      setIsPausing(true);
+      const success = await pauseSubscription(subscriptionId, pauseReason);
+      if (success) {
+        setShowPauseDialog(false);
+        setPauseReason('');
+        await loadSubscriptionData(); // Refresh subscription data
+        toast.success('Subscription paused successfully');
+      }
+    } catch (error) {
+      console.error('Failed to pause subscription:', error);
+      toast.error('Failed to pause subscription');
+    } finally {
+      setIsPausing(false);
+    }
+  };
+
+  const handleResumeSubscription = async () => {
+    try {
+      const success = await resumeSubscription(subscriptionId);
+      if (success) {
+        await loadSubscriptionData(); // Refresh subscription data
+        toast.success('Subscription resumed successfully');
+      }
+    } catch (error) {
+      console.error('Failed to resume subscription:', error);
+      toast.error('Failed to resume subscription');
     }
   };
 
@@ -284,9 +337,40 @@ export const SubscriptionManagement = () => {
             />
           </div>
 
-          {/* Cancel Subscription Button */}
-          {subscription.status !== 'cancelled' && (
-            <div className="flex justify-end">
+          {/* Action Buttons */}
+          <div className="flex flex-wrap gap-3 justify-end">
+            {subscription.status === 'cancelled' && (
+              <Button
+                onClick={() => setShowActivateDialog(true)}
+                variant="primary"
+                className="bg-green-600 hover:bg-green-700 text-white"
+              >
+                <PlusIcon size={16} className="mr-2" />
+                Activate Subscription
+              </Button>
+            )}
+            
+            {subscription.status === 'active' && (
+              <Button
+                onClick={() => setShowPauseDialog(true)}
+                variant="outline"
+                className="text-yellow-600 border-yellow-200 hover:bg-yellow-50 hover:border-yellow-300"
+              >
+                Pause Subscription
+              </Button>
+            )}
+            
+            {subscription.status === 'paused' && (
+              <Button
+                onClick={handleResumeSubscription}
+                variant="primary"
+                className="bg-blue-600 hover:bg-blue-700 text-white"
+              >
+                Resume Subscription
+              </Button>
+            )}
+            
+            {(subscription.status === 'active' || subscription.status === 'paused') && (
               <Button
                 onClick={() => setShowCancelDialog(true)}
                 variant="outline"
@@ -295,8 +379,8 @@ export const SubscriptionManagement = () => {
                 <TrashIcon size={16} className="mr-2" />
                 Cancel Subscription
               </Button>
-            </div>
-          )}
+            )}
+          </div>
         </div>
 
         {/* Current Products */}
@@ -483,6 +567,144 @@ export const SubscriptionManagement = () => {
                     </>
                   ) : (
                     'Yes, Cancel Subscription'
+                  )}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Activate Subscription Confirmation Dialog */}
+      {showActivateDialog && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className={combineThemeClasses(themeClasses.card.base, 'w-full max-w-md')}>
+            <div className="p-6">
+              <div className="flex items-center mb-4">
+                <PlusIcon className="w-6 h-6 text-green-600 mr-3" />
+                <h3 className={combineThemeClasses(themeClasses.text.heading, 'text-lg font-bold')}>
+                  Activate Subscription
+                </h3>
+              </div>
+              
+              <div className="mb-6">
+                <p className={combineThemeClasses(themeClasses.text.secondary, 'mb-3')}>
+                  Are you sure you want to activate this subscription? Billing will resume according to your plan.
+                </p>
+                <div className={combineThemeClasses(themeClasses.background.elevated, 'p-3 rounded-lg')}>
+                  <p className={combineThemeClasses(themeClasses.text.primary, 'text-sm font-medium mb-1')}>
+                    {subscription.plan_id.charAt(0).toUpperCase() + subscription.plan_id.slice(1)} Plan
+                  </p>
+                  <p className={combineThemeClasses(themeClasses.text.muted, 'text-sm')}>
+                    {formatCurrency(subscription.price, subscription.currency)}/{subscription.billing_cycle}
+                  </p>
+                  <p className={combineThemeClasses(themeClasses.text.muted, 'text-sm')}>
+                    {subscription.products?.length || 0} products included
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-3">
+                <Button
+                  onClick={() => setShowActivateDialog(false)}
+                  variant="outline"
+                  className="flex-1"
+                  disabled={isActivating}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleActivateSubscription}
+                  variant="primary"
+                  className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+                  disabled={isActivating}
+                >
+                  {isActivating ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      Activating...
+                    </>
+                  ) : (
+                    'Yes, Activate Subscription'
+                  )}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Pause Subscription Dialog */}
+      {showPauseDialog && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className={combineThemeClasses(themeClasses.card.base, 'w-full max-w-md')}>
+            <div className="p-6">
+              <div className="flex items-center mb-4">
+                <AlertTriangleIcon className="w-6 h-6 text-yellow-600 mr-3" />
+                <h3 className={combineThemeClasses(themeClasses.text.heading, 'text-lg font-bold')}>
+                  Pause Subscription
+                </h3>
+              </div>
+              
+              <div className="mb-6">
+                <p className={combineThemeClasses(themeClasses.text.secondary, 'mb-3')}>
+                  Your subscription will be paused and billing will stop. You can resume it anytime.
+                </p>
+                
+                <div className="mb-4">
+                  <label className={combineThemeClasses(themeClasses.text.primary, 'block text-sm font-medium mb-2')}>
+                    Reason for pausing (optional)
+                  </label>
+                  <textarea
+                    value={pauseReason}
+                    onChange={(e) => setPauseReason(e.target.value)}
+                    placeholder="Let us know why you're pausing your subscription..."
+                    className={combineThemeClasses(
+                      themeClasses.input.base,
+                      themeClasses.input.default,
+                      'w-full px-3 py-2 h-20 resize-none'
+                    )}
+                  />
+                </div>
+                
+                <div className={combineThemeClasses(themeClasses.background.elevated, 'p-3 rounded-lg')}>
+                  <p className={combineThemeClasses(themeClasses.text.primary, 'text-sm font-medium mb-1')}>
+                    {subscription.plan_id.charAt(0).toUpperCase() + subscription.plan_id.slice(1)} Plan
+                  </p>
+                  <p className={combineThemeClasses(themeClasses.text.muted, 'text-sm')}>
+                    {formatCurrency(subscription.price, subscription.currency)}/{subscription.billing_cycle}
+                  </p>
+                  <p className={combineThemeClasses(themeClasses.text.muted, 'text-sm')}>
+                    {subscription.products?.length || 0} products included
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-3">
+                <Button
+                  onClick={() => {
+                    setShowPauseDialog(false);
+                    setPauseReason('');
+                  }}
+                  variant="outline"
+                  className="flex-1"
+                  disabled={isPausing}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handlePauseSubscription}
+                  variant="primary"
+                  className="flex-1 bg-yellow-600 hover:bg-yellow-700 text-white"
+                  disabled={isPausing}
+                >
+                  {isPausing ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      Pausing...
+                    </>
+                  ) : (
+                    'Pause Subscription'
                   )}
                 </Button>
               </div>
