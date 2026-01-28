@@ -7,7 +7,7 @@ export interface Subscription {
   status: 'active' | 'cancelled' | 'paused';
   price: number;
   currency: string;
-  billing_cycle: 'monthly' | 'yearly';
+  billing_cycle: 'weekly' | 'monthly' | 'yearly';
   auto_renew: boolean;
   next_billing_date?: string;
   created_at: string;
@@ -24,7 +24,15 @@ export interface Subscription {
     tax_amount: number;
     delivery_cost: number;
     total_amount: number;
+    loyalty_discount?: number;
   };
+  // Additional cost fields that might come from backend
+  delivery_cost_applied?: number;
+  tax_amount?: number;
+  tax_rate_applied?: number;
+  loyalty_discount_applied?: number;
+  loyalty_points_earned?: number;
+  admin_percentage_applied?: number;
 }
 
 // Create subscription request
@@ -36,6 +44,8 @@ export interface CreateSubscriptionRequest {
   delivery_address_id?: string;
   payment_method_id?: string;
   currency?: string;
+  billing_cycle?: 'weekly' | 'monthly' | 'yearly';
+  auto_renew?: boolean;
 }
 
 // Update subscription request
@@ -44,7 +54,7 @@ export interface UpdateSubscriptionRequest {
   product_variant_ids?: string[];
   delivery_type?: 'standard' | 'express' | 'overnight';
   delivery_address_id?: string;
-  billing_cycle?: 'monthly' | 'yearly';
+  billing_cycle?: 'weekly' | 'monthly' | 'yearly';
   auto_renew?: boolean;
   pause_reason?: string;
 }

@@ -326,6 +326,8 @@ export const MySubscriptions = () => {
               onPause={handlePauseSubscription}
               onResume={handleResumeSubscription}
               onProductsUpdated={refreshSubscriptions}
+              onAddProducts={handleOpenAddProductModal}
+              onRemoveProduct={handleRemoveProduct}
               showActions={true}
               compact={false}
             />
@@ -419,104 +421,145 @@ export const MySubscriptions = () => {
                     <label className={`${themeClasses.text.primary} block text-sm font-medium mb-2`}>
                       Select Product Variants ({selectedProductsForNew.size} selected)
                     </label>
-                    <div className="border border-border rounded-md bg-background shadow-sm">
-                      <div className="max-h-48 overflow-y-auto divide-y divide-border">
-                        {availableProducts.length === 0 ? (
-                          <p className={`${themeClasses.text.secondary} text-sm text-center py-4`}>
-                            Loading products…
-                          </p>
-                        ) : (
-                          availableProducts.map((product: Product) => (
-                            <div key={product.id} className="px-3 py-2 space-y-1">
-                              {/* Product name */}
-                              <div className={`${themeClasses.text.primary} text-xs font-semibold truncate`}>
-                                {product.name}
-                              </div>
+                    
+                    {/* Selected Products Summary */}
+                    {selectedProductsForNew.size > 0 && (
+                      <div className={`${themeClasses.background.elevated} rounded-lg p-3 mb-3 border-l-4 border-blue-500`}>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <div className="w-5 h-5 bg-blue-500 text-white rounded-full flex items-center justify-center text-xs font-bold">
+                              {selectedProductsForNew.size}
+                            </div>
+                            <span className={`${themeClasses.text.primary} text-sm font-medium`}>
+                              {selectedProductsForNew.size} variant{selectedProductsForNew.size !== 1 ? 's' : ''} selected
+                            </span>
+                          </div>
+                          <button
+                            onClick={() => setSelectedProductsForNew(new Set())}
+                            className={`${themeClasses.text.secondary} hover:${themeClasses.text.primary} text-xs`}
+                          >
+                            Clear all
+                          </button>
+                        </div>
+                      </div>
+                    )}
 
-                              {/* Variants */}
-                              {product.variants?.length ? (
-                                <div className="space-y-1">
-                                  {product.variants.map((variant: any) => (
-                                    <label
-                                      key={variant.id}
-                                      className="
-                                        grid grid-cols-[16px_28px_1fr_auto]
-                                        items-center gap-2
-                                        px-2 py-1
-                                        rounded
-                                        hover:bg-muted
-                                        cursor-pointer
-                                      "
-                                    >
-                                      {/* Checkbox */}
+                    <div className="border border-border rounded-md bg-background shadow-sm">
+                      <div className="max-h-64 overflow-y-auto">
+                        {availableProducts.length === 0 ? (
+                          <div className="text-center py-8">
+                            <PackageIcon size={32} className={`${themeClasses.text.muted} mx-auto mb-2`} />
+                            <p className={`${themeClasses.text.secondary} text-sm`}>
+                              Loading products…
+                            </p>
+                          </div>
+                        ) : (
+                          <div className="divide-y divide-border">
+                            {availableProducts.map((product: Product) => (
+                              <div key={product.id} className="p-4">
+                                {/* Product Header */}
+                                <div className="flex items-center gap-3 mb-3">
+                                  {product.images && product.images.length > 0 ? (
+                                    <img
+                                      src={product.images[0].url}
+                                      alt={product.name}
+                                      className="w-12 h-12 rounded-lg object-cover border border-border flex-shrink-0"
+                                    />
+                                  ) : (
+                                    <div className="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
+                                      <PackageIcon className="w-6 h-6 text-gray-400" />
+                                    </div>
+                                  )}
+                                  <div className="flex-1 min-w-0">
+                                    <h4 className={`${themeClasses.text.primary} font-semibold text-sm truncate`}>
+                                      {product.name}
+                                    </h4>
+                                    {product.description && (
+                                      <p className={`${themeClasses.text.secondary} text-xs mt-1 truncate`}>
+                                        {product.description}
+                                      </p>
+                                    )}
+                                  </div>
+                                </div>
+
+                                {/* Variants */}
+                                {product.variants?.length ? (
+                                  <div className="space-y-2 ml-15">
+                                    {product.variants.map((variant: any) => (
+                                      <label
+                                        key={variant.id}
+                                        className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors"
+                                      >
+                                        <input
+                                          type="checkbox"
+                                          checked={selectedProductsForNew.has(variant.id)}
+                                          onChange={(e) => {
+                                            const next = new Set(selectedProductsForNew);
+                                            e.target.checked
+                                              ? next.add(variant.id)
+                                              : next.delete(variant.id);
+                                            setSelectedProductsForNew(next);
+                                          }}
+                                          className={`${themeClasses.input.base} flex-shrink-0`}
+                                        />
+
+                                        {/* Variant Image */}
+                                        {variant.images?.[0]?.url ? (
+                                          <img
+                                            src={variant.images[0].url}
+                                            alt={variant.name}
+                                            className="w-8 h-8 rounded object-cover border border-border flex-shrink-0"
+                                          />
+                                        ) : (
+                                          <div className="w-8 h-8 rounded bg-gray-100 flex items-center justify-center flex-shrink-0">
+                                            <PackageIcon className="w-4 h-4 text-gray-400" />
+                                          </div>
+                                        )}
+
+                                        {/* Variant Info */}
+                                        <div className="flex-1 min-w-0">
+                                          <span className={`${themeClasses.text.primary} text-sm font-medium`}>
+                                            {variant.name || "Default Variant"}
+                                          </span>
+                                        </div>
+
+                                        {/* Price */}
+                                        <span className={`${themeClasses.text.secondary} text-sm font-medium flex-shrink-0`}>
+                                          {formatCurrencyLocale(
+                                            variant.current_price || variant.base_price || 0,
+                                            currency
+                                          )}
+                                        </span>
+                                      </label>
+                                    ))}
+                                  </div>
+                                ) : (
+                                  <div className="ml-15">
+                                    <label className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors">
                                       <input
                                         type="checkbox"
-                                        checked={selectedProductsForNew.has(variant.id)}
+                                        checked={selectedProductsForNew.has(product.id)}
                                         onChange={(e) => {
                                           const next = new Set(selectedProductsForNew);
                                           e.target.checked
-                                            ? next.add(variant.id)
-                                            : next.delete(variant.id);
+                                            ? next.add(product.id)
+                                            : next.delete(product.id);
                                           setSelectedProductsForNew(next);
                                         }}
-                                        className={`${themeClasses.input.base}`}
+                                        className={`${themeClasses.input.base} flex-shrink-0`}
                                       />
-
-                                      {/* Image */}
-                                      {variant.images?.[0]?.url ? (
-                                        <img
-                                          src={variant.images[0].url}
-                                          alt={variant.name}
-                                          className="w-6 h-6 rounded object-cover border border-border"
-                                        />
-                                      ) : (
-                                        <div className="w-6 h-6 rounded bg-gray-100 flex items-center justify-center">
-                                          <PackageIcon className="w-3 h-3 text-gray-400" />
-                                        </div>
-                                      )}
-
-                                      {/* Name */}
-                                      <span
-                                        className={`${themeClasses.text.primary} text-xs truncate`}
-                                      >
-                                        {variant.name || "Default Variant"}
+                                      <span className={`${themeClasses.text.primary} text-sm`}>
+                                        Default variant
                                       </span>
-
-                                      {/* Price */}
-                                      <span
-                                        className={`${themeClasses.text.muted} text-xs text-right whitespace-nowrap`}
-                                      >
-                                        {formatCurrencyLocale(
-                                          variant.current_price || variant.base_price || 0,
-                                          currency
-                                        )}
+                                      <span className={`${themeClasses.text.secondary} text-sm font-medium ml-auto`}>
+                                        {formatCurrencyLocale(product.price || 0, currency)}
                                       </span>
                                     </label>
-                                  ))}
-                                </div>
-                              ) : (
-                                <div className="px-2 py-1">
-                                  <label className="flex items-center gap-2 cursor-pointer">
-                                    <input
-                                      type="checkbox"
-                                      checked={selectedProductsForNew.has(product.id)}
-                                      onChange={(e) => {
-                                        const next = new Set(selectedProductsForNew);
-                                        e.target.checked
-                                          ? next.add(product.id)
-                                          : next.delete(product.id);
-                                        setSelectedProductsForNew(next);
-                                      }}
-                                      className={`${themeClasses.input.base}`}
-                                    />
-                                    <span className={`${themeClasses.text.muted} text-xs`}>
-                                      Default variant - {formatCurrencyLocale(product.price || 0, currency)}
-                                    </span>
-                                  </label>
-                                </div>
-                              )}
-                            </div>
-                          ))
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
                         )}
                       </div>
                     </div>
@@ -556,89 +599,236 @@ export const MySubscriptions = () => {
       {/* Add Products Modal */}
       {showAddProductModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className={`${themeClasses.card.base} w-full max-w-4xl max-h-[90vh] overflow-hidden`}>
-            <div className="p-4 sm:p-6">
-              <div className="flex justify-between items-center mb-4">
-                <h2 className={`${themeClasses.text.heading} text-xl`}>Add Products to Subscription</h2>
+          <div className={`${themeClasses.card.base} w-full max-w-6xl max-h-[90vh] overflow-hidden`}>
+            <div className="p-6">
+              <div className="flex justify-between items-center mb-6">
+                <div>
+                  <h2 className={`${themeClasses.text.heading} text-2xl font-bold`}>Add Products to Subscription</h2>
+                  <p className={`${themeClasses.text.secondary} text-sm mt-1`}>
+                    Select products to add to your subscription
+                  </p>
+                </div>
                 <button
                   onClick={() => setShowAddProductModal(false)}
-                  className={`${themeClasses.text.muted} hover:${themeClasses.text.primary}`}
+                  className={`${themeClasses.text.muted} hover:${themeClasses.text.primary} p-2 rounded-full hover:bg-gray-100 transition-colors`}
                 >
                   <XIcon size={24} />
                 </button>
               </div>
               
               {/* Search */}
-              <div className="mb-4">
+              <div className="mb-6">
                 <div className="relative">
                   <SearchIcon size={20} className={`${themeClasses.text.muted} absolute left-3 top-1/2 transform -translate-y-1/2`} />
                   <input
                     type="text"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Search products..."
-                    className={`${themeClasses.input.base} ${themeClasses.input.default} pl-10`}
+                    placeholder="Search products by name..."
+                    className={`${themeClasses.input.base} ${themeClasses.input.default} pl-10 text-base`}
                   />
                 </div>
               </div>
 
+              {/* Selected Products Summary */}
+              {selectedProducts.size > 0 && (
+                <div className={`${themeClasses.background.elevated} rounded-lg p-4 mb-6 border-l-4 border-blue-500`}>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="w-6 h-6 bg-blue-500 text-white rounded-full flex items-center justify-center text-sm font-bold">
+                        {selectedProducts.size}
+                      </div>
+                      <span className={`${themeClasses.text.primary} font-medium`}>
+                        {selectedProducts.size} product{selectedProducts.size !== 1 ? 's' : ''} selected
+                      </span>
+                    </div>
+                    <button
+                      onClick={() => setSelectedProducts(new Set())}
+                      className={`${themeClasses.text.secondary} hover:${themeClasses.text.primary} text-sm`}
+                    >
+                      Clear all
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {/* Products Grid */}
-              <div className="max-h-96 overflow-y-auto mb-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {availableProducts.map((product: Product) => (
-                    <div key={product.id} className={`${themeClasses.card.base} p-4`}>
-                      <div className="flex items-start space-x-3">
-                        <input
-                          type="checkbox"
-                          checked={selectedProducts.has(product.id)}
-                          onChange={(e) => {
-                            const newSelected = new Set(selectedProducts);
-                            if (e.target.checked) {
-                              newSelected.add(product.id);
-                            } else {
-                              newSelected.delete(product.id);
-                            }
-                            setSelectedProducts(newSelected);
-                          }}
-                          className={`${themeClasses.input.base} mt-1 flex-shrink-0`}
-                        />
-                        <div className="flex-1 min-w-0">
-                          {product.images && product.images.length > 0 && (
+              <div className="max-h-[400px] overflow-y-auto mb-6">
+                {availableProducts.length === 0 ? (
+                  <div className="text-center py-12">
+                    <PackageIcon size={48} className={`${themeClasses.text.muted} mx-auto mb-4`} />
+                    <p className={`${themeClasses.text.secondary} mb-2`}>
+                      {searchQuery ? 'No products found matching your search.' : 'Loading products...'}
+                    </p>
+                    {searchQuery && (
+                      <button
+                        onClick={() => setSearchQuery('')}
+                        className={`${themeClasses.text.primary} hover:underline text-sm`}
+                      >
+                        Clear search
+                      </button>
+                    )}
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {availableProducts.map((product: Product) => (
+                      <div 
+                        key={product.id} 
+                        className={`${themeClasses.card.base} overflow-hidden transition-all duration-200 hover:shadow-lg ${
+                          selectedProducts.has(product.id) ? 'ring-2 ring-blue-500 bg-blue-50' : ''
+                        }`}
+                      >
+                        {/* Product Image */}
+                        <div className="relative">
+                          {product.images && product.images.length > 0 ? (
                             <img 
                               src={product.images[0].url} 
                               alt={product.name}
-                              className="w-full h-24 object-cover rounded mb-2"
+                              className="w-full h-48 object-cover"
                             />
+                          ) : (
+                            <div className="w-full h-48 bg-gray-100 flex items-center justify-center">
+                              <PackageIcon size={48} className="text-gray-400" />
+                            </div>
                           )}
-                          <h3 className={`${themeClasses.text.primary} font-medium text-sm truncate`}>{product.name}</h3>
-                          <p className={`${themeClasses.text.secondary} text-xs mt-1`}>
-                            {formatCurrencyLocale(product.price || product.min_price || 0, currency)}
-                          </p>
+                          
+                          {/* Checkbox Overlay */}
+                          <div className="absolute top-3 right-3">
+                            <label className="relative inline-flex items-center cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={selectedProducts.has(product.id)}
+                                onChange={(e) => {
+                                  const newSelected = new Set(selectedProducts);
+                                  if (e.target.checked) {
+                                    newSelected.add(product.id);
+                                  } else {
+                                    newSelected.delete(product.id);
+                                  }
+                                  setSelectedProducts(newSelected);
+                                }}
+                                className="sr-only"
+                              />
+                              <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors ${
+                                selectedProducts.has(product.id) 
+                                  ? 'bg-blue-500 border-blue-500 text-white' 
+                                  : 'bg-white border-gray-300 hover:border-blue-400'
+                              }`}>
+                                {selectedProducts.has(product.id) && (
+                                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                  </svg>
+                                )}
+                              </div>
+                            </label>
+                          </div>
+                        </div>
+
+                        {/* Product Info */}
+                        <div className="p-4">
+                          <h3 className={`${themeClasses.text.primary} font-semibold text-base mb-2`} style={{ 
+                            display: '-webkit-box', 
+                            WebkitLineClamp: 2, 
+                            WebkitBoxOrient: 'vertical', 
+                            overflow: 'hidden' 
+                          }}>
+                            {product.name}
+                          </h3>
+                          
+                          {product.description && (
+                            <p className={`${themeClasses.text.secondary} text-sm mb-3`} style={{ 
+                              display: '-webkit-box', 
+                              WebkitLineClamp: 2, 
+                              WebkitBoxOrient: 'vertical', 
+                              overflow: 'hidden' 
+                            }}>
+                              {product.description}
+                            </p>
+                          )}
+                          
+                          <div className="flex items-center justify-between">
+                            <div className="flex flex-col">
+                              <span className={`${themeClasses.text.primary} font-bold text-lg`}>
+                                {formatCurrencyLocale(product.price || product.min_price || 0, currency)}
+                              </span>
+                              {product.min_price !== product.max_price && product.max_price && (
+                                <span className={`${themeClasses.text.secondary} text-xs`}>
+                                  Up to {formatCurrencyLocale(product.max_price, currency)}
+                                </span>
+                              )}
+                            </div>
+                            
+                            {product.variants && product.variants.length > 1 && (
+                              <span className={`${themeClasses.text.secondary} text-xs bg-gray-100 px-2 py-1 rounded`}>
+                                {product.variants.length} variants
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Quick Add Button */}
+                          <button
+                            onClick={() => {
+                              const newSelected = new Set(selectedProducts);
+                              if (selectedProducts.has(product.id)) {
+                                newSelected.delete(product.id);
+                              } else {
+                                newSelected.add(product.id);
+                              }
+                              setSelectedProducts(newSelected);
+                            }}
+                            className={`w-full mt-3 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
+                              selectedProducts.has(product.id)
+                                ? 'bg-blue-500 text-white hover:bg-blue-600'
+                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                            }`}
+                          >
+                            {selectedProducts.has(product.id) ? 'Selected' : 'Select Product'}
+                          </button>
                         </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {/* Actions */}
-              <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
-                <p className={themeClasses.text.secondary}>
-                  {selectedProducts.size} product(s) selected
-                </p>
+              <div className="flex flex-col sm:flex-row justify-between items-center gap-4 pt-4 border-t border-gray-200">
+                <div className="flex items-center gap-4">
+                  <p className={`${themeClasses.text.secondary} text-sm`}>
+                    {selectedProducts.size} of {availableProducts.length} products selected
+                  </p>
+                  {selectedProducts.size > 0 && (
+                    <button
+                      onClick={() => setSelectedProducts(new Set())}
+                      className={`${themeClasses.text.secondary} hover:${themeClasses.text.primary} text-sm underline`}
+                    >
+                      Clear selection
+                    </button>
+                  )}
+                </div>
+                
                 <div className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3 w-full sm:w-auto">
                   <button
                     onClick={() => setShowAddProductModal(false)}
-                    className={`${getButtonClasses('outline')} w-full sm:w-auto`}
+                    className={`${getButtonClasses('outline')} w-full sm:w-auto px-6 py-2`}
                   >
                     Cancel
                   </button>
                   <button
                     onClick={handleAddProducts}
                     disabled={selectedProducts.size === 0 || isLoading}
-                    className={`${getButtonClasses('primary')} w-full sm:w-auto`}
+                    className={`${getButtonClasses('primary')} w-full sm:w-auto px-6 py-2 ${
+                      selectedProducts.size === 0 ? 'opacity-50 cursor-not-allowed' : ''
+                    }`}
                   >
-                    {isLoading ? 'Adding...' : `Add ${selectedProducts.size} Product(s)`}
+                    {isLoading ? (
+                      <div className="flex items-center gap-2">
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                        Adding...
+                      </div>
+                    ) : (
+                      `Add ${selectedProducts.size} Product${selectedProducts.size !== 1 ? 's' : ''}`
+                    )}
                   </button>
                 </div>
               </div>

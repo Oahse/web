@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import { useAuth } from './AuthContext';
 import * as SubscriptionAPI from '../apis/subscription';
 import { toast } from 'react-hot-toast';
+import { useNavigate } from 'react-router-dom';
 
 interface Subscription {
   id: string;
@@ -54,6 +55,7 @@ export const SubscriptionProvider: React.FC<SubscriptionProviderProps> = ({ chil
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const navigate = useNavigate();
 
   // Get the active subscription (first active one)
   const activeSubscription = subscriptions.find(sub => sub.status === 'active') || null;
@@ -63,6 +65,7 @@ export const SubscriptionProvider: React.FC<SubscriptionProviderProps> = ({ chil
       refreshSubscriptions();
     } else {
       setSubscriptions([]);
+      navigate('/login')
     }
   }, [isAuthenticated, user]);
 
