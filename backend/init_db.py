@@ -355,20 +355,12 @@ async def seed_sample_data(
         # -------- Shipping Methods --------
         shipping_methods_batch = []
         shipping_methods_data = [
-            # Global shipping methods (available worldwide)
             {
                 "name": "Standard Shipping",
                 "description": "Delivery in 5-8 business days worldwide.",
                 "price": 8.99,
                 "estimated_days": 8,
                 "is_active": True,
-                "available_countries": None,  # Available worldwide
-                "restricted_countries": None,
-                "regions": ["Global"],
-                "min_order_amount": None,
-                "max_weight_kg": 30.0,
-                "price_per_kg": 2.50,
-                "base_weight_kg": 1.0,
                 "carrier": "Global Express",
                 "tracking_url_template": "https://track.globalexpress.com/{tracking_number}"
             },
@@ -382,18 +374,11 @@ async def seed_sample_data(
                 "tracking_url_template": "https://track.globalexpress.com/{tracking_number}"
             },
             {
-                "name": "Priority",
-                "description": "Next business day delivery (US, CA, EU only).",
+                "name": "Priority Shipping",
+                "description": "Next business day delivery.",
                 "price": 29.99,
                 "estimated_days": 1,
                 "is_active": True,
-                "available_countries": ["US", "CA", "GB", "DE", "FR", "IT", "ES", "NL", "BE", "AT", "SE", "DK", "FI", "NO"],
-                "restricted_countries": None,
-                "regions": ["North America", "Europe"],
-                "min_order_amount": 50.00,
-                "max_weight_kg": 15.0,
-                "price_per_kg": 6.00,
-                "base_weight_kg": 0.5,
                 "carrier": "Priority Express",
                 "tracking_url_template": "https://track.priorityexpress.com/{tracking_number}"
             }
@@ -408,7 +393,7 @@ async def seed_sample_data(
             await session.flush()
             await session.commit()
             session.expunge_all()
-        print(f"🚚 Created {len(shipping_methods_batch)} shipping methods with country-specific availability.")
+        print(f"🚚 Created {len(shipping_methods_batch)} simple shipping methods.")
 
         # -------- Users --------
         users = []
