@@ -76,9 +76,11 @@ class SubscriptionService:
     ) -> Subscription:
         """Create a new subscription with simplified pricing structure"""
         
-        # Validate variants exist
+        # Validate variants exist and load their products
         variant_result = await self.db.execute(
-            select(ProductVariant).where(ProductVariant.id.in_(product_variant_ids))
+            select(ProductVariant)
+            .where(ProductVariant.id.in_(product_variant_ids))
+            .options(selectinload(ProductVariant.product))
         )
         variants = variant_result.scalars().all()
         
@@ -179,7 +181,7 @@ class SubscriptionService:
             
             product_details.append({
                 "variant_id": str(variant.id),
-                "name": f"{variant.product.name} - {variant.name}" if variant.product else getattr(variant, 'name', f"Variant {variant.id}"),
+                "name": f"{variant.product.name} - {variant.name}" if variant.product and hasattr(variant.product, 'name') else getattr(variant, 'name', f"Variant {variant.id}"),
                 "price": float(unit_price),  # Changed from unit_price to price
                 "quantity": quantity
             })
