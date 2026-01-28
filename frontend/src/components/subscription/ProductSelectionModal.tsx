@@ -158,8 +158,7 @@ export const ProductSelectionModal: React.FC<ProductSelectionModalProps> = ({
             onClick={onClose}
             className={combineThemeClasses(
               'p-2 rounded-lg transition-colors duration-200',
-              themeClasses.text.muted,
-              'hover:bg-gray-100'
+              themeClasses.text.muted
             )}
           >
             <XIcon className="w-5 h-5" />

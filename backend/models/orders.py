@@ -47,7 +47,7 @@ class OrderSource(str, Enum):
 
 
 class Order(BaseModel):
-    """Optimized order model with hard delete only and strategic JSONB usage"""
+    """Simplified order model with essential pricing fields only"""
     __tablename__ = "orders"
     __table_args__ = (
         # Optimized indexes for common order queries
@@ -79,12 +79,12 @@ class Order(BaseModel):
     payment_status = Column(SQLEnum(PaymentStatus), default=PaymentStatus.PENDING, nullable=False)
     fulfillment_status = Column(SQLEnum(FulfillmentStatus), default=FulfillmentStatus.UNFULFILLED, nullable=False)
     
-    # Financial information as columns for performance
-    subtotal = Column(Float, nullable=False)
-    tax_amount = Column(Float, default=0.0)
-    shipping_amount = Column(Float, default=0.0)
-    discount_amount = Column(Float, default=0.0)
-    total_amount = Column(Float, nullable=False)
+    # Simplified financial information - only the essentials
+    subtotal = Column(Float, nullable=False)  # Sum of all product variant prices
+    shipping_cost = Column(Float, default=0.0)  # Shipping cost (renamed from shipping_amount)
+    tax_amount = Column(Float, default=0.0)  # Tax amount
+    tax_rate = Column(Float, default=0.0)  # Tax rate applied (e.g., 0.08 for 8%)
+    total_amount = Column(Float, nullable=False)  # Final total
     currency = Column(String(3), default="USD")
     
     # Shipping information as columns for frequent access
@@ -108,9 +108,6 @@ class Order(BaseModel):
     
     # Failure tracking
     failure_reason = Column(Text, nullable=True)
-    
-    # Subscription metadata for recurring orders
-    subscription_metadata = Column(JSONB, nullable=True)
     
     # Idempotency and source tracking
     idempotency_key = Column(String(255), unique=True, nullable=True)
@@ -145,9 +142,9 @@ class Order(BaseModel):
             "payment_status": self.payment_status,
             "fulfillment_status": self.fulfillment_status,
             "subtotal": self.subtotal,
+            "shipping_cost": self.shipping_cost,
             "tax_amount": self.tax_amount,
-            "shipping_amount": self.shipping_amount,
-            "discount_amount": self.discount_amount,
+            "tax_rate": self.tax_rate,
             "total_amount": self.total_amount,
             "currency": self.currency,
             "shipping_method": self.shipping_method,

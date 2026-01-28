@@ -4,6 +4,98 @@
 
 import { apiClient } from './client'; 
 
+// Order interface with simplified pricing structure
+export interface Order {
+  id: string;
+  order_number: string;
+  user_id: string;
+  guest_email?: string;
+  subscription_id?: string;
+  order_status: 'pending' | 'confirmed' | 'processing' | 'shipped' | 'delivered' | 'cancelled' | 'refunded';
+  payment_status: 'pending' | 'authorized' | 'paid' | 'failed' | 'cancelled' | 'refunded';
+  fulfillment_status: 'unfulfilled' | 'partial' | 'fulfilled' | 'cancelled';
+  
+  // Simplified pricing structure
+  subtotal: number; // Sum of all product variant prices
+  shipping_cost: number; // Updated field name
+  tax_amount: number;
+  tax_rate: number; // Tax rate applied (e.g., 0.08 for 8%)
+  total_amount: number; // Final total: subtotal + shipping + tax
+  currency: string;
+  
+  // Shipping information
+  shipping_method?: string;
+  tracking_number?: string;
+  carrier?: string;
+  
+  // Addresses
+  billing_address: any;
+  shipping_address: any;
+  
+  // Lifecycle dates
+  confirmed_at?: string;
+  shipped_at?: string;
+  delivered_at?: string;
+  cancelled_at?: string;
+  
+  // Notes
+  customer_notes?: string;
+  internal_notes?: string;
+  
+  // Additional fields
+  failure_reason?: string;
+  idempotency_key?: string;
+  source?: 'web' | 'mobile' | 'api' | 'admin';
+  
+  // Items
+  items?: OrderItem[];
+  
+  // Timestamps
+  created_at: string;
+  updated_at?: string;
+}
+
+export interface OrderItem {
+  id: string;
+  order_id: string;
+  variant_id: string;
+  quantity: number;
+  price_per_unit: number;
+  total_price: number;
+  created_at: string;
+}
+
+// Checkout data interface with simplified pricing
+export interface CheckoutData {
+  items: Array<{
+    variant_id: string;
+    quantity: number;
+  }>;
+  shipping_address: any;
+  billing_address?: any;
+  payment_method_id?: string;
+  shipping_method_id?: string;
+  promocode?: string;
+  guest_email?: string;
+  customer_notes?: string;
+}
+
+// Order calculation response
+export interface OrderCalculation {
+  subtotal: number;
+  shipping_cost: number; // Updated field name
+  tax_amount: number;
+  tax_rate: number;
+  total_amount: number;
+  currency: string;
+  items: Array<{
+    variant_id: string;
+    quantity: number;
+    price_per_unit: number;
+    total_price: number;
+  }>;
+} 
+
 export class OrdersAPI {
   /**
    * Create new order

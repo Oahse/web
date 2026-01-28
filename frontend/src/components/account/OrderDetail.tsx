@@ -202,7 +202,7 @@ export const OrderDetail = () => {
                 </div>
                 <div className="flex justify-between items-center mb-2">
                   <span className="text-gray-600 dark:text-gray-400">Shipping</span>
-                  <span className="text-gray-900 dark:text-white">${(order.shipping_amount || 0).toFixed(2)}</span>
+                  <span className="text-gray-900 dark:text-white">${(order.shipping_cost || order.shipping_amount || 0).toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between items-center mb-2">
                   <span className="text-gray-600 dark:text-gray-400">Tax</span>

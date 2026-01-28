@@ -55,12 +55,11 @@ export const Cart = () => {
   
   // Calculate cart summary locally
   const getCartSummary = () => {
-    // Always prefer backend-calculated values when available
-    const subtotal = cart?.subtotal || cartItems.reduce((sum, item) => sum + item.total_price, 0);
-    const tax = cart?.tax_amount || 0;
-    
-    // Use shipping exactly as provided by backend, no fallback calculations
-    const shipping = cart?.shipping_amount || 0;
+  const subtotal = cart?.subtotal || cartItems.reduce((sum, item) => sum + item.total_price, 0);
+  const tax = cart?.tax_amount || 0;
+  
+  // Use shipping_cost first, fallback to shipping_amount for backward compatibility
+  const shipping = cart?.shipping_cost || cart?.shipping_amount || 0;
     
     // Always prefer backend total when available
     const total = cart?.total_amount || (subtotal + tax + shipping);

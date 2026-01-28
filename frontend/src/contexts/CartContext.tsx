@@ -286,7 +286,9 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
       total_items: 0,
       subtotal: 0,
       tax_amount: 0,
-      shipping_amount: 0,
+      tax_rate: 0,
+      shipping_cost: 0, // Updated field name
+      shipping_amount: 0, // Keep for backward compatibility
       total_amount: 0,
       item_count: 0
     };

@@ -65,7 +65,6 @@ export const SubscriptionProvider: React.FC<SubscriptionProviderProps> = ({ chil
       refreshSubscriptions();
     } else {
       setSubscriptions([]);
-      navigate('/login')
     }
   }, [isAuthenticated, user]);
 

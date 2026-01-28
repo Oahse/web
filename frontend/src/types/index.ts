@@ -191,15 +191,17 @@ export interface Cart {
   items: CartItem[];
   created_at: string;
   updated_at?: string;
-  // Computed properties from backend
+  // Computed properties from backend - using simplified pricing structure
   subtotal?: number;
   tax_amount?: number;
-  shipping_amount?: number;
+  tax_rate?: number; // New field for tax rate
+  shipping_cost?: number; // Updated field name (was shipping_amount)
   total_amount?: number;
   item_count?: number;
   currency?: string;
   // Legacy fields for backward compatibility
   total_items?: number;
+  shipping_amount?: number; // Keep for backward compatibility
 }
 
 export interface AddToCartRequest {

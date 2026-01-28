@@ -15,7 +15,9 @@ interface Order {
   total_amount: number;
   subtotal?: number;
   tax_amount?: number;
-  shipping_amount?: number;
+  tax_rate?: number; // New field
+  shipping_cost?: number; // Updated field name
+  shipping_amount?: number; // Keep for backward compatibility
   items: any[];
 }
 
@@ -194,7 +196,7 @@ export const Orders = ({
                               Subtotal: {formatCurrency(displaySubtotal)}
                             </p>
                             <p className="text-gray-500 dark:text-gray-400">
-                              Shipping: {formatCurrency(order.shipping_amount || 0)}
+                              Shipping: {formatCurrency(order.shipping_cost || order.shipping_amount || 0)}
                             </p>
                             <p className="text-gray-500 dark:text-gray-400">
                               Tax: {formatCurrency(order.tax_amount || 0)}

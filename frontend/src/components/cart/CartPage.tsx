@@ -182,7 +182,7 @@ const CartPage = () => {
 
   const subtotal = cart?.subtotal || 0;
   const tax = cart?.tax_amount || 0;
-  const shipping = cart?.shipping_amount || 0;
+  const shipping = cart?.shipping_cost || cart?.shipping_amount || 0;
   const total = cart?.total_amount || 0;
 
   return (

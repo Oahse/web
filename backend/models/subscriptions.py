@@ -19,7 +19,7 @@ subscription_product_association = Table(
 
 
 class Subscription(BaseModel):
-    """Enhanced subscription model with comprehensive tracking"""
+    """Simplified subscription model with essential pricing fields only"""
     __tablename__ = "subscriptions"
     __table_args__ = (
         # Indexes for search and performance
@@ -41,44 +41,34 @@ class Subscription(BaseModel):
 
     user_id = Column(GUID(), ForeignKey("users.id"), nullable=False)
     plan_id = Column(String(100), nullable=False)  # basic, premium, enterprise
-    # active, cancelled, expired, paused
-    status = Column(String(50), default="active")
+    status = Column(String(50), default="active")  # active, cancelled, expired, paused
     price = Column(Float, nullable=True)
     currency = Column(String(3), default="USD")
-    billing_cycle = Column(String(20), default="monthly")  # monthly, yearly
+    billing_cycle = Column(String(20), default="monthly")  # weekly, monthly, yearly
     auto_renew = Column(Boolean, default=True)
     current_period_start = Column(DateTime(timezone=True), nullable=True)
     current_period_end = Column(DateTime(timezone=True), nullable=True)
     cancelled_at = Column(DateTime(timezone=True), nullable=True)
     
-    # Enhanced fields for variant tracking and cost breakdown
+    # Essential fields for variant tracking and simplified cost breakdown
     variant_ids = Column(JSON, nullable=True)  # List of variant UUIDs for tracking
-    cost_breakdown = Column(JSON, nullable=True)  # Detailed cost calculation breakdown
-    delivery_type = Column(String(50), nullable=True, default="standard")  # "standard", "express", "overnight"
-    delivery_address_id = Column(GUID(), nullable=True)  # Reference to delivery address
+    cost_breakdown = Column(JSON, nullable=True)  # Simplified cost calculation breakdown
     
-    # Cost calculation tracking
-    cost_calculation_version = Column(String(50), nullable=True)  # Track pricing rule version used
-    admin_percentage_applied = Column(Float, nullable=True)  # Admin percentage at time of calculation
-    delivery_cost_applied = Column(Float, nullable=True)  # Delivery cost at time of calculation
-    tax_rate_applied = Column(Float, nullable=True)  # Tax rate applied
-    tax_amount = Column(Float, nullable=True)  # Tax amount calculated
-    
-    # Loyalty integration
-    loyalty_points_earned = Column(Integer, nullable=False, default=0)
-    loyalty_discount_applied = Column(Float, nullable=True, default=0.0)
+    # Simplified cost fields - only the essentials
+    shipping_cost = Column(Float, nullable=True, default=0.0)  # Shipping cost
+    tax_amount = Column(Float, nullable=True, default=0.0)  # Tax amount calculated
+    tax_rate = Column(Float, nullable=True, default=0.0)  # Tax rate applied (e.g., 0.08 for 8%)
     
     # Subscription lifecycle
     paused_at = Column(DateTime(timezone=True), nullable=True)
     pause_reason = Column(Text, nullable=True)
     next_billing_date = Column(DateTime(timezone=True), nullable=True)
     
-    # Metadata for additional tracking
-    subscription_metadata = Column(JSON, nullable=True)
+    # Minimal metadata for variant quantities only
+    variant_quantities = Column(JSON, nullable=True)  # {variant_id: quantity}
 
     # Relationships
     user = relationship("User", back_populates="subscriptions")
-    # New relationship for products included in this specific subscription
     products = relationship(
         "ProductVariant",
         secondary=subscription_product_association,
@@ -86,7 +76,6 @@ class Subscription(BaseModel):
         lazy="selectin"
     )
     variant_tracking_entries = relationship("VariantTrackingEntry", back_populates="subscription", lazy="select")
-    # Relationship to orders created from this subscription
     orders = relationship("Order", back_populates="subscription", lazy="select")
     
     def to_dict(self, include_products=False) -> Dict[str, Any]:
@@ -105,25 +94,42 @@ class Subscription(BaseModel):
             "cancelled_at": self.cancelled_at.isoformat() if self.cancelled_at else None,
             "variant_ids": self.variant_ids,
             "cost_breakdown": self.cost_breakdown,
-            "delivery_type": self.delivery_type,
-            "delivery_address_id": str(self.delivery_address_id) if self.delivery_address_id else None,
-            "cost_calculation_version": self.cost_calculation_version,
-            "admin_percentage_applied": self.admin_percentage_applied,
-            "delivery_cost_applied": self.delivery_cost_applied,
-            "tax_rate_applied": self.tax_rate_applied,
+            "shipping_cost": self.shipping_cost,
             "tax_amount": self.tax_amount,
-            "loyalty_points_earned": self.loyalty_points_earned,
-            "loyalty_discount_applied": self.loyalty_discount_applied,
+            "tax_rate": self.tax_rate,
             "paused_at": self.paused_at.isoformat() if self.paused_at else None,
             "pause_reason": self.pause_reason,
             "next_billing_date": self.next_billing_date.isoformat() if self.next_billing_date else None,
-            "metadata": self.subscription_metadata,
-            "variant_quantities": self.subscription_metadata.get("variant_quantities", {}) if self.subscription_metadata else {},
+            "variant_quantities": self.variant_quantities or {},
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }
         
         if include_products and self.products:
-            data["products"] = [product.to_dict() for product in self.products]
+            # Create products array matching the frontend interface
+            products_dict = {}
+            
+            # Group variants by product to avoid duplicates
+            for variant in self.products:
+                if variant.product:
+                    product_id = str(variant.product.id)
+                    if product_id not in products_dict:
+                        # Get primary image from variant
+                        image_url = None
+                        if variant.images:
+                            primary_image = next((img for img in variant.images if img.is_primary), 
+                                               variant.images[0] if variant.images else None)
+                            if primary_image:
+                                image_url = primary_image.url
+                        
+                        products_dict[product_id] = {
+                            "id": product_id,
+                            "name": variant.product.name,
+                            "price": float(variant.product.min_price) if variant.product.min_price else float(variant.base_price),
+                            "current_price": float(variant.current_price) if hasattr(variant, 'current_price') else float(variant.base_price),
+                            "image": image_url
+                        }
+            
+            data["products"] = list(products_dict.values())
             
         return data

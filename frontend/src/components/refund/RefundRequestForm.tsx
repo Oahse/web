@@ -153,7 +153,7 @@ export const RefundRequestForm: React.FC<RefundRequestFormProps> = ({
 
     // Add shipping if all items are being refunded
     if (allItemsSelected && totalSelectedItems === totalOrderItems) {
-      total += order.shipping_amount || 0;
+      total += order.shipping_cost || order.shipping_amount || 0;
     }
 
     // Add proportional tax

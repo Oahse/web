@@ -799,6 +799,11 @@ async def seed_sample_data(
                 elif country_code == "AU":
                     tax_rate = 0.10  # Australian GST
 
+                # Calculate discount amount (0-15% of subtotal)
+                discount_amount = 0.0
+                if random.random() < 0.3:  # 30% chance of discount
+                    discount_amount = round(random.uniform(0.0, 15.0), 2)
+
                 order = Order(
                     id=order_uuid,
                     order_number=order_number,
@@ -809,8 +814,8 @@ async def seed_sample_data(
                     fulfillment_status=random.choice(["unfulfilled", "fulfilled", "partial"]),
                     subtotal=0.0, # Will be updated after items
                     tax_amount=0.0, # Will be calculated after subtotal
-                    shipping_amount=chosen_shipping_method.price,
-                    discount_amount=round(random.uniform(0.0, 15.0), 2) if random.random() < 0.3 else 0.0,
+                    tax_rate=tax_rate, # Store the tax rate used
+                    shipping_cost=chosen_shipping_method.price, # Use new field name
                     total_amount=0.0, # Will be updated
                     currency="USD",
                     shipping_method=chosen_shipping_method.name,
@@ -842,12 +847,12 @@ async def seed_sample_data(
                     order_items_batch.append(order_item)
                     order_total += item_total
 
-                # Update order with calculated values
+                # Update order with calculated values using simplified pricing structure
                 order.subtotal = order_total
-                # Calculate tax on subtotal + shipping (industry standard)
-                taxable_amount = order_total + order.shipping_amount
-                order.tax_amount = round(taxable_amount * tax_rate, 2)
-                order.total_amount = order_total + order.shipping_amount + order.tax_amount - order.discount_amount
+                # Calculate tax on subtotal only (not including shipping)
+                order.tax_amount = round(order_total * tax_rate, 2)
+                # Calculate final total: subtotal + shipping + tax - discount
+                order.total_amount = order_total + order.shipping_cost + order.tax_amount - discount_amount
 
                 transaction = Transaction(
                     id=uuid7(),
@@ -918,15 +923,84 @@ async def seed_sample_data(
         subscriptions_batch = []
         all_users = await session.execute(select(User))
         all_users = all_users.scalars().all()
+        all_variants_for_subs = await session.execute(select(ProductVariant).join(Product))
+        all_variants_for_subs = all_variants_for_subs.scalars().all()
 
         for i in range(1, 21):  # Create 20 dummy subscriptions
             chosen_user = random.choice(all_users)
+            plan_id = random.choice(["basic", "premium", "enterprise"])
+            
+            # Generate realistic subscription pricing
+            plan_prices = {"basic": 19.99, "premium": 39.99, "enterprise": 79.99}
+            base_price = plan_prices[plan_id]
+            
+            # Select 1-3 variants for this subscription
+            selected_variants = random.sample(all_variants_for_subs, random.randint(1, 3))
+            variant_quantities = {str(variant.id): random.randint(1, 2) for variant in selected_variants}
+            
+            # Generate billing cycle and status
+            billing_cycle = random.choice(["weekly", "monthly", "yearly"])
+            status = random.choice(["active", "cancelled", "paused"])
+            currency = random.choice(["USD", "EUR", "GBP", "CAD"])
+            
+            # Calculate costs for subscription
+            subtotal = sum(float(variant.price or 10.0) * variant_quantities[str(variant.id)] 
+                          for variant in selected_variants)
+            shipping_cost = round(random.uniform(0.0, 15.99), 2)
+            tax_rate = round(random.uniform(0.05, 0.12), 4)
+            tax_amount = round((subtotal + shipping_cost) * tax_rate, 2)
+            total_amount = round(subtotal + shipping_cost + tax_amount, 2)
+            
+            # Generate product variants data for cost breakdown
+            product_variants_data = []
+            for variant in selected_variants:
+                quantity = variant_quantities[str(variant.id)]
+                variant_price = float(variant.price) if variant.price else 10.0
+                product_variants_data.append({
+                    "variant_id": str(variant.id),
+                    "name": f"{variant.product.name} - {variant.name}" if variant.product else variant.name,
+                    "price": variant_price,
+                    "quantity": quantity
+                })
+            
+            # Generate next billing date
+            next_billing_date = None
+            if status == "active":
+                base_date = func.now()
+                if billing_cycle == "weekly":
+                    from datetime import datetime, timedelta
+                    next_billing_date = datetime.utcnow() + timedelta(weeks=1)
+                elif billing_cycle == "monthly":
+                    from datetime import datetime, timedelta
+                    next_billing_date = datetime.utcnow() + timedelta(days=30)
+                elif billing_cycle == "yearly":
+                    from datetime import datetime, timedelta
+                    next_billing_date = datetime.utcnow() + timedelta(days=365)
+            
             subscription = Subscription(
                 id=uuid7(),
                 user_id=chosen_user.id,
-                plan_id=random.choice(["basic", "premium", "enterprise"]),
-                status=random.choice(["active", "cancelled", "expired"]),
+                plan_id=plan_id,
+                price=base_price,
+                currency=currency,
+                status=status,
+                billing_cycle=billing_cycle,
                 auto_renew=random.choice([True, False]),
+                next_billing_date=next_billing_date,
+                variant_ids=[str(variant.id) for variant in selected_variants],
+                variant_quantities=variant_quantities,
+                shipping_cost=shipping_cost,
+                tax_amount=tax_amount,
+                tax_rate=tax_rate,
+                cost_breakdown={
+                    "subtotal": subtotal,
+                    "shipping_cost": shipping_cost,
+                    "tax_amount": tax_amount,
+                    "tax_rate": tax_rate,
+                    "total_amount": total_amount,
+                    "currency": currency,
+                    "product_variants": product_variants_data
+                }
             )
             subscriptions_batch.append(subscription)
 
@@ -1018,27 +1092,27 @@ async def seed_sample_data(
             f"🔐 Plaintext credentials saved to {users_file_path} (DEV ONLY).")
 
 
-async def update_existing_orders_with_tax_and_shipping(session):
-    """Update existing orders to have proper tax and shipping amounts"""
+async def update_existing_orders_with_simplified_pricing(session):
+    """Update existing orders to use the simplified pricing structure"""
     try:
-        print("📋 Checking existing orders for tax and shipping updates...")
+        print("📋 Checking existing orders for simplified pricing structure updates...")
         
-        # Get orders without proper tax or shipping amounts
+        # Get orders that might need updates
         result = await session.execute(
             select(Order).where(
-                (Order.tax_amount == None) | 
-                (Order.shipping_amount == None) |
-                (Order.tax_amount == 0) |
-                (Order.shipping_amount == 0)
+                (Order.tax_rate == None) | 
+                (Order.shipping_cost == None) |
+                (Order.tax_rate == 0) |
+                (Order.shipping_cost == 0)
             )
         )
         orders_to_update = result.scalars().all()
         
         if not orders_to_update:
-            print("✅ All orders already have proper tax and shipping amounts")
+            print("✅ All orders already have simplified pricing structure")
             return
         
-        print(f"🔄 Updating {len(orders_to_update)} orders with missing tax/shipping...")
+        print(f"🔄 Updating {len(orders_to_update)} orders with simplified pricing...")
         
         # Get default shipping method
         result = await session.execute(
@@ -1048,27 +1122,59 @@ async def update_existing_orders_with_tax_and_shipping(session):
         default_shipping_cost = default_shipping.price if default_shipping else 8.99
         
         for order in orders_to_update:
-            # Calculate tax (assume 8% default tax rate for existing orders)
+            # Set tax rate (assume 8% default tax rate for existing orders)
+            if not order.tax_rate or order.tax_rate == 0:
+                order.tax_rate = 0.08  # 8% default
+            
+            # Calculate tax amount based on subtotal only
             if not order.tax_amount or order.tax_amount == 0:
-                tax_rate = 0.08  # 8% default
                 subtotal = order.subtotal or (order.total_amount * 0.85)  # Estimate subtotal
-                order.tax_amount = round(subtotal * tax_rate, 2)
+                order.tax_amount = round(subtotal * order.tax_rate, 2)
             
-            # Set shipping amount
-            if not order.shipping_amount or order.shipping_amount == 0:
-                order.shipping_amount = default_shipping_cost
+            # Set shipping cost
+            if not order.shipping_cost or order.shipping_cost == 0:
+                order.shipping_cost = default_shipping_cost
             
-            # Recalculate total if needed
+            # Recalculate total using simplified structure: subtotal + shipping + tax
             if order.subtotal:
-                order.total_amount = order.subtotal + order.tax_amount + order.shipping_amount - (order.discount_amount or 0)
+                order.total_amount = order.subtotal + order.shipping_cost + order.tax_amount
         
         await session.commit()
-        print(f"✅ Updated {len(orders_to_update)} orders with proper tax and shipping")
+        print(f"✅ Updated {len(orders_to_update)} orders with simplified pricing structure")
         
     except Exception as e:
         print(f"❌ Error updating existing orders: {e}")
         await session.rollback()
         raise
+
+
+def calculate_order_total(subtotal: float, shipping_cost: float, tax_rate: float, discount_amount: float = 0.0) -> dict:
+    """
+    Calculate order total using simplified pricing structure.
+    
+    Args:
+        subtotal: Sum of all product variant prices
+        shipping_cost: Shipping cost
+        tax_rate: Tax rate (e.g., 0.08 for 8%)
+        discount_amount: Discount amount to subtract
+    
+    Returns:
+        dict: Contains subtotal, shipping_cost, tax_amount, discount_amount, total_amount
+    """
+    # Calculate tax on subtotal only (not including shipping)
+    tax_amount = round(subtotal * tax_rate, 2)
+    
+    # Calculate final total: subtotal + shipping + tax - discount
+    total_amount = subtotal + shipping_cost + tax_amount - discount_amount
+    
+    return {
+        "subtotal": subtotal,
+        "shipping_cost": shipping_cost,
+        "tax_rate": tax_rate,
+        "tax_amount": tax_amount,
+        "discount_amount": discount_amount,
+        "total_amount": round(total_amount, 2)
+    }
 
 
 async def seed_tax_rates(session):
@@ -1137,7 +1243,7 @@ async def main():
         # Always seed tax rates (they're essential for the system)
         async with db_manager.session_factory() as session:
             await seed_tax_rates(session)
-            await update_existing_orders_with_tax_and_shipping(session)
+            await update_existing_orders_with_simplified_pricing(session)
         
         if args.seed:
             await seed_sample_data(
@@ -1149,7 +1255,8 @@ async def main():
             )
         
         print("✅ Database initialization complete!")
-        print("🎯 All orders now have proper tax and shipping amounts based on country!")
+        print("🎯 All orders now use simplified pricing structure: subtotal + shipping + tax = total!")
+        print("💡 Use calculate_order_total() function for consistent order calculations!")
         
     except Exception as e:
         print(f"❌ Error initializing database: {e}")

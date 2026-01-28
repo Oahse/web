@@ -10,20 +10,13 @@ from schemas.product import ProductVariantResponse
 class CostBreakdownSchema(BaseModel):
     """Schema for subscription cost breakdown"""
     subtotal: float
-    delivery_cost: float
-    delivery_type: str
-    pre_tax_total: float
+    shipping_cost: float
     tax_amount: float
     tax_rate: float
-    tax_type: str
-    tax_jurisdiction: str
-    tax_breakdown: List[Dict[str, Any]] = []
-    loyalty_discount: float = 0.0
     total_amount: float
     currency: str
-    product_details: List[Dict[str, Any]] = []
+    product_variants: List[Dict[str, Any]] = []  # List of variant prices
     calculation_timestamp: str
-    calculation_method: str
 
 
 class SubscriptionBase(BaseModel):
@@ -161,15 +154,9 @@ class SubscriptionResponse(SubscriptionBase):
     updated_at: datetime
     variant_ids: Optional[List[str]] = []
     cost_breakdown: Optional[Dict[str, Any]] = None
-    delivery_type: Optional[str] = None
-    delivery_address_id: Optional[UUID] = None
-    tax_rate_applied: Optional[float] = None
+    shipping_cost: Optional[float] = None
     tax_amount: Optional[float] = None
-    admin_percentage_applied: Optional[float] = None
-    delivery_cost_applied: Optional[float] = None
-    loyalty_points_earned: int = 0
-    loyalty_discount_applied: float = 0.0
-    subscription_metadata: Optional[Dict[str, Any]] = None
+    tax_rate: Optional[float] = None
     products: List[ProductVariantResponse] = []
 
     model_config = ConfigDict(from_attributes=True)

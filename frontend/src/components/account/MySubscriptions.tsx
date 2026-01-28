@@ -605,7 +605,7 @@ export const MySubscriptions = () => {
                 <div>
                   <h2 className={`${themeClasses.text.heading} text-2xl font-bold`}>Add Products to Subscription</h2>
                   <p className={`${themeClasses.text.secondary} text-sm mt-1`}>
-                    Select products to add to your subscription
+                    Select product variants to add to your subscription
                   </p>
                 </div>
                 <button
@@ -639,7 +639,7 @@ export const MySubscriptions = () => {
                         {selectedProducts.size}
                       </div>
                       <span className={`${themeClasses.text.primary} font-medium`}>
-                        {selectedProducts.size} product{selectedProducts.size !== 1 ? 's' : ''} selected
+                        {selectedProducts.size} variant{selectedProducts.size !== 1 ? 's' : ''} selected
                       </span>
                     </div>
                     <button
@@ -652,7 +652,7 @@ export const MySubscriptions = () => {
                 </div>
               )}
 
-              {/* Products Grid */}
+              {/* Products List */}
               <div className="max-h-[400px] overflow-y-auto mb-6">
                 {availableProducts.length === 0 ? (
                   <div className="text-center py-12">
@@ -670,123 +670,171 @@ export const MySubscriptions = () => {
                     )}
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {availableProducts.map((product: Product) => (
-                      <div 
-                        key={product.id} 
-                        className={`${themeClasses.card.base} overflow-hidden transition-all duration-200 hover:shadow-lg ${
-                          selectedProducts.has(product.id) ? 'ring-2 ring-blue-500 bg-blue-50' : ''
-                        }`}
-                      >
-                        {/* Product Image */}
-                        <div className="relative">
-                          {product.images && product.images.length > 0 ? (
-                            <img 
-                              src={product.images[0].url} 
-                              alt={product.name}
-                              className="w-full h-48 object-cover"
-                            />
-                          ) : (
-                            <div className="w-full h-48 bg-gray-100 flex items-center justify-center">
-                              <PackageIcon size={48} className="text-gray-400" />
-                            </div>
-                          )}
-                          
-                          {/* Checkbox Overlay */}
-                          <div className="absolute top-3 right-3">
-                            <label className="relative inline-flex items-center cursor-pointer">
-                              <input
-                                type="checkbox"
-                                checked={selectedProducts.has(product.id)}
-                                onChange={(e) => {
-                                  const newSelected = new Set(selectedProducts);
-                                  if (e.target.checked) {
-                                    newSelected.add(product.id);
-                                  } else {
-                                    newSelected.delete(product.id);
-                                  }
-                                  setSelectedProducts(newSelected);
-                                }}
-                                className="sr-only"
+                  <div className="border border-border rounded-md bg-background shadow-sm">
+                    <div className="divide-y divide-border">
+                      {availableProducts.map((product: Product) => (
+                        <div key={product.id} className="p-4">
+                          {/* Product Header */}
+                          <div className="flex items-center gap-3 mb-3">
+                            {product.images && product.images.length > 0 ? (
+                              <img
+                                src={product.images[0].url}
+                                alt={product.name}
+                                className="w-12 h-12 rounded-lg object-cover border border-border flex-shrink-0"
                               />
-                              <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors ${
-                                selectedProducts.has(product.id) 
-                                  ? 'bg-blue-500 border-blue-500 text-white' 
-                                  : 'bg-white border-gray-300 hover:border-blue-400'
-                              }`}>
-                                {selectedProducts.has(product.id) && (
-                                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                                  </svg>
+                            ) : (
+                              <div className="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
+                                <PackageIcon className="w-6 h-6 text-gray-400" />
+                              </div>
+                            )}
+                            <div className="flex-1 min-w-0">
+                              <h4 className={`${themeClasses.text.primary} font-semibold text-base truncate`}>
+                                {product.name}
+                              </h4>
+                              {product.description && (
+                                <p className={`${themeClasses.text.secondary} text-sm mt-1 truncate`}>
+                                  {product.description}
+                                </p>
+                              )}
+                              <div className="flex items-center gap-2 mt-1">
+                                <span className={`${themeClasses.text.primary} font-medium text-sm`}>
+                                  {formatCurrencyLocale(product.price || product.min_price || 0, currency)}
+                                </span>
+                                {product.min_price !== product.max_price && product.max_price && (
+                                  <span className={`${themeClasses.text.secondary} text-xs`}>
+                                    - {formatCurrencyLocale(product.max_price, currency)}
+                                  </span>
                                 )}
                               </div>
-                            </label>
-                          </div>
-                        </div>
-
-                        {/* Product Info */}
-                        <div className="p-4">
-                          <h3 className={`${themeClasses.text.primary} font-semibold text-base mb-2`} style={{ 
-                            display: '-webkit-box', 
-                            WebkitLineClamp: 2, 
-                            WebkitBoxOrient: 'vertical', 
-                            overflow: 'hidden' 
-                          }}>
-                            {product.name}
-                          </h3>
-                          
-                          {product.description && (
-                            <p className={`${themeClasses.text.secondary} text-sm mb-3`} style={{ 
-                              display: '-webkit-box', 
-                              WebkitLineClamp: 2, 
-                              WebkitBoxOrient: 'vertical', 
-                              overflow: 'hidden' 
-                            }}>
-                              {product.description}
-                            </p>
-                          )}
-                          
-                          <div className="flex items-center justify-between">
-                            <div className="flex flex-col">
-                              <span className={`${themeClasses.text.primary} font-bold text-lg`}>
-                                {formatCurrencyLocale(product.price || product.min_price || 0, currency)}
-                              </span>
-                              {product.min_price !== product.max_price && product.max_price && (
-                                <span className={`${themeClasses.text.secondary} text-xs`}>
-                                  Up to {formatCurrencyLocale(product.max_price, currency)}
-                                </span>
-                              )}
                             </div>
-                            
-                            {product.variants && product.variants.length > 1 && (
-                              <span className={`${themeClasses.text.secondary} text-xs bg-gray-100 px-2 py-1 rounded`}>
-                                {product.variants.length} variants
-                              </span>
-                            )}
                           </div>
 
-                          {/* Quick Add Button */}
-                          <button
-                            onClick={() => {
-                              const newSelected = new Set(selectedProducts);
-                              if (selectedProducts.has(product.id)) {
-                                newSelected.delete(product.id);
-                              } else {
-                                newSelected.add(product.id);
-                              }
-                              setSelectedProducts(newSelected);
-                            }}
-                            className={`w-full mt-3 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
-                              selectedProducts.has(product.id)
-                                ? 'bg-blue-500 text-white hover:bg-blue-600'
-                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                            }`}
-                          >
-                            {selectedProducts.has(product.id) ? 'Selected' : 'Select Product'}
-                          </button>
+                          {/* Variants */}
+                          {product.variants?.length ? (
+                            <div className="space-y-2 ml-15">
+                              <p className={`${themeClasses.text.secondary} text-xs font-medium mb-2`}>
+                                Available Variants:
+                              </p>
+                              {product.variants.map((variant: any) => (
+                                <label
+                                  key={variant.id}
+                                  className={`flex items-center gap-3 p-3 rounded-lg border transition-all cursor-pointer ${
+                                    selectedProducts.has(variant.id) 
+                                      ? 'border-blue-500 bg-blue-50' 
+                                      : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                                  }`}
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={selectedProducts.has(variant.id)}
+                                    onChange={(e) => {
+                                      const next = new Set(selectedProducts);
+                                      e.target.checked
+                                        ? next.add(variant.id)
+                                        : next.delete(variant.id);
+                                      setSelectedProducts(next);
+                                    }}
+                                    className="sr-only"
+                                  />
+                                  
+                                  {/* Custom Checkbox */}
+                                  <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
+                                    selectedProducts.has(variant.id) 
+                                      ? 'bg-blue-500 border-blue-500 text-white' 
+                                      : 'border-gray-300 hover:border-blue-400'
+                                  }`}>
+                                    {selectedProducts.has(variant.id) && (
+                                      <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                      </svg>
+                                    )}
+                                  </div>
+
+                                  {/* Variant Image */}
+                                  {variant.images?.[0]?.url ? (
+                                    <img
+                                      src={variant.images[0].url}
+                                      alt={variant.name}
+                                      className="w-10 h-10 rounded-lg object-cover border border-border flex-shrink-0"
+                                    />
+                                  ) : (
+                                    <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
+                                      <PackageIcon className="w-5 h-5 text-gray-400" />
+                                    </div>
+                                  )}
+
+                                  {/* Variant Info */}
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center justify-between">
+                                      <span className={`${themeClasses.text.primary} font-medium text-sm`}>
+                                        {variant.name || "Default Variant"}
+                                      </span>
+                                      <span className={`${themeClasses.text.primary} font-bold text-sm`}>
+                                        {formatCurrencyLocale(
+                                          variant.current_price || variant.base_price || 0,
+                                          currency
+                                        )}
+                                      </span>
+                                    </div>
+                                    {variant.description && (
+                                      <p className={`${themeClasses.text.secondary} text-xs mt-1 truncate`}>
+                                        {variant.description}
+                                      </p>
+                                    )}
+                                    {variant.sku && (
+                                      <p className={`${themeClasses.text.muted} text-xs mt-1`}>
+                                        SKU: {variant.sku}
+                                      </p>
+                                    )}
+                                  </div>
+                                </label>
+                              ))}
+                            </div>
+                          ) : (
+                            <div className="ml-15">
+                              <label className={`flex items-center gap-3 p-3 rounded-lg border transition-all cursor-pointer ${
+                                selectedProducts.has(product.id) 
+                                  ? 'border-blue-500 bg-blue-50' 
+                                  : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                              }`}>
+                                <input
+                                  type="checkbox"
+                                  checked={selectedProducts.has(product.id)}
+                                  onChange={(e) => {
+                                    const next = new Set(selectedProducts);
+                                    e.target.checked
+                                      ? next.add(product.id)
+                                      : next.delete(product.id);
+                                    setSelectedProducts(next);
+                                  }}
+                                  className="sr-only"
+                                />
+                                
+                                {/* Custom Checkbox */}
+                                <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
+                                  selectedProducts.has(product.id) 
+                                    ? 'bg-blue-500 border-blue-500 text-white' 
+                                    : 'border-gray-300 hover:border-blue-400'
+                                }`}>
+                                  {selectedProducts.has(product.id) && (
+                                    <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                    </svg>
+                                  )}
+                                </div>
+                                
+                                <span className={`${themeClasses.text.primary} font-medium text-sm`}>
+                                  Default variant
+                                </span>
+                                <span className={`${themeClasses.text.primary} font-bold text-sm ml-auto`}>
+                                  {formatCurrencyLocale(product.price || 0, currency)}
+                                </span>
+                              </label>
+                            </div>
+                          )}
                         </div>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>
@@ -795,7 +843,7 @@ export const MySubscriptions = () => {
               <div className="flex flex-col sm:flex-row justify-between items-center gap-4 pt-4 border-t border-gray-200">
                 <div className="flex items-center gap-4">
                   <p className={`${themeClasses.text.secondary} text-sm`}>
-                    {selectedProducts.size} of {availableProducts.length} products selected
+                    {selectedProducts.size} of {availableProducts.reduce((total, product) => total + (product.variants?.length || 1), 0)} variants selected
                   </p>
                   {selectedProducts.size > 0 && (
                     <button
@@ -827,7 +875,7 @@ export const MySubscriptions = () => {
                         Adding...
                       </div>
                     ) : (
-                      `Add ${selectedProducts.size} Product${selectedProducts.size !== 1 ? 's' : ''}`
+                      `Add ${selectedProducts.size} Variant${selectedProducts.size !== 1 ? 's' : ''}`
                     )}
                   </button>
                 </div>

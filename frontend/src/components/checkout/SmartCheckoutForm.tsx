@@ -955,7 +955,7 @@ export const SmartCheckoutForm: React.FC<SmartCheckoutFormProps> = ({ onSuccess 
                     Shipping
                   </span>
                   <span className="text-copy">
-                    {formatCurrency(cart.shipping_amount || 0)}
+                    {formatCurrency(cart.shipping_cost || cart.shipping_amount || 0)}
                   </span>
                 </div>
                 <div className="flex justify-between text-sm">

@@ -21,18 +21,22 @@ export interface Subscription {
   variant_quantities?: { [variantId: string]: number };
   cost_breakdown?: {
     subtotal: number;
+    shipping_cost: number; // Updated field name
     tax_amount: number;
-    delivery_cost: number;
+    tax_rate: number;
     total_amount: number;
-    loyalty_discount?: number;
+    currency: string;
+    product_variants?: Array<{
+      variant_id: string;
+      name: string;
+      price: number;
+      quantity: number;
+    }>;
   };
-  // Additional cost fields that might come from backend
-  delivery_cost_applied?: number;
+  // Simplified cost fields - using new field names
+  shipping_cost?: number; // Updated field name
   tax_amount?: number;
-  tax_rate_applied?: number;
-  loyalty_discount_applied?: number;
-  loyalty_points_earned?: number;
-  admin_percentage_applied?: number;
+  tax_rate?: number;
 }
 
 // Create subscription request
