@@ -204,7 +204,7 @@ class SubscriptionService:
             
             product_details.append({
                 "variant_id": str(variant.id),
-                "name": f"{variant.product.name} - {variant.name}" if variant.product and hasattr(variant.product, 'name') else getattr(variant, 'name', f"Variant {variant.id}"),
+                "name": getattr(variant, 'name', f"Variant {variant.id}"),
                 "price": float(unit_price),  # Changed from unit_price to price
                 "quantity": quantity
             })
@@ -224,16 +224,26 @@ class SubscriptionService:
         
         if customer_address:
             try:
-                # Use the existing comprehensive tax calculation method
-                tax_result = await self._calculate_subscription_cost(
-                    variants=variants,
-                    delivery_type=delivery_type,
-                    customer_address=customer_address,
-                    currency=currency,
-                    user_id=user_id
+                # Use the tax service directly instead of recursive call
+                from services.tax import TaxService
+                tax_service = TaxService(self.db)
+                
+                # Extract country and state/province from customer address
+                country = customer_address.get('country', '')
+                state = customer_address.get('state', '')
+                
+                # Calculate tax on the subtotal (before shipping)
+                tax_result = await tax_service.calculate_tax(
+                    amount=float(subtotal),
+                    country=country,
+                    state=state,
+                    product_type="subscription"
                 )
-                tax_amount = Decimal(str(tax_result.get("tax_amount", 0.0)))
-                tax_rate = Decimal(str(tax_result.get("tax_rate", 0.0)))
+                
+                if tax_result:
+                    tax_amount = Decimal(str(tax_result.get("tax_amount", 0.0)))
+                    tax_rate = Decimal(str(tax_result.get("tax_rate", 0.0)))
+                    
             except Exception as e:
                 logger.warning(f"Tax calculation failed, using 0% tax: {e}")
                 tax_rate = Decimal('0.00')
@@ -264,11 +274,11 @@ class SubscriptionService:
     ) -> Subscription:
         """Add products to an existing subscription"""
         
-        # Get subscription and verify ownership
+        # Get subscription and verify ownership (without selectinload to avoid greenlet issues)
         subscription_result = await self.db.execute(
             select(Subscription).where(
                 and_(Subscription.id == subscription_id, Subscription.user_id == user_id)
-            ).options(selectinload(Subscription.products))
+            )
         )
         subscription = subscription_result.scalar_one_or_none()
         
@@ -327,11 +337,11 @@ class SubscriptionService:
     ) -> Subscription:
         """Remove products from an existing subscription"""
         
-        # Get subscription and verify ownership
+        # Get subscription and verify ownership (without selectinload to avoid greenlet issues)
         subscription_result = await self.db.execute(
             select(Subscription).where(
                 and_(Subscription.id == subscription_id, Subscription.user_id == user_id)
-            ).options(selectinload(Subscription.products))
+            )
         )
         subscription = subscription_result.scalar_one_or_none()
         
@@ -388,11 +398,11 @@ class SubscriptionService:
     ) -> Subscription:
         """Update the quantity of a specific variant in a subscription"""
         
-        # Get subscription and verify ownership
+        # Get subscription and verify ownership (without selectinload to avoid greenlet issues)
         subscription_result = await self.db.execute(
             select(Subscription).where(
                 and_(Subscription.id == subscription_id, Subscription.user_id == user_id)
-            ).options(selectinload(Subscription.products))
+            )
         )
         subscription = subscription_result.scalar_one_or_none()
         
@@ -493,11 +503,11 @@ class SubscriptionService:
     ) -> Subscription:
         """Increment or decrement the quantity of a specific variant in a subscription"""
         
-        # Get subscription and verify ownership
+        # Get subscription and verify ownership (without selectinload to avoid greenlet issues)
         subscription_result = await self.db.execute(
             select(Subscription).where(
                 and_(Subscription.id == subscription_id, Subscription.user_id == user_id)
-            ).options(selectinload(Subscription.products))
+            )
         )
         subscription = subscription_result.scalar_one_or_none()
         
@@ -575,7 +585,7 @@ class SubscriptionService:
         subscription_result = await self.db.execute(
             select(Subscription).where(
                 and_(Subscription.id == subscription_id, Subscription.user_id == user_id)
-            ).options(selectinload(Subscription.products))
+            )
         )
         subscription = subscription_result.scalar_one_or_none()
         

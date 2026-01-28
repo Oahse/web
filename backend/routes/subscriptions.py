@@ -1,7 +1,8 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, Query, status, BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_
+from sqlalchemy.orm import selectinload
 from uuid import UUID
 from typing import List
 from core.database import get_db,logger
@@ -11,6 +12,7 @@ from schemas.subscriptions import SubscriptionCreate, SubscriptionUpdate, Subscr
 from services.subscriptions import SubscriptionService, SubscriptionSchedulerService
 from models.user import User
 from models.product import Product, ProductVariant, Category, ProductImage
+from models.subscriptions import Subscription
 from services.auth import AuthService
 from tasks.subscription_tasks import (
     process_subscription_renewal,
@@ -248,7 +250,19 @@ async def add_products_to_subscription(
         subscription = await subscription_service.add_products_to_subscription(
             subscription_id, request.variant_ids, current_user.id
         )
-        return Response.success(data=subscription.to_dict(include_products=True), message="Products added to subscription successfully")
+        
+        # Load the products relationship properly for the response
+        await db.refresh(subscription)
+        subscription_result = await db.execute(
+            select(Subscription).where(Subscription.id == subscription_id)
+            .options(selectinload(Subscription.products).selectinload(ProductVariant.product))
+        )
+        subscription_with_products = subscription_result.scalar_one_or_none()
+        
+        return Response.success(
+            data=subscription_with_products.to_dict(include_products=True) if subscription_with_products else subscription.to_dict(), 
+            message="Products added to subscription successfully"
+        )
     except APIException as e:
         print(e,'====error')
         raise
@@ -273,7 +287,19 @@ async def remove_products_from_subscription(
         subscription = await subscription_service.remove_products_from_subscription(
             subscription_id, request.variant_ids, current_user.id
         )
-        return Response.success(data=subscription.to_dict(include_products=True), message="Products removed from subscription successfully")
+        
+        # Load the products relationship properly for the response
+        await db.refresh(subscription)
+        subscription_result = await db.execute(
+            select(Subscription).where(Subscription.id == subscription_id)
+            .options(selectinload(Subscription.products).selectinload(ProductVariant.product))
+        )
+        subscription_with_products = subscription_result.scalar_one_or_none()
+        
+        return Response.success(
+            data=subscription_with_products.to_dict(include_products=True) if subscription_with_products else subscription.to_dict(), 
+            message="Products removed from subscription successfully"
+        )
     except APIException:
         raise
     except Exception as e:

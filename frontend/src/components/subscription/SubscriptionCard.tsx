@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { 
   CalendarIcon, 
   ToggleLeftIcon,
@@ -10,7 +10,8 @@ import {
   SaveIcon,
   XCircleIcon,
   PlusIcon,
-  MinusIcon
+  MinusIcon,
+  ChevronDownIcon
 } from 'lucide-react';
 import { themeClasses, combineThemeClasses, getButtonClasses } from '../../lib/themeClasses';
 import { toggleAutoRenew, Subscription } from '../../apis/subscription';
@@ -42,10 +43,18 @@ export const SubscriptionCard: React.FC<SubscriptionCardProps> = ({
 }) => {
   const [isUpdating, setIsUpdating] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const [showBillingSummary, setShowBillingSummary] = useState(false);
+
   const [editData, setEditData] = useState({
     billing_cycle: subscription.billing_cycle as 'weekly' | 'monthly' | 'yearly',
     plan_id: subscription.plan_id
   });
+    useEffect(() => {
+    if (subscription.cost_breakdown) {
+      setShowBillingSummary(true);
+    }
+  }, [subscription.cost_breakdown]);
+
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -296,11 +305,24 @@ export const SubscriptionCard: React.FC<SubscriptionCardProps> = ({
       {/* Billing Summary */}
       {(subscription.cost_breakdown || subscription.shipping_cost || subscription.tax_amount) && (
         <div className="space-y-2">
-          <div className="flex items-center justify-between">
+          <button
+            type="button"
+            onClick={() => setShowBillingSummary(v => !v)}
+            className="w-full flex items-center justify-between text-left"
+          >
             <h4 className={combineThemeClasses(themeClasses.text.primary, 'font-medium text-sm')}>
               Billing Summary
             </h4>
-          </div>
+
+            <ChevronDownIcon
+              className={combineThemeClasses(
+                'w-4 h-4 transition-transform',
+                showBillingSummary ? 'rotate-180' : 'rotate-0'
+              )}
+            />
+          </button>
+          
+          {showBillingSummary && (
           <div className="space-y-2 rounded-lg p-3">
             {/* Subscription Items */}
             {subscription.cost_breakdown?.product_variants && subscription.cost_breakdown.product_variants.length > 0 && (
@@ -364,23 +386,23 @@ export const SubscriptionCard: React.FC<SubscriptionCardProps> = ({
             )}
 
             {/* Tax Amount */}
-            {(subscription.cost_breakdown?.tax_amount || subscription.tax_amount) && (
-              <div className="flex items-center justify-between text-sm">
-                <div className="flex items-center gap-1">
-                  <span className={themeClasses.text.secondary}>Tax</span>
-                  {(subscription.cost_breakdown?.tax_rate || subscription.tax_rate) && (
-                    <span className={combineThemeClasses(themeClasses.text.muted, 'text-xs')}>
-                      ({((subscription.cost_breakdown?.tax_rate || subscription.tax_rate || 0) * 100).toFixed(1)}%)
-                    </span>
-                  )}
-                </div>
-                <span className={themeClasses.text.primary}>
-                  {formatCurrency(
-                    subscription.cost_breakdown?.tax_amount || subscription.tax_amount || 0, 
-                    subscription.currency
-                  )}
-                </span>
-              </div>
+            {(subscription.cost_breakdown?.tax_amount !== undefined ||
+                subscription.tax_amount !== undefined
+                ) && (
+                    <div className="flex items-center justify-between text-sm">
+                      <span className={themeClasses.text.secondary}>Tax</span>
+                        {(subscription.cost_breakdown?.tax_rate !== undefined || subscription.tax_rate !== undefined) && (
+                          <span className={combineThemeClasses(themeClasses.text.muted, 'text-xs')}>
+                            ({((subscription.cost_breakdown?.tax_rate || subscription.tax_rate || 0) * 100).toFixed(1)})%
+                          </span>
+                        )}
+                      <span className={themeClasses.text.primary}>
+                        {formatCurrency(
+                          subscription.cost_breakdown?.tax_amount || subscription.tax_amount || 0, 
+                          subscription.currency
+                        )}
+                      </span>
+                    </div>
             )}
 
             {/* Total Amount */}
@@ -392,7 +414,7 @@ export const SubscriptionCard: React.FC<SubscriptionCardProps> = ({
                 </span>
               </div>
             )}
-          </div>
+          </div>)}
         </div>
       )}
 

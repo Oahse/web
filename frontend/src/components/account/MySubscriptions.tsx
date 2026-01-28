@@ -605,9 +605,10 @@ export const MySubscriptions = () => {
       {/* Add Products Modal */}
       {showAddProductModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className={`${themeClasses.card.base} w-full max-w-6xl max-h-[90vh] overflow-hidden`}>
-            <div className="p-6">
-              <div className="flex justify-between items-center mb-6">
+          <div className={`${themeClasses.card.base} w-full max-w-6xl max-h-[90vh] flex flex-col`}>
+            {/* Fixed Header */}
+            <div className="p-6 border-b border-gray-200 flex-shrink-0">
+              <div className="flex justify-between items-center">
                 <div>
                   <h2 className={`${themeClasses.text.heading} text-2xl font-bold`}>Add Products to Subscription</h2>
                   <p className={`${themeClasses.text.secondary} text-sm mt-1`}>
@@ -623,7 +624,7 @@ export const MySubscriptions = () => {
               </div>
               
               {/* Search */}
-              <div className="mb-6">
+              <div className="mt-6">
                 <div className="relative">
                   <SearchIcon size={20} className={`${themeClasses.text.muted} absolute left-3 top-1/2 transform -translate-y-1/2`} />
                   <input
@@ -638,7 +639,7 @@ export const MySubscriptions = () => {
 
               {/* Selected Products Summary */}
               {selectedProducts.size > 0 && (
-                <div className={`${themeClasses.background.elevated} rounded-lg p-4 mb-6 border-l-4 border-blue-500`}>
+                <div className={`${themeClasses.background.elevated} rounded-lg p-4 mt-6 border-l-4 border-blue-500`}>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <div className="w-6 h-6 bg-blue-500 text-white rounded-full flex items-center justify-center text-sm font-bold">
@@ -657,160 +658,89 @@ export const MySubscriptions = () => {
                   </div>
                 </div>
               )}
+            </div>
 
+            {/* Scrollable Content */}
+            <div className="flex-1 overflow-y-auto p-6">
               {/* Products List */}
-              <div className="max-h-[400px] overflow-y-auto mb-6">
-                {availableProducts.length === 0 ? (
-                  <div className="text-center py-12">
-                    <PackageIcon size={48} className={`${themeClasses.text.muted} mx-auto mb-4`} />
-                    <p className={`${themeClasses.text.secondary} mb-2`}>
-                      {searchQuery ? 'No products found matching your search.' : 'Loading products...'}
-                    </p>
-                    {searchQuery && (
-                      <button
-                        onClick={() => setSearchQuery('')}
-                        className={`${themeClasses.text.primary} hover:underline text-sm`}
-                      >
-                        Clear search
-                      </button>
-                    )}
-                  </div>
-                ) : (
-                  <div className="border border-border rounded-md bg-background shadow-sm">
-                    <div className="divide-y divide-border">
-                      {availableProducts.map((product: Product) => (
-                        <div key={product.id} className="p-4">
-                          {/* Product Header */}
-                          <div className="flex items-center gap-3 mb-3">
-                            {product.images && product.images.length > 0 ? (
-                              <img
-                                src={product.images[0].url}
-                                alt={product.name}
-                                className="w-12 h-12 rounded-lg object-cover border border-border flex-shrink-0"
-                              />
-                            ) : (
-                              <div className="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
-                                <PackageIcon className="w-6 h-6 text-gray-400" />
-                              </div>
+              {availableProducts.length === 0 ? (
+                <div className="text-center py-12">
+                  <PackageIcon size={48} className={`${themeClasses.text.muted} mx-auto mb-4`} />
+                  <p className={`${themeClasses.text.secondary} mb-2`}>
+                    {searchQuery ? 'No products found matching your search.' : 'Loading products...'}
+                  </p>
+                  {searchQuery && (
+                    <button
+                      onClick={() => setSearchQuery('')}
+                      className={`${themeClasses.text.primary} hover:underline text-sm`}
+                    >
+                      Clear search
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <div className="border border-border rounded-md bg-background shadow-sm">
+                  <div className="divide-y divide-border">
+                    {availableProducts.map((product: Product) => (
+                      <div key={product.id} className="p-4">
+                        {/* Product Header */}
+                        <div className="flex items-center gap-3 mb-3">
+                          {product.images && product.images.length > 0 ? (
+                            <img
+                              src={product.images[0].url}
+                              alt={product.name}
+                              className="w-12 h-12 rounded-lg object-cover border border-border flex-shrink-0"
+                            />
+                          ) : (
+                            <div className="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
+                              <PackageIcon className="w-6 h-6 text-gray-400" />
+                            </div>
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <h4 className={`${themeClasses.text.primary} font-semibold text-base truncate`}>
+                              {product.name}
+                            </h4>
+                            {product.description && (
+                              <p className={`${themeClasses.text.secondary} text-sm mt-1 truncate`}>
+                                {product.description}
+                              </p>
                             )}
-                            <div className="flex-1 min-w-0">
-                              <h4 className={`${themeClasses.text.primary} font-semibold text-base truncate`}>
-                                {product.name}
-                              </h4>
-                              {product.description && (
-                                <p className={`${themeClasses.text.secondary} text-sm mt-1 truncate`}>
-                                  {product.description}
-                                </p>
-                              )}
-                              <div className="flex items-center gap-2 mt-1">
-                                <span className={`${themeClasses.text.primary} font-medium text-sm`}>
-                                  {formatCurrencyLocale(product.price || product.min_price || 0, currency)}
+                            <div className="flex items-center gap-2 mt-1">
+                              <span className={`${themeClasses.text.primary} font-medium text-sm`}>
+                                {formatCurrencyLocale(product.price || product.min_price || 0, currency)}
+                              </span>
+                              {product.min_price !== product.max_price && product.max_price && (
+                                <span className={`${themeClasses.text.secondary} text-xs`}>
+                                  - {formatCurrencyLocale(product.max_price, currency)}
                                 </span>
-                                {product.min_price !== product.max_price && product.max_price && (
-                                  <span className={`${themeClasses.text.secondary} text-xs`}>
-                                    - {formatCurrencyLocale(product.max_price, currency)}
-                                  </span>
-                                )}
-                              </div>
+                              )}
                             </div>
                           </div>
+                        </div>
 
-                          {/* Variants */}
-                          {product.variants?.length ? (
-                            <div className="space-y-2 ml-15">
-                              <p className={`${themeClasses.text.secondary} text-xs font-medium mb-2`}>
-                                Available Variants:
-                              </p>
-                              {product.variants.map((variant: any) => (
-                                <label
-                                  key={variant.id}
-                                  className={`flex items-center gap-3 p-3 rounded-lg border transition-all cursor-pointer ${
-                                    selectedProducts.has(variant.id) 
-                                      ? 'border-blue-500 bg-blue-50' 
-                                      : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                                  }`}
-                                >
-                                  <input
-                                    type="checkbox"
-                                    checked={selectedProducts.has(variant.id)}
-                                    onChange={(e) => {
-                                      const next = new Set(selectedProducts);
-                                      e.target.checked
-                                        ? next.add(variant.id)
-                                        : next.delete(variant.id);
-                                      setSelectedProducts(next);
-                                    }}
-                                    className="sr-only"
-                                  />
-                                  
-                                  {/* Custom Checkbox */}
-                                  <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
-                                    selectedProducts.has(variant.id) 
-                                      ? 'bg-blue-500 border-blue-500 text-white' 
-                                      : 'border-gray-300 hover:border-blue-400'
-                                  }`}>
-                                    {selectedProducts.has(variant.id) && (
-                                      <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                                      </svg>
-                                    )}
-                                  </div>
-
-                                  {/* Variant Image */}
-                                  {variant.images?.[0]?.url ? (
-                                    <img
-                                      src={variant.images[0].url}
-                                      alt={variant.name}
-                                      className="w-10 h-10 rounded-lg object-cover border border-border flex-shrink-0"
-                                    />
-                                  ) : (
-                                    <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
-                                      <PackageIcon className="w-5 h-5 text-gray-400" />
-                                    </div>
-                                  )}
-
-                                  {/* Variant Info */}
-                                  <div className="flex-1 min-w-0">
-                                    <div className="flex items-center justify-between">
-                                      <span className={`${themeClasses.text.primary} font-medium text-sm`}>
-                                        {variant.name || "Default Variant"}
-                                      </span>
-                                      <span className={`${themeClasses.text.primary} font-bold text-sm`}>
-                                        {formatCurrencyLocale(
-                                          variant.current_price || variant.base_price || 0,
-                                          currency
-                                        )}
-                                      </span>
-                                    </div>
-                                    {variant.description && (
-                                      <p className={`${themeClasses.text.secondary} text-xs mt-1 truncate`}>
-                                        {variant.description}
-                                      </p>
-                                    )}
-                                    {variant.sku && (
-                                      <p className={`${themeClasses.text.muted} text-xs mt-1`}>
-                                        SKU: {variant.sku}
-                                      </p>
-                                    )}
-                                  </div>
-                                </label>
-                              ))}
-                            </div>
-                          ) : (
-                            <div className="ml-15">
-                              <label className={`flex items-center gap-3 p-3 rounded-lg border transition-all cursor-pointer ${
-                                selectedProducts.has(product.id) 
-                                  ? 'border-blue-500 bg-blue-50' 
-                                  : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                              }`}>
+                        {/* Variants */}
+                        {product.variants?.length ? (
+                          <div className="space-y-2 ml-15">
+                            <p className={`${themeClasses.text.secondary} text-xs font-medium mb-2`}>
+                              Available Variants:
+                            </p>
+                            {product.variants.map((variant: any) => (
+                              <label
+                                key={variant.id}
+                                className={`flex items-center gap-3 p-3 rounded-lg border transition-all cursor-pointer ${
+                                  selectedProducts.has(variant.id) 
+                                    ? 'border-blue-500 bg-blue-50' 
+                                    : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                                }`}
+                              >
                                 <input
                                   type="checkbox"
-                                  checked={selectedProducts.has(product.id)}
+                                  checked={selectedProducts.has(variant.id)}
                                   onChange={(e) => {
                                     const next = new Set(selectedProducts);
                                     e.target.checked
-                                      ? next.add(product.id)
-                                      : next.delete(product.id);
+                                      ? next.add(variant.id)
+                                      : next.delete(variant.id);
                                     setSelectedProducts(next);
                                   }}
                                   className="sr-only"
@@ -818,35 +748,109 @@ export const MySubscriptions = () => {
                                 
                                 {/* Custom Checkbox */}
                                 <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
-                                  selectedProducts.has(product.id) 
+                                  selectedProducts.has(variant.id) 
                                     ? 'bg-blue-500 border-blue-500 text-white' 
                                     : 'border-gray-300 hover:border-blue-400'
                                 }`}>
-                                  {selectedProducts.has(product.id) && (
+                                  {selectedProducts.has(variant.id) && (
                                     <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
                                       <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                                     </svg>
                                   )}
                                 </div>
-                                
-                                <span className={`${themeClasses.text.primary} font-medium text-sm`}>
-                                  Default variant
-                                </span>
-                                <span className={`${themeClasses.text.primary} font-bold text-sm ml-auto`}>
-                                  {formatCurrencyLocale(product.price || 0, currency)}
-                                </span>
-                              </label>
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
 
-              {/* Actions */}
-              <div className="flex flex-col sm:flex-row justify-between items-center gap-4 pt-4 border-t border-gray-200">
+                                {/* Variant Image */}
+                                {variant.images?.[0]?.url ? (
+                                  <img
+                                    src={variant.images[0].url}
+                                    alt={variant.name}
+                                    className="w-10 h-10 rounded-lg object-cover border border-border flex-shrink-0"
+                                  />
+                                ) : (
+                                  <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
+                                    <PackageIcon className="w-5 h-5 text-gray-400" />
+                                  </div>
+                                )}
+
+                                {/* Variant Info */}
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center justify-between">
+                                    <span className={`${themeClasses.text.primary} font-medium text-sm`}>
+                                      {variant.name || "Default Variant"}
+                                    </span>
+                                    <span className={`${themeClasses.text.primary} font-bold text-sm`}>
+                                      {formatCurrencyLocale(
+                                        variant.current_price || variant.base_price || 0,
+                                        currency
+                                      )}
+                                    </span>
+                                  </div>
+                                  {variant.description && (
+                                    <p className={`${themeClasses.text.secondary} text-xs mt-1 truncate`}>
+                                      {variant.description}
+                                    </p>
+                                  )}
+                                  {variant.sku && (
+                                    <p className={`${themeClasses.text.muted} text-xs mt-1`}>
+                                      SKU: {variant.sku}
+                                    </p>
+                                  )}
+                                </div>
+                              </label>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="ml-15">
+                            <label className={`flex items-center gap-3 p-3 rounded-lg border transition-all cursor-pointer ${
+                              selectedProducts.has(product.id) 
+                                ? 'border-blue-500 bg-blue-50' 
+                                : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                            }`}>
+                              <input
+                                type="checkbox"
+                                checked={selectedProducts.has(product.id)}
+                                onChange={(e) => {
+                                  const next = new Set(selectedProducts);
+                                  e.target.checked
+                                    ? next.add(product.id)
+                                    : next.delete(product.id);
+                                  setSelectedProducts(next);
+                                }}
+                                className="sr-only"
+                              />
+                              
+                              {/* Custom Checkbox */}
+                              <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
+                                selectedProducts.has(product.id) 
+                                  ? 'bg-blue-500 border-blue-500 text-white' 
+                                  : 'border-gray-300 hover:border-blue-400'
+                              }`}>
+                                {selectedProducts.has(product.id) && (
+                                  <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                  </svg>
+                                )}
+                              </div>
+                              
+                              <span className={`${themeClasses.text.primary} font-medium text-sm`}>
+                                Default variant
+                              </span>
+                              <span className={`${themeClasses.text.primary} font-bold text-sm ml-auto`}>
+                                {formatCurrencyLocale(product.price || 0, currency)}
+                              </span>
+                            </label>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Fixed Footer */}
+            <div className="p-6 border-t border-gray-200 flex-shrink-0">
+              <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
                 <div className="flex items-center gap-4">
                   <p className={`${themeClasses.text.secondary} text-sm`}>
                     {selectedProducts.size} of {availableProducts.reduce((total, product) => total + (product.variants?.length || 1), 0)} variants selected

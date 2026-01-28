@@ -111,24 +111,29 @@ class Subscription(BaseModel):
             
             # Group variants by product to avoid duplicates
             for variant in self.products:
-                if variant.product:
-                    product_id = str(variant.product.id)
-                    if product_id not in products_dict:
-                        # Get primary image from variant
-                        image_url = None
-                        if variant.images:
-                            primary_image = next((img for img in variant.images if img.is_primary), 
-                                               variant.images[0] if variant.images else None)
-                            if primary_image:
-                                image_url = primary_image.url
-                        
-                        products_dict[product_id] = {
-                            "id": product_id,
-                            "name": variant.product.name,
-                            "price": float(variant.product.min_price) if variant.product.min_price else float(variant.base_price),
-                            "current_price": float(variant.current_price) if hasattr(variant, 'current_price') else float(variant.base_price),
-                            "image": image_url
-                        }
+                try:
+                    # Safely access the product relationship
+                    if hasattr(variant, 'product') and variant.product:
+                        product_id = str(variant.product.id)
+                        if product_id not in products_dict:
+                            # Get primary image from variant
+                            image_url = None
+                            if hasattr(variant, 'images') and variant.images:
+                                primary_image = next((img for img in variant.images if img.is_primary), 
+                                                   variant.images[0] if variant.images else None)
+                                if primary_image:
+                                    image_url = primary_image.url
+                            
+                            products_dict[product_id] = {
+                                "id": product_id,
+                                "name": variant.product.name,
+                                "price": float(variant.product.min_price) if variant.product.min_price else float(variant.base_price),
+                                "current_price": float(getattr(variant, 'current_price', variant.base_price)),
+                                "image": image_url
+                            }
+                except Exception:
+                    # Skip this variant if there's an issue accessing the product
+                    continue
             
             data["products"] = list(products_dict.values())
             
