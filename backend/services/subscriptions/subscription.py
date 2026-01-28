@@ -165,11 +165,9 @@ class SubscriptionService:
             
             product_details.append({
                 "variant_id": str(variant.id),
-                "name": getattr(variant, 'name', f"Variant {variant.id}"),
-                "unit_price": float(unit_price),
-                "quantity": quantity,
-                "line_total": float(line_total),
-                "currency": currency
+                "name": f"{variant.product.name} - {variant.name}" if variant.product else getattr(variant, 'name', f"Variant {variant.id}"),
+                "price": float(unit_price),  # Changed from unit_price to price
+                "quantity": quantity
             })
         
         # Ensure minimum subtotal
@@ -514,6 +512,7 @@ class SubscriptionService:
         query = query.order_by(Subscription.created_at.desc())
         
         result = await self.db.execute(query)
+        
         return result.scalars().all()
 
     async def get_subscription_by_id(

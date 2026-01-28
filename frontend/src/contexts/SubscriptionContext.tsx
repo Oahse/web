@@ -69,18 +69,27 @@ export const SubscriptionProvider: React.FC<SubscriptionProviderProps> = ({ chil
   }, [isAuthenticated, user]);
 
   const refreshSubscriptions = useCallback(async () => {
-    if (!isAuthenticated) return;
+    if (!isAuthenticated) {
+      setSubscriptions([]);
+      setError('Please log in to view subscriptions');
+      return;
+    }
 
     setLoading(true);
     setError(null);
     try {
       const response = await SubscriptionAPI.getUserSubscriptions();
+      console.log(response,'=response===')
       // Handle different response structures - response could be the data directly or nested
       const subscriptionsData = response?.subscriptions || response?.data?.subscriptions || [];
       setSubscriptions(subscriptionsData);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to fetch subscriptions:', error);
-      setError('Failed to load subscriptions');
+      if (error.statusCode === 401) {
+        setError('Please log in to view subscriptions');
+      } else {
+        setError('Failed to load subscriptions');
+      }
     } finally {
       setLoading(false);
     }

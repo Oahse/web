@@ -24,7 +24,6 @@ COPY tasks/ tasks/
 COPY services/ services/
 COPY models/ models/
 COPY schemas/ schemas/
-COPY alembic/ alembic/
 COPY alembic.ini .
 COPY start_arq_worker.py .
 COPY __init__.py .

@@ -122,6 +122,7 @@ export const getSubscriptions = async (page: number = 1, limit: number = 10): Pr
 export const getUserSubscriptions = async (page: number = 1, limit: number = 10) => {
   try {
     const response = await apiClient.get('/subscriptions', { params: { page, limit } });
+    console.log(response,'response===+++')
     return response; // Return the response directly since apiClient already extracts .data
   } catch (error) {
     console.error('Error fetching user subscriptions:', error);
@@ -132,6 +133,7 @@ export const getUserSubscriptions = async (page: number = 1, limit: number = 10)
 // Get one subscription
 export const getSubscription = async (id: string): Promise<Subscription> => {
   const response = await apiClient.get(`/subscriptions/${id}`, {});
+  console.log(response,'response===+++')
   return response;
 };
 

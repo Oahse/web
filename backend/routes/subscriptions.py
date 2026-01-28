@@ -211,8 +211,9 @@ async def get_subscriptions(
     """Get user's subscriptions."""
     try:
         subscription_service = SubscriptionService(db)
-        subscriptions = await subscription_service.get_user_subscriptions(current_user.id)
         
+        subscriptions = await subscription_service.get_user_subscriptions(user_id=current_user.id)
+        print(current_user.id,'current_user_id---',subscriptions)
         # Simple pagination
         start_idx = (page - 1) * limit
         end_idx = start_idx + limit

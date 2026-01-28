@@ -926,8 +926,91 @@ async def seed_sample_data(
         all_variants_for_subs = await session.execute(select(ProductVariant).join(Product))
         all_variants_for_subs = all_variants_for_subs.scalars().all()
 
-        for i in range(1, 21):  # Create 20 dummy subscriptions
-            chosen_user = random.choice(all_users)
+        # Get admin users to ensure they have subscriptions
+        admin_users = [user for user in all_users if user.role == "Admin"]
+        non_admin_users = [user for user in all_users if user.role != "Admin"]
+        
+        subscription_count = 0
+        
+        # First, create subscriptions for ALL admin users (guaranteed)
+        for admin_user in admin_users:
+            # Admin users get premium or enterprise plans
+            plan_id = random.choice(["premium", "enterprise"])
+            
+            # Generate realistic subscription pricing
+            plan_prices = {"basic": 19.99, "premium": 39.99, "enterprise": 79.99}
+            base_price = plan_prices[plan_id]
+            
+            # Select 2-3 variants for admin subscriptions (more than regular users)
+            selected_variants = random.sample(all_variants_for_subs, random.randint(2, 3))
+            variant_quantities = {str(variant.id): random.randint(1, 3) for variant in selected_variants}
+            
+            # Admin subscriptions are more likely to be active
+            billing_cycle = random.choice(["monthly", "yearly"])  # No weekly for admins
+            status = random.choice(["active", "active", "active", "paused"])  # 75% chance active
+            currency = "USD"  # Admins use USD
+            
+            # Calculate costs for subscription
+            subtotal = sum(float(variant.price or 10.0) * variant_quantities[str(variant.id)] 
+                          for variant in selected_variants)
+            shipping_cost = round(random.uniform(5.0, 15.99), 2)  # Higher shipping for admins
+            tax_rate = round(random.uniform(0.08, 0.12), 4)
+            tax_amount = round((subtotal + shipping_cost) * tax_rate, 2)
+            total_amount = round(subtotal + shipping_cost + tax_amount, 2)
+            
+            # Generate product variants data for cost breakdown
+            product_variants_data = []
+            for variant in selected_variants:
+                quantity = variant_quantities[str(variant.id)]
+                variant_price = float(variant.price) if variant.price else 10.0
+                product_variants_data.append({
+                    "variant_id": str(variant.id),
+                    "name": f"{variant.product.name} - {variant.name}" if variant.product else variant.name,
+                    "price": variant_price,
+                    "quantity": quantity
+                })
+            
+            # Generate next billing date
+            next_billing_date = None
+            if status == "active":
+                from datetime import datetime, timedelta
+                if billing_cycle == "monthly":
+                    next_billing_date = datetime.utcnow() + timedelta(days=30)
+                elif billing_cycle == "yearly":
+                    next_billing_date = datetime.utcnow() + timedelta(days=365)
+            
+            subscription = Subscription(
+                id=uuid7(),
+                user_id=admin_user.id,
+                plan_id=plan_id,
+                price=base_price,
+                currency=currency,
+                status=status,
+                billing_cycle=billing_cycle,
+                auto_renew=True,  # Admins have auto-renew enabled
+                next_billing_date=next_billing_date,
+                variant_ids=[str(variant.id) for variant in selected_variants],
+                variant_quantities=variant_quantities,
+                shipping_cost=shipping_cost,
+                tax_amount=tax_amount,
+                tax_rate=tax_rate,
+                cost_breakdown={
+                    "subtotal": subtotal,
+                    "shipping_cost": shipping_cost,
+                    "tax_amount": tax_amount,
+                    "tax_rate": tax_rate,
+                    "total_amount": total_amount,
+                    "currency": currency,
+                    "product_variants": product_variants_data
+                }
+            )
+            subscriptions_batch.append(subscription)
+            subscription_count += 1
+
+        # Then create random subscriptions for other users (up to 20 total)
+        remaining_subscriptions = max(0, 20 - len(admin_users))
+        for i in range(remaining_subscriptions):
+            chosen_user = random.choice(non_admin_users)
             plan_id = random.choice(["basic", "premium", "enterprise"])
             
             # Generate realistic subscription pricing
@@ -966,15 +1049,12 @@ async def seed_sample_data(
             # Generate next billing date
             next_billing_date = None
             if status == "active":
-                base_date = func.now()
+                from datetime import datetime, timedelta
                 if billing_cycle == "weekly":
-                    from datetime import datetime, timedelta
                     next_billing_date = datetime.utcnow() + timedelta(weeks=1)
                 elif billing_cycle == "monthly":
-                    from datetime import datetime, timedelta
                     next_billing_date = datetime.utcnow() + timedelta(days=30)
                 elif billing_cycle == "yearly":
-                    from datetime import datetime, timedelta
                     next_billing_date = datetime.utcnow() + timedelta(days=365)
             
             subscription = Subscription(
@@ -1003,6 +1083,7 @@ async def seed_sample_data(
                 }
             )
             subscriptions_batch.append(subscription)
+            subscription_count += 1
 
         if subscriptions_batch:
             session.add_all(subscriptions_batch)
@@ -1010,6 +1091,8 @@ async def seed_sample_data(
             await session.commit()
             session.expunge_all()
         print(f"💳 Created {len(subscriptions_batch)} subscriptions.")
+        print(f"👑 All {len(admin_users)} admin users have guaranteed subscriptions.")
+        print(f"🎲 {subscription_count - len(admin_users)} additional random subscriptions created.")
 
         # -------- Reviews --------
         reviews_batch = []

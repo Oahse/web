@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { RefreshCwIcon, PlusIcon } from 'lucide-react';
+import { RefreshCwIcon, PlusIcon, LogInIcon } from 'lucide-react';
 import { themeClasses, combineThemeClasses, getButtonClasses } from '../../lib/themeClasses';
 import { SubscriptionCard } from './SubscriptionCard';
 import { 
@@ -9,26 +9,47 @@ import {
   cancelSubscription as cancelSubscriptionAPI,
   type Subscription
 } from '../../apis/subscription';
+import { useAuth } from '../../contexts/AuthContext';
 import { toast } from 'react-hot-toast';
+import { useNavigate } from 'react-router-dom';
 
-  const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 export const SubscriptionList: React.FC = () => {
+  const { isAuthenticated, isLoading: authLoading, user } = useAuth();
+  const navigate = useNavigate();
+  const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    loadSubscriptions();
-  }, []); // Remove the dependency to prevent infinite loops
+    // Only load subscriptions if user is authenticated
+    if (isAuthenticated && user && !authLoading) {
+      loadSubscriptions();
+    } else if (!authLoading && !isAuthenticated) {
+      // Clear subscriptions if user is not authenticated
+      setSubscriptions([]);
+      setIsLoading(false);
+    }
+  }, [isAuthenticated, user, authLoading]);
 
   const loadSubscriptions = async () => {
+    if (!isAuthenticated) {
+      setError('Please log in to view your subscriptions');
+      setIsLoading(false);
+      return;
+    }
+
     setIsLoading(true);
     setError(null);
     try {
       const data = await getSubscriptions();
       setSubscriptions(data.subscriptions || []);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to load subscriptions:', error);
-      setError('Failed to load subscriptions');
+      if (error.statusCode === 401) {
+        setError('Please log in to view your subscriptions');
+      } else {
+        setError('Failed to load subscriptions');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -84,13 +105,43 @@ export const SubscriptionList: React.FC = () => {
     }
   };
 
-  if (isLoading) {
+  if (authLoading || isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
         <div className="flex items-center gap-2">
           <RefreshCwIcon className="w-5 h-5 animate-spin text-blue-500" />
-          <span className={themeClasses.text.secondary}>Loading subscriptions...</span>
+          <span className={themeClasses.text.secondary}>
+            {authLoading ? 'Checking authentication...' : 'Loading subscriptions...'}
+          </span>
         </div>
+      </div>
+    );
+  }
+
+  // Show login prompt if user is not authenticated
+  if (!isAuthenticated) {
+    return (
+      <div className="text-center py-12">
+        <div className={combineThemeClasses(
+          'w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center',
+          themeClasses.background.elevated,
+          'border-2 border-dashed border-gray-300'
+        )}>
+          <LogInIcon className="w-8 h-8 text-gray-400" />
+        </div>
+        <h3 className={combineThemeClasses(themeClasses.text.heading, 'font-medium mb-2')}>
+          Login Required
+        </h3>
+        <p className={combineThemeClasses(themeClasses.text.secondary, 'text-sm mb-4')}>
+          Please log in to view and manage your subscriptions
+        </p>
+        <button
+          onClick={() => navigate('/login')}
+          className={combineThemeClasses(getButtonClasses('primary'), 'text-sm')}
+        >
+          <LogInIcon className="w-4 h-4 mr-1" />
+          Log In
+        </button>
       </div>
     );
   }
@@ -99,12 +150,24 @@ export const SubscriptionList: React.FC = () => {
     return (
       <div className="text-center py-12">
         <p className="text-red-600 mb-4">{error}</p>
-        <button
-          onClick={loadSubscriptions}
-          className={combineThemeClasses(getButtonClasses('outline'), 'text-sm')}
-        >
-          Try Again
-        </button>
+        <div className="flex items-center justify-center gap-2">
+          {error.includes('log in') ? (
+            <button
+              onClick={() => navigate('/login')}
+              className={combineThemeClasses(getButtonClasses('primary'), 'text-sm')}
+            >
+              <LogInIcon className="w-4 h-4 mr-1" />
+              Log In
+            </button>
+          ) : (
+            <button
+              onClick={loadSubscriptions}
+              className={combineThemeClasses(getButtonClasses('outline'), 'text-sm')}
+            >
+              Try Again
+            </button>
+          )}
+        </div>
       </div>
     );
   }
