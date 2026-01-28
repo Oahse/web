@@ -90,7 +90,7 @@ export const SubscriptionProvider: React.FC<SubscriptionProviderProps> = ({ chil
 
     try {
       const response = await SubscriptionAPI.createSubscription(data);
-      const newSubscription = response.data;
+      const newSubscription = response.data.data; // Extract from nested structure
       
       // Optimistically update the state
       setSubscriptions(prev => [...prev, newSubscription]);
@@ -111,7 +111,7 @@ export const SubscriptionProvider: React.FC<SubscriptionProviderProps> = ({ chil
 
     try {
       const response = await SubscriptionAPI.updateSubscription(subscriptionId, data);
-      const updatedSubscription = response.data;
+      const updatedSubscription = response.data.data; // Extract from nested structure
       
       // Optimistically update the state
       setSubscriptions(prev => 
@@ -230,7 +230,7 @@ export const SubscriptionProvider: React.FC<SubscriptionProviderProps> = ({ chil
 
     try {
       const response = await SubscriptionAPI.addProductsToSubscription(subscriptionId, variantIds);
-      const updatedSubscription = response.data;
+      const updatedSubscription = response.data.data; // Extract from nested structure
       
       // Optimistically update the state
       setSubscriptions(prev => 
@@ -255,7 +255,7 @@ export const SubscriptionProvider: React.FC<SubscriptionProviderProps> = ({ chil
 
     try {
       const response = await SubscriptionAPI.removeProductsFromSubscription(subscriptionId, variantIds);
-      const updatedSubscription = response.data;
+      const updatedSubscription = response.data.data; // Extract from nested structure
       
       // Optimistically update the state
       setSubscriptions(prev => 

@@ -83,8 +83,13 @@ export const calculateCost = async (request: CostCalculationRequest) => {
 
 // Create subscription
 export const createSubscription = async (request: CreateSubscriptionRequest) => {
-  const response = await apiClient.post('/subscriptions', request, {});
-  return response.data;
+  try {
+    const response = await apiClient.post('/subscriptions', request, {});
+    return response.data;
+  } catch (error) {
+    console.error('Error creating subscription:', error);
+    throw error;
+  }
 };
 
 // Get all subscriptions
@@ -101,8 +106,15 @@ export const getSubscriptions = async (page: number = 1, limit: number = 10): Pr
 
 // Get user subscriptions (alias for getSubscriptions for backwards compatibility)
 export const getUserSubscriptions = async (page: number = 1, limit: number = 10) => {
-  const response = await apiClient.get('/subscriptions', { params: { page, limit } });
-  return response;
+  try {
+    const response = await apiClient.get('/subscriptions', { params: { page, limit } });
+    return {
+      data: response.data.data // Extract the nested data structure from backend
+    };
+  } catch (error) {
+    console.error('Error fetching user subscriptions:', error);
+    throw error;
+  }
 };
 
 // Get one subscription
@@ -118,22 +130,43 @@ export const updateSubscription = async (id: string, request: UpdateSubscription
 };
 
 // Delete/Cancel subscription
-export const cancelSubscription = async (id: string) => {
-  const response = await apiClient.delete(`/subscriptions/${id}`, {});
+export const cancelSubscription = async (id: string, reason?: string) => {
+  const data = reason ? { reason } : {};
+  const response = await apiClient.delete(`/subscriptions/${id}`, { data });
   return response.data;
+};
+
+// Activate subscription (uses resume endpoint which handles both resume and activate)
+export const activateSubscription = async (id: string) => {
+  const response = await apiClient.post(`/subscriptions/${id}/resume`, {}, {});
+  return response.data;
+};
+
+// Add products to subscription (alias for addProducts)
+export const addProductsToSubscription = async (id: string, variantIds: string[]) => {
+  return addProducts(id, variantIds);
+};
+
+// Remove products from subscription (alias for removeProducts)
+export const removeProductsFromSubscription = async (id: string, variantIds: string[]) => {
+  return removeProducts(id, variantIds);
 };
 
 // === PRODUCT MANAGEMENT ===
 
 // Add products to subscription
 export const addProducts = async (id: string, variantIds: string[]) => {
-  const response = await apiClient.post(`/subscriptions/${id}/products`, { variant_ids: variantIds }, {});
+  const response = await apiClient.post(`/subscriptions/${id}/products`, { 
+    variant_ids: variantIds 
+  }, {});
   return response.data;
 };
 
 // Remove products from subscription
 export const removeProducts = async (id: string, variantIds: string[]) => {
-  const response = await apiClient.delete(`/subscriptions/${id}/products`, { data: { variant_ids: variantIds } });
+  const response = await apiClient.delete(`/subscriptions/${id}/products`, { 
+    data: { variant_ids: variantIds } 
+  });
   return response.data;
 };
 
@@ -167,7 +200,9 @@ export const getQuantities = async (id: string) => {
 
 // Toggle auto-renew
 export const toggleAutoRenew = async (id: string, autoRenew: boolean) => {
-  const response = await apiClient.patch(`/subscriptions/${id}/auto-renew?auto_renew=${autoRenew}`, {}, {});
+  const response = await apiClient.patch(`/subscriptions/${id}/auto-renew`, {}, { 
+    params: { auto_renew: autoRenew } 
+  });
   return response.data;
 };
 
@@ -175,8 +210,8 @@ export const toggleAutoRenew = async (id: string, autoRenew: boolean) => {
 
 // Pause subscription
 export const pauseSubscription = async (id: string, reason?: string) => {
-  const data = reason ? { pause_reason: reason } : {};
-  const response = await apiClient.post(`/subscriptions/${id}/pause`, data, {});
+  const params = reason ? { pause_reason: reason } : {};
+  const response = await apiClient.post(`/subscriptions/${id}/pause`, {}, { params });
   return response.data;
 };
 
@@ -224,13 +259,17 @@ const SubscriptionAPI = {
   // CRUD
   createSubscription,
   getSubscriptions,
+  getUserSubscriptions,
   getSubscription,
   updateSubscription,
   cancelSubscription,
+  activateSubscription,
   
   // Products
   addProducts,
   removeProducts,
+  addProductsToSubscription,
+  removeProductsFromSubscription,
   
   // Quantities
   updateQuantity,

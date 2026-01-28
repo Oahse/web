@@ -8,7 +8,7 @@ import {
   XIcon
 } from 'lucide-react';
 import { themeClasses, getButtonClasses } from '../../lib/themeClasses';
-import { ProductsAPI } from '../../apis/products';
+import ProductsAPI from '../../apis/products';
 import { toast } from 'react-hot-toast';
 import { Product } from '../../types';
 import { AutoRenewToggle } from '../subscription/AutoRenewToggle';
@@ -86,10 +86,14 @@ export const MySubscriptions = () => {
         limit: 20 
       });
       console.log('Products response:', response);
-      setAvailableProducts(response.data.data || []);
+      
+      // Handle different response structures
+      const products = response.data?.data || response.data || [];
+      setAvailableProducts(Array.isArray(products) ? products : []);
     } catch (error) {
       console.error('Failed to load products:', error);
       toast.error('Failed to load products');
+      setAvailableProducts([]);
     }
   };
 

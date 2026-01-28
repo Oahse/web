@@ -34,8 +34,7 @@ const About = lazy(() => import('./pages/About'));
 const Contact = lazy(() => import('./pages/Contact'));
 const FAQ = lazy(() => import('./pages/FAQ'));
 const Wishlist = lazy(() => import('./pages/Wishlist'));
-const SubscriptionManagement = lazy(() => import('./pages/SubscriptionManagement'));
-const SubscriptionDemo = lazy(() => import('./pages/SubscriptionDemo'));
+const Subscriptions = lazy(() => import('./pages/Subscriptions'));
 const TermsAndConditions = lazy(() => import('./pages/TermsAndConditions'));
 const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy'));
 const EmailVerification = lazy(() => import('./pages/EmailVerification'));
@@ -448,21 +447,23 @@ export const App: React.FC = () => {
                               <Route path="/faq" element={<Layout><FAQ /></Layout>} />
                               <Route path="/account/wishlist" element={<ProtectedRoute><Layout><Wishlist /></Layout></ProtectedRoute>} />
                               <Route
-                                path="/subscription/:subscriptionId/manage"
+                                path="/subscriptions"
                                 element={
                                   <ProtectedRoute>
                                     <Layout>
-                                      <SubscriptionManagement />
+                                      <Subscriptions />
                                     </Layout>
                                   </ProtectedRoute>
                                 }
                               />
                               <Route
-                                path="/subscription-demo"
+                                path="/subscription/:subscriptionId/manage"
                                 element={
-                                  <Layout>
-                                    <SubscriptionDemo />
-                                  </Layout>
+                                  <ProtectedRoute>
+                                    <Layout>
+                                      <Subscriptions />
+                                    </Layout>
+                                  </ProtectedRoute>
                                 }
                               />
                               <Route

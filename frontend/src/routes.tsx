@@ -91,11 +91,6 @@ export const OptimizedRoutes = {
     <PageSkeleton />
   ),
   
-  SubscriptionDemo: withSuspense(
-    createLazyRoute(() => import('./pages/SubscriptionDemo').then(m => ({ default: m.SubscriptionDemo })), false),
-    <PageSkeleton />
-  ),
-  
   TermsAndConditions: withSuspense(
     createLazyRoute(() => import('./pages/TermsAndConditions').then(m => ({ default: m.TermsAndConditions })), false),
     <PageSkeleton />

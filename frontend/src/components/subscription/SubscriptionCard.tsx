@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { 
   CalendarIcon, 
-  CreditCardIcon, 
   ToggleLeftIcon,
   ToggleRightIcon,
   PauseIcon,
@@ -9,7 +8,7 @@ import {
   XIcon
 } from 'lucide-react';
 import { themeClasses, combineThemeClasses, getButtonClasses } from '../../lib/themeClasses';
-import { toggleAutoRenew, pauseSubscription as pauseSubscriptionAPI, resumeSubscription as resumeSubscriptionAPI, cancelSubscription as cancelSubscriptionAPI, Subscription } from '../../apis/subscription';
+import { toggleAutoRenew, Subscription } from '../../apis/subscription';
 import { toast } from 'react-hot-toast';
 
 interface SubscriptionCardProps {
@@ -18,6 +17,10 @@ interface SubscriptionCardProps {
   onPause?: (id: string) => void;
   onResume?: (id: string) => void;
   onCancel?: (id: string) => void;
+  onActivate?: (id: string) => void;
+  onProductsUpdated?: () => void;
+  showActions?: boolean;
+  compact?: boolean;
 }
 
 export const SubscriptionCard: React.FC<SubscriptionCardProps> = ({
@@ -25,7 +28,11 @@ export const SubscriptionCard: React.FC<SubscriptionCardProps> = ({
   onUpdate,
   onPause,
   onResume,
-  onCancel
+  onCancel,
+  onActivate,
+  onProductsUpdated,
+  showActions = true,
+  compact = false
 }) => {
   const [isUpdating, setIsUpdating] = useState(false);
 
@@ -62,8 +69,11 @@ export const SubscriptionCard: React.FC<SubscriptionCardProps> = ({
     try {
       const newValue = !subscription.auto_renew;
       const result = await toggleAutoRenew(subscription.id, newValue);
-      onUpdate?.(subscription.id, { auto_renew: result.auto_renew });
-      toast.success(`Auto-renew ${result.auto_renew ? 'enabled' : 'disabled'}`);
+      
+      // Handle the response structure from backend
+      const updatedData = result.data || result;
+      onUpdate?.(subscription.id, { auto_renew: updatedData.auto_renew });
+      toast.success(`Auto-renew ${updatedData.auto_renew ? 'enabled' : 'disabled'}`);
     } catch (error) {
       console.error('Failed to update auto-renew:', error);
       toast.error('Failed to update auto-renew');
@@ -113,7 +123,7 @@ export const SubscriptionCard: React.FC<SubscriptionCardProps> = ({
 
       {/* Auto-Renew Toggle */}
       {subscription.status !== 'cancelled' && (
-        <div className="flex items-center justify-between p-3 rounded-lg border border-gray-200 bg-gray-50">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-3 rounded-lg border border-gray-200 bg-gray-50">
           <div className="flex items-center gap-3">
             <button
               onClick={handleAutoRenewToggle}
@@ -129,68 +139,89 @@ export const SubscriptionCard: React.FC<SubscriptionCardProps> = ({
                 <ToggleLeftIcon className="w-6 h-6 text-gray-400" />
               )}
             </button>
-            <div>
+
+            <div className="min-w-0">
               <span className={combineThemeClasses(themeClasses.text.primary, 'font-medium')}>
                 Auto-Renew
               </span>
-              <p className={combineThemeClasses(themeClasses.text.secondary, 'text-sm')}>
-                {subscription.auto_renew 
+              <p
+                className={combineThemeClasses(
+                  themeClasses.text.secondary,
+                  'text-sm break-words'
+                )}
+              >
+                {subscription.auto_renew
                   ? 'Your subscription will renew automatically'
-                  : 'Your subscription will not renew automatically'
-                }
+                  : 'Your subscription will not renew automatically'}
               </p>
             </div>
           </div>
-          
+
           {isUpdating && (
-            <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+            <div className="self-start sm:self-center w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
           )}
         </div>
       )}
 
+
       {/* Actions */}
-      <div className="flex items-center gap-2 pt-2 border-t border-gray-200">
-        {subscription.status === 'active' && (
-          <>
-            {onPause && (
-              <button
-                onClick={() => onPause(subscription.id)}
-                className={combineThemeClasses(
-                  getButtonClasses('outline'),
-                  'text-sm flex items-center gap-1'
-                )}
-              >
-                <PauseIcon className="w-4 h-4" />
-                Pause
-              </button>
-            )}
-            {onCancel && (
-              <button
-                onClick={() => onCancel(subscription.id)}
-                className={combineThemeClasses(
-                  'px-3 py-1 text-sm rounded-md border border-red-300 text-red-700 hover:bg-red-50 transition-colors flex items-center gap-1'
-                )}
-              >
-                <XIcon className="w-4 h-4" />
-                Cancel
-              </button>
-            )}
-          </>
-        )}
-        
-        {subscription.status === 'paused' && onResume && (
-          <button
-            onClick={() => onResume(subscription.id)}
-            className={combineThemeClasses(
-              getButtonClasses('primary'),
-              'text-sm flex items-center gap-1'
-            )}
-          >
-            <PlayIcon className="w-4 h-4" />
-            Resume
-          </button>
-        )}
-      </div>
+      {showActions && (
+        <div className="flex items-center gap-2 pt-2 border-t border-gray-200">
+          {subscription.status === 'active' && (
+            <>
+              {onPause && (
+                <button
+                  onClick={() => onPause(subscription.id)}
+                  className={combineThemeClasses(
+                    getButtonClasses('outline'),
+                    'text-sm flex items-center gap-1'
+                  )}
+                >
+                  <PauseIcon className="w-4 h-4" />
+                  Pause
+                </button>
+              )}
+              {onCancel && (
+                <button
+                  onClick={() => onCancel(subscription.id)}
+                  className={combineThemeClasses(
+                    'px-3 py-1 text-sm rounded-md border border-red-300 text-red-700 hover:bg-red-50 transition-colors flex items-center gap-1'
+                  )}
+                >
+                  <XIcon className="w-4 h-4" />
+                  Cancel
+                </button>
+              )}
+            </>
+          )}
+          
+          {subscription.status === 'paused' && onResume && (
+            <button
+              onClick={() => onResume(subscription.id)}
+              className={combineThemeClasses(
+                getButtonClasses('primary'),
+                'text-sm flex items-center gap-1'
+              )}
+            >
+              <PlayIcon className="w-4 h-4" />
+              Resume
+            </button>
+          )}
+
+          {subscription.status === 'cancelled' && onActivate && (
+            <button
+              onClick={() => onActivate(subscription.id)}
+              className={combineThemeClasses(
+                getButtonClasses('primary'),
+                'text-sm flex items-center gap-1'
+              )}
+            >
+              <PlayIcon className="w-4 h-4" />
+              Activate
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 };
