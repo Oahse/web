@@ -38,7 +38,7 @@ export class AuthAPI {
    * Register a new user
    */
   static async register(data: RegisterData) {
-    const response = await apiClient.post('/auth/register', data);
+    const response = await apiClient.post('/v1/auth/register', data);
     
     // Don't set tokens here - let the AuthContext handle it
     // The response structure from backend is: { success: true, data: { access_token, refresh_token, user } }
@@ -50,7 +50,7 @@ export class AuthAPI {
    * Login user
    */
   static async login(data: LoginData) {
-    const response = await apiClient.post('/auth/login', data);
+    const response = await apiClient.post('/v1/auth/login', data);
     
     // Don't set tokens here - let the AuthContext handle it
     // The response structure from backend is: { success: true, data: { access_token, refresh_token, user } }
@@ -64,7 +64,7 @@ export class AuthAPI {
   static async logout() {
     try {
       // Call logout endpoint if it exists
-      await apiClient.post('/auth/logout');
+      await apiClient.post('/v1/auth/logout');
     } catch (error) {
       // Continue with logout even if API call fails
       console.warn('Logout API call failed:', error);
@@ -77,14 +77,14 @@ export class AuthAPI {
    * Get current user profile
    */
   static async getProfile() {
-    return await apiClient.get('/auth/profile');
+    return await apiClient.get('/v1/auth/profile');
   }
 
   /**
    * Update user profile
    */
   static async updateProfile(data: ProfileData) {
-    const response = await apiClient.put('/auth/profile', data);
+    const response = await apiClient.put('/v1/auth/profile', data);
     
     // Update stored user data
     if (response.data) {
@@ -98,7 +98,7 @@ export class AuthAPI {
    * Change password
    */
   static async changePassword(data: ChangePasswordData) {
-    return await apiClient.put('/auth/change-password', data);
+    return await apiClient.put('/v1/auth/change-password', data);
   }
 
   /**
