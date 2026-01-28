@@ -191,17 +191,10 @@ async def create_subscription(
             message="Subscription created successfully! Orders will be placed automatically based on your billing cycle."
         )
         
-    except Exception as e:
-        logger.error(f"Error creating subscription: {e}")
-        raise APIException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Failed to create subscription: {str(e)}"
-        )
-        
-        return Response.success(data=subscription, message="Subscription created successfully")
     except APIException:
         raise
     except Exception as e:
+        logger.error(f"Error creating subscription: {e}")
         raise APIException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             message=f"Failed to create subscription: {str(e)}"
@@ -305,7 +298,7 @@ async def get_subscription(
                 status_code=status.HTTP_404_NOT_FOUND,
                 message="Subscription not found"
             )
-        return Response.success(data=subscription)
+        return Response.success(data=subscription.to_dict(include_products=True))
     except APIException:
         raise
     except Exception as e:
@@ -340,7 +333,7 @@ async def update_subscription(
             delivery_address_id=subscription_data.delivery_address_id if hasattr(subscription_data, 'delivery_address_id') else None
             # Add other fields here as needed
         )
-        return Response.success(data=subscription, message="Subscription updated successfully")
+        return Response.success(data=subscription.to_dict(include_products=True), message="Subscription updated successfully")
     except APIException:
         raise
     except Exception as e:

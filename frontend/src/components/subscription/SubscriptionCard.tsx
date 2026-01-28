@@ -523,7 +523,12 @@ export const SubscriptionCard: React.FC<SubscriptionCardProps> = ({
                       {product.name}
                     </p>
                     <p className={combineThemeClasses(themeClasses.text.muted, 'text-xs')}>
-                      {formatCurrency(product.current_price || product.base_price || product.price || 0, subscription.currency)}
+                      {(() => {
+                        const price = product.current_price || product.base_price || product.price || 0;
+                        return price > 0 
+                          ? formatCurrency(price, subscription.currency)
+                          : 'Price not set';
+                      })()}
                     </p>
                   </div>
                 </div>
