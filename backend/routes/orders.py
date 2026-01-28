@@ -51,33 +51,82 @@ async def validate_checkout(
     order_service: OrderService = Depends(get_order_service)
 ):
     """
-    Validate checkout requirements before actual order placement
-    This endpoint performs all validation checks without creating an order
+    Comprehensive checkout validation with pricing calculation
+    Returns detailed validation results and pricing breakdown
     """
     try:
-        # Import CartService here to avoid circular imports
-        from services.cart import CartService
-        from core.logging import logger
-        print('Validating checkout for user')
         logger.info(f"Validating checkout for user {current_user.id}")
-        logger.info(f"Request data: shipping_address_id={request.shipping_address_id}, shipping_method_id={request.shipping_method_id}, payment_method_id={request.payment_method_id}")
+        logger.info(f"Request data: {request.dict()}")
         
-        cart_service = CartService(order_service.db)
+        # Perform comprehensive validation
+        validation_result = await order_service.validate_checkout_requirements(
+            current_user.id, 
+            request
+        )
         
-        # Get location from shipping address if available, otherwise use defaults
-        country_code = "US"
-        province_code = None
+        logger.info(f"Validation result: valid={validation_result['valid']}, can_proceed={validation_result['can_proceed']}")
         
-        # Try to get shipping address to determine location for tax calculation
-        if request.shipping_address_id:
-            shipping_address_result = await order_service.db.execute(
-                select(Address).where(
-                    and_(Address.id == request.shipping_address_id, Address.user_id == current_user.id)
-                )
+        if validation_result['valid']:
+            return Response.success(
+                data=validation_result,
+                message="Checkout validation successful"
             )
-            shipping_address = shipping_address_result.scalar_one_or_none()
-            if shipping_address:
-                country_code = shipping_address.country or "US"
+        else:
+            # Return validation errors but still with success=True so frontend can handle
+            return Response.success(
+                data=validation_result,
+                message="Checkout validation completed with issues"
+            )
+            
+    except APIException:
+        raise
+    except Exception as e:
+        logger.error(f"Checkout validation error: {e}")
+        raise APIException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            message=f"Checkout validation failed: {str(e)}"
+        )
+
+
+@router.post("/checkout")
+async def place_order(
+    request: CheckoutRequest,
+    background_tasks: BackgroundTasks,
+    current_user: User = Depends(get_current_auth_user),
+    order_service: OrderService = Depends(get_order_service)
+):
+    """
+    Place order with comprehensive validation and security checks
+    """
+    try:
+        logger.info(f"Placing order for user {current_user.id}")
+        
+        # Generate idempotency key if not provided
+        idempotency_key = request.idempotency_key or f"order_{current_user.id}_{int(datetime.utcnow().timestamp())}"
+        
+        # Place order with comprehensive validation
+        order = await order_service.place_order_with_comprehensive_validation(
+            current_user.id,
+            request,
+            background_tasks,
+            idempotency_key
+        )
+        
+        logger.info(f"Order placed successfully: {order.id}")
+        
+        return Response.success(
+            data=order,
+            message="Order placed successfully"
+        )
+        
+    except APIException:
+        raise
+    except Exception as e:
+        logger.error(f"Order placement error: {e}")
+        raise APIException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            message=f"Order placement failed: {str(e)}"
+        )
                 province_code = shipping_address.state
                 logger.info(f"Using shipping address location: {country_code}, {province_code}")
         

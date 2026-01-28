@@ -1,6 +1,67 @@
 import { apiClient } from './client';
 
-// Simple subscription interface
+// API Error interface
+export interface APIError {
+  message: string;
+  code?: string;
+  statusCode?: number;
+  data?: any;
+}
+
+// Loading state interface
+export interface LoadingState {
+  isLoading: boolean;
+  error: APIError | null;
+}
+
+// Retry configuration
+interface RetryConfig {
+  maxRetries: number;
+  retryDelay: number;
+  retryCondition?: (error: APIError) => boolean;
+}
+
+// Default retry configuration
+const DEFAULT_RETRY_CONFIG: RetryConfig = {
+  maxRetries: 3,
+  retryDelay: 1000,
+  retryCondition: (error) => {
+    // Retry on network errors and 5xx server errors
+    return !!(error.code === 'CONNECTION_ERROR' || 
+           error.code === 'TIMEOUT_ERROR' || 
+           (error.statusCode && error.statusCode >= 500));
+  }
+};
+
+// Utility function for API calls with error handling and retry logic
+async function withErrorHandling<T>(
+  apiCall: () => Promise<T>,
+  retryConfig: RetryConfig = DEFAULT_RETRY_CONFIG
+): Promise<T> {
+  let lastError: APIError;
+  
+  for (let attempt = 0; attempt <= retryConfig.maxRetries; attempt++) {
+    try {
+      return await apiCall();
+    } catch (error: any) {
+      lastError = error as APIError;
+      
+      // Don't retry on the last attempt or if retry condition is not met
+      if (attempt === retryConfig.maxRetries || 
+          !retryConfig.retryCondition?.(lastError)) {
+        throw lastError;
+      }
+      
+      // Wait before retrying with exponential backoff
+      const delay = retryConfig.retryDelay * Math.pow(2, attempt);
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+  }
+  
+  throw lastError!;
+}
+
+// Enhanced subscription interface with product management support
 export interface Subscription {
   id: string;
   plan_id: string;
@@ -37,6 +98,54 @@ export interface Subscription {
   shipping_cost?: number; // Updated field name
   tax_amount?: number;
   tax_rate?: number;
+  // Enhanced fields for product management
+  discounts?: AppliedDiscount[];
+  subtotal?: number;
+  total?: number;
+}
+
+// Subscription product interface
+export interface SubscriptionProduct {
+  id: string;
+  subscription_id: string;
+  product_id: string;
+  name: string;
+  quantity: number;
+  unit_price: number;
+  total_price: number;
+  image?: string;
+  added_at: string;
+}
+
+// Applied discount interface
+export interface AppliedDiscount {
+  id: string;
+  subscription_id: string;
+  discount_id: string;
+  discount_code: string;
+  discount_type: 'PERCENTAGE' | 'FIXED_AMOUNT' | 'FREE_SHIPPING';
+  discount_amount: number;
+  applied_at: string;
+}
+
+// Discount application request
+export interface DiscountApplicationRequest {
+  discount_code: string;
+}
+
+// Discount application response
+export interface DiscountResponse {
+  success: boolean;
+  discount: AppliedDiscount;
+  updated_subscription: Subscription;
+  message?: string;
+}
+
+// Subscription details response for modal
+export interface SubscriptionDetailsResponse {
+  subscription: Subscription;
+  products: SubscriptionProduct[];
+  discounts: AppliedDiscount[];
 }
 
 // Create subscription request
@@ -132,22 +241,28 @@ export const getUserSubscriptions = async (page: number = 1, limit: number = 10)
 
 // Get one subscription
 export const getSubscription = async (id: string): Promise<Subscription> => {
-  const response = await apiClient.get(`/subscriptions/${id}`, {});
-  console.log(response,'response===+++')
-  return response;
+  return withErrorHandling(async () => {
+    const response = await apiClient.get(`/subscriptions/${id}`, {});
+    console.log(response,'response===+++')
+    return response;
+  });
 };
 
 // Update subscription
 export const updateSubscription = async (id: string, request: UpdateSubscriptionRequest) => {
-  const response = await apiClient.put(`/subscriptions/${id}`, request, {});
-  return response; // Return response directly since apiClient already extracts .data
+  return withErrorHandling(async () => {
+    const response = await apiClient.put(`/subscriptions/${id}`, request, {});
+    return response; // Return response directly since apiClient already extracts .data
+  });
 };
 
 // Delete/Cancel subscription
 export const cancelSubscription = async (id: string, reason?: string) => {
-  const data = reason ? { reason } : {};
-  const response = await apiClient.delete(`/subscriptions/${id}`, { data });
-  return response;
+  return withErrorHandling(async () => {
+    const data = reason ? { reason } : {};
+    const response = await apiClient.delete(`/subscriptions/${id}`, { data });
+    return response;
+  });
 };
 
 // Activate subscription (uses resume endpoint which handles both resume and activate)
@@ -182,6 +297,51 @@ export const removeProducts = async (id: string, variantIds: string[]) => {
     data: { variant_ids: variantIds } 
   });
   return response; // Return response directly since apiClient already extracts .data
+};
+
+// Remove single product from subscription (new method for product management)
+export const removeProduct = async (subscriptionId: string, productId: string): Promise<Subscription> => {
+  return withErrorHandling(async () => {
+    const response = await apiClient.delete(`/subscriptions/${subscriptionId}/products/${productId}`, {});
+    return response;
+  });
+};
+
+// Get subscription details for modal (new method)
+export const getSubscriptionDetails = async (subscriptionId: string): Promise<SubscriptionDetailsResponse> => {
+  return withErrorHandling(async () => {
+    const response = await apiClient.get(`/subscriptions/${subscriptionId}/details`, {});
+    return response;
+  });
+};
+
+// === DISCOUNT MANAGEMENT ===
+
+// Apply discount to subscription (new method)
+export const applyDiscount = async (subscriptionId: string, discountCode: string): Promise<DiscountResponse> => {
+  return withErrorHandling(async () => {
+    const response = await apiClient.post(`/subscriptions/${subscriptionId}/discounts`, {
+      discount_code: discountCode
+    }, {});
+    return response;
+  }, {
+    ...DEFAULT_RETRY_CONFIG,
+    retryCondition: (error) => {
+      // Don't retry on validation errors (400, 422) or not found (404)
+      if (error.statusCode === 400 || error.statusCode === 422 || error.statusCode === 404) {
+        return false;
+      }
+      return DEFAULT_RETRY_CONFIG.retryCondition!(error);
+    }
+  });
+};
+
+// Remove discount from subscription (new method)
+export const removeDiscount = async (subscriptionId: string, discountId: string): Promise<Subscription> => {
+  return withErrorHandling(async () => {
+    const response = await apiClient.delete(`/subscriptions/${subscriptionId}/discounts/${discountId}`, {});
+    return response;
+  });
 };
 
 // === QUANTITY MANAGEMENT ===
@@ -284,6 +444,12 @@ const SubscriptionAPI = {
   removeProducts,
   addProductsToSubscription,
   removeProductsFromSubscription,
+  removeProduct, // New method
+  getSubscriptionDetails, // New method
+  
+  // Discounts
+  applyDiscount, // New method
+  removeDiscount, // New method
   
   // Quantities
   updateQuantity,

@@ -11,7 +11,9 @@ import {
   XCircleIcon,
   PlusIcon,
   MinusIcon,
-  ChevronDownIcon
+  ChevronDownIcon,
+  EyeIcon,
+  TagIcon
 } from 'lucide-react';
 import { themeClasses, combineThemeClasses, getButtonClasses } from '../../lib/themeClasses';
 import { toggleAutoRenew, Subscription } from '../../apis/subscription';
@@ -27,6 +29,8 @@ interface SubscriptionCardProps {
   onActivate?: (id: string) => void;
   onAddProducts?: (subscription: any) => void;
   onRemoveProduct?: (subscriptionId: string, variantId: string) => void;
+  onProductManage?: (subscriptionId: string) => void;
+  onDiscountApply?: (subscriptionId: string, discountCode: string) => void;
   showActions?: boolean;
 }
 
@@ -39,11 +43,16 @@ export const SubscriptionCard: React.FC<SubscriptionCardProps> = ({
   onActivate,
   onAddProducts,
   onRemoveProduct,
+  onProductManage,
+  onDiscountApply,
   showActions = true
 }) => {
   const [isUpdating, setIsUpdating] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [showBillingSummary, setShowBillingSummary] = useState(false);
+  const [showDiscountInput, setShowDiscountInput] = useState(false);
+  const [discountCode, setDiscountCode] = useState('');
+  const [isApplyingDiscount, setIsApplyingDiscount] = useState(false);
 
   const [editData, setEditData] = useState({
     billing_cycle: subscription.billing_cycle as 'weekly' | 'monthly' | 'yearly',
@@ -115,6 +124,30 @@ export const SubscriptionCard: React.FC<SubscriptionCardProps> = ({
       plan_id: subscription.plan_id
     });
     setIsEditing(false);
+  };
+
+  const handleApplyDiscount = async () => {
+    if (!discountCode.trim()) {
+      toast.error('Please enter a discount code');
+      return;
+    }
+
+    setIsApplyingDiscount(true);
+    try {
+      await onDiscountApply?.(subscription.id, discountCode.trim());
+      setDiscountCode('');
+      setShowDiscountInput(false);
+      toast.success('Discount applied successfully');
+    } catch (error) {
+      console.error('Failed to apply discount:', error);
+      toast.error('Failed to apply discount');
+    } finally {
+      setIsApplyingDiscount(false);
+    }
+  };
+
+  const handleProductManageClick = () => {
+    onProductManage?.(subscription.id);
   };
 
   return (
@@ -236,30 +269,44 @@ export const SubscriptionCard: React.FC<SubscriptionCardProps> = ({
             <h4 className={combineThemeClasses(themeClasses.text.primary, 'font-medium text-sm')}>
               Subscription Items ({subscription.products.length})
             </h4>
-            {subscription.status !== 'cancelled' && onAddProducts && (
-              <button
-                onClick={() => onAddProducts(subscription)}
-                className={combineThemeClasses(
-                  'text-blue-600 hover:text-blue-700 text-sm flex items-center gap-1'
-                )}
-              >
-                <PlusIcon className="w-3 h-3" />
-                Add Items
-              </button>
-            )}
+            <div className="flex items-center gap-2">
+              {onProductManage && (
+                <button
+                  onClick={handleProductManageClick}
+                  className={combineThemeClasses(
+                    'text-blue-600 hover:text-blue-700 text-sm flex items-center gap-1 px-2 py-1 rounded hover:bg-blue-50 transition-colors'
+                  )}
+                  title="Manage products"
+                >
+                  <EyeIcon className="w-3 h-3" />
+                  View Details
+                </button>
+              )}
+              {subscription.status !== 'cancelled' && onAddProducts && (
+                <button
+                  onClick={() => onAddProducts(subscription)}
+                  className={combineThemeClasses(
+                    'text-blue-600 hover:text-blue-700 text-sm flex items-center gap-1 px-2 py-1 rounded hover:bg-blue-50 transition-colors'
+                  )}
+                >
+                  <PlusIcon className="w-3 h-3" />
+                  Add Items
+                </button>
+              )}
+            </div>
           </div>
-          <div className="space-y-1 max-h-32 overflow-y-auto">
-            {subscription.products.map((product: any, index: number) => {
+          
+          {/* Summary view - show first 2 products, then "and X more" */}
+          <div className="space-y-1">
+            {subscription.products.slice(0, 2).map((product: any, index: number) => {
               // Get total quantity for this product from variant_quantities
               const productQuantities = subscription.variant_quantities ? 
                 Object.entries(subscription.variant_quantities).reduce((total, [variantId, quantity]) => {
-                  // For now, we'll show the total quantity across all variants
-                  // In a more sophisticated setup, you'd match variants to products
                   return total + (quantity as number);
                 }, 0) : 0;
               
               return (
-                <div key={product.id || index} className="flex items-center justify-between p-2 rounded text-sm">
+                <div key={product.id || index} className="flex items-center justify-between p-2 rounded text-sm bg-surface-elevated">
                   <div className="flex items-center gap-2 flex-1 min-w-0">
                     {product.image && (
                       <img 
@@ -274,7 +321,7 @@ export const SubscriptionCard: React.FC<SubscriptionCardProps> = ({
                       </span>
                       {productQuantities > 0 && (
                         <span className={combineThemeClasses(themeClasses.text.muted, 'text-xs')}>
-                          Total items: {productQuantities}
+                          Qty: {productQuantities}
                         </span>
                       )}
                     </div>
@@ -282,23 +329,26 @@ export const SubscriptionCard: React.FC<SubscriptionCardProps> = ({
                       <span className={combineThemeClasses(themeClasses.text.secondary, 'flex-shrink-0')}>
                         {formatCurrency(product.current_price || product.price, subscription.currency)}
                       </span>
-                      <span className={combineThemeClasses(themeClasses.text.muted, 'text-xs')}>
-                        per item
-                      </span>
                     </div>
                   </div>
-                  {subscription.status !== 'cancelled' && onRemoveProduct && (
-                    <button
-                      onClick={() => onRemoveProduct(subscription.id, product.id)}
-                      className="text-red-600 hover:text-red-700 p-1 flex-shrink-0 ml-2"
-                      title="Remove from subscription"
-                    >
-                      <MinusIcon className="w-3 h-3" />
-                    </button>
-                  )}
                 </div>
               );
             })}
+            
+            {/* Show "and X more" if there are more than 2 products */}
+            {subscription.products.length > 2 && (
+              <div className="text-center py-2">
+                <button
+                  onClick={handleProductManageClick}
+                  className={combineThemeClasses(
+                    themeClasses.text.secondary,
+                    'text-sm hover:text-primary transition-colors'
+                  )}
+                >
+                  and {subscription.products.length - 2} more item{subscription.products.length - 2 !== 1 ? 's' : ''}...
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -415,6 +465,76 @@ export const SubscriptionCard: React.FC<SubscriptionCardProps> = ({
               </div>
             )}
           </div>)}
+        </div>
+      )}
+
+      {/* Discount Management */}
+      {subscription.status !== 'cancelled' && (
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <h4 className={combineThemeClasses(themeClasses.text.primary, 'font-medium text-sm')}>
+              Discounts
+            </h4>
+            {!showDiscountInput && onDiscountApply && (
+              <button
+                onClick={() => setShowDiscountInput(true)}
+                className={combineThemeClasses(
+                  'text-blue-600 hover:text-blue-700 text-sm flex items-center gap-1 px-2 py-1 rounded hover:bg-blue-50 transition-colors'
+                )}
+              >
+                <TagIcon className="w-3 h-3" />
+                Apply Code
+              </button>
+            )}
+          </div>
+
+          {/* Applied discounts would be shown here */}
+          {/* For now, we'll show a placeholder */}
+          <div className={combineThemeClasses(themeClasses.text.muted, 'text-sm')}>
+            No discounts applied
+          </div>
+
+          {/* Discount input */}
+          {showDiscountInput && (
+            <div className="space-y-2 p-3 bg-surface-elevated rounded-lg border">
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={discountCode}
+                  onChange={(e) => setDiscountCode(e.target.value)}
+                  placeholder="Enter discount code"
+                  className={combineThemeClasses(themeClasses.input.base, themeClasses.input.default, 'flex-1 text-sm')}
+                  onKeyPress={(e) => {
+                    if (e.key === 'Enter') {
+                      handleApplyDiscount();
+                    }
+                  }}
+                />
+                <button
+                  onClick={handleApplyDiscount}
+                  disabled={isApplyingDiscount || !discountCode.trim()}
+                  className={combineThemeClasses(
+                    getButtonClasses('primary'),
+                    'text-sm px-3 py-1',
+                    (isApplyingDiscount || !discountCode.trim()) ? 'opacity-50 cursor-not-allowed' : ''
+                  )}
+                >
+                  {isApplyingDiscount ? 'Applying...' : 'Apply'}
+                </button>
+                <button
+                  onClick={() => {
+                    setShowDiscountInput(false);
+                    setDiscountCode('');
+                  }}
+                  className={combineThemeClasses(
+                    'text-gray-600 hover:text-gray-700 p-1 rounded hover:bg-gray-50 transition-colors'
+                  )}
+                >
+                  <XIcon className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

@@ -8,7 +8,7 @@ from typing import List
 from core.database import get_db,logger
 from core.utils.response import Response
 from core.exceptions import APIException
-from schemas.subscriptions import SubscriptionCreate, SubscriptionUpdate, SubscriptionCostCalculationRequest, SubscriptionAddProducts, SubscriptionRemoveProducts, SubscriptionUpdateQuantity, SubscriptionQuantityChange
+from schemas.subscriptions import SubscriptionCreate, SubscriptionUpdate, SubscriptionCostCalculationRequest, SubscriptionAddProducts, SubscriptionRemoveProducts, SubscriptionUpdateQuantity, SubscriptionQuantityChange, DiscountApplicationRequest
 from services.subscriptions import SubscriptionService, SubscriptionSchedulerService
 from models.user import User
 from models.product import Product, ProductVariant, Category, ProductImage
@@ -639,6 +639,145 @@ async def resume_subscription(
         raise APIException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             message=f"Failed to resume/activate subscription: {str(e)}"
+        )
+
+
+@router.delete("/{subscription_id}/products/{product_id}")
+async def remove_product_from_subscription(
+    subscription_id: UUID,
+    product_id: UUID,
+    current_user: User = Depends(get_current_auth_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Remove a specific product from a subscription."""
+    try:
+        from services.enhanced_subscription_service import EnhancedSubscriptionService
+        
+        enhanced_service = EnhancedSubscriptionService(db)
+        subscription = await enhanced_service.remove_product(
+            subscription_id=subscription_id,
+            product_id=product_id,
+            user_id=current_user.id,
+            reason="User requested removal via API"
+        )
+        
+        return Response.success(
+            data=subscription.to_dict(include_products=True),
+            message="Product removed from subscription successfully"
+        )
+    except HTTPException as e:
+        raise APIException(
+            status_code=e.status_code,
+            detail=e.detail
+        )
+    except Exception as e:
+        logger.error(f"Error removing product from subscription: {e}")
+        raise APIException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to remove product from subscription: {str(e)}"
+        )
+
+
+@router.post("/{subscription_id}/discounts")
+async def apply_discount_to_subscription(
+    subscription_id: UUID,
+    discount_request: DiscountApplicationRequest,
+    current_user: User = Depends(get_current_auth_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Apply a discount code to a subscription."""
+    try:
+        from services.enhanced_subscription_service import EnhancedSubscriptionService
+        
+        enhanced_service = EnhancedSubscriptionService(db)
+        result = await enhanced_service.apply_discount(
+            subscription_id=subscription_id,
+            discount_code=discount_request.discount_code,
+            user_id=current_user.id
+        )
+        
+        return Response.success(
+            data=result,
+            message=f"Discount code '{discount_request.discount_code}' applied successfully"
+        )
+    except HTTPException as e:
+        raise APIException(
+            status_code=e.status_code,
+            detail=e.detail
+        )
+    except Exception as e:
+        logger.error(f"Error applying discount to subscription: {e}")
+        raise APIException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to apply discount: {str(e)}"
+        )
+
+
+@router.delete("/{subscription_id}/discounts/{discount_id}")
+async def remove_discount_from_subscription(
+    subscription_id: UUID,
+    discount_id: UUID,
+    current_user: User = Depends(get_current_auth_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Remove a discount from a subscription."""
+    try:
+        from services.enhanced_subscription_service import EnhancedSubscriptionService
+        
+        enhanced_service = EnhancedSubscriptionService(db)
+        subscription = await enhanced_service.remove_discount(
+            subscription_id=subscription_id,
+            discount_id=discount_id,
+            user_id=current_user.id
+        )
+        
+        return Response.success(
+            data=subscription.to_dict(include_products=True),
+            message="Discount removed from subscription successfully"
+        )
+    except HTTPException as e:
+        raise APIException(
+            status_code=e.status_code,
+            detail=e.detail
+        )
+    except Exception as e:
+        logger.error(f"Error removing discount from subscription: {e}")
+        raise APIException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to remove discount: {str(e)}"
+        )
+
+
+@router.get("/{subscription_id}/details")
+async def get_subscription_details(
+    subscription_id: UUID,
+    current_user: User = Depends(get_current_auth_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Get detailed subscription information for modal display."""
+    try:
+        from services.enhanced_subscription_service import EnhancedSubscriptionService
+        
+        enhanced_service = EnhancedSubscriptionService(db)
+        details = await enhanced_service.get_subscription_details(
+            subscription_id=subscription_id,
+            user_id=current_user.id
+        )
+        
+        return Response.success(
+            data=details,
+            message="Subscription details retrieved successfully"
+        )
+    except HTTPException as e:
+        raise APIException(
+            status_code=e.status_code,
+            detail=e.detail
+        )
+    except Exception as e:
+        logger.error(f"Error getting subscription details: {e}")
+        raise APIException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to get subscription details: {str(e)}"
         )
 
 

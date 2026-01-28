@@ -1,6 +1,7 @@
-# Consolidated order service
-# This file includes all order-related functionality
-
+"""
+Comprehensive Order Service with Advanced Pricing and Security
+Handles complete order lifecycle with backend-only price calculations
+"""
 import hashlib
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_, desc
@@ -18,25 +19,297 @@ from schemas.inventories import StockAdjustmentCreate
 from services.cart import CartService
 from services.payments import PaymentService
 from services.inventories import InventoryService 
+from services.tax import TaxService
+from services.shipping import ShippingService
+from services.discount_engine import DiscountEngine
 from models.inventories import Inventory
 from uuid import UUID
 from core.utils.uuid_utils import uuid7
 from datetime import datetime, timedelta
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Tuple
+from decimal import Decimal, ROUND_HALF_UP
 from core.config import settings
 from core.logging import get_structured_logger
 
 logger = get_structured_logger(__name__)
 
 
+class PricingCalculationResult:
+    """Result of comprehensive pricing calculation"""
+    def __init__(
+        self,
+        subtotal: Decimal,
+        shipping_cost: Decimal,
+        tax_amount: Decimal,
+        tax_rate: float,
+        discount_amount: Decimal,
+        total_amount: Decimal,
+        currency: str = "USD",
+        breakdown: Dict[str, Any] = None
+    ):
+        self.subtotal = subtotal
+        self.shipping_cost = shipping_cost
+        self.tax_amount = tax_amount
+        self.tax_rate = tax_rate
+        self.discount_amount = discount_amount
+        self.total_amount = total_amount
+        self.currency = currency
+        self.breakdown = breakdown or {}
+
+
 class OrderService:
-    """Consolidated order service with comprehensive order management"""
+    """Comprehensive order service with advanced pricing and security validation"""
     
     def __init__(self, db: AsyncSession, lock_service=None):
         self.db = db
         self.inventory_service = InventoryService(db, lock_service)
+        self.tax_service = TaxService(db)
+        self.shipping_service = ShippingService(db)
+        self.discount_engine = DiscountEngine(db)
 
-    async def place_order_with_security_validation(
+    async def calculate_comprehensive_pricing(
+        self,
+        cart_items: List[CartItem],
+        shipping_address: Address,
+        shipping_method_id: UUID,
+        discount_code: Optional[str] = None,
+        currency: str = "USD"
+    ) -> PricingCalculationResult:
+        """
+        Calculate comprehensive pricing with all components
+        This is the authoritative pricing calculation - NEVER trust frontend prices
+        """
+        logger.info(f"Calculating comprehensive pricing for {len(cart_items)} items")
+        
+        # Step 1: Calculate subtotal from product variant sale prices
+        subtotal = Decimal('0.00')
+        item_breakdown = []
+        
+        for item in cart_items:
+            # Get current price from variant (sale_price if available, otherwise base_price)
+            variant_price = Decimal(str(item.variant.sale_price or item.variant.base_price))
+            item_total = variant_price * Decimal(str(item.quantity))
+            subtotal += item_total
+            
+            item_breakdown.append({
+                'variant_id': str(item.variant.id),
+                'variant_name': item.variant.name,
+                'quantity': item.quantity,
+                'unit_price': float(variant_price),
+                'total_price': float(item_total),
+                'on_sale': item.variant.sale_price is not None,
+                'original_price': float(item.variant.base_price) if item.variant.sale_price else None
+            })
+        
+        logger.info(f"Calculated subtotal: ${subtotal}")
+        
+        # Step 2: Calculate shipping cost
+        shipping_cost = Decimal('0.00')
+        shipping_method = await self.shipping_service.get_shipping_method_by_id(shipping_method_id)
+        if shipping_method and shipping_method.is_active:
+            shipping_cost = Decimal(str(shipping_method.price))
+            logger.info(f"Shipping cost: ${shipping_cost} ({shipping_method.name})")
+        
+        # Step 3: Calculate tax based on shipping address
+        tax_rate = await self.tax_service.get_tax_rate(
+            shipping_address.country or "US",
+            shipping_address.state
+        )
+        # Tax is calculated on subtotal only (not shipping in most jurisdictions)
+        tax_amount = (subtotal * Decimal(str(tax_rate))).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+        logger.info(f"Tax calculation: {tax_rate * 100}% on ${subtotal} = ${tax_amount}")
+        
+        # Step 4: Apply discount if provided
+        discount_amount = Decimal('0.00')
+        discount_info = None
+        if discount_code:
+            try:
+                validation_result = await self.discount_engine.validate_discount_code(
+                    discount_code, 
+                    subtotal=float(subtotal)
+                )
+                if validation_result.is_valid:
+                    discount = validation_result.discount
+                    if discount.type == "PERCENTAGE":
+                        discount_amount = (subtotal * Decimal(str(discount.value / 100))).quantize(
+                            Decimal('0.01'), rounding=ROUND_HALF_UP
+                        )
+                        if discount.maximum_discount:
+                            discount_amount = min(discount_amount, Decimal(str(discount.maximum_discount)))
+                    elif discount.type == "FIXED_AMOUNT":
+                        discount_amount = min(Decimal(str(discount.value)), subtotal)
+                    elif discount.type == "FREE_SHIPPING":
+                        discount_amount = shipping_cost
+                        shipping_cost = Decimal('0.00')
+                    
+                    discount_info = {
+                        'code': discount.code,
+                        'type': discount.type,
+                        'value': discount.value,
+                        'amount': float(discount_amount)
+                    }
+                    logger.info(f"Applied discount {discount_code}: -${discount_amount}")
+            except Exception as e:
+                logger.warning(f"Failed to apply discount {discount_code}: {e}")
+        
+        # Step 5: Calculate final total
+        total_amount = (subtotal + shipping_cost + tax_amount - discount_amount).quantize(
+            Decimal('0.01'), rounding=ROUND_HALF_UP
+        )
+        
+        # Ensure total is never negative
+        if total_amount < Decimal('0.00'):
+            total_amount = Decimal('0.00')
+        
+        logger.info(f"Final total: ${total_amount}")
+        
+        # Create detailed breakdown
+        breakdown = {
+            'items': item_breakdown,
+            'subtotal': float(subtotal),
+            'shipping': {
+                'method_id': str(shipping_method_id),
+                'method_name': shipping_method.name if shipping_method else None,
+                'cost': float(shipping_cost)
+            },
+            'tax': {
+                'rate': tax_rate,
+                'amount': float(tax_amount),
+                'location': f"{shipping_address.country}-{shipping_address.state}"
+            },
+            'discount': discount_info,
+            'total': float(total_amount),
+            'currency': currency,
+            'calculated_at': datetime.utcnow().isoformat()
+        }
+        
+        return PricingCalculationResult(
+            subtotal=subtotal,
+            shipping_cost=shipping_cost,
+            tax_amount=tax_amount,
+            tax_rate=tax_rate,
+            discount_amount=discount_amount,
+            total_amount=total_amount,
+            currency=currency,
+            breakdown=breakdown
+        )
+
+    async def validate_checkout_requirements(
+        self,
+        user_id: UUID,
+        request: CheckoutRequest
+    ) -> Dict[str, Any]:
+        """
+        Comprehensive checkout validation with detailed error reporting
+        """
+        validation_result = {
+            'valid': True,
+            'can_proceed': True,
+            'errors': [],
+            'warnings': [],
+            'pricing': None,
+            'cart': None
+        }
+        
+        try:
+            # Step 1: Validate cart exists and has items
+            cart_service = CartService(self.db)
+            cart_validation = await cart_service.validate_cart(user_id)
+            
+            if not cart_validation.get('valid', False):
+                validation_result['valid'] = False
+                validation_result['can_proceed'] = False
+                validation_result['errors'].extend(cart_validation.get('issues', []))
+                return validation_result
+            
+            cart = cart_validation['cart']
+            validation_result['cart'] = cart
+            
+            # Step 2: Validate shipping address
+            shipping_address_result = await self.db.execute(
+                select(Address).where(
+                    and_(Address.id == request.shipping_address_id, Address.user_id == user_id)
+                )
+            )
+            shipping_address = shipping_address_result.scalar_one_or_none()
+            
+            if not shipping_address:
+                validation_result['valid'] = False
+                validation_result['can_proceed'] = False
+                validation_result['errors'].append({
+                    'field': 'shipping_address_id',
+                    'message': 'Invalid shipping address'
+                })
+                return validation_result
+            
+            # Step 3: Validate shipping method
+            shipping_method = await self.shipping_service.get_shipping_method_by_id(request.shipping_method_id)
+            if not shipping_method or not shipping_method.is_active:
+                validation_result['valid'] = False
+                validation_result['can_proceed'] = False
+                validation_result['errors'].append({
+                    'field': 'shipping_method_id',
+                    'message': 'Invalid or inactive shipping method'
+                })
+                return validation_result
+            
+            # Step 4: Validate payment method
+            payment_method_result = await self.db.execute(
+                select(PaymentMethod).where(
+                    and_(PaymentMethod.id == request.payment_method_id, PaymentMethod.user_id == user_id)
+                )
+            )
+            payment_method = payment_method_result.scalar_one_or_none()
+            
+            if not payment_method:
+                validation_result['valid'] = False
+                validation_result['can_proceed'] = False
+                validation_result['errors'].append({
+                    'field': 'payment_method_id',
+                    'message': 'Invalid payment method'
+                })
+                return validation_result
+            
+            # Step 5: Calculate comprehensive pricing
+            pricing = await self.calculate_comprehensive_pricing(
+                cart.items,
+                shipping_address,
+                request.shipping_method_id,
+                getattr(request, 'discount_code', None),
+                getattr(request, 'currency', 'USD')
+            )
+            validation_result['pricing'] = pricing.breakdown
+            
+            # Step 6: Validate frontend price if provided
+            if hasattr(request, 'frontend_calculated_total') and request.frontend_calculated_total:
+                frontend_total = Decimal(str(request.frontend_calculated_total))
+                backend_total = pricing.total_amount
+                price_difference = abs(frontend_total - backend_total)
+                
+                # Allow small rounding differences (up to 1 cent)
+                if price_difference > Decimal('0.01'):
+                    validation_result['warnings'].append({
+                        'type': 'price_mismatch',
+                        'message': f'Price mismatch detected. Frontend: ${frontend_total}, Backend: ${backend_total}',
+                        'frontend_total': float(frontend_total),
+                        'backend_total': float(backend_total),
+                        'difference': float(price_difference)
+                    })
+            
+            logger.info(f"Checkout validation completed for user {user_id}: {validation_result['valid']}")
+            return validation_result
+            
+        except Exception as e:
+            logger.error(f"Checkout validation failed for user {user_id}: {e}")
+            validation_result['valid'] = False
+            validation_result['can_proceed'] = False
+            validation_result['errors'].append({
+                'type': 'system_error',
+                'message': 'Checkout validation failed due to system error'
+            })
+            return validation_result
+
+    async def place_order_with_comprehensive_validation(
         self, 
         user_id: UUID, 
         request: CheckoutRequest, 
@@ -44,60 +317,134 @@ class OrderService:
         idempotency_key: Optional[str] = None
     ) -> OrderResponse:
         """
-        Place an order with comprehensive security validation including price tampering protection
+        Place order with comprehensive validation and security checks
         """
-        # Import security service
-        from core.middleware.rate_limit import SecurityService
+        logger.info(f"Processing order for user {user_id}")
         
-        # Initialize security service
-        security_service = SecurityService()
+        # Step 1: Comprehensive validation
+        validation_result = await self.validate_checkout_requirements(user_id, request)
         
-        # Get client identifier for security tracking
-        client_id = f"user:{user_id}"
-        
-        # Get location from shipping address for tax calculation
-        country_code = "US"
-        province_code = None
-        if hasattr(request, 'shipping_address_id') and request.shipping_address_id:
-            shipping_address_result = await self.db.execute(
-                select(Address).where(Address.id == request.shipping_address_id)
+        if not validation_result['can_proceed']:
+            error_messages = [error['message'] for error in validation_result['errors']]
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    'message': 'Checkout validation failed',
+                    'errors': validation_result['errors'],
+                    'warnings': validation_result['warnings']
+                }
             )
-            shipping_address = shipping_address_result.scalar_one_or_none()
-            if shipping_address:
-                country_code = shipping_address.country or "US"
-                province_code = shipping_address.state
         
-        # STEP 1: Validate cart and get current prices with location for tax
-        cart_service = CartService(self.db)
-        validation_result = await cart_service.validate_cart(
-            user_id,
-            country_code=country_code,
-            province_code=province_code
+        cart = validation_result['cart']
+        pricing = validation_result['pricing']
+        
+        # Step 2: Get addresses and shipping method
+        shipping_address_result = await self.db.execute(
+            select(Address).where(Address.id == request.shipping_address_id)
         )
+        shipping_address = shipping_address_result.scalar_one()
         
-        if not validation_result.get("valid", False) or not validation_result.get("can_checkout", False):
-            error_issues = [issue for issue in validation_result.get("issues", []) if issue.get("severity") == "error"]
-            if error_issues:
-                error_messages = [issue["message"] for issue in error_issues]
-                raise HTTPException(
-                    status_code=400, 
-                    detail={
-                        "message": "Cart validation failed. Please review and update your cart.",
-                        "issues": error_issues,
-                        "validation_summary": validation_result.get("summary", {}),
-                        "error_count": len(error_issues)
-                    }
+        shipping_method_result = await self.db.execute(
+            select(ShippingMethod).where(ShippingMethod.id == request.shipping_method_id)
+        )
+        shipping_method = shipping_method_result.scalar_one()
+        
+        try:
+            # Step 3: Create order with atomic transaction
+            async with self.db.begin():
+                # Generate order number
+                order_number = f"ORD-{datetime.utcnow().strftime('%Y%m%d')}-{uuid7().hex[:8].upper()}"
+                
+                # Create order
+                order = Order(
+                    id=uuid7(),
+                    order_number=order_number,
+                    user_id=user_id,
+                    order_status="pending",
+                    payment_status="pending",
+                    fulfillment_status="unfulfilled",
+                    subtotal=pricing['subtotal'],
+                    shipping_cost=pricing['shipping']['cost'],
+                    tax_amount=pricing['tax']['amount'],
+                    tax_rate=pricing['tax']['rate'],
+                    total_amount=pricing['total'],
+                    currency=pricing['currency'],
+                    shipping_method=shipping_method.name,
+                    billing_address={
+                        'street': shipping_address.street,
+                        'city': shipping_address.city,
+                        'state': shipping_address.state,
+                        'country': shipping_address.country,
+                        'post_code': shipping_address.post_code
+                    },
+                    shipping_address={
+                        'street': shipping_address.street,
+                        'city': shipping_address.city,
+                        'state': shipping_address.state,
+                        'country': shipping_address.country,
+                        'post_code': shipping_address.post_code
+                    },
+                    notes=request.notes
                 )
-        
-        cart = validation_result["cart"]
-        
-        # STEP 2: Price tampering detection
-        if hasattr(request, 'submitted_prices') and request.submitted_prices:
-            # Extract actual prices from validated cart
-            actual_prices = {}
-            for item in cart.items:
-                actual_prices[str(item.variant.id)] = float(item.price_per_unit)
-            
+                self.db.add(order)
+                await self.db.flush()
+                
+                # Create order items and update inventory
+                for cart_item in cart.items:
+                    variant_price = cart_item.variant.sale_price or cart_item.variant.base_price
+                    
+                    order_item = OrderItem(
+                        id=uuid7(),
+                        order_id=order.id,
+                        variant_id=cart_item.variant_id,
+                        quantity=cart_item.quantity,
+                        price_per_unit=variant_price,
+                        total_price=variant_price * cart_item.quantity
+                    )
+                    self.db.add(order_item)
+                    
+                    # Update inventory
+                    await self.inventory_service.adjust_stock(
+                        cart_item.variant_id,
+                        -cart_item.quantity,
+                        reason="order_placed",
+                        reference_id=str(order.id)
+                    )
+                
+                # Clear cart
+                await self.db.execute(delete(CartItem).where(CartItem.cart_id == cart.id))
+                
+                await self.db.commit()
+                
+                logger.info(f"Order {order_number} created successfully for user {user_id}")
+                
+                # Return order response
+                return OrderResponse(
+                    id=order.id,
+                    order_number=order_number,
+                    user_id=user_id,
+                    status=order.order_status,
+                    total_amount=order.total_amount,
+                    currency=order.currency,
+                    created_at=order.created_at,
+                    items=[
+                        OrderItemResponse(
+                            id=item.id,
+                            variant_id=item.variant_id,
+                            quantity=item.quantity,
+                            price_per_unit=item.price_per_unit,
+                            total_price=item.total_price
+                        ) for item in order.items
+                    ]
+                )
+                
+        except Exception as e:
+            logger.error(f"Order creation failed for user {user_id}: {e}")
+            await self.db.rollback()
+            raise HTTPException(
+                status_code=500,
+                detail="Order creation failed due to system error"
+            )
             # Check for price tampering
             tampering_result = await security_service.detect_price_tampering(
                 client_id, request.submitted_prices, actual_prices

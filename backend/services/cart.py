@@ -1,3 +1,7 @@
+"""
+Comprehensive Cart Service with Backend-Only Pricing
+PostgreSQL-based cart with real-time tax and pricing calculations
+"""
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete, and_, func, update
 from sqlalchemy.orm import selectinload
@@ -5,7 +9,7 @@ from fastapi import HTTPException
 from typing import Optional, Dict, Any, List
 from uuid import UUID
 from core.utils.uuid_utils import uuid7
-from decimal import Decimal
+from decimal import Decimal, ROUND_HALF_UP
 from datetime import datetime
 import logging
 
@@ -18,17 +22,34 @@ from core.config import settings
 logger = logging.getLogger(__name__)
 
 
+class CartValidationResult:
+    """Result of cart validation with detailed information"""
+    def __init__(
+        self,
+        valid: bool,
+        can_checkout: bool,
+        cart: Optional[Cart] = None,
+        issues: List[Dict[str, Any]] = None,
+        summary: Dict[str, Any] = None
+    ):
+        self.valid = valid
+        self.can_checkout = can_checkout
+        self.cart = cart
+        self.issues = issues or []
+        self.summary = summary or {}
+
+
 class CartService:
     """
-    PostgreSQL-based cart service
-    Uses PostgreSQL for persistent cart storage
+    Comprehensive PostgreSQL-based cart service with backend-only pricing
+    All pricing calculations are performed server-side for security
     """
     
     def __init__(self, db: AsyncSession):
         self.db = db
         self.tax_service = TaxService(db)
 
-    async def get_cart(
+    async def get_cart_with_pricing(
         self, 
         user_id: Optional[UUID] = None,
         session_id: Optional[str] = None,
@@ -36,27 +57,303 @@ class CartService:
         province_code: Optional[str] = None
     ) -> Dict[str, Any]:
         """
-        Get cart from PostgreSQL
-        For authenticated users, use user_id
-        For guests, session-based carts are not supported in PostgreSQL version
+        Get cart with comprehensive pricing calculations
+        All prices are calculated server-side from database
         """
         if not user_id:
             # Return empty cart for guests - they need to login to use cart
-            return {
-                "user_id": None,
-                "session_id": session_id,
-                "items": [],
-                "subtotal": 0.0,
-                "tax_amount": 0.0,
-                "shipping_amount": 0.0,
-                "total_amount": 0.0,
-                "created_at": datetime.utcnow().isoformat(),
-                "updated_at": datetime.utcnow().isoformat(),
-                "country_code": country_code,
-                "province_code": province_code
-            }
+            return self._create_empty_cart_response(session_id, country_code, province_code)
 
         # Get or create cart for authenticated user
+        cart = await self._get_or_create_cart(user_id)
+        
+        if not cart.items:
+            return self._create_empty_cart_response(None, country_code, province_code, cart.id)
+
+        # Calculate comprehensive pricing
+        pricing_result = await self._calculate_cart_pricing(cart.items, country_code, province_code)
+        
+        # Build cart response with detailed pricing
+        cart_response = {
+            "id": str(cart.id),
+            "user_id": str(cart.user_id),
+            "items": [],
+            "pricing": pricing_result,
+            "subtotal": pricing_result['subtotal'],
+            "tax_amount": pricing_result['tax_amount'],
+            "shipping_amount": 0.0,  # Calculated at checkout
+            "total_amount": pricing_result['subtotal'] + pricing_result['tax_amount'],
+            "created_at": cart.created_at.isoformat(),
+            "updated_at": cart.updated_at.isoformat(),
+            "country_code": country_code,
+            "province_code": province_code,
+            "item_count": len(cart.items),
+            "currency": "USD"
+        }
+        
+        # Add detailed item information
+        for item in cart.items:
+            # Get current price (sale_price if available, otherwise base_price)
+            current_price = item.variant.sale_price or item.variant.base_price
+            item_total = current_price * item.quantity
+            
+            cart_response["items"].append({
+                "id": str(item.id),
+                "variant_id": str(item.variant_id),
+                "product_id": str(item.product_id),
+                "quantity": item.quantity,
+                "unit_price": float(current_price),
+                "total_price": float(item_total),
+                "added_at": item.created_at.isoformat(),
+                "variant": {
+                    "id": str(item.variant.id),
+                    "name": item.variant.name,
+                    "sku": item.variant.sku,
+                    "base_price": float(item.variant.base_price),
+                    "sale_price": float(item.variant.sale_price) if item.variant.sale_price else None,
+                    "current_price": float(current_price),
+                    "on_sale": item.variant.sale_price is not None,
+                    "discount_percentage": (
+                        round(((item.variant.base_price - item.variant.sale_price) / item.variant.base_price) * 100, 1)
+                        if item.variant.sale_price else 0
+                    ),
+                    "weight": item.variant.weight,
+                    "attributes": item.variant.attributes,
+                    "is_active": item.variant.is_active,
+                    "images": [
+                        {
+                            "id": str(img.id),
+                            "url": img.url,
+                            "alt_text": img.alt_text,
+                            "is_primary": img.is_primary
+                        } for img in item.variant.images
+                    ] if item.variant.images else []
+                },
+                "product": {
+                    "id": str(item.product.id),
+                    "name": item.product.name,
+                    "slug": item.product.slug,
+                    "short_description": item.product.short_description,
+                    "category_id": str(item.product.category_id),
+                    "is_featured": item.product.is_featured,
+                    "rating_average": item.product.rating_average,
+                    "availability_status": item.product.availability_status
+                } if item.product else None
+            })
+        
+        return cart_response
+
+    async def _calculate_cart_pricing(
+        self, 
+        cart_items: List[CartItem], 
+        country_code: str, 
+        province_code: Optional[str]
+    ) -> Dict[str, Any]:
+        """
+        Calculate comprehensive cart pricing with tax
+        All calculations use current database prices
+        """
+        subtotal = Decimal('0.00')
+        item_breakdown = []
+        
+        # Calculate subtotal from current variant prices
+        for item in cart_items:
+            # Always use current price from database (sale_price if available, otherwise base_price)
+            current_price = Decimal(str(item.variant.sale_price or item.variant.base_price))
+            item_total = current_price * Decimal(str(item.quantity))
+            subtotal += item_total
+            
+            item_breakdown.append({
+                'variant_id': str(item.variant_id),
+                'quantity': item.quantity,
+                'unit_price': float(current_price),
+                'total_price': float(item_total),
+                'on_sale': item.variant.sale_price is not None
+            })
+        
+        # Calculate tax based on location
+        tax_amount = Decimal('0.00')
+        tax_rate = 0.0
+        if country_code and subtotal > 0:
+            try:
+                tax_rate = await self.tax_service.get_tax_rate(country_code, province_code)
+                if tax_rate:
+                    tax_amount = (subtotal * Decimal(str(tax_rate))).quantize(
+                        Decimal('0.01'), rounding=ROUND_HALF_UP
+                    )
+                    logger.info(f"Tax calculated: {tax_rate * 100}% on ${subtotal} = ${tax_amount}")
+            except Exception as e:
+                logger.warning(f"Failed to calculate tax for {country_code}-{province_code}: {e}")
+        
+        return {
+            'subtotal': float(subtotal),
+            'tax_rate': tax_rate,
+            'tax_amount': float(tax_amount),
+            'item_count': len(cart_items),
+            'items_breakdown': item_breakdown,
+            'calculated_at': datetime.utcnow().isoformat(),
+            'location': f"{country_code}-{province_code}" if province_code else country_code
+        }
+
+    async def validate_cart_comprehensive(
+        self,
+        user_id: UUID,
+        country_code: str = 'US',
+        province_code: Optional[str] = None
+    ) -> CartValidationResult:
+        """
+        Comprehensive cart validation for checkout readiness
+        Checks stock availability, pricing, and business rules
+        """
+        logger.info(f"Validating cart for user {user_id}")
+        
+        issues = []
+        can_checkout = True
+        
+        # Get cart with full item details
+        cart_result = await self.db.execute(
+            select(Cart)
+            .options(
+                selectinload(Cart.items).selectinload(CartItem.variant).selectinload(ProductVariant.images),
+                selectinload(Cart.items).selectinload(CartItem.variant).selectinload(ProductVariant.product),
+                selectinload(Cart.items).selectinload(CartItem.product)
+            )
+            .where(Cart.user_id == user_id)
+        )
+        cart = cart_result.scalar_one_or_none()
+        
+        if not cart or not cart.items:
+            return CartValidationResult(
+                valid=False,
+                can_checkout=False,
+                issues=[{
+                    'type': 'empty_cart',
+                    'severity': 'error',
+                    'message': 'Cart is empty'
+                }]
+            )
+        
+        # Validate each cart item
+        valid_items = 0
+        total_value = Decimal('0.00')
+        
+        for item in cart.items:
+            item_issues = await self._validate_cart_item(item)
+            issues.extend(item_issues)
+            
+            # Check if item has critical issues
+            critical_issues = [i for i in item_issues if i.get('severity') == 'error']
+            if not critical_issues:
+                valid_items += 1
+                current_price = item.variant.sale_price or item.variant.base_price
+                total_value += Decimal(str(current_price)) * Decimal(str(item.quantity))
+        
+        # Check if we have any valid items
+        if valid_items == 0:
+            can_checkout = False
+            issues.append({
+                'type': 'no_valid_items',
+                'severity': 'error',
+                'message': 'No valid items in cart'
+            })
+        
+        # Business rule validations
+        if total_value < Decimal('1.00'):  # Minimum order value
+            can_checkout = False
+            issues.append({
+                'type': 'minimum_order_value',
+                'severity': 'error',
+                'message': 'Order total must be at least $1.00'
+            })
+        
+        # Calculate pricing for summary
+        pricing = await self._calculate_cart_pricing(cart.items, country_code, province_code)
+        
+        summary = {
+            'total_items': len(cart.items),
+            'valid_items': valid_items,
+            'invalid_items': len(cart.items) - valid_items,
+            'subtotal': pricing['subtotal'],
+            'tax_amount': pricing['tax_amount'],
+            'estimated_total': pricing['subtotal'] + pricing['tax_amount'],
+            'issues_count': len(issues),
+            'error_count': len([i for i in issues if i.get('severity') == 'error']),
+            'warning_count': len([i for i in issues if i.get('severity') == 'warning'])
+        }
+        
+        is_valid = len([i for i in issues if i.get('severity') == 'error']) == 0
+        
+        logger.info(f"Cart validation completed: valid={is_valid}, can_checkout={can_checkout}")
+        
+        return CartValidationResult(
+            valid=is_valid,
+            can_checkout=can_checkout,
+            cart=cart,
+            issues=issues,
+            summary=summary
+        )
+
+    async def _validate_cart_item(self, item: CartItem) -> List[Dict[str, Any]]:
+        """Validate individual cart item"""
+        issues = []
+        
+        # Check if variant is active
+        if not item.variant.is_active:
+            issues.append({
+                'type': 'inactive_variant',
+                'severity': 'error',
+                'message': f'Product variant "{item.variant.name}" is no longer available',
+                'variant_id': str(item.variant_id)
+            })
+        
+        # Check if product is active
+        if item.product and item.product.product_status != 'active':
+            issues.append({
+                'type': 'inactive_product',
+                'severity': 'error',
+                'message': f'Product "{item.product.name}" is no longer available',
+                'product_id': str(item.product_id)
+            })
+        
+        # Check stock availability
+        try:
+            from services.inventories import InventoryService
+            inventory_service = InventoryService(self.db)
+            stock_info = await inventory_service.get_variant_stock_info(item.variant_id)
+            
+            if stock_info['quantity_available'] < item.quantity:
+                severity = 'error' if stock_info['quantity_available'] == 0 else 'warning'
+                issues.append({
+                    'type': 'insufficient_stock',
+                    'severity': severity,
+                    'message': f'Only {stock_info["quantity_available"]} units available for "{item.variant.name}"',
+                    'variant_id': str(item.variant_id),
+                    'requested_quantity': item.quantity,
+                    'available_quantity': stock_info['quantity_available']
+                })
+        except Exception as e:
+            logger.warning(f"Could not check stock for variant {item.variant_id}: {e}")
+        
+        # Check quantity limits
+        if item.quantity <= 0:
+            issues.append({
+                'type': 'invalid_quantity',
+                'severity': 'error',
+                'message': 'Quantity must be greater than 0',
+                'variant_id': str(item.variant_id)
+            })
+        elif item.quantity > 100:  # Business rule: max 100 per item
+            issues.append({
+                'type': 'quantity_limit_exceeded',
+                'severity': 'warning',
+                'message': 'Quantity exceeds recommended limit of 100',
+                'variant_id': str(item.variant_id)
+            })
+        
+        return issues
+
+    async def _get_or_create_cart(self, user_id: UUID) -> Cart:
+        """Get existing cart or create new one"""
         result = await self.db.execute(
             select(Cart)
             .options(
@@ -75,29 +372,58 @@ class CartService:
             await self.db.commit()
             await self.db.refresh(cart)
 
-        # Calculate totals
-        subtotal = sum((item.total_price for item in cart.items), Decimal('0.0'))
-        
-        # Calculate tax if location provided
-        tax_amount = Decimal('0.0')
-        if country_code and subtotal > 0:
-            try:
-                tax_rate = await self.tax_service.get_tax_rate(country_code, province_code)
-                if tax_rate:
-                    # Convert tax_rate to Decimal to avoid mixing Decimal and float
-                    tax_amount = subtotal * Decimal(str(tax_rate))
-            except Exception as e:
-                logger.warning(f"Failed to calculate tax: {e}")
+        return cart
 
-        # For now, shipping is 0 - can be calculated based on items/location
-        shipping_amount = Decimal('0.0')
-        total_amount = subtotal + tax_amount + shipping_amount
-
-        # Convert cart to dict format expected by frontend
-        cart_data = {
-            "id": str(cart.id),
-            "user_id": str(cart.user_id),
+    def _create_empty_cart_response(
+        self, 
+        session_id: Optional[str], 
+        country_code: str, 
+        province_code: Optional[str],
+        cart_id: Optional[UUID] = None
+    ) -> Dict[str, Any]:
+        """Create empty cart response"""
+        return {
+            "id": str(cart_id) if cart_id else None,
+            "user_id": None,
+            "session_id": session_id,
             "items": [],
+            "pricing": {
+                "subtotal": 0.0,
+                "tax_rate": 0.0,
+                "tax_amount": 0.0,
+                "item_count": 0,
+                "items_breakdown": [],
+                "calculated_at": datetime.utcnow().isoformat(),
+                "location": f"{country_code}-{province_code}" if province_code else country_code
+            },
+            "subtotal": 0.0,
+            "tax_amount": 0.0,
+            "shipping_amount": 0.0,
+            "total_amount": 0.0,
+            "created_at": datetime.utcnow().isoformat(),
+            "updated_at": datetime.utcnow().isoformat(),
+            "country_code": country_code,
+            "province_code": province_code,
+            "item_count": 0,
+            "currency": "USD"
+        }
+
+    # Legacy method for backward compatibility
+    async def get_cart(self, *args, **kwargs):
+        """Legacy method - redirects to get_cart_with_pricing"""
+        return await self.get_cart_with_pricing(*args, **kwargs)
+    
+    # Legacy method for backward compatibility  
+    async def validate_cart(self, user_id: UUID, **kwargs):
+        """Legacy method - redirects to validate_cart_comprehensive"""
+        result = await self.validate_cart_comprehensive(user_id, **kwargs)
+        return {
+            'valid': result.valid,
+            'can_checkout': result.can_checkout,
+            'cart': result.cart,
+            'issues': result.issues,
+            'summary': result.summary
+        }
             "subtotal": float(subtotal),
             "tax_amount": float(tax_amount),
             "shipping_amount": float(shipping_amount),

@@ -216,6 +216,17 @@ class SubscriptionRenewalScheduleResponse(BaseModel):
     days_until_renewal: int
 
 
+class DiscountApplicationRequest(BaseModel):
+    """Schema for applying discount to subscription"""
+    discount_code: str = Field(..., min_length=1, max_length=50, description="Discount code to apply")
+
+    @validator('discount_code')
+    def validate_discount_code(cls, v):
+        if not v or not v.strip():
+            raise ValueError('Discount code cannot be empty')
+        return v.strip().upper()
+
+
 class BulkRenewalProcessResponse(BaseModel):
     """Schema for bulk renewal processing response"""
     processed: int

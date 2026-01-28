@@ -14,10 +14,12 @@ from .tax_rates import TaxRate
 
 # Consolidated models - single source of truth
 from .orders import Order, OrderItem, TrackingEvent
-from .subscriptions import Subscription
+from .subscriptions import Subscription, SubscriptionProduct
 from .payments import PaymentMethod, PaymentIntent, Transaction
 from .inventories import WarehouseLocation, Inventory, StockAdjustment
 from .admin import PricingConfig, SubscriptionCostHistory, SubscriptionAnalytics, PaymentAnalytics
+from .discounts import Discount, SubscriptionDiscount, ProductRemovalAudit
+from .validation_rules import TaxValidationRule, ShippingValidationRule
 
 # Import utils if they exist
 try:
@@ -47,6 +49,16 @@ __all__ = [
 
     # Subscription models (consolidated)
     "Subscription",
+    "SubscriptionProduct",
+
+    # Discount models
+    "Discount",
+    "SubscriptionDiscount",
+    "ProductRemovalAudit",
+
+    # Validation models
+    "TaxValidationRule",
+    "ShippingValidationRule",
 
     # Payment models (consolidated)
     "PaymentMethod",

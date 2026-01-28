@@ -107,16 +107,60 @@ export class OrdersAPI {
   /**
    * Validate checkout before placing order
    */
-  static async validateCheckout(checkoutData) {
-    return await apiClient.post('/orders/checkout/validate', checkoutData);
+  static async validateCheckout(checkoutData: {
+    shipping_address_id: string;
+    shipping_method_id: string;
+    payment_method_id: string;
+    discount_code?: string;
+    notes?: string;
+    currency?: string;
+    country_code?: string;
+    frontend_calculated_total?: number;
+  }) {
+    try {
+      const response = await apiClient.post('/orders/checkout/validate', checkoutData);
+      return {
+        success: true,
+        data: response.data
+      };
+    } catch (error: any) {
+      console.error('Checkout validation failed:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || error.message || 'Checkout validation failed',
+        data: error.response?.data
+      };
+    }
   }
 
   /**
-   * Checkout - Place order from cart
+   * Place order (checkout)
    */
-  static async checkout(checkoutData) {
-    // Increase timeout for checkout as it involves payment processing
-    return await apiClient.post('/orders/checkout', checkoutData, { timeout: 60000 });
+  static async placeOrder(checkoutData: {
+    shipping_address_id: string;
+    shipping_method_id: string;
+    payment_method_id: string;
+    discount_code?: string;
+    notes?: string;
+    currency?: string;
+    country_code?: string;
+    frontend_calculated_total?: number;
+  }) {
+    try {
+      // Increase timeout for checkout as it involves payment processing
+      const response = await apiClient.post('/orders/checkout', checkoutData, { timeout: 60000 });
+      return {
+        success: true,
+        data: response.data
+      };
+    } catch (error: any) {
+      console.error('Order placement failed:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || error.message || 'Order placement failed',
+        data: error.response?.data
+      };
+    }
   }
 
   /**

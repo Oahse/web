@@ -18,6 +18,61 @@ subscription_product_association = Table(
 )
 
 
+class SubscriptionProduct(BaseModel):
+    """Individual products within subscriptions with removal tracking"""
+    __tablename__ = "subscription_products"
+    __table_args__ = (
+        # Indexes for search and performance
+        Index('idx_subscription_products_subscription_id', 'subscription_id'),
+        Index('idx_subscription_products_product_id', 'product_id'),
+        Index('idx_subscription_products_removed_at', 'removed_at'),
+        Index('idx_subscription_products_removed_by', 'removed_by'),
+        # Composite indexes for common queries
+        Index('idx_subscription_products_sub_product', 'subscription_id', 'product_id'),
+        Index('idx_subscription_products_active', 'subscription_id', 'removed_at'),
+        {'extend_existing': True}
+    )
+
+    subscription_id = Column(GUID(), ForeignKey("subscriptions.id", ondelete="CASCADE"), nullable=False)
+    product_id = Column(GUID(), ForeignKey("products.id"), nullable=False)
+    quantity = Column(Integer, nullable=False, default=1)
+    unit_price = Column(Float, nullable=False)
+    total_price = Column(Float, nullable=False)
+    added_at = Column(DateTime(timezone=True), server_default="NOW()", nullable=False)
+    
+    # Removal tracking columns
+    removed_at = Column(DateTime(timezone=True), nullable=True)
+    removed_by = Column(GUID(), ForeignKey("users.id"), nullable=True)
+
+    # Relationships
+    subscription = relationship("Subscription", back_populates="subscription_products", lazy="select")
+    product = relationship("Product", lazy="select")
+    removed_by_user = relationship("User", lazy="select")
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert subscription product to dictionary for API responses"""
+        return {
+            "id": str(self.id),
+            "subscription_id": str(self.subscription_id),
+            "product_id": str(self.product_id),
+            "quantity": self.quantity,
+            "unit_price": self.unit_price,
+            "total_price": self.total_price,
+            "added_at": self.added_at.isoformat() if self.added_at else None,
+            "removed_at": self.removed_at.isoformat() if self.removed_at else None,
+            "removed_by": str(self.removed_by) if self.removed_by else None,
+            "is_active": self.removed_at is None,
+            "product": self.product.to_dict() if self.product else None,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+        }
+
+    @property
+    def is_active(self) -> bool:
+        """Check if product is still active in subscription"""
+        return self.removed_at is None
+
+
 class Subscription(BaseModel):
     """Simplified subscription model with essential pricing fields only"""
     __tablename__ = "subscriptions"
@@ -54,10 +109,13 @@ class Subscription(BaseModel):
     variant_ids = Column(JSON, nullable=True)  # List of variant UUIDs for tracking
     cost_breakdown = Column(JSON, nullable=True)  # Simplified cost calculation breakdown
     
-    # Simplified cost fields - only the essentials
+    # Simplified cost fields - complete pricing structure
+    subtotal = Column(Float, nullable=True, default=0.0)  # Sum of all product prices
     shipping_cost = Column(Float, nullable=True, default=0.0)  # Shipping cost
     tax_amount = Column(Float, nullable=True, default=0.0)  # Tax amount calculated
     tax_rate = Column(Float, nullable=True, default=0.0)  # Tax rate applied (e.g., 0.08 for 8%)
+    discount_amount = Column(Float, nullable=True, default=0.0)  # Total discount amount
+    total = Column(Float, nullable=True, default=0.0)  # Final total amount
     
     # Subscription lifecycle
     paused_at = Column(DateTime(timezone=True), nullable=True)
@@ -66,6 +124,10 @@ class Subscription(BaseModel):
     
     # Minimal metadata for variant quantities only
     variant_quantities = Column(JSON, nullable=True)  # {variant_id: quantity}
+    
+    # Validation tracking columns
+    tax_validated_at = Column(DateTime(timezone=True), nullable=True)
+    shipping_validated_at = Column(DateTime(timezone=True), nullable=True)
 
     # Relationships
     user = relationship("User", back_populates="subscriptions")
@@ -77,6 +139,8 @@ class Subscription(BaseModel):
     )
     variant_tracking_entries = relationship("VariantTrackingEntry", back_populates="subscription", lazy="select")
     orders = relationship("Order", back_populates="subscription", lazy="select")
+    applied_discounts = relationship("SubscriptionDiscount", back_populates="subscription", lazy="select")
+    subscription_products = relationship("SubscriptionProduct", back_populates="subscription", lazy="select")
     
     def to_dict(self, include_products=False) -> Dict[str, Any]:
         """Convert subscription to dictionary for API responses"""
@@ -94,9 +158,12 @@ class Subscription(BaseModel):
             "cancelled_at": self.cancelled_at.isoformat() if self.cancelled_at else None,
             "variant_ids": self.variant_ids,
             "cost_breakdown": self.cost_breakdown,
+            "subtotal": self.subtotal,
             "shipping_cost": self.shipping_cost,
             "tax_amount": self.tax_amount,
             "tax_rate": self.tax_rate,
+            "discount_amount": self.discount_amount,
+            "total": self.total,
             "paused_at": self.paused_at.isoformat() if self.paused_at else None,
             "pause_reason": self.pause_reason,
             "next_billing_date": self.next_billing_date.isoformat() if self.next_billing_date else None,
