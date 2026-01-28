@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { CreditCard, PlusCircle, Trash2, CheckCircle } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { useApi } from '../../hooks/useAsync';
 import { PaymentsAPI } from '../../apis/payments';
+import { TokenManager } from '../../apis/client';
 
 
 
@@ -26,15 +28,27 @@ export const PaymentMethods = () => {
   });
   const [addingCard, setAddingCard] = useState(false);
 
+  // Check if user came from checkout
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('from') === 'checkout') {
+      toast.success('Add a payment method to complete your checkout!', { duration: 5000 });
+    }
+  }, []);
+
   // Effect hook to fetch payment methods on component mount
   useEffect(() => {
+    console.log('PaymentMethods: Fetching payment methods...');
+    console.log('PaymentMethods: Token available:', !!TokenManager.getToken());
     fetchPaymentMethods(PaymentsAPI.getPaymentMethods);
   }, [fetchPaymentMethods]);
 
   // Sync local state with fetched data
   useEffect(() => {
     if (paymentMethods) {
-      setLocalPaymentMethods(Array.isArray(paymentMethods) ? paymentMethods : []);
+      // Handle the Response.success wrapper structure
+      const data = (paymentMethods as any)?.success ? (paymentMethods as any).data : paymentMethods;
+      setLocalPaymentMethods(Array.isArray(data) ? data : []);
     }
   }, [paymentMethods]);
 
@@ -44,10 +58,12 @@ export const PaymentMethods = () => {
    */
   const handleSetDefault = async (id: string) => {
     try {
-      await PaymentsAPI.setDefaultPaymentMethod(id);
-      // Update the local state to reflect the new default payment method
-      setLocalPaymentMethods(localPaymentMethods?.map((pm: any) => ({ ...pm, is_default: pm.id === id })));
-      toast.success('Default payment method updated');
+      const response = await PaymentsAPI.setDefaultPaymentMethod(id);
+      if (response.success) {
+        // Update the local state to reflect the new default payment method
+        setLocalPaymentMethods(localPaymentMethods?.map((pm: any) => ({ ...pm, is_default: pm.id === id })));
+        toast.success('Default payment method updated');
+      }
     } catch (error: any) {
       const errorMessage = error?.response?.data?.message || error?.message || 'Failed to set default payment method';
       toast.error(errorMessage);
@@ -60,10 +76,12 @@ export const PaymentMethods = () => {
    */
   const handleDeleteCard = async (id: string) => {
     try {
-      await PaymentsAPI.deletePaymentMethod(id);
-      // Remove the deleted payment method from the local state
-      setLocalPaymentMethods(localPaymentMethods?.filter((pm: any) => pm.id !== id));
-      toast.success('Payment method removed');
+      const response = await PaymentsAPI.deletePaymentMethod(id);
+      if (response.success || response.message) {
+        // Remove the deleted payment method from the local state
+        setLocalPaymentMethods(localPaymentMethods?.filter((pm: any) => pm.id !== id));
+        toast.success('Payment method removed');
+      }
     } catch (error: any) {
       const errorMessage = error?.response?.data?.message || error?.message || 'Failed to remove payment method';
       toast.error(errorMessage);
@@ -142,8 +160,9 @@ export const PaymentMethods = () => {
 
       const result = await PaymentsAPI.addPaymentMethod(payload);
       
-      if (result) {
-        setLocalPaymentMethods(localPaymentMethods ? [...localPaymentMethods, result] : [result]);
+      if (result && (result.success || result.data)) {
+        const newPaymentMethod = result.success ? result.data : result;
+        setLocalPaymentMethods(localPaymentMethods ? [...localPaymentMethods, newPaymentMethod] : [newPaymentMethod]);
         toast.success('Payment method added successfully');
         resetForm();
       }
@@ -215,6 +234,27 @@ export const PaymentMethods = () => {
 
   return (
     <div className="p-6">
+      {/* Show back to checkout button if user came from checkout */}
+      {(() => {
+        const params = new URLSearchParams(window.location.search);
+        return params.get('from') === 'checkout' && (
+          <div className="mb-6 p-4 bg-primary/10 border border-primary/30 rounded-lg">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-primary font-medium">Complete Your Checkout</p>
+                <p className="text-sm text-copy-light">Add a payment method to finish placing your order.</p>
+              </div>
+              <Link
+                to="/checkout"
+                className="px-4 py-2 bg-primary hover:bg-primary-dark text-white rounded-md transition-colors"
+              >
+                Back to Checkout
+              </Link>
+            </div>
+          </div>
+        );
+      })()}
+      
       <h1 className="text-2xl font-bold text-main dark:text-white mb-6">
         Payment Methods
       </h1>
@@ -239,10 +279,10 @@ export const PaymentMethods = () => {
               <div key={method.id} className={`border rounded-lg p-4 ${method.is_default ? 'border-primary bg-primary/5 dark:bg-primary/10' : 'border-gray-200 dark:border-gray-700'}`}>
                 <div className="flex justify-between items-center">
                   <div className="flex items-center">
-                    <span className="mr-3">{getCardIcon(method.provider)}</span>
+                    <span className="mr-3">{getCardIcon(method.brand || method.provider)}</span>
                     <div>
                       <p className="font-medium text-main dark:text-white">
-                        {method.provider.charAt(0).toUpperCase() + method.provider.slice(1)}{' '}
+                        {method.brand?.charAt(0).toUpperCase() + method.brand?.slice(1) || method.provider?.charAt(0).toUpperCase() + method.provider?.slice(1)}{' '}
                         •••• {method.last_four}
                       </p>
                       <p className="text-sm text-gray-500 dark:text-gray-400">

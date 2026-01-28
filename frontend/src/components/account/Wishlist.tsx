@@ -1,7 +1,7 @@
 import React from 'react';
 import { useWishlist } from '../../contexts/WishlistContext';
 import { useCart } from '../../contexts/CartContext';
-import { useAuth } from '../../hooks/useAuth';
+import { useAuth } from '../../contexts/AuthContext';
 import { ShoppingCartIcon, TrashIcon, HeartIcon } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
@@ -9,25 +9,31 @@ import { toast } from 'react-hot-toast';
 export const Wishlist = () => {
   const { defaultWishlist, removeItem, clearWishlist } = useWishlist();
   const { addItem } = useCart();
-  const { executeWithAuth } = useAuth();
+  const { isAuthenticated } = useAuth();
 
   const items = defaultWishlist?.items || [];
 
   const handleAddToCart = async (item) => {
-    await executeWithAuth(async () => {
-      const variant = item.product?.variants?.[0];
-      if (!variant) {
-        toast.error('Product variant not found');
-        return false;
-      }
+    if (!isAuthenticated) {
+      toast.error('Please log in to add items to cart');
+      return;
+    }
 
+    const variant = item.product?.variants?.[0];
+    if (!variant) {
+      toast.error('Product variant not found');
+      return;
+    }
+
+    try {
       await addItem({
         variant_id: String(variant.id),
         quantity: 1,
       });
       toast.success(`${item.product?.name || 'Item'} added to cart`);
-      return true;
-    }, 'cart');
+    } catch (error) {
+      toast.error('Failed to add item to cart');
+    }
   };
 
   const handleRemoveFromWishlist = async (item) => {

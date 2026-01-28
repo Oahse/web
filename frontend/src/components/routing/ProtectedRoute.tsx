@@ -4,43 +4,52 @@ import { useAuth } from '../../contexts/AuthContext';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
-  requiredRole?: string[];
-  showLoadingMessage?: boolean;
+  requireAuth?: boolean;
+  redirectTo?: string;
+  requiredRole?: string | string[];
 }
 
 export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ 
   children, 
-  requiredRole,
-  showLoadingMessage = true
+  requireAuth = true,
+  redirectTo = '/login',
+  requiredRole
 }) => {
   const { isAuthenticated, isLoading, user } = useAuth();
   const location = useLocation();
 
-  // Show loading state while checking authentication
+  // Show loading spinner while checking authentication
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
-          {showLoadingMessage && (
-            <p className="mt-4 text-copy-light">Checking authentication...</p>
-          )}
-        </div>
+        <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
       </div>
     );
   }
 
-  // If not authenticated, redirect to login with return URL
-  if (!isAuthenticated) {
-    const returnUrl = encodeURIComponent(location.pathname + location.search);
-    return <Navigate to={`/login?redirect=${returnUrl}`} replace />;
+  // If authentication is required but user is not authenticated
+  if (requireAuth && !isAuthenticated) {
+    // Save the current location for redirect after login
+    return <Navigate to={redirectTo} state={{ from: location }} replace />;
   }
 
-  // If authenticated but doesn't have required role, redirect to homepage
-  if (requiredRole && user && !requiredRole.includes(user.role)) {
-    return <Navigate to="/" replace />;
+  // Check role requirements if specified
+  if (requireAuth && isAuthenticated && requiredRole && user) {
+    const userRole = user.role;
+    const allowedRoles = Array.isArray(requiredRole) ? requiredRole : [requiredRole];
+    
+    if (!allowedRoles.includes(userRole)) {
+      // User doesn't have required role, redirect to account page
+      return <Navigate to="/account" replace />;
+    }
   }
 
-  // User is authenticated and has required role (if specified)
+  // If user is authenticated but trying to access auth pages (login/register)
+  if (!requireAuth && isAuthenticated && (location.pathname === '/login' || location.pathname === '/register')) {
+    return <Navigate to="/account" replace />;
+  }
+
   return <>{children}</>;
 };
+
+export default ProtectedRoute;

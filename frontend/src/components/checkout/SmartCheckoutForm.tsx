@@ -3,6 +3,7 @@
  * and progressive disclosure to reduce friction
  */
 import React, { useState, useEffect, useCallback } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useCart } from '../../contexts/CartContext';
 import { useLocale } from '../../contexts/LocaleContext';
@@ -15,7 +16,6 @@ import { toast } from 'react-hot-toast';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { CheckCircle, AlertTriangle } from 'lucide-react';
-import { useStripe, useElements, PaymentElement } from '@stripe/react-stripe-js';
 import AddAddressForm from '../forms/AddAddressForm';
 import { 
   handlePriceDiscrepancies, 
@@ -44,9 +44,6 @@ export const SmartCheckoutForm: React.FC<SmartCheckoutFormProps> = ({ onSuccess 
   const { user } = useAuth();
   const { cart, clearCart } = useCart();
   const { formatCurrency, currency, countryCode } = useLocale();
-
-  const stripe = useStripe();
-  const elements = useElements();
   
   // Form state
   const [currentStep, setCurrentStep] = useState(1);
@@ -67,37 +64,7 @@ export const SmartCheckoutForm: React.FC<SmartCheckoutFormProps> = ({ onSuccess 
   const [validationErrors, setValidationErrors] = useState<any>({});
   const [realTimeValidation, setRealTimeValidation] = useState<any>({});
   const [processingPayment, setProcessingPayment] = useState(false);
-  const [clientSecret, setClientSecret] = useState<string | null>(null);
-  const [showNewCardForm, setShowNewCardForm] = useState(false);
-  const [isProcessingStripePayment, setIsProcessingStripePayment] = useState(false);
   const [showAddAddressForm, setShowAddAddressForm] = useState(false);
-
-  const fetchPaymentIntentClientSecret = useCallback(async () => {
-    if (!cart?.id || !user?.id) {
-      toast.error('Cart or user information missing for payment intent creation.');
-      return;
-    }
-
-    try {
-      setIsProcessingStripePayment(true);
-      const response = await OrdersAPI.createPaymentIntent({
-        cart_id: cart.id,
-        user_id: user.id,
-        amount: cart.total_amount,
-        currency: currency.toLowerCase(), // Use user's detected currency
-      });
-      if (response?.data?.client_secret) {
-        setClientSecret(response.data.client_secret);
-      } else {
-        toast.error('Failed to get payment intent client secret.');
-      }
-    } catch (error) {
-      console.error('Error fetching payment intent client secret:', error);
-      toast.error('Failed to initialize payment. Please try again.');
-    } finally {
-      setIsProcessingStripePayment(false);
-    }
-  }, [cart, user, currency]);
 
   // Auto-save form data to localStorage
   useEffect(() => {
@@ -360,7 +327,6 @@ export const SmartCheckoutForm: React.FC<SmartCheckoutFormProps> = ({ onSuccess 
     if (!validateStep(3)) return;
 
     setProcessingPayment(true);
-    setIsProcessingStripePayment(true); // Indicate Stripe processing is active
     
     try {
       // Final validation before checkout
@@ -369,7 +335,6 @@ export const SmartCheckoutForm: React.FC<SmartCheckoutFormProps> = ({ onSuccess 
       if (!finalValidation.data?.can_proceed) {
         toast.error('Checkout validation failed. Please review your cart.');
         setCurrentStep(1); // Go back to review cart
-        setIsProcessingStripePayment(false);
         return;
       }
 
@@ -385,7 +350,6 @@ export const SmartCheckoutForm: React.FC<SmartCheckoutFormProps> = ({ onSuccess 
         // If there are critical price errors, block checkout
         const hasErrors = finalValidation.data.price_discrepancies.some(d => d.severity === 'error');
         if (hasErrors) {
-          setIsProcessingStripePayment(false);
           return;
         }
       }
@@ -399,48 +363,11 @@ export const SmartCheckoutForm: React.FC<SmartCheckoutFormProps> = ({ onSuccess 
           `Price mismatch detected. Frontend: ${formatCurrency(frontendTotal)}, Backend: ${formatCurrency(backendTotal)}. Please refresh and try again.`,
           { duration: 8000 }
         );
-        setIsProcessingStripePayment(false);
         return;
       }
       
-      let finalPaymentMethodId = formData.payment_method_id;
-
-      // Handle new card payment via Stripe
-      if (showNewCardForm && stripe && elements && clientSecret) {
-        const { error: submitError } = await elements.submit();
-        if (submitError) {
-          toast.error(submitError.message || 'Failed to submit payment details.');
-          setIsProcessingStripePayment(false);
-          return;
-        }
-
-        const { paymentIntent, error: confirmError } = await stripe.confirmPayment({
-          elements,
-          clientSecret,
-          confirmParams: {
-            return_url: `${window.location.origin}/checkout`, // URL to redirect after successful payment
-          },
-          redirect: 'if_required'
-        });
-        
-        if (confirmError) {
-          toast.error(confirmError.message || 'Payment confirmation failed.');
-          setIsProcessingStripePayment(false);
-          return;
-        }
-
-        if (paymentIntent?.status === 'succeeded' && paymentIntent.payment_method) {
-          finalPaymentMethodId = paymentIntent.payment_method as string;
-          // Optionally, save the new payment method to user's profile
-          // await AuthAPI.addPaymentMethod({ payment_method_id: finalPaymentMethodId });
-        } else {
-          toast.error('Payment not successful. Please try again.');
-          setIsProcessingStripePayment(false);
-          return;
-        }
-      } else if (!finalPaymentMethodId) {
-        toast.error('Please select a payment method or add a new card.');
-        setIsProcessingStripePayment(false);
+      if (!formData.payment_method_id) {
+        toast.error('Please select a payment method.');
         return;
       }
       
@@ -450,7 +377,6 @@ export const SmartCheckoutForm: React.FC<SmartCheckoutFormProps> = ({ onSuccess 
       // Add idempotency key, calculated total, and user's currency/location for validation
       const checkoutData = {
         ...formData,
-        payment_method_id: finalPaymentMethodId, // Use the new payment method ID if applicable
         idempotency_key: idempotencyKey,
         frontend_calculated_total: cart?.total_amount || 0,
         currency: currency, // Pass user's detected currency
@@ -545,7 +471,6 @@ export const SmartCheckoutForm: React.FC<SmartCheckoutFormProps> = ({ onSuccess 
       toast.error('An unexpected error occurred. Please try again.');
     } finally {
       setProcessingPayment(false);
-      setIsProcessingStripePayment(false); // Reset Stripe processing state
     }
   };
 
@@ -824,7 +749,7 @@ export const SmartCheckoutForm: React.FC<SmartCheckoutFormProps> = ({ onSuccess 
                     <label
                       key={method.id}
                       className={`block p-4 border rounded-lg cursor-pointer transition-colors ${
-                        formData.payment_method_id === method.id && !showNewCardForm
+                        formData.payment_method_id === method.id
                           ? 'border-primary bg-primary/10'
                           : 'border hover:border-strong'
                       }`}
@@ -833,10 +758,9 @@ export const SmartCheckoutForm: React.FC<SmartCheckoutFormProps> = ({ onSuccess 
                         type="radio"
                         name="payment_method"
                         value={method.id}
-                        checked={formData.payment_method_id === method.id && !showNewCardForm}
+                        checked={formData.payment_method_id === method.id}
                         onChange={(e) => {
                           setFormData(prev => ({ ...prev, payment_method_id: e.target.value }));
-                          setShowNewCardForm(false);
                         }}
                         className="sr-only"
                       />
@@ -863,44 +787,24 @@ export const SmartCheckoutForm: React.FC<SmartCheckoutFormProps> = ({ onSuccess 
                     </label>
                   ))}
                   
-                  {/* Option to add a new card */}
-                  <label
-                    className={`block p-4 border rounded-lg cursor-pointer transition-colors ${
-                      showNewCardForm
-                        ? 'border-primary bg-primary/10'
-                        : 'border hover:border-strong'
-                    }`}
-                  >
-                    <input
-                      type="radio"
-                      name="payment_method"
-                      value="new_card"
-                      checked={showNewCardForm}
-                      onChange={() => {
-                        setShowNewCardForm(true);
-                        setFormData(prev => ({ ...prev, payment_method_id: null })); // Clear selected payment method
-                        if (!clientSecret) {
-                          fetchPaymentIntentClientSecret();
-                        }
-                      }}
-                      className="sr-only"
-                    />
-                    <div className="flex items-center space-x-3">
-                      <div className="w-8 h-6 bg-surface-active rounded flex items-center justify-center text-xs font-bold">
-                        NEW
-                      </div>
-                      <div className="font-medium text-copy">Use a new card</div>
-                    </div>
-                  </label>
-
-                  {/* Stripe Payment Element for new card input */}
-                  {showNewCardForm && clientSecret && (
-                    <div className="mt-4 p-4 border rounded-lg">
-                      <PaymentElement options={{ layout: "tabs" }} />
+                  {/* Option to add a new card - only show if there are existing payment methods */}
+                  {safePaymentMethods.length > 0 && (
+                    <div className="mt-4 pt-4 border-t border-border">
+                      <Link
+                        to="/account/payment-methods?from=checkout"
+                        className="flex items-center justify-center p-4 border border-dashed border-primary/50 rounded-lg hover:border-primary hover:bg-primary/5 transition-colors text-primary"
+                      >
+                        <div className="flex items-center space-x-3">
+                          <div className="w-8 h-6 bg-primary/20 rounded flex items-center justify-center text-xs font-bold text-primary">
+                            +
+                          </div>
+                          <div className="font-medium">Add New Card</div>
+                        </div>
+                      </Link>
                     </div>
                   )}
 
-                  {safePaymentMethods.length === 0 && !showNewCardForm && (
+                  {safePaymentMethods.length === 0 && (
                     <div className="text-center py-8">
                       <div className="bg-surface rounded-lg p-6 border border-border">
                         <div className="text-copy-light mb-4">
@@ -910,19 +814,12 @@ export const SmartCheckoutForm: React.FC<SmartCheckoutFormProps> = ({ onSuccess 
                           <p className="text-copy">No payment methods found</p>
                           <p className="text-copy-light text-sm">Please add a payment method to continue with your order.</p>
                         </div>
-                        <Button
-                          onClick={() => {
-                            setShowNewCardForm(true);
-                            setFormData(prev => ({ ...prev, payment_method_id: null }));
-                            if (!clientSecret) {
-                              fetchPaymentIntentClientSecret();
-                            }
-                          }}
-                          className="mt-4"
-                          variant="outline"
+                        <Link
+                          to="/account/payment-methods?from=checkout"
+                          className="inline-flex items-center px-4 py-2 bg-primary hover:bg-primary-dark text-white rounded-md transition-colors"
                         >
                           Add New Card
-                        </Button>
+                        </Link>
                       </div>
                     </div>
                   )}
@@ -1021,7 +918,7 @@ export const SmartCheckoutForm: React.FC<SmartCheckoutFormProps> = ({ onSuccess 
                     value={formData.notes}
                     onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
                     placeholder="Any special instructions for your order..."
-                    className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                    className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary resize-y min-h-[80px] max-h-[200px] bg-surface text-copy placeholder-copy-light dark:bg-gray-700 dark:text-white dark:border-gray-600 dark:placeholder-gray-400"
                     rows={3}
                   />
                 </div>

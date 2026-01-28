@@ -35,7 +35,9 @@ export const Addresses = () => {
   // Sync local state with fetched data
   useEffect(() => {
     if (addresses) {
-      setLocalAddresses(Array.isArray(addresses) ? addresses : []);
+      // Handle the Response.success wrapper structure
+      const data = (addresses as any)?.success ? (addresses as any).data : addresses;
+      setLocalAddresses(Array.isArray(data) ? data : []);
     }
   }, [addresses]);
 

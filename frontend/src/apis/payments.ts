@@ -3,7 +3,16 @@ import { apiClient, TokenManager } from './client';
 
 export class PaymentsAPI {
   static async getPaymentMethods() {
-    return await apiClient.get('/payments/methods', {});
+    console.log('PaymentsAPI: Making request to /payments/methods');
+    console.log('PaymentsAPI: Token available:', !!TokenManager.getToken());
+    try {
+      const response = await apiClient.get('/payments/methods', {});
+      console.log('PaymentsAPI.getPaymentMethods response:', response);
+      return response;
+    } catch (error) {
+      console.error('PaymentsAPI: Error fetching payment methods:', error);
+      throw error;
+    }
   }
 
   static async addPaymentMethod(data: any) {

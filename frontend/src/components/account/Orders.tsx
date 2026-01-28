@@ -22,7 +22,15 @@ export const Orders = ({
     execute(OrdersAPI.getOrders);
   }, [execute]);
 
-  const orders = paginatedData || [];
+  // Handle the response structure properly
+  const orders = (() => {
+    if (!paginatedData) return [];
+    // Handle Response.success wrapper
+    if ((paginatedData as any)?.success) {
+      return (paginatedData as any).data || [];
+    }
+    return Array.isArray(paginatedData) ? paginatedData : [];
+  })();
 
   const toggleOrderExpand = (orderId) => {
     setExpandedOrderId(expandedOrderId === orderId ? null : orderId);

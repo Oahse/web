@@ -46,8 +46,14 @@ export const Account = () => {
   useEffect(() => {
     if (!user) {
       navigate('/login');
+    } else {
+      // Check if user came from checkout and should be redirected to payment methods
+      const params = new URLSearchParams(location.search);
+      if (params.get('from') === 'checkout' && location.pathname === '/account') {
+        navigate('/account/payment-methods', { replace: true });
+      }
     }
-  }, [user, navigate]);
+  }, [user, navigate, location]);
 
   if (!user) {
     return <LoadingSpinner />;
