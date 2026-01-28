@@ -7,6 +7,7 @@ import { usePaginatedApi } from '../../hooks/useAsync';
 import OrdersAPI from '../../apis/orders';
 import { toast } from 'react-hot-toast';
 import { useLocale } from '../../contexts/LocaleContext';
+import { useLocale } from '../../contexts/LocaleContext';
 
 interface Order {
   id: string;
