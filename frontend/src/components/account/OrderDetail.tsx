@@ -3,7 +3,6 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { ArrowLeftIcon, PackageIcon, DownloadIcon, MapPinIcon } from 'lucide-react';
 import { OrdersAPI } from '../../apis/orders';
 import { toast } from 'react-hot-toast';
-import { getBestPrice, formatPriceWithFallback } from '../../lib/price-utils';
 
 export const OrderDetail = () => {
   const { orderId } = useParams();
@@ -173,14 +172,11 @@ export const OrderDetail = () => {
                       </p>
                     )}
                     <p className="text-sm text-gray-500 dark:text-gray-400">
-                      Quantity: {item.quantity} × ${(() => {
-                        const unitPrice = (item.price_per_unit || 0);
-                        return unitPrice > 0 ? unitPrice.toFixed(2) : 'Price not set';
-                      })()}
+                      Quantity: {item.quantity} × ${(item.price_per_unit || 0).toFixed(2)}
                     </p>
                   </div>
                   <p className="font-medium text-gray-900 dark:text-white whitespace-nowrap">
-                    ${item.total_price > 0 ? item.total_price.toFixed(2) : 'Price not set'}
+                    ${item.total_price?.toFixed(2)}
                   </p>
                 </div>
               );
@@ -202,9 +198,7 @@ export const OrderDetail = () => {
               <>
                 <div className="flex justify-between items-center mb-2">
                   <span className="text-gray-600 dark:text-gray-400">Subtotal</span>
-                  <span className="text-gray-900 dark:text-white">
-                    ${displaySubtotal > 0 ? displaySubtotal.toFixed(2) : 'Price not set'}
-                  </span>
+                  <span className="text-gray-900 dark:text-white">${displaySubtotal.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between items-center mb-2">
                   <span className="text-gray-600 dark:text-gray-400">Shipping</span>
@@ -216,9 +210,7 @@ export const OrderDetail = () => {
                 </div>
                 <div className="flex justify-between items-center text-lg font-semibold border-t border-gray-200 dark:border-gray-700 pt-2 mt-2">
                   <span className="text-gray-900 dark:text-white">Total</span>
-                  <span className="text-gray-900 dark:text-white">
-                    ${order.total_amount > 0 ? order.total_amount.toFixed(2) : 'Price not set'}
-                  </span>
+                  <span className="text-gray-900 dark:text-white">${order.total_amount?.toFixed(2)}</span>
                 </div>
               </>
             );

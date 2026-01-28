@@ -14,7 +14,6 @@ import { SubscriptionSelector } from '../subscription/SubscriptionSelector';
 import SubscriptionAPI from '../../apis/subscription';
 import { toast } from 'react-hot-toast';
 import { cn } from '../../lib/utils';
-import { getBestPrice, formatPriceWithFallback, getPriceBreakdown } from '../../lib/price-utils';
 
 /**
  * @typedef {object} ProductVariantImage
@@ -117,19 +116,20 @@ export const ProductCard = ({
   // Get the display price (variant price or product price)
   const getDisplayPrice = () => {
     if (displayVariant) {
-      const priceBreakdown = getPriceBreakdown(displayVariant);
       return {
-        basePrice: displayVariant.base_price || 0,
+        basePrice: displayVariant.base_price,
         salePrice: displayVariant.sale_price || null,
-        currentPrice: getBestPrice(displayVariant),
-        discountPercentage: priceBreakdown.discountPercentage
+        currentPrice: displayVariant.sale_price || displayVariant.base_price,
+        discountPercentage: displayVariant.sale_price 
+          ? Math.round(((displayVariant.base_price - displayVariant.sale_price) / displayVariant.base_price) * 100)
+          : 0
       };
     }
     return {
-      basePrice: product.price || 0,
-      salePrice: product.discountPrice || null,
-      currentPrice: product.discountPrice || product.price || 0,
-      discountPercentage: product.discountPrice && product.price
+      basePrice: product.price,
+      salePrice: product.discountPrice,
+      currentPrice: product.discountPrice || product.price,
+      discountPercentage: product.discountPrice 
         ? Math.round(((product.price - product.discountPrice) / product.price) * 100)
         : 0
     };
@@ -342,10 +342,10 @@ export const ProductCard = ({
             {salePrice && discountPercentage > 0 ? (
               <div className="flex items-center flex-wrap">
                 <span className="font-bold text-primary mr-2 text-sm sm:text-base">
-                  {currentPrice > 0 ? formatCurrency(currentPrice) : 'Price not set'}
+                  {formatCurrency(currentPrice)}
                 </span>
                 <span className="text-xs text-copy-lighter line-through">
-                  {basePrice > 0 ? formatCurrency(basePrice) : 'Price not set'}
+                  {formatCurrency(basePrice)}
                 </span>
                 <span className="bg-error text-white text-xs font-medium px-2 py-1 rounded-full ml-2">
                   -{discountPercentage}%
@@ -353,7 +353,7 @@ export const ProductCard = ({
               </div>
             ) : (
               <span className="font-bold text-primary text-sm sm:text-base">
-                {currentPrice > 0 ? formatCurrency(currentPrice) : 'Price not set'}
+                {formatCurrency(currentPrice)}
               </span>
             )}
             {displayVariant && (

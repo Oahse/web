@@ -65,12 +65,12 @@ export const OrderItemDetails = ({ productId, quantity, price }) => {
             const variantPrice = getBestPrice(variant || {});
             // Use the order item price if available, otherwise fall back to variant price
             const displayPrice = unitPrice > 0 ? unitPrice : variantPrice;
-            return displayPrice > 0 ? displayPrice.toFixed(2) : 'Price not set';
+            return displayPrice.toFixed(2);
           })()}
         </p>
       </div>
       <p className="font-medium text-main dark:text-white">
-        ${price > 0 ? price.toFixed(2) : 'Price not set'}
+        ${price.toFixed(2)}
       </p>
     </div>
   );

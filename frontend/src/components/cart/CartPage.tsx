@@ -35,7 +35,7 @@ const CartItem = ({ item, onUpdate, onRemove }) => {
         <div className="flex-1 min-w-0">
           <h3 className="font-medium text-gray-900 truncate">{name}</h3>
           <p className="text-lg font-semibold text-gray-900 mt-1">
-            ${price > 0 ? price.toFixed(2) : 'Price not set'}
+            ${price?.toFixed(2)}
           </p>
           
           {/* Mobile quantity controls */}

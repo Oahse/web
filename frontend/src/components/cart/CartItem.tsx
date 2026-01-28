@@ -284,10 +284,10 @@ export const CartItem: React.FC<CartItemProps> = ({
       {/* Price */}
       <div className="text-right min-w-0">
         <div className="price text-sm font-medium text-gray-900">
-          ${totalPrice > 0 ? totalPrice.toFixed(2) : 'Price not set'}
+          ${totalPrice.toFixed(2)}
         </div>
         <div className="body-text text-xs text-gray-500">
-          ${item.price_per_unit > 0 ? item.price_per_unit.toFixed(2) : 'Price not set'} each
+          ${item.price_per_unit.toFixed(2)} each
         </div>
       </div>
 
