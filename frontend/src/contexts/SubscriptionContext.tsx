@@ -28,6 +28,9 @@ interface SubscriptionContextType {
   createSubscription: (data: any) => Promise<Subscription | null>;
   updateSubscription: (subscriptionId: string, data: any) => Promise<Subscription | null>;
   cancelSubscription: (subscriptionId: string) => Promise<boolean>;
+  activateSubscription: (subscriptionId: string) => Promise<boolean>;
+  pauseSubscription: (subscriptionId: string, reason?: string) => Promise<boolean>;
+  resumeSubscription: (subscriptionId: string) => Promise<boolean>;
   addProductsToSubscription: (subscriptionId: string, variantIds: string[]) => Promise<boolean>;
   removeProductsFromSubscription: (subscriptionId: string, variantIds: string[]) => Promise<boolean>;
 }
@@ -147,6 +150,78 @@ export const SubscriptionProvider: React.FC<SubscriptionProviderProps> = ({ chil
     }
   }, [isAuthenticated, refreshSubscriptions]);
 
+  const activateSubscription = useCallback(async (subscriptionId: string): Promise<boolean> => {
+    if (!isAuthenticated) {
+      toast.error('Please log in to activate subscription');
+      return false;
+    }
+
+    try {
+      await SubscriptionAPI.activateSubscription(subscriptionId);
+      
+      // Optimistically update the state
+      setSubscriptions(prev => 
+        prev.map(sub => sub.id === subscriptionId ? { ...sub, status: 'active' } : sub)
+      );
+      toast.success('Subscription activated successfully');
+      return true;
+    } catch (error) {
+      console.error('Failed to activate subscription:', error);
+      toast.error('Failed to activate subscription');
+      // Refresh to get the correct state
+      refreshSubscriptions();
+      return false;
+    }
+  }, [isAuthenticated, refreshSubscriptions]);
+
+  const pauseSubscription = useCallback(async (subscriptionId: string, reason?: string): Promise<boolean> => {
+    if (!isAuthenticated) {
+      toast.error('Please log in to pause subscription');
+      return false;
+    }
+
+    try {
+      await SubscriptionAPI.pauseSubscription(subscriptionId, reason);
+      
+      // Optimistically update the state
+      setSubscriptions(prev => 
+        prev.map(sub => sub.id === subscriptionId ? { ...sub, status: 'paused' } : sub)
+      );
+      toast.success('Subscription paused successfully');
+      return true;
+    } catch (error) {
+      console.error('Failed to pause subscription:', error);
+      toast.error('Failed to pause subscription');
+      // Refresh to get the correct state
+      refreshSubscriptions();
+      return false;
+    }
+  }, [isAuthenticated, refreshSubscriptions]);
+
+  const resumeSubscription = useCallback(async (subscriptionId: string): Promise<boolean> => {
+    if (!isAuthenticated) {
+      toast.error('Please log in to resume subscription');
+      return false;
+    }
+
+    try {
+      await SubscriptionAPI.resumeSubscription(subscriptionId);
+      
+      // Optimistically update the state
+      setSubscriptions(prev => 
+        prev.map(sub => sub.id === subscriptionId ? { ...sub, status: 'active' } : sub)
+      );
+      toast.success('Subscription resumed successfully');
+      return true;
+    } catch (error) {
+      console.error('Failed to resume subscription:', error);
+      toast.error('Failed to resume subscription');
+      // Refresh to get the correct state
+      refreshSubscriptions();
+      return false;
+    }
+  }, [isAuthenticated, refreshSubscriptions]);
+
   const addProductsToSubscription = useCallback(async (subscriptionId: string, variantIds: string[]): Promise<boolean> => {
     if (!isAuthenticated) {
       toast.error('Please log in to modify subscription');
@@ -206,6 +281,9 @@ export const SubscriptionProvider: React.FC<SubscriptionProviderProps> = ({ chil
     createSubscription,
     updateSubscription,
     cancelSubscription,
+    activateSubscription,
+    pauseSubscription,
+    resumeSubscription,
     addProductsToSubscription,
     removeProductsFromSubscription,
   };

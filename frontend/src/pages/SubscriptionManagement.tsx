@@ -97,6 +97,7 @@ export const SubscriptionManagement = () => {
       if (success) {
         setSelectedProducts(new Set());
         await loadSubscriptionData(); // Refresh subscription data
+        toast.success(`Successfully added ${variantIds.length} product${variantIds.length !== 1 ? 's' : ''} to your subscription`);
       }
     } catch (error) {
       console.error('Failed to add products:', error);
@@ -107,10 +108,15 @@ export const SubscriptionManagement = () => {
   };
 
   const handleRemoveProduct = async (variantId) => {
+    if (!window.confirm('Are you sure you want to remove this product from your subscription?')) {
+      return;
+    }
+
     try {
       const success = await removeProductsFromSubscription(subscriptionId, [variantId]);
       if (success) {
         await loadSubscriptionData(); // Refresh subscription data
+        toast.success('Product removed from subscription successfully');
       }
     } catch (error) {
       console.error('Failed to remove product:', error);
@@ -119,13 +125,22 @@ export const SubscriptionManagement = () => {
   };
 
   const handleCancelSubscription = async () => {
+    if (subscription.status === 'cancelled') {
+      toast.error('This subscription is already cancelled');
+      setShowCancelDialog(false);
+      return;
+    }
+
     try {
       setIsCancelling(true);
       const success = await cancelSubscription(subscriptionId);
       if (success) {
         setShowCancelDialog(false);
+        toast.success('Subscription cancelled successfully');
         // Redirect to subscriptions list after successful cancellation
-        window.location.href = '/account/subscriptions';
+        setTimeout(() => {
+          window.location.href = '/account/subscriptions';
+        }, 1500);
       }
     } catch (error) {
       console.error('Failed to cancel subscription:', error);
@@ -270,16 +285,18 @@ export const SubscriptionManagement = () => {
           </div>
 
           {/* Cancel Subscription Button */}
-          <div className="flex justify-end">
-            <Button
-              onClick={() => setShowCancelDialog(true)}
-              variant="outline"
-              className="text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300"
-            >
-              <TrashIcon size={16} className="mr-2" />
-              Cancel Subscription
-            </Button>
-          </div>
+          {subscription.status !== 'cancelled' && (
+            <div className="flex justify-end">
+              <Button
+                onClick={() => setShowCancelDialog(true)}
+                variant="outline"
+                className="text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300"
+              >
+                <TrashIcon size={16} className="mr-2" />
+                Cancel Subscription
+              </Button>
+            </div>
+          )}
         </div>
 
         {/* Current Products */}

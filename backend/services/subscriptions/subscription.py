@@ -545,18 +545,20 @@ class SubscriptionService:
         subscription_id: UUID,
         user_id: UUID
     ) -> Subscription:
-        """Resume a paused subscription with atomic status update"""
+        """Resume a paused or activate a cancelled subscription with atomic status update"""
         subscription = await self.get_subscription_by_id(subscription_id, user_id, for_update=True)
         
         if not subscription:
             raise HTTPException(status_code=404, detail="Subscription not found")
         
-        if subscription.status != "paused":
-            raise HTTPException(status_code=400, detail="Can only resume paused subscriptions")
+        if subscription.status not in ["paused", "cancelled"]:
+            raise HTTPException(status_code=400, detail="Can only resume paused or activate cancelled subscriptions")
         
         subscription.status = "active"
         subscription.paused_at = None
         subscription.pause_reason = None
+        subscription.cancelled_at = None
+        subscription.cancellation_reason = None
         
         # Update next billing date
         subscription.next_billing_date = datetime.utcnow() + timedelta(days=30)

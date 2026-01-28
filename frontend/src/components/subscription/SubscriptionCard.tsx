@@ -7,9 +7,8 @@ import {
   PauseIcon,
   PlayIcon,
   TrashIcon,
-  EditIcon,
-  MoreVerticalIcon,
   PackageIcon
+} from 'lucide-react';
 } from 'lucide-react';
 import { themeClasses, combineThemeClasses, getButtonClasses } from '../../lib/themeClasses';
 import { useLocale } from '../../contexts/LocaleContext';
@@ -40,6 +39,7 @@ interface SubscriptionCardProps {
   onCancel?: (subscriptionId: string) => void;
   onPause?: (subscriptionId: string) => void;
   onResume?: (subscriptionId: string) => void;
+  onActivate?: (subscriptionId: string) => void;
   showActions?: boolean;
   compact?: boolean;
 }
@@ -53,7 +53,6 @@ export const SubscriptionCard: React.FC<SubscriptionCardProps> = ({
   showActions = true,
   compact = false
 }) => {
-  const [showMenu, setShowMenu] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   const { formatCurrency } = useLocale();
 
@@ -147,22 +146,37 @@ export const SubscriptionCard: React.FC<SubscriptionCardProps> = ({
     )}>
       {/* Header */}
       <div className="p-6 pb-4">
-        <div className="flex items-start justify-between mb-4">
-          <div>
-            <h3 className={combineThemeClasses(themeClasses.text.heading, 'text-xl font-bold mb-2')}>
-              {subscription.plan_id.charAt(0).toUpperCase() + subscription.plan_id.slice(1)} Plan
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between mb-4">
+          {/* Left: Plan info */}
+          <div className="min-w-0">
+            <h3
+              className={combineThemeClasses(
+                themeClasses.text.heading,
+                'text-lg sm:text-xl font-bold mb-1 truncate'
+              )}
+            >
+              {subscription.plan_id.charAt(0).toUpperCase() +
+                subscription.plan_id.slice(1)}{" "}
+              Plan
             </h3>
-            <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-1">
-                <CreditCardIcon className={combineThemeClasses(themeClasses.text.muted, 'w-4 h-4')} />
-                <span className={combineThemeClasses(themeClasses.text.secondary, 'text-sm')}>
-                  {formatCurrency(subscription.price, subscription.currency)} / {formatBillingCycle(subscription.billing_cycle)}
+
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
+              <div className="flex items-center gap-1">
+                <CreditCardIcon
+                  className={combineThemeClasses(themeClasses.text.muted, 'w-4 h-4')}
+                />
+                <span className={themeClasses.text.secondary}>
+                  {formatCurrency(subscription.price, subscription.currency)} /{" "}
+                  {formatBillingCycle(subscription.billing_cycle)}
                 </span>
               </div>
+
               {subscription.products && (
-                <div className="flex items-center space-x-1">
-                  <ShoppingBagIcon className={combineThemeClasses(themeClasses.text.muted, 'w-4 h-4')} />
-                  <span className={combineThemeClasses(themeClasses.text.secondary, 'text-sm')}>
+                <div className="flex items-center gap-1">
+                  <ShoppingBagIcon
+                    className={combineThemeClasses(themeClasses.text.muted, 'w-4 h-4')}
+                  />
+                  <span className={themeClasses.text.secondary}>
                     {subscription.products.length} products
                   </span>
                 </div>
@@ -170,97 +184,73 @@ export const SubscriptionCard: React.FC<SubscriptionCardProps> = ({
             </div>
           </div>
 
-          <div className="flex items-center space-x-3">
-            <span className={`px-3 py-1 text-sm font-medium rounded-full border ${getStatusColor(subscription.status)}`}>
-              {subscription.status.charAt(0).toUpperCase() + subscription.status.slice(1)}
+          {/* Right: Status + Actions */}
+          <div className="flex items-center justify-between sm:justify-end gap-3">
+            {/* Status badge */}
+            <span
+              className={combineThemeClasses(
+                'px-2 py-0.5 text-[11px] font-medium rounded-full border whitespace-nowrap',
+                getStatusColor(subscription.status)
+              )}
+            >
+              {subscription.status.charAt(0).toUpperCase() +
+                subscription.status.slice(1)}
             </span>
-            
-            {showActions && (
-              <div className="relative">
-                <button
-                  onClick={() => setShowMenu(!showMenu)}
-                  className={combineThemeClasses(
-                    'p-2 rounded-lg transition-colors duration-200',
-                    themeClasses.text.muted,
-                    'hover:bg-gray-100'
-                  )}
-                >
-                  <MoreVerticalIcon className="w-5 h-5" />
-                </button>
 
-                {showMenu && (
-                  <div className={combineThemeClasses(
-                    'absolute right-0 top-full mt-2 w-48 rounded-lg shadow-lg border z-10',
-                    themeClasses.background.surface,
-                    themeClasses.border.light
-                  )}>
-                    <div className="py-1">
-                      <Link
-                        to={`/account/subscriptions/${subscription.id}`}
-                        className={combineThemeClasses(
-                          'flex items-center px-4 py-2 text-sm transition-colors duration-200',
-                          themeClasses.text.primary,
-                          'hover:bg-gray-50'
-                        )}
-                        onClick={() => setShowMenu(false)}
-                      >
-                        <EditIcon className="w-4 h-4 mr-2" />
-                        Manage Products
-                      </Link>
-                      
-                      {subscription.status === 'active' && onPause && (
-                        <button
-                          onClick={() => {
-                            onPause(subscription.id);
-                            setShowMenu(false);
-                          }}
-                          className={combineThemeClasses(
-                            'flex items-center w-full px-4 py-2 text-sm transition-colors duration-200',
-                            themeClasses.text.primary,
-                            'hover:bg-gray-50'
-                          )}
-                        >
-                          <PauseIcon className="w-4 h-4 mr-2" />
-                          Pause Subscription
-                        </button>
-                      )}
-                      
-                      {subscription.status === 'paused' && onResume && (
-                        <button
-                          onClick={() => {
-                            onResume(subscription.id);
-                            setShowMenu(false);
-                          }}
-                          className={combineThemeClasses(
-                            'flex items-center w-full px-4 py-2 text-sm transition-colors duration-200',
-                            themeClasses.text.primary,
-                            'hover:bg-gray-50'
-                          )}
-                        >
-                          <PlayIcon className="w-4 h-4 mr-2" />
-                          Resume Subscription
-                        </button>
-                      )}
-                      
-                      {onCancel && (
-                        <button
-                          onClick={() => {
-                            onCancel(subscription.id);
-                            setShowMenu(false);
-                          }}
-                          className="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors duration-200"
-                        >
-                          <TrashIcon className="w-4 h-4 mr-2" />
-                          Cancel Subscription
-                        </button>
-                      )}
-                    </div>
-                  </div>
+            {showActions && (
+              <div className="flex items-center gap-2">
+                {/* Pause/Resume Button */}
+                {subscription.status === 'active' && onPause && (
+                  <button
+                    onClick={() => onPause(subscription.id)}
+                    className={combineThemeClasses(
+                      'p-2 rounded-md transition-colors',
+                      'text-yellow-600 hover:bg-yellow-50',
+                      'border border-yellow-200 hover:border-yellow-300'
+                    )}
+                    title="Pause Subscription"
+                  >
+                    <PauseIcon className="w-4 h-4" />
+                  </button>
+                )}
+
+                {subscription.status === 'paused' && onResume && (
+                  <button
+                    onClick={() => onResume(subscription.id)}
+                    className={combineThemeClasses(
+                      'p-2 rounded-md transition-colors',
+                      'text-green-600 hover:bg-green-50',
+                      'border border-green-200 hover:border-green-300'
+                    )}
+                    title="Resume Subscription"
+                  >
+                    <PlayIcon className="w-4 h-4" />
+                  </button>
+                )}
+
+                {/* Cancel Button */}
+                {(subscription.status === 'active' || subscription.status === 'paused') && onCancel && (
+                  <button
+                    onClick={() => {
+                      if (window.confirm('Are you sure you want to cancel this subscription? This action cannot be undone.')) {
+                        onCancel(subscription.id);
+                      }
+                    }}
+                    className={combineThemeClasses(
+                      'p-2 rounded-md transition-colors',
+                      'text-red-600 hover:bg-red-50',
+                      'border border-red-200 hover:border-red-300'
+                    )}
+                    title="Cancel Subscription"
+                  >
+                    <TrashIcon className="w-4 h-4" />
+                  </button>
                 )}
               </div>
             )}
           </div>
         </div>
+
 
         {/* Next Billing Date */}
         {subscription.next_billing_date && subscription.status === 'active' && (

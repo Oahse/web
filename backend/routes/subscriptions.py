@@ -465,7 +465,7 @@ async def resume_subscription(
     current_user: User = Depends(get_current_auth_user),
     db: AsyncSession = Depends(get_db)
 ):
-    """Resume a paused subscription."""
+    """Resume a paused subscription or activate a cancelled subscription."""
     try:
         subscription_service = SubscriptionService(db)
         subscription = await subscription_service.resume_subscription(
@@ -481,16 +481,17 @@ async def resume_subscription(
             subscription.next_billing_date
         )
         
+        action_message = "resumed" if subscription.status == "active" else "activated"
         return Response.success(
             data=subscription.to_dict(include_products=True),
-            message="Subscription resumed successfully"
+            message=f"Subscription {action_message} successfully"
         )
     except APIException:
         raise
     except Exception as e:
         raise APIException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            message=f"Failed to resume subscription: {str(e)}"
+            message=f"Failed to resume/activate subscription: {str(e)}"
         )
 
 

@@ -49,6 +49,18 @@ class SubscriptionAPI {
     return apiClient.delete(`/subscriptions/${subscriptionId}/products`, { data: variantIds });
   }
 
+  async activateSubscription(subscriptionId: string) {
+    return apiClient.post(`/subscriptions/${subscriptionId}/resume`);
+  }
+
+  async pauseSubscription(subscriptionId: string, reason?: string) {
+    return apiClient.post(`/subscriptions/${subscriptionId}/pause`, { pause_reason: reason });
+  }
+
+  async resumeSubscription(subscriptionId: string) {
+    return apiClient.post(`/subscriptions/${subscriptionId}/resume`);
+  }
+
   // New methods for fetching shipping methods and calculating tax
   async getShippingMethods() {
     return apiClient.get('/admin/shipping-methods');

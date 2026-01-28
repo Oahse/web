@@ -32,6 +32,9 @@ export const MySubscriptions = () => {
     createSubscription, 
     updateSubscription, 
     cancelSubscription,
+    activateSubscription,
+    pauseSubscription,
+    resumeSubscription,
     addProductsToSubscription,
     removeProductsFromSubscription 
   } = useSubscription();
@@ -173,13 +176,46 @@ export const MySubscriptions = () => {
   };
 
   const handleDeleteSubscription = async (subscriptionId: string) => {
-    if (!confirm('Are you sure you want to delete this subscription?')) return;
+    if (!confirm('Are you sure you want to cancel this subscription?')) return;
     
     try {
       await cancelSubscription(subscriptionId);
     } catch (error) {
-      console.error('Failed to delete subscription:', error);
-      toast.error('Failed to delete subscription');
+      console.error('Failed to cancel subscription:', error);
+      toast.error('Failed to cancel subscription');
+    }
+  };
+
+  const handleActivateSubscription = async (subscriptionId: string) => {
+    if (!confirm('Are you sure you want to activate this subscription?')) return;
+    
+    try {
+      await activateSubscription(subscriptionId);
+    } catch (error) {
+      console.error('Failed to activate subscription:', error);
+      toast.error('Failed to activate subscription');
+    }
+  };
+
+  const handlePauseSubscription = async (subscriptionId: string) => {
+    const reason = prompt('Please provide a reason for pausing (optional):');
+    
+    try {
+      await pauseSubscription(subscriptionId, reason || undefined);
+    } catch (error) {
+      console.error('Failed to pause subscription:', error);
+      toast.error('Failed to pause subscription');
+    }
+  };
+
+  const handleResumeSubscription = async (subscriptionId: string) => {
+    if (!confirm('Are you sure you want to resume this subscription?')) return;
+    
+    try {
+      await resumeSubscription(subscriptionId);
+    } catch (error) {
+      console.error('Failed to resume subscription:', error);
+      toast.error('Failed to resume subscription');
     }
   };
 
@@ -276,6 +312,9 @@ export const MySubscriptions = () => {
                 await updateSubscription(subscriptionId, data);
               }}
               onCancel={handleDeleteSubscription}
+              onActivate={handleActivateSubscription}
+              onPause={handlePauseSubscription}
+              onResume={handleResumeSubscription}
               showActions={true}
               compact={false}
             />
