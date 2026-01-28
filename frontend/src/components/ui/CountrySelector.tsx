@@ -1,12 +1,12 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { cn } from '../../lib/utils';
+import { cn } from '../../utils/utils';
 import { 
   countries, 
   getPopularCountries, 
   searchCountries, 
   continents, 
   getCurrencySymbol
-} from '../../lib/countries';
+} from '../../utils/countries';
 import { ChevronDownIcon, SearchIcon, XIcon, GlobeIcon } from 'lucide-react';
 
 export const CountrySelector = ({

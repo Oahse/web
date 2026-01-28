@@ -2,7 +2,7 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vitest } from 'vitest';
 import { ThemeToggle } from './ThemeToggle';
-import { useTheme } from '../../contexts/ThemeContext'; // Import the actual useTheme hook
+import { useTheme } from '../../store/ThemeContext'; // Import the actual useTheme hook
 
 // Mock the useTheme hook
 vitest.mock('../../contexts/ThemeContext', () => ({

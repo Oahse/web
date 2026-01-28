@@ -13,14 +13,14 @@ import {
   convertCurrency,
   formatCurrency as formatCurrencyUtil,
   getSupportedCountries,
-} from '../lib/locale-config';
+} from '../utils/locale-config';
 import {
   detectUserLocation,
   saveLocationPreference,
   clearLocationPreference,
   getCurrentLocation,
   type LocationData,
-} from '../lib/location-detection';
+} from '../utils/location-detection';
 
 interface LocaleContextType {
   // Current locale configuration

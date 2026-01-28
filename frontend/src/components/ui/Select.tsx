@@ -1,7 +1,7 @@
 import React, { forwardRef } from 'react';
-import { cn } from '../../lib/utils';
+import { cn } from '../../utils/utils';
 import { ChevronDownIcon } from 'lucide-react';
-import { themeClasses, combineThemeClasses, getInputClasses } from '../../lib/themeClasses';
+import { themeClasses, combineThemeClasses, getInputClasses } from '../../utils/themeClasses';
 
 interface SelectOption {
   value: string;

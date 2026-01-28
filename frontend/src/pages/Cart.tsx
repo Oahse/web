@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useCallback} from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { ChevronRightIcon, TrashIcon, MinusIcon, PlusIcon, ShoppingCartIcon, AlertCircle, CheckCircle, Loader2} from 'lucide-react';
-import { useCart } from '../contexts/CartContext';
+import { useCart } from '../store/CartContext';
 import { useAuth } from '../hooks/useAuth';
 import { toast } from 'react-hot-toast';
-import { useLocale } from '../contexts/LocaleContext';
+import { useLocale } from '../store/LocaleContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CartSkeleton } from '../components/ui/CartSkeleton';
-import { validation } from '../lib/validation';
+import { validation } from '../utils/validation';
 import { ConfirmationModal } from '../components/ui/ConfirmationModal';
 
 export const Cart = () => {

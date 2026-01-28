@@ -8,8 +8,8 @@ import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
 import userEvent from '@testing-library/user-event';
 import { BrowserRouter } from 'react-router-dom';
 import { Checkout } from '../../pages/Checkout';
-import { CartProvider } from '../../contexts/CartContext';
-import { AuthProvider } from '../../contexts/AuthContext';
+import { CartProvider } from '../../store/CartContext';
+import { AuthProvider } from '../../store/AuthContext';
 import { server } from '../mocks/server';
 import { rest } from 'msw';
 

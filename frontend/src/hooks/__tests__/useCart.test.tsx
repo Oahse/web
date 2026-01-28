@@ -1,7 +1,7 @@
 import { renderHook, waitFor } from '@testing-library/react';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import { useCart } from '../useCart';
-import { CartProvider } from '../../contexts/CartContext';
+import { CartProvider } from '../../store/CartContext';
 import { ReactNode } from 'react';
 
 // Mock the CartAPI and TokenManager
@@ -21,8 +21,8 @@ vi.mock('../../apis/cart', () => ({
   },
 }));
 
-import { TokenManager } from '../../apis/client';
-import { CartAPI } from '../../apis/cart';
+import { TokenManager } from '../../api/client';
+import { CartAPI } from '../../api/cart';
 
 const mockTokenManager = TokenManager as any;
 const mockCartAPI = CartAPI as any;

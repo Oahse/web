@@ -4,7 +4,7 @@ Discount management models for subscription product management
 from sqlalchemy import Column, String, Boolean, DateTime, Float, Text, Integer, Index, ForeignKey
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
-from core.database import BaseModel, GUID
+from lib.db import BaseModel, GUID
 from datetime import datetime
 from typing import Dict, Any
 

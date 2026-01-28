@@ -1,7 +1,7 @@
 import React, { useEffect, useState, createContext, useCallback, useContext, ReactNode } from 'react';
 import { useAuth } from './AuthContext';
 import { toast } from 'react-hot-toast';
-import WishlistAPI from '../apis/wishlists';
+import WishlistAPI from '../api/wishlists';
 import { Wishlist } from '../types';
 
 interface WishlistContextType {

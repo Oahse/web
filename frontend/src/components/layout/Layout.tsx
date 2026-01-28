@@ -3,7 +3,7 @@ import { Header } from './Header';
 import { Footer } from './Footer';
 import { MobileSearch } from './MobileSearch';
 import { MobileCategories } from './MobileCategories';
-import { useTheme } from '../../contexts/ThemeContext';
+import { useTheme } from '../../store/ThemeContext';
 
 export const Layout = ({
   children,

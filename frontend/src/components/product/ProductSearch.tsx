@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { SearchIcon, FilterIcon, XIcon, SortAscIcon, SortDescIcon, GridIcon, ListIcon } from 'lucide-react';
-import { cn } from '../../lib/utils';
+import { cn } from '../../utils/utils';
 import { Input } from '../ui/Input';
 import { Button } from '../ui/Button';
 import { Select } from '../ui/Select';

@@ -8,8 +8,8 @@ import logging
 from datetime import datetime, timezone, timedelta
 from typing import Dict, Any
 from sqlalchemy.ext.asyncio import AsyncSession
-from core.database import get_db_session
-from services.discount_engine import DiscountEngine
+from lib.db import get_db_session
+from services.discounts import DiscountEngine
 from core.utils.messages.email import send_email
 from core.utils.messages.sms import send_sms
 from models.subscriptions import Subscription

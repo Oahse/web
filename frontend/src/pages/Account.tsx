@@ -1,6 +1,6 @@
 import { useEffect, Suspense, lazy } from 'react';
 import { Link, Routes, Route, useLocation, useNavigate } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../store/AuthContext';
 import {
   UserIcon,
   ShoppingBagIcon,
@@ -12,7 +12,7 @@ import {
   PackageIcon,
   ShieldIcon
 } from 'lucide-react';
-import { useWishlist } from '../contexts/WishlistContext';
+import { useWishlist } from '../store/WishlistContext';
 
 // Lazy load account components
 const Dashboard = lazy(() => import('../components/account/Dashboard'));

@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { XIcon, ChevronRightIcon } from 'lucide-react';
-import { useCategories } from '../../contexts/CategoryContext';
+import { useCategories } from '../../store/CategoryContext';
 
 /**
  * @typedef {object} MobileCategoriesProps

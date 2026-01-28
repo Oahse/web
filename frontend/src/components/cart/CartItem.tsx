@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { MinusIcon, PlusIcon, TrashIcon } from 'lucide-react';
-import { useCart } from '../../contexts/CartContext';
+import { useCart } from '../../store/CartContext';
 import { toast } from 'react-hot-toast';
 
 interface CartItemProps {

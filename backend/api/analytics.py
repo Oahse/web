@@ -10,12 +10,12 @@ from typing import Optional
 from uuid import UUID
 import logging
 
-from core.database import get_db
-from core.utils.response import Response
+from lib.db import get_db
+from lib.utils.response import Response
 from models.user import User
 from models.analytics import EventType, TrafficSource
 from services.analytics import AnalyticsService
-from core.exceptions import APIException
+from lib.errors import APIException
 from services.auth import AuthService
 from fastapi.security import OAuth2PasswordBearer
 

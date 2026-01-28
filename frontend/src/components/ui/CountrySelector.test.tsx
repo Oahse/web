@@ -2,7 +2,7 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vitest } from 'vitest';
 import { CountrySelector } from './CountrySelector';
-import * as countriesLib from '../../lib/countries';
+import * as countriesLib from '../../utils/countries';
 
 // Mock the countries data and utility functions
 const mockCountries = [

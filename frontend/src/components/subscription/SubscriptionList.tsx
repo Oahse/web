@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { RefreshCwIcon, PlusIcon, LogInIcon } from 'lucide-react';
-import { themeClasses, combineThemeClasses, getButtonClasses } from '../../lib/themeClasses';
+import { themeClasses, combineThemeClasses, getButtonClasses } from '../../utils/themeClasses';
 import { SubscriptionCard } from './SubscriptionCard';
 import { 
   getSubscriptions,
@@ -8,8 +8,8 @@ import {
   resumeSubscription as resumeSubscriptionAPI,
   cancelSubscription as cancelSubscriptionAPI,
   type Subscription
-} from '../../apis/subscription';
-import { useAuth } from '../../contexts/AuthContext';
+} from '../../api/subscription';
+import { useAuth } from '../../store/AuthContext';
 import { toast } from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 

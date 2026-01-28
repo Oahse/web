@@ -7,7 +7,7 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import * as fc from 'fast-check';
-import WishlistAPI from '../../apis/wishlists';
+import WishlistAPI from '../../api/wishlists';
 
 // Mock the WishlistAPI
 vi.mock('../../apis/wishlists');

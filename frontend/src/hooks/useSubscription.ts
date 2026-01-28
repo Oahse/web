@@ -1,5 +1,5 @@
-import { useAuth } from '../contexts/AuthContext';
-import { useSubscription as useSubscriptionContext } from '../contexts/SubscriptionContext';
+import { useAuth } from '../store/AuthContext';
+import { useSubscription as useSubscriptionContext } from '../store/SubscriptionContext';
 import { toast } from 'react-hot-toast';
 
 export const useSubscription = () => {

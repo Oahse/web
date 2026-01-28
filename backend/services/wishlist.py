@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, delete
 from sqlalchemy.orm import selectinload
 from uuid import UUID
-from core.utils.uuid_utils import uuid7
+from lib.utils.uuid_utils import uuid7
 from typing import List, Optional
 import logging
 

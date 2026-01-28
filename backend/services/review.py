@@ -6,8 +6,8 @@ from models.review import Review
 from models.product import Product
 from models.user import User
 from schemas.review import ReviewCreate, ReviewUpdate, ReviewResponse
-from core.exceptions import APIException
-from core.utils.uuid_utils import uuid7
+from lib.errors import APIException
+from lib.utils.uuid_utils import uuid7
 from uuid import UUID
 from datetime import datetime
 from sqlalchemy.orm import selectinload, load_only

@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 import { useApi } from '../../hooks/useAsync';
 import { AdminAPI } from '../../apis';
-import { themeClasses } from '../../lib/themeClasses';
+import { themeClasses } from '../../utils/themeClasses';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, BarChart, Bar, PieChart, Pie, Cell } from 'recharts';
 
 interface SalesOverviewProps {

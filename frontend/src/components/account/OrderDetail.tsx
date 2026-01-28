@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { ArrowLeftIcon, PackageIcon, DownloadIcon, MapPinIcon } from 'lucide-react';
-import { OrdersAPI } from '../../apis/orders';
+import { OrdersAPI } from '../../api/orders';
 import { toast } from 'react-hot-toast';
 
 export const OrderDetail = () => {

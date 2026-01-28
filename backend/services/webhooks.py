@@ -9,11 +9,11 @@ from models.payments import Transaction, PaymentIntent
 from models.orders import Order
 from services.payments import PaymentService
 from services.inventories import InventoryService
-from core.security.webhook import verify_stripe_webhook_request, WebhookSecurityError
+from lib.auth.webhook import verify_stripe_webhook_request, WebhookSecurityError
 from uuid import UUID
 from datetime import datetime
 from typing import Dict, Any, Optional
-from core.config import settings
+from lib.config import settings
 import logging
 
 logger = logging.getLogger(__name__)

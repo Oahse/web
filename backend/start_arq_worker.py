@@ -6,7 +6,7 @@ Run this to start the ARQ background task worker
 import asyncio
 import logging
 from arq import run_worker
-from core.arq_worker import WorkerSettings
+from lib.arq_worker import WorkerSettings
 
 # Configure logging
 logging.basicConfig(

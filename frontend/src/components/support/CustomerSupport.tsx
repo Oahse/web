@@ -4,7 +4,7 @@
  */
 
 import React, { useState } from 'react';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../store/AuthContext';
 import { MessageCircle, Phone, Mail, Clock, User, ShoppingBag } from 'lucide-react';
 import { User as UserType } from '../../types';
 import { NotificationModal } from '../ui/NotificationModal';

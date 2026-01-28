@@ -13,7 +13,7 @@ import {
   ArrowDown
 } from 'lucide-react';
 import { ExportButton } from '../dashboard/utils/ExportUtils';
-import { exportDataViaAPI } from '../../lib/exportUtils';
+import { exportDataViaAPI } from '../../utils/exportUtils';
 
 const UserManagement = () => {
   const [data, setData] = useState(null);

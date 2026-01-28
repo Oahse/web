@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from 'react-hot-toast';
-import { UsersAPI } from '../../apis/users';
-import { useAuth } from '../../contexts/AuthContext';
+import { UsersAPI } from '../../api/users';
+import { useAuth } from '../../store/AuthContext';
 import { Loading } from '../Loading';
 import { Error } from '../Error';
 

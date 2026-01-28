@@ -1,7 +1,7 @@
 import { renderHook, waitFor } from '@testing-library/react';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import { useAuth } from '../useAuth';
-import { AuthProvider } from '../../contexts/AuthContext';
+import { AuthProvider } from '../../store/AuthContext';
 import { ReactNode } from 'react';
 
 // Mock the AuthAPI and TokenManager

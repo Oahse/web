@@ -17,7 +17,7 @@ export { AdvancedTable } from './tables/AdvancedTable';
 export { CustomizableDashboard } from './widgets/CustomizableDashboard';
 
 // Utility Components
-export { exportToCSV, exportToJSON, exportToExcel, exportToPDF, exportChartAsPNG } from '../../lib/exportUtils';
+export { exportToCSV, exportToJSON, exportToExcel, exportToPDF, exportChartAsPNG } from '../../utils/exportUtils';
 
 // Types
 

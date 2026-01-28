@@ -14,7 +14,7 @@ from models.subscriptions import Subscription
 from models.orders import Order, OrderItem, OrderStatus, PaymentStatus, FulfillmentStatus, OrderSource
 from models.product import ProductVariant
 from models.user import User
-from core.database import get_db
+from lib.db import get_db
 
 logger = logging.getLogger(__name__)
 
@@ -189,7 +189,7 @@ class SubscriptionSchedulerService:
     
     async def _generate_order_number(self) -> str:
         """Generate unique order number"""
-        from core.utils.uuid_utils import uuid7
+        from lib.utils.uuid_utils import uuid7
         timestamp = datetime.utcnow().strftime("%Y%m%d")
         short_uuid = str(uuid7())[:8].upper()
         return f"SUB-{timestamp}-{short_uuid}"

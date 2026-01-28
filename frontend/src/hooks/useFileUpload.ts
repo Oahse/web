@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { toast } from 'react-hot-toast';
-import { uploadMultipleFiles, deleteMultipleFiles } from '../lib/github.jsx';
+import { uploadMultipleFiles, deleteMultipleFiles } from '../utils/github.jsx';
 import { useAsyncOperations } from './useAsync.js';
 
 const DEFAULT_MAX_SIZE_KB = 100; // 100kb limit

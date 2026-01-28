@@ -7,12 +7,12 @@ from jose import JWTError, jwt
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any
 import secrets
-from core.utils.uuid_utils import uuid7
-from core.config import settings
+from lib.utils.uuid_utils import uuid7
+from lib.config import settings
 from models.user import User
 from schemas.auth import UserCreate, Token, UserResponse, AuthResponse
 from services.user import UserService
-from core.database import get_db
+from lib.db import get_db
 from core.utils.messages.email import send_email
 from core.utils.encryption import PasswordManager
 

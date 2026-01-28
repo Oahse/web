@@ -4,9 +4,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowRightIcon, TruckIcon, BadgeCheckIcon, ShieldIcon, HeadphonesIcon, ChevronLeftIcon, ChevronRightIcon } from 'lucide-react';
 import { ProductCard } from '../components/ProductCard';
 import { CategoryCard } from '../components/category/CategoryCard';
-import { useLocale } from '../contexts/LocaleContext';
+import { useLocale } from '../store/LocaleContext';
 import { useAsync } from '../hooks/useAsync';
-import { ProductsAPI } from '../apis/products';
+import { ProductsAPI } from '../api/products';
 
 // Filter categories configuration system
 const FILTER_CATEGORIES: Record<string, {

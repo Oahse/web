@@ -8,8 +8,8 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import { AuthProvider } from '../../contexts/AuthContext';
-import { CartProvider } from '../../contexts/CartContext';
+import { AuthProvider } from '../../store/AuthContext';
+import { CartProvider } from '../../store/CartContext';
 import { ProductCard } from '../../components/product/ProductCard';
 import Login from '../../pages/Login';
 

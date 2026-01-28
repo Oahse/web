@@ -1,6 +1,6 @@
 import React from 'react';
 import { X, PlayIcon } from 'lucide-react';
-import { themeClasses, combineThemeClasses, getButtonClasses } from '../../lib/themeClasses';
+import { themeClasses, combineThemeClasses, getButtonClasses } from '../../utils/themeClasses';
 
 interface ResumeSubscriptionModalProps {
   isOpen: boolean;

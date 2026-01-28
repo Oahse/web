@@ -5,7 +5,7 @@ Includes: PaymentMethod, PaymentIntent, Transaction
 from sqlalchemy import Column, String, Boolean, ForeignKey, Float, Text, Integer, DateTime, Index
 from sqlalchemy.dialects.postgresql import UUID, JSONB, ENUM as PG_ENUM
 from sqlalchemy.orm import relationship
-from core.database import BaseModel, GUID
+from lib.db import BaseModel, GUID
 from typing import Dict, Any
 from enum import Enum
 

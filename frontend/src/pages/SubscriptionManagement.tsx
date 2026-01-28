@@ -1,17 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { ChevronRightIcon, PlusIcon, MinusIcon, ShoppingBagIcon, CalendarIcon, CreditCardIcon, TrashIcon, AlertTriangleIcon } from 'lucide-react';
-import { useAuth } from '../contexts/AuthContext';
-import { useSubscription } from '../contexts/SubscriptionContext';
-import { useLocale } from '../contexts/LocaleContext';
-import { getBestPrice, formatPriceWithFallback } from '../lib/price-utils';
-import * as SubscriptionAPI from '../apis/subscription';
-import { ProductsAPI } from '../apis/products';
+import { useAuth } from '../store/AuthContext';
+import { useSubscription } from '../store/SubscriptionContext';
+import { useLocale } from '../store/LocaleContext';
+import { getBestPrice, formatPriceWithFallback } from '../utils/price-utils';
+import * as SubscriptionAPI from '../api/subscription';
+import { ProductsAPI } from '../api/products';
 import { SubscriptionProductCard } from '../components/subscription/SubscriptionProductCard';
 import { AutoRenewToggle } from '../components/subscription/AutoRenewToggle';
 import { Button } from '../components/ui/Button';
 import { toast } from 'react-hot-toast';
-import { themeClasses, combineThemeClasses, getButtonClasses } from '../lib/themeClasses';
+import { themeClasses, combineThemeClasses, getButtonClasses } from '../utils/themeClasses';
 import { ConfirmationModal } from '../components/ui/ConfirmationModal';
 
 export const SubscriptionManagement = () => {

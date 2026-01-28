@@ -1,5 +1,5 @@
 from sqlalchemy import Column, String, Boolean, Float, Text, Integer, Index
-from core.database import BaseModel, CHAR_LENGTH
+from lib.db import BaseModel, CHAR_LENGTH
 
 
 class ShippingMethod(BaseModel):

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import OrderList from '../components/order/OrderList';
 import OrderDetails from '../components/order/OrderDetails';
 import SupplierOrderDashboard from '../components/supplier/SupplierOrderDashboard';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../store/AuthContext';
 import { usePaginatedApi } from '../hooks/useAsync';
 import { OrdersAPI } from '../apis';
 

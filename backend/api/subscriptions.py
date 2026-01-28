@@ -5,9 +5,9 @@ from sqlalchemy import select, and_
 from sqlalchemy.orm import selectinload
 from uuid import UUID
 from typing import List
-from core.database import get_db,logger
-from core.utils.response import Response
-from core.exceptions import APIException
+from lib.db import get_db,logger
+from lib.utils.response import Response
+from lib.errors import APIException
 from schemas.subscriptions import SubscriptionCreate, SubscriptionUpdate, SubscriptionCostCalculationRequest, SubscriptionAddProducts, SubscriptionRemoveProducts, SubscriptionUpdateQuantity, SubscriptionQuantityChange, DiscountApplicationRequest
 from services.subscriptions import SubscriptionService, SubscriptionSchedulerService
 from models.user import User

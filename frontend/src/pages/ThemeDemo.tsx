@@ -16,7 +16,7 @@ import {
   ThemeToggle,
   ThemeIndicator,
 } from '../components/ui';
-import { useTheme } from '../contexts/ThemeContext';
+import { useTheme } from '../store/ThemeContext';
 import { 
   HeartIcon, 
   ShoppingCartIcon, 

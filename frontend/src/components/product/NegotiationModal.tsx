@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'react-hot-toast';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
-import { apiClient } from '../../apis/client';
+import { apiClient } from '../../api/client';
 
 interface NegotiationRound {
   round: number;

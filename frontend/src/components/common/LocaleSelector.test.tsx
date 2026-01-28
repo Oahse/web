@@ -3,7 +3,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vitest, beforeEach } from 'vitest';
 import { LocaleSelector } from './LocaleSelector';
 import { useLocale } from '../../hooks/useLocale';
-import { COUNTRY_CONFIG } from '../../lib/locale-config';
+import { COUNTRY_CONFIG } from '../../utils/locale-config';
 import { Globe, Check } from 'lucide-react'; // Mocked icons
 
 // Mock the useLocale hook

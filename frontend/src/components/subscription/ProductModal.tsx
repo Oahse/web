@@ -6,10 +6,10 @@ import {
   AlertTriangleIcon,
   LoaderIcon
 } from 'lucide-react';
-import { themeClasses, combineThemeClasses, getButtonClasses } from '../../lib/themeClasses';
+import { themeClasses, combineThemeClasses, getButtonClasses } from '../../utils/themeClasses';
 import { formatCurrency } from '../../utils/orderCalculations';
 import { toast } from 'react-hot-toast';
-import { getSubscription } from '../../apis/subscription';
+import { getSubscription } from '../../api/subscription';
 import type { Subscription } from '../../types';
 
 interface SubscriptionProduct {

@@ -10,7 +10,7 @@ import {
   Edit
 } from 'lucide-react';
 import { ExportButton } from '../dashboard/utils/ExportUtils';
-import { exportDataViaAPI } from '../../lib/exportUtils';
+import { exportDataViaAPI } from '../../utils/exportUtils';
 
 /**
  * @typedef {object} SupplierStats

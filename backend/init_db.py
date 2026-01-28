@@ -36,11 +36,11 @@ from datetime import datetime, timedelta
 from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy import select, func, text, delete
 from sqlalchemy.orm import selectinload
-from core.database import db_manager, initialize_db
-from core.config import settings
+from lib.db import db_manager, initialize_db
+from lib.config import settings
 from core.utils.encryption import PasswordManager
-from core.utils.uuid_utils import uuid7
-from core.database import Base
+from lib.utils.uuid_utils import uuid7
+from lib.db import Base
 from models.user import User, Address
 from models.product import Product, ProductVariant, ProductImage, Category
 from models.orders import Order, OrderItem

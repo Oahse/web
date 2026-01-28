@@ -9,7 +9,7 @@ import { renderHook, waitFor } from '@testing-library/react';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import * as fc from 'fast-check';
 import { useAuth } from '../useAuth';
-import { AuthProvider } from '../../contexts/AuthContext';
+import { AuthProvider } from '../../store/AuthContext';
 import { runPropertyTest, userArbitrary, loginFormArbitrary, registerFormArbitrary } from '../../test/property-utils';
 
 // Mock the AuthAPI and TokenManager

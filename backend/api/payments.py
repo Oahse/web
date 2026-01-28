@@ -7,9 +7,9 @@ from typing import List, Optional
 from uuid import UUID
 from datetime import datetime
 
-from core.database import get_db
-from core.dependencies import get_current_user
-from core.utils.response import Response
+from lib.db import get_db
+from lib.dependencies import get_current_user
+from lib.utils.response import Response
 from models.user import User
 from services.payments import PaymentService
 from schemas.payments import (

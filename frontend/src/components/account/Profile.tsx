@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { UserIcon, MailIcon, PhoneIcon, MapPinIcon, CalendarIcon, GlobeIcon, SaveIcon } from 'lucide-react';
 import { toast } from 'react-hot-toast';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../store/AuthContext';
 import { AuthAPI } from '../../apis';
 
 /**

@@ -3,9 +3,9 @@ import { render, screen, waitFor } from '@testing-library/react';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import { Home } from '../Home';
 import { BrowserRouter } from 'react-router-dom';
-import { AuthContext } from '../../contexts/AuthContext';
-import { CartContext } from '../../contexts/CartContext';
-import { WishlistContext } from '../../contexts/WishlistContext';
+import { AuthContext } from '../../store/AuthContext';
+import { CartContext } from '../../store/CartContext';
+import { WishlistContext } from '../../store/WishlistContext';
 
 // Mock the APIs
 vi.mock('../../apis/products', () => ({

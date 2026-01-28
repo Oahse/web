@@ -4,9 +4,9 @@ import { ChevronDownIcon, ChevronUpIcon, EyeIcon, DownloadIcon, ShoppingBagIcon,
 import { Link } from 'react-router-dom';
 import { SkeletonOrderTable } from '../ui/SkeletonTable';
 import { usePaginatedApi } from '../../hooks/useAsync';
-import OrdersAPI from '../../apis/orders';
+import OrdersAPI from '../../api/orders';
 import { toast } from 'react-hot-toast';
-import { useLocale } from '../../contexts/LocaleContext';
+import { useLocale } from '../../store/LocaleContext';
 
 interface Order {
   id: string;

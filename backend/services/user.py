@@ -4,16 +4,16 @@ from sqlalchemy import select, update, delete, and_, func, text
 from sqlalchemy.orm import selectinload
 from typing import List, Optional, Dict, Any
 from uuid import UUID
-from core.utils.uuid_utils import uuid7
+from lib.utils.uuid_utils import uuid7
 from models.user import Address, User
 from models.orders import Order
-from core.exceptions import APIException
+from lib.errors import APIException
 from schemas.user import UserCreate, UserUpdate
 from datetime import datetime, timedelta
 import secrets
 from core.utils.messages.email import send_email
 import httpx
-from core.config import settings
+from lib.config import settings
 from core.utils.encryption import PasswordManager
 import logging
 

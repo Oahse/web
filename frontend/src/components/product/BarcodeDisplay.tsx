@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { QrCodeIcon, ScanLineIcon } from 'lucide-react';
 import { ProductVariant, BarcodeData } from '../../types';
-import { ProductsAPI } from '../../apis/products';
+import { ProductsAPI } from '../../api/products';
 
 interface BarcodeDisplayProps {
   variant: ProductVariant;

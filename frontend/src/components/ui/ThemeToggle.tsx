@@ -1,7 +1,7 @@
 import React from 'react';
-import { useTheme } from '../../contexts/ThemeContext';
+import { useTheme } from '../../store/ThemeContext';
 import { SunIcon, MoonIcon, MonitorIcon } from 'lucide-react';
-import { cn } from '../../lib/utils';
+import { cn } from '../../utils/utils';
 import { Button } from './Button';
 
 

@@ -15,8 +15,8 @@ import {
   EyeIcon,
   TagIcon
 } from 'lucide-react';
-import { themeClasses, combineThemeClasses, getButtonClasses } from '../../lib/themeClasses';
-import { toggleAutoRenew, Subscription } from '../../apis/subscription';
+import { themeClasses, combineThemeClasses, getButtonClasses } from '../../utils/themeClasses';
+import { toggleAutoRenew, Subscription } from '../../api/subscription';
 import { formatCurrency, formatTaxRate } from '../../utils/orderCalculations';
 import { toast } from 'react-hot-toast';
 

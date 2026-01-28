@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { HeartIcon, ShoppingCartIcon, TrashIcon } from 'lucide-react';
-import { useWishlist } from '../../contexts/WishlistContext';
-import { useCart } from '../../contexts/CartContext';
+import { useWishlist } from '../../store/WishlistContext';
+import { useCart } from '../../store/CartContext';
 import { toast } from 'react-hot-toast';
 
 interface WishlistItemProps {

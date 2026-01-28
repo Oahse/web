@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { AdminAPI } from '../../apis/admin';
+import { AdminAPI } from '../../api/admin';
 import { toast } from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import { ImageUploader } from '../../components/ui/ImageUploader';

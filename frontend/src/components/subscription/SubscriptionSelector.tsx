@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { XIcon, CalendarIcon, CreditCardIcon, PlusIcon } from 'lucide-react';
-import { useSubscription } from '../../contexts/SubscriptionContext';
+import { useSubscription } from '../../store/SubscriptionContext';
 import { useSubscriptionAction } from '../../hooks/useSubscription';
-import { formatCurrency } from '../../lib/locale-config';
-import { themeClasses, getButtonClasses } from '../../lib/themeClasses';
+import { formatCurrency } from '../../utils/locale-config';
+import { themeClasses, getButtonClasses } from '../../utils/themeClasses';
 
 interface SubscriptionSelectorProps {
   isOpen: boolean;

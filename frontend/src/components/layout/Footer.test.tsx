@@ -3,7 +3,7 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vitest, beforeEach } from 'vitest';
 import { BrowserRouter, Link } from 'react-router-dom';
 import { Footer } from './Footer';
-import { SOCIAL_MEDIA_LINKS } from '../../lib/social-media-config';
+import { SOCIAL_MEDIA_LINKS } from '../../utils/social-media-config';
 import {
   MapPinIcon, MailIcon, PhoneIcon, ArrowRightIcon,
   FacebookIcon, TwitterIcon, InstagramIcon, YoutubeIcon, LinkedinIcon

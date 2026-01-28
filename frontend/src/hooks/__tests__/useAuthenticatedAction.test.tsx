@@ -1,6 +1,6 @@
 import { renderHook } from '@testing-library/react';
 import { useAuthenticatedAction } from '../useAuth';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../store/AuthContext';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 

@@ -1,15 +1,15 @@
 from fastapi import APIRouter, Depends, status, HTTPException, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from uuid import UUID
-from core.database import get_db
-from core.exceptions import APIException
-from core.logging import get_logger
-from core.redis import RedisKeyManager
+from lib.db import get_db
+from lib.errors import APIException
+from lib.logging import get_logger
+from lib.cache import RedisKeyManager
 from services.cart import CartService
 from models.user import User
-from core.utils.response import Response
+from lib.utils.response import Response
 from schemas.cart import AddToCartRequest, ApplyPromocodeRequest, UpdateCartItemRequest
-from core.dependencies import get_current_auth_user
+from lib.dependencies import get_current_auth_user
 from typing import Optional
 
 logger = get_logger(__name__)

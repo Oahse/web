@@ -1,7 +1,7 @@
 from sqlalchemy import Column, Boolean, ForeignKey, Text, Integer, Index
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
-from core.database import BaseModel, GUID
+from lib.db import BaseModel, GUID
 
 
 class Review(BaseModel):

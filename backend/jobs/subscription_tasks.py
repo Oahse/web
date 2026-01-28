@@ -10,10 +10,10 @@ from typing import Dict, Any, List, Optional
 from uuid import UUID
 from fastapi import BackgroundTasks
 
-from core.database import get_db
-from core.config import settings
+from lib.db import get_db
+from lib.config import settings
 from core.hybrid_tasks import hybrid_task_manager, send_email_hybrid, send_notification_hybrid
-from core.arq_worker import enqueue_subscription_processing, enqueue_subscription_renewal
+from lib.arq_worker import enqueue_subscription_processing, enqueue_subscription_renewal
 from services.subscriptions.subscription_scheduler import SubscriptionSchedulerService
 
 logger = logging.getLogger(__name__)
@@ -71,7 +71,7 @@ class SubscriptionTaskManager:
         """Schedule subscription renewal using ARQ"""
         if delay_hours > 0:
             # Use ARQ for delayed processing
-            from core.arq_worker import get_arq_pool
+            from lib.arq_worker import get_arq_pool
             pool = await get_arq_pool()
             await pool.enqueue_job(
                 'process_subscription_renewal_task',

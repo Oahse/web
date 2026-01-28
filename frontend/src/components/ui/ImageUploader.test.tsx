@@ -3,7 +3,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vitest } from 'vitest';
 import { ImageUploader } from './ImageUploader';
 import { toast } from 'react-hot-toast';
-import * as githubService from '../../lib/github'; // Import as a module to mock
+import * as githubService from '../../utils/github'; // Import as a module to mock
 
 // Mock external dependencies
 vitest.mock('react-hot-toast', () => ({

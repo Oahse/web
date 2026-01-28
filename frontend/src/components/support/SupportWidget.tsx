@@ -5,7 +5,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../store/AuthContext';
 import SupportButton from './SupportButton';
 
 interface SupportWidgetProps {

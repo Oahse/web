@@ -8,12 +8,12 @@ from sqlalchemy.future import select
 from models.user import User, Address
 from models.orders import Order
 from models.product import ProductVariant
-from services.jinja_template import JinjaTemplateService
+from services.templates import JinjaTemplateService
 # Email tasks are imported separately where needed
 # from tasks.email_tasks import (...)
-from core.config import settings
+from lib.config import settings
 from core.hybrid_tasks import send_email_hybrid
-from core.exceptions import APIException # Assuming APIException is suitable for service layer errors
+from lib.errors import APIException # Assuming APIException is suitable for service layer errors
 
 
 

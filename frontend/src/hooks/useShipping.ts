@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import ShippingAPI, { ShippingMethod } from '../apis/shipping';
+import ShippingAPI, { ShippingMethod } from '../api/shipping';
 import { toast } from 'react-hot-toast';
 
 interface UseShippingOptions {

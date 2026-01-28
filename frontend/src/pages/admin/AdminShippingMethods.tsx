@@ -7,7 +7,7 @@ import ErrorMessage from '../../components/common/ErrorMessage';
 import { ResponsiveTable } from '../../components/ui/ResponsiveTable';
 import { DeleteShippingMethodModal } from '../../components/admin/DeleteShippingMethodModal';
 import { toast } from 'react-hot-toast';
-import { useLocale } from '../../contexts/LocaleContext';
+import { useLocale } from '../../store/LocaleContext';
 
 interface ShippingMethod {
   id: string;

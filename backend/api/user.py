@@ -2,9 +2,9 @@ from fastapi import APIRouter, Depends, status, Query, BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession
 from uuid import UUID
 from typing import Optional, List
-from core.utils.response import Response
-from core.exceptions import APIException
-from core.database import get_db
+from lib.utils.response import Response
+from lib.errors import APIException
+from lib.db import get_db
 from services.user import UserService, AddressService
 from services.search import SearchService
 # Import AddressResponse

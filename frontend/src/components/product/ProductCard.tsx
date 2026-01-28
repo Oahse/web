@@ -2,18 +2,18 @@ import React, { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { ShoppingCartIcon, HeartIcon, EyeIcon, CheckIcon, PlusIcon, CalendarIcon } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { useCart } from '../../contexts/CartContext';
-import { useWishlist } from '../../contexts/WishlistContext';
+import { useCart } from '../../store/CartContext';
+import { useWishlist } from '../../store/WishlistContext';
 import { useAuth } from '../../hooks/useAuth';
 import { useSubscriptionAction } from '../../hooks/useSubscription';
-import { useLocale } from '../../contexts/LocaleContext';
+import { useLocale } from '../../store/LocaleContext';
 import { SkeletonCard } from '../ui/SkeletonCard';
 import { QRCodeDisplay } from './QRCodeDisplay';
 import { BarcodeDisplay } from './BarcodeDisplay';
 import { SubscriptionSelector } from '../subscription/SubscriptionSelector';
-import SubscriptionAPI from '../../apis/subscription';
+import SubscriptionAPI from '../../api/subscription';
 import { toast } from 'react-hot-toast';
-import { cn } from '../../lib/utils';
+import { cn } from '../../utils/utils';
 
 /**
  * @typedef {object} ProductVariantImage

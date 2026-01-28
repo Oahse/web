@@ -2,9 +2,9 @@ import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import { MySubscriptions } from '../components/account/MySubscriptions';
-import { SubscriptionProvider } from '../contexts/SubscriptionContext';
-import { AuthProvider } from '../contexts/AuthContext';
-import { LocaleProvider } from '../contexts/LocaleContext';
+import { SubscriptionProvider } from '../store/SubscriptionContext';
+import { AuthProvider } from '../store/AuthContext';
+import { LocaleProvider } from '../store/LocaleContext';
 
 // Mock the APIs
 jest.mock('../apis/subscription');

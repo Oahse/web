@@ -6,7 +6,7 @@ import { ProductsAPI, CategoriesAPI } from '../apis';
 import { ProductCard } from '../components/ProductCard';
 import { SkeletonProductCard } from '../components/ui/SkeletonProductCard';
 import { Select } from '../components/ui/Select';
-import { themeClasses, combineThemeClasses, getInputClasses, getButtonClasses } from '../lib/themeClasses';
+import { themeClasses, combineThemeClasses, getInputClasses, getButtonClasses } from '../utils/themeClasses';
 
 const Products = () => {
   const [searchParams, setSearchParams] = useSearchParams();

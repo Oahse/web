@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Eye, EyeOff, CheckCircle } from 'lucide-react';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../store/AuthContext';
 import { toast } from 'react-hot-toast';
 import { Input } from '../components/forms/Input';
 import { Checkbox } from '../components/forms/Checkbox';
 import SocialAuth from '../components/auth/SocialAuth';
-import { validation } from '../lib/validation';
+import { validation } from '../utils/validation';
 
 /**
  * Register component for user account creation.

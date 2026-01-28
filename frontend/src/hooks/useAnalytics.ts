@@ -4,8 +4,8 @@
  */
 import { useEffect, useCallback } from 'react';
 import { useLocation } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
-import { AnalyticsAPI } from '../apis/analytics';
+import { useAuth } from '../store/AuthContext';
+import { AnalyticsAPI } from '../api/analytics';
 
 
 

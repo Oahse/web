@@ -10,10 +10,10 @@ from uuid import UUID
 from decimal import Decimal
 import logging
 
-from core.database import get_db
-from core.dependencies import get_current_user, require_admin
-from core.exceptions import APIException
-from core.utils.response import Response
+from lib.db import get_db
+from lib.dependencies import get_current_user, require_admin
+from lib.errors import APIException
+from lib.utils.response import Response
 from models.user import User
 from models.tax_rates import TaxRate
 from services.tax import TaxService

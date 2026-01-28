@@ -5,7 +5,7 @@ import logging
 from datetime import datetime, timezone, timedelta
 from typing import Dict, Any, List, Optional
 from uuid import UUID
-from core.utils.uuid_utils import uuid7
+from lib.utils.uuid_utils import uuid7
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_, or_, desc
 from sqlalchemy.orm import selectinload
@@ -17,7 +17,7 @@ from models.payments import Transaction
 from models.user import User
 from schemas.refunds import RefundRequest, RefundResponse, RefundItemRequest
 from services.payments import PaymentService
-from core.config import settings
+from lib.config import settings
 import stripe
 
 logger = logging.getLogger(__name__)

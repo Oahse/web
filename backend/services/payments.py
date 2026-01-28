@@ -11,11 +11,11 @@ from models.subscriptions import Subscription
 from models.inventories import Inventory
 from models.user import User
 from uuid import UUID
-from core.utils.uuid_utils import uuid7
+from lib.utils.uuid_utils import uuid7
 from datetime import datetime, timedelta
 from typing import Optional, List, Dict, Any
 from enum import Enum
-from core.config import settings
+from lib.config import settings
 import stripe
 import logging
 import time

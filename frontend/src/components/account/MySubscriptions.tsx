@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { useSubscription } from '../../contexts/SubscriptionContext';
-import { useLocale } from '../../contexts/LocaleContext';
+import { useSubscription } from '../../store/SubscriptionContext';
+import { useLocale } from '../../store/LocaleContext';
 import { 
   PlusIcon, 
   SearchIcon,
   PackageIcon,
   XIcon
 } from 'lucide-react';
-import { themeClasses, getButtonClasses } from '../../lib/themeClasses';
-import ProductsAPI from '../../apis/products';
+import { themeClasses, getButtonClasses } from '../../utils/themeClasses';
+import ProductsAPI from '../../api/products';
 import { toast } from 'react-hot-toast';
 import { Product } from '../../types';
 import { AutoRenewToggle } from '../subscription/AutoRenewToggle';

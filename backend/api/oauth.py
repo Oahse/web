@@ -1,15 +1,15 @@
 from fastapi import APIRouter, Depends
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 import httpx
 
-from core.database import get_db
-from core.config import settings
+from lib.db import get_db
+from lib.config import settings
 
 router = APIRouter()
 
 
 @router.get("/auth/facebook/callback")
-async def facebook_callback(code: str, db: Session = Depends(get_db)):
+async def facebook_callback(code: str, db: AsyncSession = Depends(get_db)):
     # Exchange authorization code for an access token
     token_url = "https://graph.facebook.com/v12.0/oauth/access_token"
     params = {
@@ -43,7 +43,7 @@ async def facebook_callback(code: str, db: Session = Depends(get_db)):
 
 
 @router.get("/auth/tiktok/callback")
-async def tiktok_callback(code: str, db: Session = Depends(get_db)):
+async def tiktok_callback(code: str, db: AsyncSession = Depends(get_db)):
     # Exchange authorization code for an access token
     token_url = "https://open.tiktokapis.com/v2/oauth/token/"
     headers = {

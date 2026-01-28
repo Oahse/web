@@ -2,10 +2,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, delete
 from typing import List, Optional
 from uuid import UUID
-from core.utils.uuid_utils import uuid7
+from lib.utils.uuid_utils import uuid7
 from models.promocode import Promocode
-from schemas.promocode import PromocodeCreate, PromocodeUpdate
-from core.exceptions import APIException
+from schemas.promos import PromocodeCreate, PromocodeUpdate
+from lib.errors import APIException
 
 
 class PromocodeService:

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { UploadCloudIcon, XIcon } from 'lucide-react';
 import { toast } from 'react-hot-toast';
-import { uploadSingleFile } from '../../lib/github'; // Import uploadSingleFile
+import { uploadSingleFile } from '../../utils/github'; // Import uploadSingleFile
 
 
 

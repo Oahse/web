@@ -6,7 +6,7 @@ from sqlalchemy import Column, String, Integer, ForeignKey, Text, DateTime, Bool
 from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
-from core.database import BaseModel, CHAR_LENGTH, GUID
+from lib.db import BaseModel, CHAR_LENGTH, GUID
 from datetime import datetime, timedelta
 from typing import Dict, Any, Optional, List
 from uuid import UUID as UUIDType
@@ -133,7 +133,7 @@ class Inventory(BaseModel):
         
         # Validate stock levels
         if new_available < 0:
-            from core.exceptions import APIException
+            from lib.errors import APIException
             raise APIException(
                 status_code=400,
                 message=f"Insufficient stock. Available: {self.quantity_available}, Requested: {abs(quantity_change)}"
@@ -245,7 +245,7 @@ async def atomic_stock_operation(
         inventory = await Inventory.get_with_lock(db, variant_id)
         
         if not inventory:
-            from core.exceptions import APIException
+            from lib.errors import APIException
             raise APIException(
                 status_code=404,
                 message=f"Inventory not found for variant {variant_id}"
@@ -267,7 +267,7 @@ async def atomic_stock_operation(
             }
         
         else:
-            from core.exceptions import APIException
+            from lib.errors import APIException
             raise APIException(
                 status_code=400,
                 message=f"Unknown operation: {operation}"
@@ -315,7 +315,7 @@ async def atomic_bulk_stock_update(
             
             inventory = inventory_map.get(variant_id)
             if not inventory:
-                from core.exceptions import APIException
+                from lib.errors import APIException
                 raise APIException(
                     status_code=404,
                     message=f"Inventory not found for variant {variant_id}"

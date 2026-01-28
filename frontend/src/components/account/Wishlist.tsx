@@ -1,7 +1,7 @@
 import React from 'react';
-import { useWishlist } from '../../contexts/WishlistContext';
-import { useCart } from '../../contexts/CartContext';
-import { useAuth } from '../../contexts/AuthContext';
+import { useWishlist } from '../../store/WishlistContext';
+import { useCart } from '../../store/CartContext';
+import { useAuth } from '../../store/AuthContext';
 import { ShoppingCartIcon, TrashIcon, HeartIcon } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { toast } from 'react-hot-toast';

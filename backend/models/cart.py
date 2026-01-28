@@ -1,6 +1,6 @@
 from sqlalchemy import Column, ForeignKey, Integer, Numeric, DateTime, func, event, DDL
 from sqlalchemy.orm import relationship, validates
-from core.database import BaseModel, GUID, Index
+from lib.db import BaseModel, GUID, Index
 from decimal import Decimal
 
 class Cart(BaseModel):

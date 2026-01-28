@@ -4,7 +4,7 @@
  */
 
 import { useCallback } from 'react';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../store/AuthContext';
 import { User } from '../types';
 
 interface WhatsAppConfig {

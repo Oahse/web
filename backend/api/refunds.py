@@ -7,9 +7,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List, Optional
 from uuid import UUID
 
-from core.database import get_db
-from core.dependencies import get_current_auth_user
-from core.utils.response import Response
+from lib.db import get_db
+from lib.dependencies import get_current_auth_user
+from lib.utils.response import Response
 from models.user import User
 from models.refunds import RefundStatus
 from schemas.refunds import (
@@ -20,7 +20,7 @@ from schemas.refunds import (
     RefundStatsResponse
 )
 from services.refunds import RefundService
-from core.exceptions import APIException
+from lib.errors import APIException
 
 router = APIRouter(prefix="/refunds", tags=["refunds"])
 

@@ -6,7 +6,7 @@
 
 import React, { useState } from 'react';
 import { useLocale } from '../../hooks/useLocale';
-import { COUNTRY_CONFIG } from '../../lib/locale-config';
+import { COUNTRY_CONFIG } from '../../utils/locale-config';
 import { Globe, Check } from 'lucide-react';
 
 export const LocaleSelector: React.FC = () => {

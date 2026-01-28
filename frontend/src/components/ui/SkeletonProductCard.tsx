@@ -1,6 +1,6 @@
 import React from 'react';
 import { Skeleton } from './Skeleton';
-import { themeClasses, combineThemeClasses } from '../../lib/themeClasses';
+import { themeClasses, combineThemeClasses } from '../../utils/themeClasses';
 
 export const SkeletonProductCard: React.FC = () => {
   return (

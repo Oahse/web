@@ -1,7 +1,7 @@
 from sqlalchemy import Column, String, Boolean, ForeignKey, Integer, Index
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
-from core.database import BaseModel, GUID
+from lib.db import BaseModel, GUID
 
 
 class Wishlist(BaseModel):

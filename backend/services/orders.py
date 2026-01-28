@@ -15,21 +15,21 @@ from models.shipping import ShippingMethod
 from models.payments import PaymentMethod
 from models.tax_rates import TaxRate
 from schemas.orders import OrderResponse, OrderItemResponse, CheckoutRequest, OrderCreate
-from schemas.inventories import StockAdjustmentCreate
+from schemas.inventory import StockAdjustmentCreate
 from services.cart import CartService
 from services.payments import PaymentService
 from services.inventories import InventoryService 
 from services.tax import TaxService
 from services.shipping import ShippingService
-from services.discount_engine import DiscountEngine
+from services.discounts import DiscountEngine
 from models.inventories import Inventory
 from uuid import UUID
-from core.utils.uuid_utils import uuid7
+from lib.utils.uuid_utils import uuid7
 from datetime import datetime, timedelta
 from typing import Optional, List, Dict, Any, Tuple
 from decimal import Decimal, ROUND_HALF_UP
-from core.config import settings
-from core.logging import get_structured_logger
+from lib.config import settings
+from lib.logging import get_structured_logger
 
 logger = get_structured_logger(__name__)
 
@@ -1343,7 +1343,7 @@ class OrderService:
             # For security, we'll log discrepancies but use backend prices
             
             if total_discrepancies:
-                from core.logging import structured_logger
+                from lib.logging import structured_logger
                 structured_logger.warning(
                     message="Price discrepancies detected during checkout",
                     metadata={
@@ -1577,7 +1577,7 @@ class OrderService:
         Events are versioned, validated, and idempotent.
         """
         try:
-            from core.arq_worker import enqueue_email, enqueue_notification
+            from lib.arq_worker import enqueue_email, enqueue_notification
             
             # Use correlation ID for event tracing
             correlation_id = str(order.id)

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../store/AuthContext';
 import { SubscriptionList } from '../components/subscription/SubscriptionList';
 
 const Subscriptions: React.FC = () => {

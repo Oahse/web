@@ -3,8 +3,8 @@
  * Makes refunds easy with smart defaults and clear guidance
  */
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../../contexts/AuthContext';
-import { OrdersAPI } from '../../apis/orders';
+import { useAuth } from '../../store/AuthContext';
+import { OrdersAPI } from '../../api/orders';
 import { toast } from 'react-hot-toast';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';

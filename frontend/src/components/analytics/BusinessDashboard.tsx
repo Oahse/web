@@ -3,7 +3,7 @@
  * Comprehensive dashboard showing key e-commerce metrics
  */
 import React, { useState, useEffect } from 'react';
-import { AnalyticsAPI } from '../../apis/analytics';
+import { AnalyticsAPI } from '../../api/analytics';
 import { toast } from 'react-hot-toast';
 import { 
   ChartBarIcon, 

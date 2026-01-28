@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { cn } from '../../lib/utils';
+import { cn } from '../../utils/utils';
 import { ChevronDownIcon, MenuIcon, XIcon } from 'lucide-react';
 
 

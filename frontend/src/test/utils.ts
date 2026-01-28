@@ -8,11 +8,11 @@ import { render, RenderOptions, RenderResult } from '@testing-library/react';
 import { ReactElement, ReactNode } from 'react';
 import { BrowserRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { AuthProvider } from '../contexts/AuthContext';
-import { CartProvider } from '../contexts/CartContext';
-import { ThemeProvider } from '../contexts/ThemeContext';
-import { NotificationProvider } from '../contexts/NotificationContext';
-import { WishlistProvider } from '../contexts/WishlistContext';
+import { AuthProvider } from '../store/AuthContext';
+import { CartProvider } from '../store/CartContext';
+import { ThemeProvider } from '../store/ThemeContext';
+import { NotificationProvider } from '../store/NotificationContext';
+import { WishlistProvider } from '../store/WishlistContext';
 
 // Test configuration interfaces
 export interface TestRenderOptions extends Omit<RenderOptions, 'wrapper'> {

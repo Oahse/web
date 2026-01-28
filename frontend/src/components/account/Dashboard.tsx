@@ -1,12 +1,12 @@
 import { useEffect } from 'react';
-import { useAuth } from '../../contexts/AuthContext';
-import { useSubscription } from '../../contexts/SubscriptionContext';
+import { useAuth } from '../../store/AuthContext';
+import { useSubscription } from '../../store/SubscriptionContext';
 import { ShoppingBagIcon, HeartIcon, MapPinIcon, CreditCardIcon, PackageIcon } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { SkeletonDashboard } from '../ui/SkeletonDashboard';
 import { usePaginatedApi } from '../../hooks/useAsync';
-import OrdersAPI from '../../apis/orders';
-import SubscriptionAPI from '../../apis/subscription';
+import OrdersAPI from '../../api/orders';
+import SubscriptionAPI from '../../api/subscription';
 
 interface DashboardProps {
   animation?: 'shimmer' | 'pulse' | 'wave';

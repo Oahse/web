@@ -4,7 +4,7 @@ import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
 import { describe, it, expect, vitest, beforeEach, afterEach } from 'vitest';
 import { useNavigate } from 'react-router-dom';
 import { MobileSearch } from './MobileSearch';
-import { useCategories } from '../../contexts/CategoryContext';
+import { useCategories } from '../../store/CategoryContext';
 import { SearchIcon, XIcon } from 'lucide-react'; // Mocked icons
 
 // Mock external dependencies

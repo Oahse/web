@@ -4,15 +4,15 @@
  */
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { useAuth } from '../../contexts/AuthContext';
-import { useCart } from '../../contexts/CartContext';
-import { useLocale } from '../../contexts/LocaleContext';
+import { useAuth } from '../../store/AuthContext';
+import { useCart } from '../../store/CartContext';
+import { useLocale } from '../../store/LocaleContext';
 import { useShipping } from '../../hooks/useShipping';
-import { OrdersAPI } from '../../apis/orders';
-import { AuthAPI } from '../../apis/auth';
-import { CartAPI } from '../../apis/cart';
-import { TokenManager } from '../../apis/client';
-import { PaymentsAPI } from '../../apis/payments';
+import { OrdersAPI } from '../../api/orders';
+import { AuthAPI } from '../../api/auth';
+import { CartAPI } from '../../api/cart';
+import { TokenManager } from '../../api/client';
+import { PaymentsAPI } from '../../api/payments';
 import { toast } from 'react-hot-toast';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';

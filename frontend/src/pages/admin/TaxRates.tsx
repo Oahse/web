@@ -5,7 +5,7 @@ import { Select } from '../../components/ui/Select';
 import { SearchableSelect } from '../../components/ui/SearchableSelect';
 import { ConfirmationModal } from '../../components/ui/ConfirmationModal';
 import { getCountryOptions, getProvinceOptions, getCountryByCode } from '../../data/countries';
-import TaxAPI, { TaxRate, TaxType, Country } from '../../apis/tax';
+import TaxAPI, { TaxRate, TaxType, Country } from '../../api/tax';
 
 export const TaxRatesAdmin = () => {
   const [taxRates, setTaxRates] = useState<TaxRate[]>([]);

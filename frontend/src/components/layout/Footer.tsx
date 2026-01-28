@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { MapPinIcon, MailIcon, PhoneIcon, ArrowRightIcon, FacebookIcon, TwitterIcon, InstagramIcon, YoutubeIcon, LinkedinIcon } from 'lucide-react';
-import { SOCIAL_MEDIA_LINKS } from '../../lib/social-media-config';
+import { SOCIAL_MEDIA_LINKS } from '../../utils/social-media-config';
 
 export const Footer = () => {
   // Categories for quick links - matching backend API query parameters

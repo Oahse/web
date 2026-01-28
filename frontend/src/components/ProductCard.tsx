@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { HeartIcon, ShoppingCartIcon, EyeIcon, CalendarIcon } from 'lucide-react';
-import { useCart } from '../contexts/CartContext';
-import { useWishlist } from '../contexts/WishlistContext';
-import { useSubscription } from '../contexts/SubscriptionContext';
+import { useCart } from '../store/CartContext';
+import { useWishlist } from '../store/WishlistContext';
+import { useSubscription } from '../store/SubscriptionContext';
 import { stockMonitor } from '../services/stockMonitoring';
 import { toast } from 'react-hot-toast';
 import { Link } from 'react-router-dom';
-import { themeClasses, combineThemeClasses } from '../lib/themeClasses';
+import { themeClasses, combineThemeClasses } from '../utils/themeClasses';
 
 export const ProductCard = ({ product }: { product: any }) => {
   // ✅ Using useState for local state management

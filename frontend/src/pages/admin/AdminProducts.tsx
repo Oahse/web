@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { PlusIcon, SearchIcon, FilterIcon, EditIcon, TrashIcon, ChevronDownIcon, EyeIcon, MoreHorizontalIcon } from 'lucide-react';
 import { usePaginatedApi } from '../../hooks/useAsync';
 import { AdminAPI } from '../../apis';
-import { useCategories } from '../../contexts/CategoryContext';
+import { useCategories } from '../../store/CategoryContext';
 import ErrorMessage from '../../components/common/ErrorMessage';
 import { ResponsiveTable } from '../../components/ui/ResponsiveTable';
 import { Pagination } from '../../components/ui/Pagination';

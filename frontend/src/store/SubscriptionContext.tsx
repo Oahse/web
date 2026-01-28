@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from './AuthContext';
-import * as SubscriptionAPI from '../apis/subscription';
+import * as SubscriptionAPI from '../api/subscription';
 import { toast } from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 

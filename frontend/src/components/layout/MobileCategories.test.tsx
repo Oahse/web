@@ -3,7 +3,7 @@ import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
 import { describe, it, expect, vitest, beforeEach, afterEach } from 'vitest';
 import { BrowserRouter, Link } from 'react-router-dom';
 import { MobileCategories } from './MobileCategories';
-import { useCategories } from '../../contexts/CategoryContext';
+import { useCategories } from '../../store/CategoryContext';
 import { XIcon, ChevronRightIcon } from 'lucide-react'; // Mocked icons
 
 // Mock external dependencies

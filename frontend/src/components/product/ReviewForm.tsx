@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Star } from 'lucide-react';
 import { toast } from 'react-hot-toast';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../store/AuthContext';
 import { ReviewsAPI } from '../../apis';
 
 const ReviewForm = ({ productId, onReviewSubmitted }) => {

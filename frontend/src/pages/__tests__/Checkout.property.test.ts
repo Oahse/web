@@ -7,7 +7,7 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import * as fc from 'fast-check';
-import { AuthAPI } from '../../apis/auth';
+import { AuthAPI } from '../../api/auth';
 
 // Mock the AuthAPI
 vi.mock('../../apis/auth');

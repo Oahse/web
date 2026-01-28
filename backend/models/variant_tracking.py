@@ -1,7 +1,7 @@
 from sqlalchemy import Column, String, Integer, Float, DateTime, ForeignKey, JSON, Text, Boolean, Index, Enum as SQLEnum
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
-from core.database import BaseModel, GUID
+from lib.db import BaseModel, GUID
 from typing import Dict, Any, List
 from datetime import datetime
 from enum import Enum

@@ -3,7 +3,7 @@ import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vitest, beforeEach } from 'vitest';
 import { Profile } from './Profile';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../store/AuthContext';
 import { AuthAPI } from '../../apis';
 import { toast } from 'react-hot-toast';
 

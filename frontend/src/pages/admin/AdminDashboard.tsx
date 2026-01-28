@@ -35,8 +35,8 @@ import { useApi } from '../../hooks/useAsync';
 import { AdminAPI, CategoriesAPI } from '../../apis';
 
 import { SalesFilters, SalesData, SalesMetrics } from '../../components/admin/sales/types';
-import AnalyticsAPI from '../../apis/analytics';
-import { themeClasses } from '../../lib/theme';
+import AnalyticsAPI from '../../api/analytics';
+import { themeClasses } from '../../utils/theme';
 import ErrorMessage from '../../components/common/ErrorMessage';
 
 // Chart utilities

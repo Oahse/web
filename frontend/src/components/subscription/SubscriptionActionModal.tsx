@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { X, TrashIcon, PauseIcon, PlayIcon, AlertTriangleIcon } from 'lucide-react';
-import { themeClasses, combineThemeClasses, getButtonClasses } from '../../lib/themeClasses';
+import { themeClasses, combineThemeClasses, getButtonClasses } from '../../utils/themeClasses';
 
 export type SubscriptionAction = 'cancel' | 'pause' | 'resume';
 

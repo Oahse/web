@@ -1,5 +1,5 @@
 import React, { forwardRef } from 'react';
-import { cn } from '../../lib/utils';
+import { cn } from '../../utils/utils';
 
 interface GridProps extends React.HTMLAttributes<HTMLDivElement> {
   cols?: 1 | 2 | 3 | 4 | 5 | 6 | 12 | 'auto' | string;

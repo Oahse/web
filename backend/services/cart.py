@@ -8,7 +8,7 @@ from sqlalchemy.orm import selectinload
 from fastapi import HTTPException
 from typing import Optional, Dict, Any, List
 from uuid import UUID
-from core.utils.uuid_utils import uuid7
+from lib.utils.uuid_utils import uuid7
 from decimal import Decimal, ROUND_HALF_UP
 from datetime import datetime
 import logging
@@ -17,7 +17,7 @@ from models.cart import Cart, CartItem
 from models.product import ProductVariant, Product
 from models.user import User
 from services.tax import TaxService
-from core.config import settings
+from lib.config import settings
 
 logger = logging.getLogger(__name__)
 

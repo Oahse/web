@@ -12,7 +12,7 @@ from .search import SearchService
 from .shipping import ShippingService
 from .tax import TaxService
 from .user import UserService, AddressService
-from .variant_tracking import VariantTrackingService
+from .tracking import VariantTrackingService
 from .wishlist import WishlistService
 from .barcode import BarcodeService
 
@@ -25,7 +25,7 @@ from .admin import AdminService
 from .export import ExportService
 
 # Utility services
-from .jinja_template import JinjaTemplateService
+from .templates import JinjaTemplateService
 
 __all__ = [
     # Core services

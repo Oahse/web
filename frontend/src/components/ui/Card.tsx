@@ -1,5 +1,5 @@
 import React, { forwardRef } from 'react';
-import { cn } from '../../lib/utils';
+import { cn } from '../../utils/utils';
 
 interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
   variant?: 'default' | 'elevated' | 'outlined' | 'filled';

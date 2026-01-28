@@ -1,7 +1,7 @@
 
 import { Link, useLocation } from 'react-router-dom';
 import { HomeIcon, SearchIcon, ShoppingCartIcon, UserIcon, MenuIcon } from 'lucide-react';
-import { useCart } from '../../contexts/CartContext';
+import { useCart } from '../../store/CartContext';
 /**
  * @typedef {object} MobileNavProps
  * @property {() => void} onSearchClick

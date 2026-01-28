@@ -2,7 +2,7 @@ import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import { BarcodeDisplay } from '../product/BarcodeDisplay';
-import { ProductsAPI } from '../../apis/products';
+import { ProductsAPI } from '../../api/products';
 import { ProductVariant } from '../../types';
 
 // Mock the ProductsAPI

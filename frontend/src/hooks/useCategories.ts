@@ -1,5 +1,5 @@
 import { useContext } from 'react';
-import { CategoryContext } from '../contexts/CategoryContext';
+import { CategoryContext } from '../store/CategoryContext';
 
 export const useCategories = () => {
   const context = useContext(CategoryContext);

@@ -3,7 +3,7 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vitest, beforeEach } from 'vitest';
 import { BrowserRouter, Link, useLocation } from 'react-router-dom';
 import { MobileNav } from './MobileNav';
-import { useCart } from '../../contexts/CartContext';
+import { useCart } from '../../store/CartContext';
 import {
   HomeIcon, SearchIcon, ShoppingCartIcon, UserIcon, MenuIcon
 } from 'lucide-react'; // Mocked icons

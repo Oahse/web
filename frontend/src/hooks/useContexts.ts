@@ -1,8 +1,8 @@
 import { useContext } from 'react';
-import { AuthContext } from '../contexts/AuthContext';
-import { WishlistContext } from '../contexts/WishlistContext';
-import { SkeletonContext } from '../contexts/SkeletonContext';
-import { ThemeContext } from '../contexts/ThemeContext';
+import { AuthContext } from '../store/AuthContext';
+import { WishlistContext } from '../store/WishlistContext';
+import { SkeletonContext } from '../store/SkeletonContext';
+import { ThemeContext } from '../store/ThemeContext';
 
 /**
  * Consolidated context hooks - all simple context wrappers in one place

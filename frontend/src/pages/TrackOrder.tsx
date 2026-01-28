@@ -9,7 +9,7 @@ import {
   ArrowLeftIcon,
   PrinterIcon
 } from 'lucide-react';
-import { OrdersAPI } from '../apis/orders';
+import { OrdersAPI } from '../api/orders';
 import { toast } from 'react-hot-toast';
 
 interface TrackingEvent {

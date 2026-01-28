@@ -2,7 +2,7 @@
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { describe, it, expect, vitest, beforeEach } from 'vitest';
 import { DashboardLayout } from './DashboardLayout';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../store/AuthContext';
 import { DashboardSkeleton } from '../ui/SkeletonDashboard'; // Assuming this exists or is created
 import { Button } from '../ui/Button'; // Mocked button
 import {

@@ -5,7 +5,7 @@ Includes: PricingConfig, SubscriptionCostHistory, SubscriptionAnalytics, Payment
 from sqlalchemy import Column, String, Float, DateTime, JSON, Text, Integer, Date, ForeignKey, Index
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
-from core.database import BaseModel, GUID
+from lib.db import BaseModel, GUID
 from decimal import Decimal
 from typing import Dict, Any
 

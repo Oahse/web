@@ -8,7 +8,7 @@ from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from models.product import ProductVariant
-from core.exceptions import APIException
+from lib.errors import APIException
 
 
 class BarcodeService:

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { XIcon, SearchIcon, PlusIcon, MinusIcon, ShoppingBagIcon } from 'lucide-react';
-import { themeClasses, combineThemeClasses, getButtonClasses } from '../../lib/themeClasses';
-import { ProductsAPI } from '../../apis/products';
+import { themeClasses, combineThemeClasses, getButtonClasses } from '../../utils/themeClasses';
+import { ProductsAPI } from '../../api/products';
 import { SubscriptionProductCard } from './SubscriptionProductCard';
 import { VariantSelector } from './VariantSelector';
 import { toast } from 'react-hot-toast';

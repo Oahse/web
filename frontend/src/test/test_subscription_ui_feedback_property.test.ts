@@ -7,7 +7,7 @@
 
 import { describe, it, expect, vi } from 'vitest';
 import * as fc from 'fast-check';
-import { APIError } from '../apis/subscription';
+import { APIError } from '../api/subscription';
 
 // Mock the hooks and utilities
 vi.mock('../hooks/useSubscriptionAPI');

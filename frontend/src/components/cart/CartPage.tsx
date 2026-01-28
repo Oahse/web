@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useCart } from '../../hooks/useCart';
 import { useAuth } from '../../hooks/useAuth';
-import { useLocale } from '../../contexts/LocaleContext';
+import { useLocale } from '../../store/LocaleContext';
 import { ConfirmationModal } from '../ui/ConfirmationModal';
 import { toast } from 'react-hot-toast';
 import { Trash2, Plus, Minus, ShoppingBag } from 'lucide-react';

@@ -4,7 +4,7 @@ import { Input } from '../ui/Input';
 import { Button } from '../ui/Button';
 import { Skeleton } from '../ui/Skeleton';
 import { FilterIcon, ChevronDownIcon, ChevronUpIcon } from 'lucide-react';
-import { cn } from '../../lib/utils';
+import { cn } from '../../utils/utils';
 
 /**
  * @typedef {object} FilterOption

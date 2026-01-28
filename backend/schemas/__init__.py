@@ -9,8 +9,8 @@ from . import payments  # Updated to consolidated payments
 from . import shipping
 from . import transaction
 from . import wishlist
-from . import promocode
+from . import promos
 from . import response
 from . import loyalty
-from . import inventories  # Updated to consolidated inventories
+from . import inventory  # Updated to consolidated inventory
 from . import tax

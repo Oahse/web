@@ -19,11 +19,11 @@ import { toast } from 'react-hot-toast';
 // Components
 import { Cart } from '../../pages/Cart';
 import { ProductCard } from '../../components/ProductCard';
-import { AuthProvider } from '../../contexts/AuthContext';
-import { CartProvider } from '../../contexts/CartContext';
-import { WishlistProvider } from '../../contexts/WishlistContext';
-import { SubscriptionProvider } from '../../contexts/SubscriptionContext';
-import { LocaleProvider } from '../../contexts/LocaleContext';
+import { AuthProvider } from '../../store/AuthContext';
+import { CartProvider } from '../../store/CartContext';
+import { WishlistProvider } from '../../store/WishlistContext';
+import { SubscriptionProvider } from '../../store/SubscriptionContext';
+import { LocaleProvider } from '../../store/LocaleContext';
 
 // Test utilities
 import { renderWithProviders, mockUsers, mockProducts } from '../utils';

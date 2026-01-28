@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { useWishlist } from '../contexts/WishlistContext';
-import { useCart } from '../contexts/CartContext';
+import { useWishlist } from '../store/WishlistContext';
+import { useCart } from '../store/CartContext';
 import { useAuth } from '../hooks/useAuth';
 import { HeartIcon, ShoppingCartIcon, XCircleIcon, RefreshCwIcon, AlertCircleIcon } from 'lucide-react';
 import { toast } from 'react-hot-toast';

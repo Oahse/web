@@ -25,8 +25,9 @@ from api import (
     auth_router,
     cart_router,
     health_router,
-    inventories_router,
+    inventory_router,
     loyalty_router,
+    oauth_router,
     orders_router,
     payments_router,
     products_router,
@@ -34,7 +35,6 @@ from api import (
     review_router,
     search_router,
     shipping_router,
-    social_auth_router,
     subscriptions_router,
     tax_router,
     user_router,
@@ -179,14 +179,14 @@ v1_router.include_router(products_router)
 v1_router.include_router(cart_router)
 v1_router.include_router(orders_router)
 v1_router.include_router(admin_router)
-v1_router.include_router(social_auth_router)
+v1_router.include_router(oauth_router)
 v1_router.include_router(subscriptions_router)
 v1_router.include_router(review_router)
 v1_router.include_router(payments_router)
 v1_router.include_router(wishlist_router)
 v1_router.include_router(health_router)
 v1_router.include_router(search_router)
-v1_router.include_router(inventories_router)
+v1_router.include_router(inventory_router)
 v1_router.include_router(loyalty_router)
 v1_router.include_router(analytics_router)
 v1_router.include_router(refunds_router)

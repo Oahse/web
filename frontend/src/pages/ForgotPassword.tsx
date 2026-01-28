@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Input } from '../components/forms/Input';
 import { toast } from 'react-hot-toast';
-import { validation } from '../lib/validation';
+import { validation } from '../utils/validation';
 import { AuthAPI } from '../apis';
 
 export const ForgotPassword = () => {

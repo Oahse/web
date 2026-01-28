@@ -5,7 +5,7 @@ Includes: Order, OrderItem, TrackingEvent
 from sqlalchemy import Column, String, ForeignKey, Float, Text, Integer, DateTime, Enum as SQLEnum
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import relationship
-from core.database import BaseModel, CHAR_LENGTH, GUID, Index
+from lib.db import BaseModel, CHAR_LENGTH, GUID, Index
 from enum import Enum
 
 

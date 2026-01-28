@@ -15,7 +15,7 @@ export {
 } from './useContexts';
 
 // Cart hook - exported directly from CartContext
-export { useCart } from '../contexts/CartContext';
+export { useCart } from '../store/CartContext';
 
 // =============================================================================
 // SPECIALIZED HOOKS - Keep these separate

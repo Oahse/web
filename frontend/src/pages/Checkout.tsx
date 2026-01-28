@@ -3,10 +3,10 @@
  */
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useCart } from '../contexts/CartContext';
-import { useAuth } from '../contexts/AuthContext';
-import { AuthAPI } from '../apis/auth';
-import { CartAPI } from '../apis/cart';
+import { useCart } from '../store/CartContext';
+import { useAuth } from '../store/AuthContext';
+import { AuthAPI } from '../api/auth';
+import { CartAPI } from '../api/cart';
 import { toast } from 'react-hot-toast';
 import SmartCheckoutForm from '../components/checkout/SmartCheckoutForm';
 

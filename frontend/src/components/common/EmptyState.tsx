@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { ShoppingCartIcon, HeartIcon, PackageIcon, SearchIcon } from 'lucide-react';
-import { themeClasses, getButtonClasses } from '../../lib/themeClasses';
+import { themeClasses, getButtonClasses } from '../../utils/themeClasses';
 
 /**
  * Reusable Empty State component for displaying when no data is available

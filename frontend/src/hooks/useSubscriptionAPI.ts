@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { APIError } from '../apis/subscription';
+import { APIError } from '../api/subscription';
 
 // Generic hook for managing API call states
 export function useAPICall<T = any>() {

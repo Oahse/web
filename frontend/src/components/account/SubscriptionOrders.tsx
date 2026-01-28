@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { ArrowLeftIcon, PackageIcon, CalendarIcon } from 'lucide-react';
-import { themeClasses, getButtonClasses } from '../../lib/themeClasses';
-import SubscriptionAPI from '../../apis/subscription';
+import { themeClasses, getButtonClasses } from '../../utils/themeClasses';
+import SubscriptionAPI from '../../api/subscription';
 import { toast } from 'react-hot-toast';
 
 interface Order {

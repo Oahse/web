@@ -4,7 +4,7 @@ from sqlalchemy import desc, func, and_, or_
 from sqlalchemy.orm import selectinload
 from typing import Optional, List, Dict, Any, Tuple
 from uuid import UUID
-from core.utils.uuid_utils import uuid7
+from lib.utils.uuid_utils import uuid7
 from datetime import datetime, timedelta
 from decimal import Decimal
 import json
@@ -20,9 +20,9 @@ from schemas.loyalty import (
     RedemptionResponse, LoyaltyDiscountResponse, TierAdvancementResponse,
     PersonalizedOffer, LoyaltyAnalyticsResponse
 )
-from core.exceptions import APIException
-from core.logging import structured_logger
-from core.config import settings
+from lib.errors import APIException
+from lib.logging import structured_logger
+from lib.config import settings
 
 
 class LoyaltyService:

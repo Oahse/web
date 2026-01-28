@@ -4,9 +4,9 @@ from typing import List, Optional
 from uuid import UUID
 from decimal import Decimal
 
-from core.database import get_db
-from core.dependencies import get_current_user
-from core.utils.response import Response
+from lib.db import get_db
+from lib.dependencies import get_current_user
+from lib.utils.response import Response
 from models.user import User
 from services.loyalty import LoyaltyService
 from schemas.loyalty import (
@@ -18,7 +18,7 @@ from schemas.loyalty import (
     PersonalizedOfferRequest, PersonalizedOffer,
     LoyaltyAnalyticsResponse
 )
-from core.exceptions import APIException
+from lib.errors import APIException
 
 router = APIRouter(prefix="/loyalty", tags=["loyalty"])
 

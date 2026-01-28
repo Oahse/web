@@ -13,8 +13,8 @@ import { toast } from 'react-hot-toast';
 // Components
 import { Cart } from '../../pages/Cart';
 import { ProductCard } from '../../components/ProductCard';
-import { AuthProvider } from '../../contexts/AuthContext';
-import { CartProvider, useCart } from '../../contexts/CartContext';
+import { AuthProvider } from '../../store/AuthContext';
+import { CartProvider, useCart } from '../../store/CartContext';
 
 // Mock APIs
 vi.mock('../../apis/cart', () => ({

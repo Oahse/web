@@ -12,10 +12,10 @@ import { toast } from 'react-hot-toast';
 
 // Components
 import { ProductCard } from '../../components/ProductCard';
-import { AuthProvider } from '../../contexts/AuthContext';
-import { CartProvider } from '../../contexts/CartContext';
-import { WishlistProvider } from '../../contexts/WishlistContext';
-import { SubscriptionProvider } from '../../contexts/SubscriptionContext';
+import { AuthProvider } from '../../store/AuthContext';
+import { CartProvider } from '../../store/CartContext';
+import { WishlistProvider } from '../../store/WishlistContext';
+import { SubscriptionProvider } from '../../store/SubscriptionContext';
 
 // Mock APIs
 vi.mock('../../apis/cart', () => ({

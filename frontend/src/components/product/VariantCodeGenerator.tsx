@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { QrCodeIcon, ScanLineIcon, RefreshCwIcon } from 'lucide-react';
-import { ProductsAPI } from '../../apis/products';
+import { ProductsAPI } from '../../api/products';
 import { toast } from 'react-hot-toast';
 
 interface VariantCodeGeneratorProps {

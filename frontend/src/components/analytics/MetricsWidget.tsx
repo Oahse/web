@@ -3,7 +3,7 @@
  * Displays individual business metrics with trends and comparisons
  */
 import React, { useState, useEffect } from 'react';
-import { AnalyticsAPI } from '../../apis/analytics';
+import { AnalyticsAPI } from '../../api/analytics';
 import { 
   ArrowTrendingUpIcon, 
   ArrowTrendingDownIcon,

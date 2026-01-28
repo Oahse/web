@@ -7,7 +7,7 @@ import logging
 from datetime import datetime, timezone, timedelta
 from typing import Dict, Any, List, Optional, Tuple
 from uuid import UUID
-from core.utils.uuid_utils import uuid7
+from lib.utils.uuid_utils import uuid7
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_, or_, desc, asc, text, Integer
 from sqlalchemy.orm import selectinload
@@ -20,7 +20,7 @@ from models.analytics import (
 from models.orders import Order
 from models.user import User
 from models.refunds import Refund, RefundStatus
-from core.config import settings
+from lib.config import settings
 
 logger = logging.getLogger(__name__)
 

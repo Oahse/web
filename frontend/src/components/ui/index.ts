@@ -29,4 +29,4 @@ export { ConfirmationModal } from './ConfirmationModal';
 export { NotificationModal } from './NotificationModal';
 
 // Re-export theme utilities
-export { themeClasses, animations } from '../../lib/theme';
+export { themeClasses, animations } from '../../utils/theme';

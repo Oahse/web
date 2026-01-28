@@ -1,13 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { useAuth } from '../../contexts/AuthContext';
-import { useCart } from '../../contexts/CartContext';
-import { useWishlist } from '../../contexts/WishlistContext';
+import { useAuth } from '../../store/AuthContext';
+import { useCart } from '../../store/CartContext';
+import { useWishlist } from '../../store/WishlistContext';
 import { ChevronDownIcon, SearchIcon, UserIcon, HeartIcon, ShoppingCartIcon, MenuIcon, PhoneIcon, ShieldIcon } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 import { SkeletonHeader } from '../ui/SkeletonNavigation';
-import { getCountryByCode } from '../../lib/countries';
+import { getCountryByCode } from '../../utils/countries';
 
 const TopHeaderAds = [
   'Authentic African spices delivered to your door',

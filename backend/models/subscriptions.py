@@ -5,7 +5,7 @@ Includes: Subscription and related subscription models
 from sqlalchemy import Column, String, Boolean, DateTime, ForeignKey, Float, Table, JSON, Text, Integer, Index
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
-from core.database import BaseModel, GUID, Base
+from lib.db import BaseModel, GUID, Base
 from typing import Dict, Any
 
 # Association table for many-to-many relationship between Subscription and ProductVariant
