@@ -53,19 +53,17 @@ class TestBasicPricingCalculations:
         assert tax_amount == 8.00
     
     def test_shipping_cost_calculation(self):
-        """Test shipping cost with free shipping threshold"""
-        free_shipping_threshold = 100.00
+        """Test shipping cost calculation"""
         standard_shipping = 10.00
+        express_shipping = 25.00
         
-        # Below threshold
-        subtotal_below = 40.00
-        shipping_cost = standard_shipping if subtotal_below < free_shipping_threshold else 0.00
+        # Standard shipping
+        shipping_cost = standard_shipping
         assert shipping_cost == 10.00
         
-        # Above threshold
-        subtotal_above = 60.00
-        shipping_cost = standard_shipping if subtotal_above < free_shipping_threshold else 0.00
-        assert shipping_cost == 0.00
+        # Express shipping
+        shipping_cost = express_shipping
+        assert shipping_cost == 25.00
 
 
 class TestPromocodeCalculations:
@@ -91,13 +89,13 @@ class TestPromocodeCalculations:
         assert final_total == 80.00
     
     def test_shipping_discount(self):
-        """Test free shipping discount"""
+        """Test shipping discount promocode"""
         subtotal = 100.00
         shipping_cost = 12.00
         tax_amount = 8.00
         
-        # Free shipping promocode eliminates shipping cost
-        shipping_discount = shipping_cost
+        # Shipping discount promocode reduces shipping cost
+        shipping_discount = 5.00  # $5 off shipping
         final_total = subtotal + tax_amount + shipping_cost - shipping_discount
         
         assert shipping_discount == 12.00

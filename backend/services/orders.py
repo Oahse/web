@@ -367,9 +367,7 @@ class OrderService:
                     "city": shipping_address.city,
                     "state": shipping_address.state,
                     "country": shipping_address.country,
-                    "postal_code": shipping_address.postal_code,
-                    "first_name": shipping_address.first_name,
-                    "last_name": shipping_address.last_name
+                    "postal_code": shipping_address.post_code,
                 }
                 
                 # Use shipping address as billing address if no separate billing address
@@ -764,6 +762,10 @@ class OrderService:
             user_id=str(order.user_id),
             status=order.status,
             total_amount=order.total_amount,
+            subtotal=order.subtotal,
+            tax_amount=order.tax_amount,
+            shipping_amount=order.shipping_amount,
+            discount_amount=order.discount_amount,
             currency=order.currency,  # Use order's currency
             tracking_number=order.tracking_number,
             estimated_delivery=estimated_delivery,
@@ -968,8 +970,8 @@ class OrderService:
         Get tax rate based on shipping address
         """
         try:
-            # Default tax rate
-            default_tax_rate = 0.08  # 8%
+            # Default tax rate - set to 0 for no tax by default
+            default_tax_rate = 0.0  # 0% - no tax by default
             
             if not shipping_address:
                 return default_tax_rate
@@ -978,7 +980,7 @@ class OrderService:
             state = getattr(shipping_address, 'state', None) or shipping_address.get('state', '')
             country = getattr(shipping_address, 'country', None) or shipping_address.get('country', 'US')
             
-            # US state tax rates (simplified)
+            # US state tax rates (simplified) - uncomment if you want to enable tax
             us_state_tax_rates = {
                 'CA': 0.0725,  # California
                 'NY': 0.08,    # New York
@@ -992,7 +994,7 @@ class OrderService:
                 'AK': 0.0,     # Alaska (no state sales tax)
             }
             
-            # International tax rates (simplified)
+            # International tax rates (simplified) - uncomment if you want to enable tax
             international_tax_rates = {
                 'CA': 0.13,    # Canada (HST/GST average)
                 'GB': 0.20,    # UK (VAT)
@@ -1001,16 +1003,17 @@ class OrderService:
                 'AU': 0.10,    # Australia (GST)
             }
             
-            if country == 'US' and state:
-                return us_state_tax_rates.get(state.upper(), default_tax_rate)
-            elif country != 'US':
-                return international_tax_rates.get(country.upper(), 0.0)
+            # For now, return 0 tax rate - uncomment below to enable location-based tax
+            # if country == 'US' and state:
+            #     return us_state_tax_rates.get(state.upper(), default_tax_rate)
+            # elif country != 'US':
+            #     return international_tax_rates.get(country.upper(), 0.0)
             
-            return default_tax_rate
+            return 0.0  # Always return 0 tax for now
             
         except Exception as e:
             logger.error(f"Error calculating tax rate: {e}")
-            return 0.08  # Default 8% tax rate
+            return 0.0  # Default 0% tax rate
     def _generate_price_update_message(self, price_updates: List[Dict], total_change: float) -> str:
         """
         Generate a user-friendly message about price updates
@@ -1089,7 +1092,7 @@ class OrderService:
                     "city": order.shipping_address.city,
                     "state": order.shipping_address.state,
                     "country": order.shipping_address.country,
-                    "postal_code": order.shipping_address.postal_code
+                    "postal_code": order.shipping_address.post_code
                 }
             
             # Order created event handled by hybrid task system
@@ -1417,7 +1420,7 @@ class OrderService:
                 "order_number": order.order_number,
                 "order_date": order.created_at,
                 "customer": {
-                    "name": f"{order.user.first_name} {order.user.last_name}",
+                    "name": f"{order.user.firstname} {order.user.lastname}",
                     "email": order.user.email,
                     "phone": order.user.phone
                 },

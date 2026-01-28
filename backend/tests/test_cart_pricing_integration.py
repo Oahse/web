@@ -219,7 +219,7 @@ class TestCartServicePricing:
     
     @pytest.mark.asyncio
     async def test_apply_shipping_promocode(self, cart_service, mock_redis_client):
-        """Test applying free shipping promocode"""
+        """Test applying shipping discount promocode"""
         user_id = uuid7()
         
         # Mock cart data
@@ -377,8 +377,8 @@ class TestCartServicePricing:
         assert result["currency"] == "USD"
     
     @pytest.mark.asyncio
-    async def test_free_shipping_threshold(self, cart_service):
-        """Test free shipping threshold logic"""
+    async def test_shipping_methods_selection(self, cart_service):
+        """Test shipping methods selection logic"""
         user_id = uuid7()
         address = {"city": "Test City", "state": "TS"}
         
@@ -395,24 +395,24 @@ class TestCartServicePricing:
             
             mock_shipping_instance.get_all_active_shipping_methods.return_value = [mock_method]
             
-            # Mock cart with subtotal above free shipping threshold
+            # Mock cart with items
             mock_cart = MagicMock()
-            mock_cart.subtotal = 60.00  # Above $50 threshold
+            mock_cart.subtotal = 50.00
             
             cart_service.get_cart = AsyncMock(return_value=mock_cart)
             
             # Test getting shipping options
             options = await cart_service.get_shipping_options(user_id, address)
             
-            # Should include free shipping option
-            free_shipping_option = next(
-                (opt for opt in options if opt["name"] == "Free Shipping"), 
+            # Should include standard shipping option
+            standard_shipping_option = next(
+                (opt for opt in options if opt["name"] == "Standard Shipping"), 
                 None
             )
             
-            assert free_shipping_option is not None
-            assert free_shipping_option["price"] == 0.00
-            assert "Orders over $100" in free_shipping_option["description"]
+            assert standard_shipping_option is not None
+            assert standard_shipping_option["price"] == 10.00
+            assert "5 business days" in standard_shipping_option["description"]
 
 
 class TestCartValidationIntegration:

@@ -58,6 +58,10 @@ class OrderResponse(BaseModel):
     user_id: UUID
     status: str
     total_amount: float
+    subtotal: Optional[float] = None
+    tax_amount: Optional[float] = None
+    shipping_amount: Optional[float] = None
+    discount_amount: Optional[float] = None
     currency: str
     tracking_number: Optional[str]
     estimated_delivery: Optional[str]

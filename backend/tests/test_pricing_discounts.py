@@ -125,22 +125,22 @@ class TestPricingCalculations:
         assert expected_tax == 10.00
     
     @pytest.mark.asyncio
-    async def test_shipping_calculation_free_threshold(self, cart_service):
-        """Test free shipping threshold logic"""
+    async def test_shipping_calculation_with_methods(self, cart_service):
+        """Test shipping calculation with different methods"""
         # Mock shipping options method
         cart_service.get_shipping_options = AsyncMock()
         
-        # Test case 1: Below free shipping threshold
-        subtotal_below = 40.00
-        free_shipping_threshold = 100.00
+        # Test case 1: Standard shipping
+        subtotal = 40.00
+        standard_shipping_cost = 10.00
         
-        shipping_cost = 10.00 if subtotal_below < free_shipping_threshold else 0.00
+        shipping_cost = standard_shipping_cost
         assert shipping_cost == 10.00
         
-        # Test case 2: Above free shipping threshold
-        subtotal_above = 60.00
-        shipping_cost = 10.00 if subtotal_above < free_shipping_threshold else 0.00
-        assert shipping_cost == 0.00
+        # Test case 2: Express shipping
+        express_shipping_cost = 25.00
+        shipping_cost = express_shipping_cost
+        assert shipping_cost == 25.00
 
 
 class TestPromocodeDiscounts:
@@ -184,13 +184,13 @@ class TestPromocodeDiscounts:
     
     @pytest.fixture
     def shipping_promocode(self):
-        """Free shipping promocode"""
+        """Shipping discount promocode"""
         return Promocode(
             id=uuid7(),
-            code="FREESHIP",
-            description="Free shipping",
+            code="SHIP5",
+            description="$5 off shipping",
             discount_type="shipping",
-            value=0.00,
+            value=5.00,
             minimum_order_amount=None,
             maximum_discount_amount=None,
             usage_limit=None,
@@ -432,16 +432,16 @@ class TestComplexPricingScenarios:
         """Test calculation with multiple discount types"""
         subtotal = 100.00
         
-        # Scenario: Loyalty discount + Promocode + Free shipping
+        # Scenario: Loyalty discount + Promocode + Shipping discount
         loyalty_discount_rate = 0.05  # 5% loyalty discount
         promocode_discount = 10.00    # $10 promocode
         shipping_cost = 15.00
-        free_shipping = True
+        shipping_discount = 5.00  # $5 off shipping
         
         # Apply discounts in order
         after_loyalty = subtotal * (1 - loyalty_discount_rate)  # $95.00
         after_promocode = after_loyalty - promocode_discount    # $85.00
-        shipping_amount = 0.00 if free_shipping else shipping_cost
+        shipping_amount = shipping_cost - shipping_discount     # $10.00
         
         final_total = after_promocode + shipping_amount
         

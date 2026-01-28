@@ -13,6 +13,9 @@ interface Order {
   created_at: string;
   status: string;
   total_amount: number;
+  subtotal?: number;
+  tax_amount?: number;
+  shipping_amount?: number;
   items: any[];
 }
 
@@ -23,6 +26,7 @@ interface OrdersProps {
 export const Orders = ({
   animation = 'shimmer' 
 }: OrdersProps) => {
+  const { formatCurrency } = useLocale();
   const { data: paginatedData, loading, error, execute } = usePaginatedApi();
   const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
 
@@ -130,7 +134,7 @@ export const Orders = ({
         My Orders
       </h1>
       {orders.length > 0 ? <div className="space-y-4">
-          {orders.map(order => <div key={order.id} className="bg-white dark:bg-gray-800 rounded-lg shadow-sm overflow-hidden">
+          {orders.map((order: Order) => <div key={order.id} className="bg-white dark:bg-gray-800 rounded-lg shadow-sm overflow-hidden">
               <div className="flex justify-between items-center p-4 cursor-pointer " onClick={() => toggleOrderExpand(order.id)}>
                 <div>
                   <p className="text-sm text-gray-500 dark:text-gray-400">
@@ -153,7 +157,7 @@ export const Orders = ({
                     Total
                   </p>
                   <p className="font-medium text-main dark:text-white">
-                    ${order.total_amount.toFixed(2)}
+                    {formatCurrency(order.total_amount)}
                   </p>
                 </div>
                 <div>
@@ -165,7 +169,7 @@ export const Orders = ({
               </div>
               {expandedOrderId === order.id && <div className="p-4 border-t border-gray-200 dark:border-gray-700">
                   <div className="space-y-4">
-                    {order.items.map(item => (
+                    {order.items.map((item: any) => (
                       <OrderItemDetails 
                         key={item.id} 
                         productId={item.product_id} 
@@ -177,13 +181,16 @@ export const Orders = ({
                   <div className="mt-6 flex justify-between">
                     <div className="space-y-1 text-sm">
                       <p className="text-gray-500 dark:text-gray-400">
-                        Subtotal: ${order.total_amount.toFixed(2)}
+                        Subtotal: {formatCurrency(order.subtotal || order.total_amount)}
                       </p>
                       <p className="text-gray-500 dark:text-gray-400">
-                        Shipping: Free
+                        Shipping: {formatCurrency(order.shipping_amount || 0)}
+                      </p>
+                      <p className="text-gray-500 dark:text-gray-400">
+                        Tax: {formatCurrency(order.tax_amount || 0)}
                       </p>
                       <p className="font-medium text-main dark:text-white">
-                        Total: ${order.total_amount.toFixed(2)}
+                        Total: {formatCurrency(order.total_amount)}
                       </p>
                     </div>
                     <div className="flex space-x-2">

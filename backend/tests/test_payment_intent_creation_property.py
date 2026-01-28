@@ -46,7 +46,7 @@ def valid_payment_data(draw):
         'tax_rate': draw(st.decimals(min_value=Decimal('0.00'), max_value=Decimal('0.30'), places=4)),
         'has_shipping_address': draw(st.booleans()),
         'has_payment_method': draw(st.booleans()),
-        'free_shipping_threshold': draw(st.decimals(min_value=Decimal('25.00'), max_value=Decimal('100.00'), places=2))
+        'shipping_cost': draw(st.decimals(min_value=Decimal('5.00'), max_value=Decimal('25.00'), places=2))
     }
 
 
@@ -122,11 +122,11 @@ class TestPaymentIntentCreationProperty:
         tax_rate = payment_data['tax_rate']
         has_shipping_address = payment_data['has_shipping_address']
         has_payment_method = payment_data['has_payment_method']
-        free_shipping_threshold = payment_data['free_shipping_threshold']
+        shipping_cost = payment_data['shipping_cost']
 
         # Calculate expected values
         tax_amount = subtotal * tax_rate
-        shipping_amount = Decimal('0.00') if subtotal >= free_shipping_threshold else Decimal('10.00')
+        shipping_amount = shipping_cost
         expected_total = subtotal + tax_amount + shipping_amount
 
         # Mock database responses
@@ -197,9 +197,9 @@ class TestPaymentIntentCreationProperty:
                     assert abs(breakdown["tax_amount"] - float(tax_amount)) < 0.01, "Tax amount should be calculated correctly"
                     assert abs(breakdown["tax_rate"] - float(tax_rate)) < 0.0001, "Tax rate should match"
 
-                    # Property: Shipping calculation should follow business rules
-                    expected_shipping = 0.0 if subtotal >= free_shipping_threshold else 10.0
-                    assert abs(breakdown["shipping_amount"] - expected_shipping) < 0.01, "Shipping amount should follow free shipping rules"
+                    # Property: Shipping calculation should use provided shipping cost
+                    expected_shipping = float(shipping_cost)
+                    assert abs(breakdown["shipping_amount"] - expected_shipping) < 0.01, "Shipping amount should match provided shipping cost"
 
                     # Property: Total amount should be sum of all components
                     calculated_total = breakdown["subtotal"] + breakdown["tax_amount"] + breakdown["shipping_amount"]
