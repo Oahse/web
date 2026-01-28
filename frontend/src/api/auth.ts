@@ -126,7 +126,7 @@ export class AuthAPI {
    * Verify email with token
    */
   static async verifyEmail(token: string) {
-    return await apiClient.post('/auth/verify-email', { token });
+    return await apiClient.get(`/auth/verify-email?token=${token}`);
   }
 
   /**

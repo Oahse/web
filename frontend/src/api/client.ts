@@ -409,14 +409,14 @@ class APIClient {
   isPublicEndpoint(url) {
     // List of public endpoints that shouldn't show login prompts
     const publicEndpoints = [
-      '/v1/products/featured',
-      '/v1/products/popular',
-      '/v1/products',
-      '/v1/products/categories',
-      '/v1/auth/profile',
-      '/v1/users/profile',
-      '/v1/cart',  // Cart endpoints are optional (work without auth)
-      '/v1/orders/track/'  // Public order tracking
+      '/products/featured',
+      '/products/popular',
+      '/products',
+      '/products/categories',
+      '/auth/profile',
+      '/users/profile',
+      '/cart',  // Cart endpoints are optional (work without auth)
+      '/orders/track/'  // Public order tracking
     ];
 
     return publicEndpoints.some(endpoint => url.includes(endpoint));
@@ -609,7 +609,7 @@ class APIClient {
   }
 
   async addToCart(variantId, quantity) {
-    return this.post('/cart/items', { variant_id: variantId, quantity });
+    return this.post('/cart/add', { variant_id: variantId, quantity });
   }
 
   async updateCartItem(itemId, quantity) {
@@ -621,7 +621,7 @@ class APIClient {
   }
 
   async clearCart() {
-    return this.delete('/cart');
+    return this.delete('/cart/clear');
   }
 
   // Order methods

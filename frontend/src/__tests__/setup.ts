@@ -1,6 +1,7 @@
 /**
  * Test setup and configuration
  */
+import React from 'react';
 import { beforeAll, afterEach, vi } from 'vitest';
 import { cleanup } from '@testing-library/react';
 import '@testing-library/jest-dom';
@@ -69,7 +70,7 @@ vi.mock('@stripe/react-stripe-js', () => ({
   useElements: () => ({
     getElement: vi.fn()
   }),
-  CardElement: () => <div data-testid="card-element" />
+  CardElement: () => React.createElement('div', { 'data-testid': 'card-element' })
 }));
 
 // Mock toast notifications
@@ -180,10 +181,12 @@ export const mockCart = {
     id: '123e4567-e89b-12d3-a456-426614174004',
     variant_id: mockProduct.variants[0].id,
     quantity: 2,
-    price: mockProduct.variants[0].price,
+    price_per_unit: mockProduct.variants[0].price,
+    total_price: mockProduct.variants[0].price * 2,
     variant: mockProduct.variants[0]
   }],
-  total: 199.98
+  subtotal: 199.98,
+  total_items: 2
 };
 
 export const mockSubscription = {
@@ -202,11 +205,7 @@ export const mockSubscription = {
 
 // Test wrapper components
 export const TestWrapper = ({ children }: { children: React.ReactNode }) => {
-  return (
-    <div data-testid="test-wrapper">
-      {children}
-    </div>
-  );
+  return React.createElement('div', { 'data-testid': 'test-wrapper' }, children);
 };
 
 // Mock API responses

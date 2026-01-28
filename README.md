@@ -1,13 +1,438 @@
-<div align="center">
-  <img src="frontend/public/banwee_logo_green.png" alt="Banwee Logo" width="200"/>
-  
-  # Banwee E-commerce Platform
+# E-Commerce Platform
 
-  <p align="center">
-    <strong>A comprehensive, modern e-commerce platform built with FastAPI and React</strong>
-  </p>
+A comprehensive full-stack e-commerce platform built with FastAPI (Python) backend and React (TypeScript) frontend.
 
-  <p align="center">
+## 🚀 Features
+
+### Core Features
+- **User Authentication & Authorization** - JWT-based auth with OAuth support
+- **Product Management** - Products, variants, categories, inventory tracking
+- **Shopping Cart** - Persistent cart with real-time updates
+- **Checkout & Payments** - Stripe integration with multiple payment methods
+- **Order Management** - Order tracking, fulfillment, refunds
+- **Subscription System** - Recurring orders with flexible scheduling
+- **Admin Dashboard** - Comprehensive admin panel with analytics
+- **Search & Filtering** - Advanced product search and filtering
+- **Reviews & Ratings** - Product reviews and rating system
+- **Wishlist** - Save products for later
+- **Inventory Management** - Multi-warehouse inventory tracking
+- **Discount System** - Coupons, promotions, and bulk discounts
+- **Analytics** - Sales analytics and reporting
+- **Email Notifications** - Automated email system
+- **Mobile Responsive** - Fully responsive design
+
+### Technical Features
+- **Async/Await** - Full async support for high performance
+- **Background Jobs** - ARQ for background task processing
+- **Caching** - Redis caching for improved performance
+- **Database** - PostgreSQL with SQLAlchemy ORM
+- **API Documentation** - Auto-generated OpenAPI/Swagger docs
+- **Testing** - Comprehensive test suite with 80%+ coverage
+- **Docker Support** - Full containerization with Docker Compose
+- **CI/CD Pipeline** - GitHub Actions for automated testing and deployment
+- **Security** - CORS, rate limiting, input validation, SQL injection protection
+- **Monitoring** - Health checks and error tracking
+
+## 🛠️ Tech Stack
+
+### Backend
+- **FastAPI** - Modern, fast web framework for building APIs
+- **Python 3.11** - Latest Python with async/await support
+- **PostgreSQL** - Robust relational database
+- **SQLAlchemy** - Python SQL toolkit and ORM
+- **Redis** - In-memory data structure store for caching
+- **ARQ** - Async task queue for background jobs
+- **Stripe** - Payment processing
+- **Pydantic** - Data validation using Python type annotations
+- **Alembic** - Database migration tool
+- **Pytest** - Testing framework
+
+### Frontend
+- **React 18** - Modern React with hooks and concurrent features
+- **TypeScript** - Type-safe JavaScript
+- **Vite** - Fast build tool and dev server
+- **Tailwind CSS** - Utility-first CSS framework
+- **React Router** - Client-side routing
+- **React Hook Form** - Performant forms with easy validation
+- **Axios** - HTTP client for API requests
+- **Stripe Elements** - Secure payment forms
+- **React Query** - Data fetching and caching
+- **Vitest** - Fast unit testing framework
+- **React Testing Library** - Testing utilities
+
+### DevOps & Tools
+- **Docker** - Containerization
+- **Docker Compose** - Multi-container orchestration
+- **GitHub Actions** - CI/CD pipeline
+- **Nginx** - Reverse proxy and load balancer
+- **ESLint** - JavaScript/TypeScript linting
+- **Prettier** - Code formatting
+
+## 📋 Prerequisites
+
+- **Python 3.11+**
+- **Node.js 18+**
+- **PostgreSQL 15+**
+- **Redis 7+**
+- **Docker & Docker Compose** (optional)
+
+## 🚀 Quick Start
+
+### Using Docker (Recommended)
+
+1. **Clone the repository**
+   ```bash
+   git clone <repository-url>
+   cd ecommerce-platform
+   ```
+
+2. **Set up environment variables**
+   ```bash
+   cp .env.example .env
+   cp backend/.env.example backend/.env
+   cp frontend/.env.example frontend/.env
+   # Edit .env files with your configuration
+   ```
+
+3. **Start the application**
+   ```bash
+   docker-compose up -d
+   ```
+
+4. **Run database migrations**
+   ```bash
+   docker-compose exec backend alembic upgrade head
+   ```
+
+5. **Access the application**
+   - Frontend: http://localhost
+   - Backend API: http://localhost:8000
+   - API Documentation: http://localhost:8000/docs
+
+### Manual Setup
+
+#### Backend Setup
+
+1. **Navigate to backend directory**
+   ```bash
+   cd backend
+   ```
+
+2. **Create virtual environment**
+   ```bash
+   python -m venv venv
+   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   ```
+
+3. **Install dependencies**
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+4. **Set up environment variables**
+   ```bash
+   cp .env.example .env
+   # Edit .env with your database and Redis URLs
+   ```
+
+5. **Set up PostgreSQL database**
+   ```bash
+   # Create database
+   createdb ecommerce_db
+   
+   # Or using psql
+   psql -c "CREATE DATABASE ecommerce_db;"
+   ```
+
+6. **Run database migrations**
+   ```bash
+   alembic upgrade head
+   ```
+
+7. **Start the backend server**
+   ```bash
+   uvicorn main:app --reload --host 0.0.0.0 --port 8000
+   ```
+
+8. **Start ARQ worker (in another terminal)**
+   ```bash
+   cd backend
+   source venv/bin/activate
+   python start_arq_worker.py
+   ```
+
+#### Frontend Setup
+
+1. **Navigate to frontend directory**
+   ```bash
+   cd frontend
+   ```
+
+2. **Install dependencies**
+   ```bash
+   npm install
+   ```
+
+3. **Set up environment variables**
+   ```bash
+   cp .env.example .env
+   # Edit .env with your API URL and Stripe public key
+   ```
+
+4. **Start the development server**
+   ```bash
+   npm run dev
+   ```
+
+5. **Access the application**
+   - Frontend: http://localhost:5173
+   - Backend API: http://localhost:8000
+   - API Documentation: http://localhost:8000/docs
+
+## 🔧 Testing API Connection
+
+After setting up both backend and frontend, test the connection:
+
+```bash
+# Install axios for the test script
+npm install -g axios
+
+# Run the connection test
+node test-api-connection.js
+```
+
+This will verify that:
+- Backend is running and accessible
+- API endpoints are responding correctly
+- Frontend can communicate with backend
+
+## 🧪 Testing
+
+### Backend Tests
+
+```bash
+cd backend
+
+# Run all tests
+pytest
+
+# Run with coverage
+pytest --cov=. --cov-report=html
+
+# Run specific test categories
+pytest tests/unit/
+pytest tests/integration/
+
+# Run specific test file
+pytest tests/unit/test_auth_service.py
+```
+
+### Frontend Tests
+
+```bash
+cd frontend
+
+# Run all tests
+npm test
+
+# Run with coverage
+npm run test:coverage
+
+# Run specific test categories
+npm run test:api
+npm run test:components
+npm run test:hooks
+
+# Run tests in watch mode
+npm run test:watch
+```
+
+## 📚 API Documentation
+
+The API documentation is automatically generated and available at:
+- **Swagger UI**: http://localhost:8000/docs
+- **ReDoc**: http://localhost:8000/redoc
+- **OpenAPI JSON**: http://localhost:8000/openapi.json
+
+### Key API Endpoints
+
+#### Authentication
+- `POST /v1/auth/register` - User registration
+- `POST /v1/auth/login` - User login
+- `POST /v1/auth/refresh` - Refresh access token
+- `POST /v1/auth/logout` - User logout
+- `GET /v1/auth/profile` - Get user profile
+- `PUT /v1/auth/profile` - Update user profile
+
+#### Products
+- `GET /v1/products` - List products with filtering
+- `GET /v1/products/{id}` - Get product details
+- `GET /v1/products/categories` - List product categories
+- `GET /v1/products/search?q=query` - Search products
+
+#### Cart
+- `GET /v1/cart` - Get user's cart
+- `POST /v1/cart/add` - Add item to cart
+- `PUT /v1/cart/items/{id}` - Update cart item
+- `DELETE /v1/cart/items/{id}` - Remove cart item
+- `DELETE /v1/cart/clear` - Clear entire cart
+
+#### Orders
+- `GET /v1/orders` - List user's orders
+- `POST /v1/orders` - Create new order
+- `GET /v1/orders/{id}` - Get order details
+- `POST /v1/orders/{id}/cancel` - Cancel order
+
+#### Subscriptions
+- `GET /v1/subscriptions` - List user's subscriptions
+- `POST /v1/subscriptions` - Create subscription
+- `PUT /v1/subscriptions/{id}` - Update subscription
+- `POST /v1/subscriptions/{id}/pause` - Pause subscription
+
+## 🏗️ Project Structure
+
+```
+ecommerce-platform/
+├── backend/                 # FastAPI backend
+│   ├── api/                # API route handlers
+│   ├── core/               # Core utilities (auth, db, config)
+│   ├── models/             # SQLAlchemy models
+│   ├── schemas/            # Pydantic schemas
+│   ├── services/           # Business logic
+│   ├── jobs/               # Background tasks
+│   ├── tests/              # Test suite
+│   ├── alembic/            # Database migrations
+│   ├── main.py             # FastAPI app entry point
+│   └── requirements.txt    # Python dependencies
+├── frontend/               # React frontend
+│   ├── src/
+│   │   ├── api/           # API client functions
+│   │   ├── components/    # React components
+│   │   ├── hooks/         # Custom React hooks
+│   │   ├── pages/         # Page components
+│   │   ├── store/         # Context providers
+│   │   ├── utils/         # Utility functions
+│   │   └── types/         # TypeScript type definitions
+│   ├── public/            # Static assets
+│   ├── package.json       # Node.js dependencies
+│   └── vite.config.js     # Vite configuration
+├── docs/                  # Documentation
+├── .github/               # GitHub Actions workflows
+├── docker-compose.yml     # Docker Compose configuration
+├── test-api-connection.js # API connection test script
+└── README.md             # This file
+```
+
+## 🔧 Configuration
+
+### Environment Variables
+
+#### Backend (.env)
+```env
+# Database
+DATABASE_URL=postgresql+asyncpg://user:password@localhost:5432/ecommerce_db
+
+# Redis
+REDIS_URL=redis://localhost:6379/0
+
+# Security
+SECRET_KEY=your-secret-key-here
+ALGORITHM=HS256
+ACCESS_TOKEN_EXPIRE_MINUTES=30
+
+# Stripe
+STRIPE_SECRET_KEY=sk_test_...
+STRIPE_WEBHOOK_SECRET=whsec_...
+
+# Email
+EMAIL_HOST=smtp.gmail.com
+EMAIL_PORT=587
+EMAIL_USERNAME=your-email@gmail.com
+EMAIL_PASSWORD=your-app-password
+
+# Environment
+ENVIRONMENT=development
+DEBUG=true
+```
+
+#### Frontend (.env)
+```env
+VITE_API_BASE_URL=http://localhost:8000/v1
+VITE_STRIPE_PUBLIC_KEY=pk_test_...
+VITE_ENVIRONMENT=development
+```
+
+## 🚀 Deployment
+
+### Production Deployment with Docker
+
+1. **Set production environment variables**
+   ```bash
+   cp .env.example .env
+   cp backend/.env.example backend/.env
+   cp frontend/.env.example frontend/.env
+   # Configure production values
+   ```
+
+2. **Build and start services**
+   ```bash
+   docker-compose -f docker-compose.yml up -d
+   ```
+
+3. **Run database migrations**
+   ```bash
+   docker-compose exec backend alembic upgrade head
+   ```
+
+## 🔒 Security
+
+### Security Features Implemented
+
+- **Authentication**: JWT tokens with refresh mechanism
+- **Authorization**: Role-based access control
+- **Input Validation**: Pydantic models for request validation
+- **SQL Injection Protection**: SQLAlchemy ORM with parameterized queries
+- **CORS**: Configured for specific origins
+- **Rate Limiting**: API rate limiting middleware
+- **Password Hashing**: Bcrypt for secure password storage
+- **HTTPS**: SSL/TLS encryption in production
+- **Security Headers**: Comprehensive security headers
+- **Data Sanitization**: Input sanitization and validation
+
+## 🤝 Contributing
+
+1. **Fork the repository**
+2. **Create a feature branch**
+   ```bash
+   git checkout -b feature/amazing-feature
+   ```
+3. **Make your changes**
+4. **Add tests for your changes**
+5. **Run the test suite**
+   ```bash
+   # Backend tests
+   cd backend && pytest
+   
+   # Frontend tests
+   cd frontend && npm test
+   ```
+6. **Commit your changes**
+   ```bash
+   git commit -m 'Add some amazing feature'
+   ```
+7. **Push to the branch**
+   ```bash
+   git push origin feature/amazing-feature
+   ```
+8. **Open a Pull Request**
+
+## 📝 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+---
+
+**Built with ❤️ by the development team**
     <a href="#features">Features</a> •
     <a href="#tech-stack">Tech Stack</a> •
     <a href="#quick-start">Quick Start</a> •
