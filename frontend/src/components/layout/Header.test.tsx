@@ -101,7 +101,7 @@ describe('Header Component', () => {
   it('renders SkeletonHeader when isLoading is true', () => {
     renderWithRouter(<Header isLoading={true} />);
     expect(screen.getByTestId('mock-skeleton-header')).toBeInTheDocument();
-    expect(screen.queryByText('Free shipping on orders over $100')).not.toBeInTheDocument();
+    expect(screen.queryByText('Authentic African spices delivered to your door')).not.toBeInTheDocument();
   });
 
   it('renders top header for desktop with unauthenticated user', () => {
@@ -127,7 +127,7 @@ describe('Header Component', () => {
 
   it('rotates ads in middle header', () => {
     renderWithRouter(<Header />);
-    expect(screen.getByText('Free shipping on orders over $100')).toBeInTheDocument();
+    expect(screen.getByText('Authentic African spices delivered to your door')).toBeInTheDocument();
     act(() => {
       vitest.advanceTimersByTime(5000);
     });

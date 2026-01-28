@@ -222,6 +222,10 @@
             color: #666;
         }
 
+        .breakdown-row.shipping {
+            color: #666;
+        }
+
         .breakdown-row.discount {
             color: #666;
         }
@@ -318,6 +322,10 @@
                 <div class="breakdown-row tax">
                     <span class="label">Tax VAT {{ bnw_tax_rate }}%:</span>
                     <span class="value">{{ bnw_tax_amount }}</span>
+                </div>
+                <div class="breakdown-row shipping">
+                    <span class="label">Shipping:</span>
+                    <span class="value">{{ bnw_shipping_amount }}</span>
                 </div>
                 {% if bnw_discount_amount %}
                 <div class="breakdown-row discount">

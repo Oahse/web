@@ -284,14 +284,14 @@ describe('Cart Page Comprehensive Tests', () => {
       });
     });
 
-    it('should show free shipping progress when applicable', async () => {
-      const cartWithLowSubtotal = {
+    it('should show shipping costs when applicable', async () => {
+      const cartWithShipping = {
         ...mockCart,
         subtotal: 50.00,
         total_amount: 65.99,
         shipping_amount: 10.00,
       };
-      CartAPI.getCart.mockResolvedValue({ data: cartWithLowSubtotal });
+      CartAPI.getCart.mockResolvedValue({ data: cartWithShipping });
 
       render(
         <TestWrapper>
@@ -302,19 +302,18 @@ describe('Cart Page Comprehensive Tests', () => {
       window.history.pushState({}, '', '/test');
 
       await waitFor(() => {
-        expect(screen.getByText(/Add.*more to get.*FREE Standard Shipping/)).toBeInTheDocument();
-        expect(screen.getByText('$50.00')).toBeInTheDocument(); // amount needed
+        expect(screen.getByText('$10.00')).toBeInTheDocument(); // shipping cost
       });
     });
 
-    it('should show free shipping achieved message', async () => {
-      const cartWithFreeShipping = {
+    it('should show zero shipping when no shipping cost', async () => {
+      const cartWithNoShipping = {
         ...mockCart,
         subtotal: 150.00,
         shipping_amount: 0,
         total_amount: 155.99,
       };
-      CartAPI.getCart.mockResolvedValue({ data: cartWithFreeShipping });
+      CartAPI.getCart.mockResolvedValue({ data: cartWithNoShipping });
 
       render(
         <TestWrapper>
@@ -325,8 +324,7 @@ describe('Cart Page Comprehensive Tests', () => {
       window.history.pushState({}, '', '/test');
 
       await waitFor(() => {
-        expect(screen.getByText(/You've qualified for FREE Standard Shipping/)).toBeInTheDocument();
-        expect(screen.getByText('Free')).toBeInTheDocument();
+        expect(screen.getByText('$0.00')).toBeInTheDocument(); // no shipping cost
       });
     });
   });

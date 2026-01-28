@@ -131,7 +131,7 @@ export const Orders = ({
       </h1>
       {orders.length > 0 ? <div className="space-y-4">
           {orders.map(order => <div key={order.id} className="bg-white dark:bg-gray-800 rounded-lg shadow-sm overflow-hidden">
-              <div className="flex justify-between items-center p-4 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-750" onClick={() => toggleOrderExpand(order.id)}>
+              <div className="flex justify-between items-center p-4 cursor-pointer " onClick={() => toggleOrderExpand(order.id)}>
                 <div>
                   <p className="text-sm text-gray-500 dark:text-gray-400">
                     Order placed
@@ -157,7 +157,7 @@ export const Orders = ({
                   </p>
                 </div>
                 <div>
-                  <span className={`px-3 py-1 text-xs rounded-full ${getStatusColor(order.status)}`}>
+                  <span className={`px-3 py-1 text-xs text-main dark:text-white rounded-full ${getStatusColor(order.status)}`}>
                     {order.status}
                   </span>
                 </div>

@@ -61,11 +61,11 @@ class InvoiceGenerator:
         items = []
         for item in order_data.get('items', []):
             items.append({
-                'name': item.get('product_name', 'Product'),
+                'name': item.get('name', 'Product'),
                 'description': item.get('variant_name', ''),
-                'unit_price': self.format_currency(item.get('price_per_unit', 0)),
+                'unit_price': self.format_currency(item.get('price', 0)),
                 'quantity': item.get('quantity', 1),
-                'total_price': self.format_currency(item.get('total_price', 0))
+                'total_price': self.format_currency(item.get('total', 0))
             })
         
         # Calculate discount percentage if applicable
@@ -83,13 +83,13 @@ class InvoiceGenerator:
             'bnw_payment_due_date': self.format_date(current_date + timedelta(days=30)),
             'bnw_order_reference_id': order_data.get('order_id', ''),
             'bnw_order_placement_date': self.format_date(
-                order_data.get('created_at', current_date)
+                order_data.get('order_date', current_date)
             ),
             
             # Customer information
-            'bnw_customer_full_name': order_data.get('customer_name', 'N/A'),
-            'bnw_customer_email_address': order_data.get('customer_email', 'N/A'),
-            'bnw_customer_phone_number': order_data.get('customer_phone', 'N/A'),
+            'bnw_customer_full_name': order_data.get('customer', {}).get('name', 'N/A'),
+            'bnw_customer_email_address': order_data.get('customer', {}).get('email', 'N/A'),
+            'bnw_customer_phone_number': order_data.get('customer', {}).get('phone', 'N/A'),
             
             # Financial data
             'bnw_order_subtotal_amount': self.format_currency(
@@ -97,6 +97,7 @@ class InvoiceGenerator:
             ),
             'bnw_tax_rate': order_data.get('tax_rate', 10),
             'bnw_tax_amount': self.format_currency(order_data.get('tax_amount', 0)),
+            'bnw_shipping_amount': self.format_currency(order_data.get('shipping_amount', 0)),
             'bnw_discount_amount': self.format_currency(
                 order_data.get('discount_amount', 0)
             ) if order_data.get('discount_amount', 0) > 0 else None,
@@ -193,6 +194,36 @@ class InvoiceGenerator:
         pdf_bytes = HTML(string=html_content).write_pdf()
         
         return pdf_bytes
+    
+    async def generate_invoice(self, order_data: Dict) -> Dict:
+        """
+        Generate invoice and return result with file path or bytes
+        
+        Args:
+            order_data: Order information dictionary
+            
+        Returns:
+            Dictionary with invoice result
+        """
+        try:
+            # Generate PDF bytes
+            pdf_bytes = self.generate_pdf_bytes(order_data)
+            
+            # For now, return the PDF bytes directly
+            # In production, you might want to save to file and return path
+            return {
+                "success": True,
+                "pdf_bytes": pdf_bytes,
+                "invoice_ref": self.generate_invoice_ref(order_data.get('order_id', '')),
+                "message": "Invoice generated successfully"
+            }
+            
+        except Exception as e:
+            return {
+                "success": False,
+                "error": str(e),
+                "message": "Failed to generate invoice"
+            }
 
 
 # Example usage

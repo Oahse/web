@@ -190,7 +190,7 @@ export const OrderDetail = () => {
           </div>
           <div className="flex justify-between items-center mb-2">
             <span className="text-gray-600 dark:text-gray-400">Shipping</span>
-            <span className="text-gray-900 dark:text-white">Free</span>
+            <span className="text-gray-900 dark:text-white">${(order.shipping_amount || 0).toFixed(2)}</span>
           </div>
           <div className="flex justify-between items-center text-lg font-semibold border-t border-gray-200 dark:border-gray-700 pt-2 mt-2">
             <span className="text-gray-900 dark:text-white">Total</span>

@@ -532,24 +532,24 @@ async def get_order_invoice(
     import os
     
     try:
-        invoice = await order_service.generate_invoice(order_id, current_user.id)
+        invoice_result = await order_service.generate_invoice(order_id, current_user.id)
         
-        if 'invoice_path' in invoice and os.path.exists(invoice['invoice_path']):
-            file_path = invoice['invoice_path']
-            if file_path.endswith('.pdf'):
-                return FileResponse(
-                    path=file_path,
-                    filename="invoice.pdf",
-                    media_type="application/pdf"
-                )
-            else:
-                return FileResponse(
-                    path=file_path,
-                    filename="invoice.docx",
-                    media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                )
-        
-        return Response.success(data=invoice)
+        if invoice_result.get('success') and invoice_result.get('pdf_bytes'):
+            # Return PDF bytes as response
+            from fastapi.responses import Response
+            return Response(
+                content=invoice_result['pdf_bytes'],
+                media_type="application/pdf",
+                headers={
+                    "Content-Disposition": f"attachment; filename=invoice-{invoice_result.get('invoice_ref', 'unknown')}.pdf"
+                }
+            )
+        else:
+            raise APIException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                message=invoice_result.get('message', 'Failed to generate invoice')
+            )
+            
     except Exception as e:
         raise APIException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

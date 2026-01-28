@@ -534,8 +534,6 @@ class LoyaltyService:
                     "terms_and_conditions": "Valid for one subscription payment. Cannot be combined with other offers.",
                     "min_tier": "silver"
                 },
-                    "min_tier": "bronze"
-                },
                 {
                     "id": "discount_15",
                     "name": "15% Discount",
