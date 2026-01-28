@@ -980,53 +980,60 @@ class OrderService:
 
     async def _get_tax_rate(self, shipping_address) -> float:
         """
-        Get tax rate based on shipping address
+        Get tax rate from database based on shipping address
+        Returns 0.0 if no tax rate is found in database
         """
         try:
-            # Default tax rate - set to 0 for no tax by default
-            default_tax_rate = 0.0  # 0% - no tax by default
-            
             if not shipping_address:
-                return default_tax_rate
+                return 0.0
             
             # Get state/country from address
             state = getattr(shipping_address, 'state', None) or shipping_address.get('state', '')
             country = getattr(shipping_address, 'country', None) or shipping_address.get('country', 'US')
             
-            # US state tax rates (simplified) - uncomment if you want to enable tax
-            us_state_tax_rates = {
-                'CA': 0.0725,  # California
-                'NY': 0.08,    # New York
-                'TX': 0.0625,  # Texas
-                'FL': 0.06,    # Florida
-                'WA': 0.065,   # Washington
-                'OR': 0.0,     # Oregon (no sales tax)
-                'NH': 0.0,     # New Hampshire (no sales tax)
-                'MT': 0.0,     # Montana (no sales tax)
-                'DE': 0.0,     # Delaware (no sales tax)
-                'AK': 0.0,     # Alaska (no state sales tax)
-            }
+            # Import TaxRate model
+            from models.tax_rates import TaxRate
             
-            # International tax rates (simplified) - uncomment if you want to enable tax
-            international_tax_rates = {
-                'CA': 0.13,    # Canada (HST/GST average)
-                'GB': 0.20,    # UK (VAT)
-                'DE': 0.19,    # Germany (VAT)
-                'FR': 0.20,    # France (VAT)
-                'AU': 0.10,    # Australia (GST)
-            }
+            # First try to find tax rate with specific province/state
+            if state:
+                tax_rate_result = await self.db.execute(
+                    select(TaxRate).where(
+                        and_(
+                            TaxRate.country_code == country.upper(),
+                            TaxRate.province_code == state.upper(),
+                            TaxRate.is_active == True
+                        )
+                    )
+                )
+                tax_rate_record = tax_rate_result.scalar_one_or_none()
+                
+                if tax_rate_record:
+                    logger.info(f"Found tax rate for {country}-{state}: {tax_rate_record.tax_rate}")
+                    return tax_rate_record.tax_rate
             
-            # For now, return 0 tax rate - uncomment below to enable location-based tax
-            # if country == 'US' and state:
-            #     return us_state_tax_rates.get(state.upper(), default_tax_rate)
-            # elif country != 'US':
-            #     return international_tax_rates.get(country.upper(), 0.0)
+            # If no state-specific rate found, try country-level rate
+            tax_rate_result = await self.db.execute(
+                select(TaxRate).where(
+                    and_(
+                        TaxRate.country_code == country.upper(),
+                        TaxRate.province_code.is_(None),  # Country-level rate
+                        TaxRate.is_active == True
+                    )
+                )
+            )
+            tax_rate_record = tax_rate_result.scalar_one_or_none()
             
-            return 0.0  # Always return 0 tax for now
+            if tax_rate_record:
+                logger.info(f"Found country tax rate for {country}: {tax_rate_record.tax_rate}")
+                return tax_rate_record.tax_rate
+            
+            # No tax rate found in database
+            logger.info(f"No tax rate found in database for {country}-{state}, using 0.0")
+            return 0.0
             
         except Exception as e:
-            logger.error(f"Error calculating tax rate: {e}")
-            return 0.0  # Default 0% tax rate
+            logger.error(f"Error getting tax rate from database: {e}")
+            return 0.0
     def _generate_price_update_message(self, price_updates: List[Dict], total_change: float) -> str:
         """
         Generate a user-friendly message about price updates
