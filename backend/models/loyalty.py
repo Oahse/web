@@ -35,7 +35,7 @@ class LoyaltyAccount(BaseModel):
     referrals_made = Column(Integer, nullable=False, default=0)
     successful_referrals = Column(Integer, nullable=False, default=0)
     
-    # Tier benefits (JSON: {"discount_percentage": 5, "free_shipping": true})
+    # Tier benefits (JSON: {"discount_percentage": 5, "early_access": true})
     tier_benefits = Column(JSON, nullable=True)
     
     # Account status

@@ -7,7 +7,6 @@ import { usePaginatedApi } from '../../hooks/useAsync';
 import OrdersAPI from '../../apis/orders';
 import { toast } from 'react-hot-toast';
 import { useLocale } from '../../contexts/LocaleContext';
-import { useLocale } from '../../contexts/LocaleContext';
 
 interface Order {
   id: string;
@@ -24,7 +23,6 @@ interface OrdersProps {
 export const Orders = ({
   animation = 'shimmer' 
 }: OrdersProps) => {
-  const { formatCurrency } = useLocale();
   const { data: paginatedData, loading, error, execute } = usePaginatedApi();
   const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
 
@@ -182,7 +180,7 @@ export const Orders = ({
                         Subtotal: ${order.total_amount.toFixed(2)}
                       </p>
                       <p className="text-gray-500 dark:text-gray-400">
-                        Shipping: {formatCurrency(order.shipping_amount || 0)}
+                        Shipping: Free
                       </p>
                       <p className="font-medium text-main dark:text-white">
                         Total: ${order.total_amount.toFixed(2)}

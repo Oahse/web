@@ -534,14 +534,6 @@ class LoyaltyService:
                     "terms_and_conditions": "Valid for one subscription payment. Cannot be combined with other offers.",
                     "min_tier": "silver"
                 },
-                {
-                    "id": "free_shipping",
-                    "name": "Free Shipping",
-                    "description": "Free shipping on your next order",
-                    "points_required": 300,
-                    "reward_type": "free_shipping",
-                    "reward_value": 15.0,
-                    "terms_and_conditions": "Valid for one order. Standard shipping only.",
                     "min_tier": "bronze"
                 },
                 {
