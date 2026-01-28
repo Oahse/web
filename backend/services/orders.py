@@ -722,6 +722,8 @@ class OrderService:
     async def _format_order_response(self, order: Order) -> OrderResponse:
         """Format order for response"""
         items = []
+        calculated_subtotal = 0
+        
         for item in order.items:
             # Include variant details with images
             variant_data = None
@@ -743,6 +745,9 @@ class OrderService:
                     ] if item.variant.images else []
                 }
             
+            # Add to calculated subtotal
+            calculated_subtotal += item.total_price or 0
+            
             items.append(OrderItemResponse(
                 id=str(item.id),
                 variant_id=str(item.variant.id),
@@ -751,6 +756,9 @@ class OrderService:
                 total_price=item.total_price,
                 variant=variant_data
             ))
+
+        # Use calculated subtotal if order subtotal is missing or zero
+        display_subtotal = order.subtotal if order.subtotal and order.subtotal > 0 else calculated_subtotal
 
         # Calculate estimated delivery
         estimated_delivery = None
@@ -763,7 +771,7 @@ class OrderService:
             user_id=str(order.user_id),
             status=order.status,
             total_amount=order.total_amount,
-            subtotal=order.subtotal,
+            subtotal=display_subtotal,
             tax_amount=order.tax_amount,
             shipping_amount=order.shipping_amount,
             discount_amount=order.discount_amount,
