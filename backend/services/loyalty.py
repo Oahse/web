@@ -39,7 +39,6 @@ class LoyaltyService:
                 "points_multiplier": 1.0,
                 "discount_percentage": 0.0,
                 "benefits": {
-                    "free_shipping_threshold": None,
                     "early_access": False,
                     "exclusive_products": False,
                     "birthday_bonus": 50
@@ -51,7 +50,6 @@ class LoyaltyService:
                 "points_multiplier": 1.2,
                 "discount_percentage": 2.0,
                 "benefits": {
-                    "free_shipping_threshold": 75.0,
                     "early_access": False,
                     "exclusive_products": False,
                     "birthday_bonus": 100

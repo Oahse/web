@@ -559,7 +559,6 @@ class Settings:
         self.NOTIFICATION_CLEANUP_INTERVAL_SECONDS: int = int(os.getenv('NOTIFICATION_CLEANUP_INTERVAL_SECONDS', 86400))
         
         # --- Business Logic Configuration ---
-        self.FREE_SHIPPING_THRESHOLD: float = float(os.getenv('FREE_SHIPPING_THRESHOLD', '100.0'))
     
     @property
     def server_host(self) -> str:

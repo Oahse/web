@@ -23,6 +23,7 @@ interface OrdersProps {
 export const Orders = ({
   animation = 'shimmer' 
 }: OrdersProps) => {
+  const { formatCurrency } = useLocale();
   const { data: paginatedData, loading, error, execute } = usePaginatedApi();
   const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
 
