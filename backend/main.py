@@ -36,6 +36,7 @@ from routes import (
     refunds_router,
     review_router,
     search_router,
+    shipping_router,
     social_auth_router,
     subscriptions_router,
     tax_router,
@@ -192,6 +193,7 @@ v1_router.include_router(inventories_router)
 v1_router.include_router(loyalty_router)
 v1_router.include_router(analytics_router)
 v1_router.include_router(refunds_router)
+v1_router.include_router(shipping_router)
 v1_router.include_router(tax_router)
 v1_router.include_router(webhooks_router)
 

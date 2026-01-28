@@ -355,28 +355,140 @@ async def seed_sample_data(
         # -------- Shipping Methods --------
         shipping_methods_batch = []
         shipping_methods_data = [
+            # Global shipping methods (available worldwide)
             {
                 "name": "Standard Shipping",
-                "description": "Delivery in 5-8 business days.",
-                "price": 5,
+                "description": "Delivery in 5-8 business days worldwide.",
+                "price": 8.99,
                 "estimated_days": 8,
-                "is_active": True
+                "is_active": True,
+                "available_countries": None,  # Available worldwide
+                "restricted_countries": None,
+                "regions": ["Global"],
+                "min_order_amount": None,
+                "max_weight_kg": 30.0,
+                "price_per_kg": 2.50,
+                "base_weight_kg": 1.0,
+                "carrier": "Global Express",
+                "tracking_url_template": "https://track.globalexpress.com/{tracking_number}"
             },
             {
                 "name": "Express Shipping",
-                "description": "Fast delivery in 1-3 business days.",
-                "price": 12,
+                "description": "Fast delivery in 2-4 business days worldwide.",
+                "price": 15.99,
                 "estimated_days": 3,
-                "is_active": True
+                "is_active": True,
+                "available_countries": None,  # Available worldwide
+                "restricted_countries": None,
+                "regions": ["Global"],
+                "min_order_amount": None,
+                "max_weight_kg": 25.0,
+                "price_per_kg": 4.00,
+                "base_weight_kg": 1.0,
+                "carrier": "Global Express",
+                "tracking_url_template": "https://track.globalexpress.com/{tracking_number}"
             },
             {
-                "name": "Priority Shipping",
-                "description": "Fast delivery in next day or 1-2 business days.",
-                "price": 20,
-                "estimated_days": 2,
-                "is_active": True
+                "name": "Priority Overnight",
+                "description": "Next business day delivery (US, CA, EU only).",
+                "price": 29.99,
+                "estimated_days": 1,
+                "is_active": True,
+                "available_countries": ["US", "CA", "GB", "DE", "FR", "IT", "ES", "NL", "BE", "AT", "SE", "DK", "FI", "NO"],
+                "restricted_countries": None,
+                "regions": ["North America", "Europe"],
+                "min_order_amount": 50.00,
+                "max_weight_kg": 15.0,
+                "price_per_kg": 6.00,
+                "base_weight_kg": 0.5,
+                "carrier": "Priority Express",
+                "tracking_url_template": "https://track.priorityexpress.com/{tracking_number}"
+            },
+            # Regional shipping methods
+            {
+                "name": "EU Economy",
+                "description": "Economical shipping within European Union (7-10 days).",
+                "price": 6.50,
+                "estimated_days": 9,
+                "is_active": True,
+                "available_countries": ["GB", "DE", "FR", "IT", "ES", "NL", "BE", "AT", "SE", "DK", "FI", "NO", "PL", "IE", "PT", "GR", "CZ", "RO", "HU"],
+                "restricted_countries": None,
+                "regions": ["Europe"],
+                "min_order_amount": None,
+                "max_weight_kg": 20.0,
+                "price_per_kg": 1.80,
+                "base_weight_kg": 2.0,
+                "carrier": "EU Post",
+                "tracking_url_template": "https://track.eupost.com/{tracking_number}"
+            },
+            {
+                "name": "North America Ground",
+                "description": "Ground shipping within US and Canada (3-7 days).",
+                "price": 7.99,
+                "estimated_days": 5,
+                "is_active": True,
+                "available_countries": ["US", "CA"],
+                "restricted_countries": None,
+                "regions": ["North America"],
+                "min_order_amount": None,
+                "max_weight_kg": 50.0,
+                "price_per_kg": 1.50,
+                "base_weight_kg": 2.0,
+                "carrier": "Continental Shipping",
+                "tracking_url_template": "https://track.continental.com/{tracking_number}"
+            },
+            {
+                "name": "Asia-Pacific Express",
+                "description": "Express delivery within Asia-Pacific region (2-5 days).",
+                "price": 18.50,
+                "estimated_days": 4,
+                "is_active": True,
+                "available_countries": ["AU", "NZ", "JP", "SG", "IN", "CN", "KR", "MY", "TH", "PH", "ID", "VN"],
+                "restricted_countries": None,
+                "regions": ["Asia-Pacific"],
+                "min_order_amount": None,
+                "max_weight_kg": 20.0,
+                "price_per_kg": 3.50,
+                "base_weight_kg": 1.0,
+                "carrier": "Asia Express",
+                "tracking_url_template": "https://track.asiaexpress.com/{tracking_number}"
+            },
+            # Free shipping options
+            {
+                "name": "Free Standard (Orders $75+)",
+                "description": "Free standard shipping on orders over $75 (5-10 days).",
+                "price": 0.00,
+                "estimated_days": 8,
+                "is_active": True,
+                "available_countries": None,  # Available worldwide
+                "restricted_countries": None,
+                "regions": ["Global"],
+                "min_order_amount": 75.00,
+                "max_weight_kg": 25.0,
+                "price_per_kg": 0.00,  # Free shipping
+                "base_weight_kg": 999.0,  # High base weight for free shipping
+                "carrier": "Standard Post",
+                "tracking_url_template": "https://track.standardpost.com/{tracking_number}"
+            },
+            # Restricted shipping (example: no shipping to certain countries)
+            {
+                "name": "Premium International",
+                "description": "Premium international shipping with insurance (3-6 days).",
+                "price": 35.00,
+                "estimated_days": 5,
+                "is_active": True,
+                "available_countries": None,
+                "restricted_countries": ["AF", "IQ", "IR", "KP", "SY"],  # Example restricted countries
+                "regions": ["Global"],
+                "min_order_amount": 100.00,
+                "max_weight_kg": 10.0,
+                "price_per_kg": 8.00,
+                "base_weight_kg": 0.5,
+                "carrier": "Premium International",
+                "tracking_url_template": "https://track.premiumintl.com/{tracking_number}"
             }
         ]
+        
         for data in shipping_methods_data:
             method = ShippingMethod(**data)
             shipping_methods_batch.append(method)
@@ -386,7 +498,7 @@ async def seed_sample_data(
             await session.flush()
             await session.commit()
             session.expunge_all()
-        print(f"🚚 Created {len(shipping_methods_batch)} shipping methods.")
+        print(f"🚚 Created {len(shipping_methods_batch)} shipping methods with country-specific availability.")
 
         # -------- Users --------
         users = []

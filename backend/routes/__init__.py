@@ -13,6 +13,7 @@ from .products import router as products_router
 from .refunds import router as refunds_router
 from .review import router as review_router
 from .search import router as search_router
+from .shipping import router as shipping_router
 from .social_auth import router as social_auth_router
 from .subscriptions import router as subscriptions_router
 from .tax import router as tax_router
@@ -35,6 +36,7 @@ __all__ = [
     "refunds_router",
     "review_router",
     "search_router",
+    "shipping_router",
     "social_auth_router",
     "subscriptions_router",
     "tax_router",

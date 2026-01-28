@@ -104,7 +104,7 @@ class EmailService:
             "store_url": settings.FRONTEND_URL,
             "company_name": "Banwee",
         }
-        await send_email_hybrid(None, "welcome", user.email, use_arq=True, user_name=user.first_name or user.email, **context)
+        await send_email_hybrid(None, "welcome", user.email, use_arq=True, user_name=user.firstname or user.email, **context)
 
     async def send_password_reset(self, user_id: UUID, reset_token: str):
         user = await self._get_user_by_id(user_id)

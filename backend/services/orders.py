@@ -881,7 +881,8 @@ class OrderService:
         self, 
         validated_items: List[Dict], 
         shipping_method, 
-        shipping_address
+        shipping_address,
+        total_weight_kg: float = 1.0
     ) -> Dict[str, float]:
         """
         Calculate final order total with shipping, taxes, and discounts
@@ -891,20 +892,32 @@ class OrderService:
             # Calculate subtotal from validated backend prices
             subtotal = sum(item["backend_total"] for item in validated_items)
             
-            # Calculate shipping cost
+            # Calculate shipping cost using country-specific logic
             shipping_cost = 0.0
             if shipping_method:
-                if hasattr(shipping_method, 'cost'):
-                    shipping_cost = shipping_method.cost
-                elif hasattr(shipping_method, 'price'):
-                    shipping_cost = shipping_method.price
-                else:
-                    # Use shipping method price directly
-                    shipping_cost = shipping_method.price if hasattr(shipping_method, 'price') else 10.0
+                # Use ShippingService for proper country-specific calculation
+                from services.shipping import ShippingService
+                shipping_service = ShippingService(self.db)
+                
+                # Extract address info for shipping calculation
+                address_dict = {
+                    'country': shipping_address.get('country', 'US'),
+                    'state': shipping_address.get('state'),
+                    'city': shipping_address.get('city'),
+                    'postal_code': shipping_address.get('postal_code')
+                }
+                
+                shipping_cost = await shipping_service.calculate_shipping_cost(
+                    cart_subtotal=subtotal,
+                    address=address_dict,
+                    shipping_method_id=shipping_method.id if hasattr(shipping_method, 'id') else None,
+                    total_weight_kg=total_weight_kg
+                )
             
-            # Calculate tax based on shipping address
+            # Calculate tax based on shipping address (tax applies to subtotal + shipping)
             tax_rate = await self._get_tax_rate(shipping_address)
-            tax_amount = subtotal * tax_rate
+            taxable_amount = subtotal + shipping_cost  # Tax applies to subtotal + shipping
+            tax_amount = taxable_amount * tax_rate
             
             # Apply any discounts (from promocodes, etc.)
             discount_amount = await self._calculate_discount_amount(validated_items, subtotal)
