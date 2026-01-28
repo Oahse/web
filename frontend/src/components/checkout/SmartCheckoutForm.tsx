@@ -7,6 +7,7 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useCart } from '../../contexts/CartContext';
 import { useLocale } from '../../contexts/LocaleContext';
+import { useShipping } from '../../hooks/useShipping';
 import { OrdersAPI } from '../../apis/orders';
 import { AuthAPI } from '../../apis/auth';
 import { CartAPI } from '../../apis/cart';
@@ -44,6 +45,13 @@ export const SmartCheckoutForm: React.FC<SmartCheckoutFormProps> = ({ onSuccess 
   const { user } = useAuth();
   const { cart, clearCart, refreshCart } = useCart();
   const { formatCurrency, currency, countryCode } = useLocale();
+  const { 
+    shippingMethods, 
+    loading: shippingLoading, 
+    error: shippingError,
+    loadShippingMethods,
+    getCheapestMethod 
+  } = useShipping({ autoLoad: true });
   
   // Form state
   const [currentStep, setCurrentStep] = useState(1);
@@ -56,7 +64,6 @@ export const SmartCheckoutForm: React.FC<SmartCheckoutFormProps> = ({ onSuccess 
   
   // Data state - Initialize with empty arrays to prevent map errors
   const [addresses, setAddresses] = useState<any[]>([]);
-  const [shippingMethods, setShippingMethods] = useState<any[]>([]);
   const [paymentMethods, setPaymentMethods] = useState<any[]>([]);
   
   // UI state
@@ -83,60 +90,15 @@ export const SmartCheckoutForm: React.FC<SmartCheckoutFormProps> = ({ onSuccess 
     localStorage.setItem('checkout_form_data', JSON.stringify(formData));
   }, [formData]);
 
-  // Load shipping methods when address changes
-  const loadShippingMethods = useCallback(async (addressId: string) => {
-    if (!addressId) {
-      setShippingMethods([]);
-      return;
-    }
-
-    try {
-      const selectedAddress = addresses.find(addr => addr.id === addressId);
-      if (!selectedAddress) {
-        console.error('Selected address not found');
-        return;
-      }
-
-      // Use the shipping API to get all active methods
-      const ShippingAPI = (await import('../../apis/shipping')).default;
-      
-      // Get all active shipping methods
-      const methods = await ShippingAPI.getShippingMethods();
-
-      // For now, all methods are available (we can add country/weight filtering later)
-      const availableMethods = methods.map(method => ({
-        ...method,
-        available: true,
-        calculated_price: method.price
-      }));
-
-      // Sort by price
-      availableMethods.sort((a, b) => a.calculated_price - b.calculated_price);
-
-      setShippingMethods(availableMethods);
-
-      // Auto-select the cheapest available method if none is selected
-      if (availableMethods.length > 0 && !formData.shipping_method_id) {
-        const cheapestMethod = availableMethods[0];
-        setFormData(prev => ({ ...prev, shipping_method_id: cheapestMethod.id }));
-      } else if (availableMethods.length === 0) {
-        // No shipping methods available
-        setFormData(prev => ({ ...prev, shipping_method_id: null }));
-        toast.error(`No shipping methods available. Please contact support.`);
-      }
-    } catch (error) {
-      console.error('Failed to load shipping methods:', error);
-      setShippingMethods([]);
-      toast.error('Failed to load shipping options');
-    }
-  }, [addresses, formData.shipping_method_id, cart]);
-
-  // Load shipping methods when address selection changes
+  // Auto-select cheapest shipping method when shipping methods are loaded
   useEffect(() => {
-    if (formData.shipping_address_id) {
-      loadShippingMethods(formData.shipping_address_id);
+    if (shippingMethods.length > 0 && !formData.shipping_method_id) {
+      const cheapestMethod = getCheapestMethod();
+      if (cheapestMethod) {
+        setFormData(prev => ({ ...prev, shipping_method_id: cheapestMethod.id }));
+      }
     }
-  }, [formData.shipping_address_id, loadShippingMethods]);
+  }, [shippingMethods, formData.shipping_method_id, getCheapestMethod]);
 
   // Load initial data
   useEffect(() => {
@@ -254,42 +216,20 @@ export const SmartCheckoutForm: React.FC<SmartCheckoutFormProps> = ({ onSuccess 
       ]);
 
       const defaultAddress = addressesRes.data?.find((addr: any) => addr.is_default) || addressesRes.data?.[0];
-
-      let shippingMethodsData = [];
-      if (defaultAddress) {
-        try {
-          // Use the shipping API to get all active methods
-          const ShippingAPI = (await import('../../apis/shipping')).default;
-          const methods = await ShippingAPI.getShippingMethods();
-          
-          // Transform to match expected format
-          shippingMethodsData = methods.map(method => ({
-            ...method,
-            available: true,
-            calculated_price: method.price
-          }));
-        } catch (shippingError) {
-          console.error('Failed to load shipping options:', shippingError);
-          // Continue with empty shipping methods array
-        }
-      }
       
       // Ensure we always have arrays
       const addressesData = Array.isArray(addressesRes.data) ? addressesRes.data : [];
       const paymentMethodsData = Array.isArray(paymentsRes.data) ? paymentsRes.data : [];
       
       setAddresses(addressesData);
-      setShippingMethods(shippingMethodsData);
       setPaymentMethods(paymentMethodsData);
 
       // Auto-select defaults - use first available options
-      const firstShipping = shippingMethodsData[0];
       const defaultPayment = paymentMethodsData.find((pm: any) => pm.is_default) || paymentMethodsData[0];
 
       setFormData((prev: any) => ({
         ...prev,
         shipping_address_id: prev.shipping_address_id || defaultAddress?.id || null,
-        shipping_method_id: prev.shipping_method_id || firstShipping?.id || null,
         payment_method_id: prev.payment_method_id || defaultPayment?.id || null
       }));
 
@@ -298,7 +238,6 @@ export const SmartCheckoutForm: React.FC<SmartCheckoutFormProps> = ({ onSuccess 
       toast.error('Failed to load checkout options');
       // Set empty arrays as fallback
       setAddresses([]);
-      setShippingMethods([]);
       setPaymentMethods([]);
     } finally {
       setLoading(false);

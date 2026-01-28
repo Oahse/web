@@ -34,8 +34,12 @@ async def get_shipping_methods(
     try:
         shipping_service = ShippingService(db)
         methods = await shipping_service.get_all_active_shipping_methods()
+        
+        # Convert SQLAlchemy objects to Pydantic models
+        methods_data = [ShippingMethodInDB.model_validate(method) for method in methods]
+        
         return Response.success(
-            data=methods,
+            data=methods_data,
             message="Active shipping methods retrieved successfully"
         )
             
@@ -63,8 +67,11 @@ async def get_shipping_method(
                 message="Shipping method not found"
             )
         
+        # Convert SQLAlchemy object to Pydantic model
+        method_data = ShippingMethodInDB.model_validate(method)
+        
         return Response.success(
-            data=method,
+            data=method_data,
             message="Shipping method retrieved successfully"
         )
         
@@ -89,8 +96,11 @@ async def create_shipping_method(
         shipping_service = ShippingService(db)
         method = await shipping_service.create_shipping_method(method_data)
         
+        # Convert SQLAlchemy object to Pydantic model
+        method_data = ShippingMethodInDB.model_validate(method)
+        
         return Response.success(
-            data=method,
+            data=method_data,
             message="Shipping method created successfully"
         )
         
@@ -120,8 +130,11 @@ async def update_shipping_method(
                 message="Shipping method not found"
             )
         
+        # Convert SQLAlchemy object to Pydantic model
+        method_data = ShippingMethodInDB.model_validate(method)
+        
         return Response.success(
-            data=method,
+            data=method_data,
             message="Shipping method updated successfully"
         )
         

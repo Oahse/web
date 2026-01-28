@@ -24,6 +24,7 @@ export { useCart } from '../contexts/CartContext';
 export { useAnalytics } from './useAnalytics';
 export { useCategories } from './useCategories';
 export { useFileUpload } from './useFileUpload';
+export { useShipping } from './useShipping';
 export { useSubscription, useSubscriptionAction } from './useSubscription';
 export { default as useWhatsAppSupport } from './useWhatsAppSupport';
 export { useSkeleton } from './useSkeleton';
