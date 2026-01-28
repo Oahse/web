@@ -195,9 +195,9 @@ class SubscriptionService:
         # Calculate shipping cost from database shipping methods
         shipping_cost = await self._get_delivery_cost_from_db(delivery_type)
         
-        # Simple tax calculation (8.5% default)
-        tax_rate = Decimal('0.085')  # 8.5%
-        tax_amount = subtotal * tax_rate
+        # No default tax calculation - tax should be calculated based on address
+        tax_rate = Decimal('0.00')
+        tax_amount = Decimal('0.00')
         
         # Calculate final total
         total_amount = subtotal + shipping_cost + tax_amount
@@ -210,7 +210,7 @@ class SubscriptionService:
             "total_amount": float(total_amount),
             "currency": currency,
             "product_variants": product_details,  # Changed from product_details to product_variants
-            "calculation_timestamp": datetime.utcnow().isoformat(),
+            "calculation_timestamp": datetime.now(timezone.utc).isoformat(),
             "calculation_method": "simplified_pricing"
         }
 
@@ -258,10 +258,16 @@ class SubscriptionService:
         updated_variant_ids = current_variant_ids + new_variant_ids
         subscription.variant_ids = updated_variant_ids
         
-        # Add products to the many-to-many relationship
+        # Add products to the many-to-many relationship using association table
+        from models.subscriptions import subscription_product_association
         for variant in variants:
-            if variant not in subscription.products:
-                subscription.products.append(variant)
+            if str(variant.id) not in current_variant_ids:
+                await self.db.execute(
+                    subscription_product_association.insert().values(
+                        subscription_id=subscription.id,
+                        product_variant_id=variant.id
+                    )
+                )
         
         # Recalculate subscription cost
         await self._recalculate_simplified_subscription_cost(subscription)
@@ -311,8 +317,17 @@ class SubscriptionService:
         # Update variant IDs
         subscription.variant_ids = remaining_variants
         
-        # Remove products from the many-to-many relationship
-        subscription.products = [p for p in subscription.products if str(p.id) not in variant_ids_str]
+        # Remove products from the many-to-many relationship using association table
+        from models.subscriptions import subscription_product_association
+        for variant_id_str in variants_to_remove:
+            await self.db.execute(
+                subscription_product_association.delete().where(
+                    and_(
+                        subscription_product_association.c.subscription_id == subscription.id,
+                        subscription_product_association.c.product_variant_id == UUID(variant_id_str)
+                    )
+                )
+            )
         
         # Recalculate subscription cost
         await self._recalculate_simplified_subscription_cost(subscription)
@@ -588,10 +603,24 @@ class SubscriptionService:
             
             subscription.variant_ids = [str(vid) for vid in product_variant_ids]
             
-            # Update many-to-many relationship
-            subscription.products.clear()
+            # Update many-to-many relationship using association table
+            from models.subscriptions import subscription_product_association
+            
+            # Clear existing associations
+            await self.db.execute(
+                subscription_product_association.delete().where(
+                    subscription_product_association.c.subscription_id == subscription.id
+                )
+            )
+            
+            # Add new associations
             for variant in variants:
-                subscription.products.append(variant)
+                await self.db.execute(
+                    subscription_product_association.insert().values(
+                        subscription_id=subscription.id,
+                        product_variant_id=variant.id
+                    )
+                )
             
             # Recalculate cost
             cost_breakdown = await self._calculate_simplified_subscription_cost(
@@ -896,7 +925,7 @@ class SubscriptionService:
             "total_amount": float(total_amount),
             "currency": currency,
             "product_details": product_details,
-            "calculation_timestamp": datetime.utcnow().isoformat(),
+            "calculation_timestamp": datetime.now(timezone.utc).isoformat(),
             "calculation_method": "enhanced_vat_integration"
         }
 
@@ -1179,7 +1208,7 @@ class SubscriptionService:
             subscription.variant_ids = [str(vid) for vid in new_variant_ids]
             subscription.cost_breakdown = new_cost_breakdown
             subscription.price = new_total
-            subscription.updated_at = datetime.utcnow()
+            subscription.updated_at = datetime.now(timezone.utc)
             
             # Update quantities in metadata
             if not subscription.subscription_metadata:
@@ -1439,7 +1468,7 @@ class SubscriptionService:
                 cost_difference=new_cost - old_cost,
                 change_reason=change_reason,
                 change_details=change_details,
-                created_at=datetime.utcnow()
+                created_at=datetime.now(timezone.utc)
             )
             
             self.db.add(history_record)
@@ -1497,7 +1526,7 @@ class CostBreakdown:
         self.loyalty_discount = loyalty_discount or Decimal('0')
         self.total_amount = total_amount or (subtotal + admin_fee + delivery_cost + tax_amount - self.loyalty_discount)
         self.currency = currency
-        self.breakdown_timestamp = breakdown_timestamp or datetime.utcnow()
+        self.breakdown_timestamp = breakdown_timestamp or datetime.now(timezone.utc)
     
     def to_dict(self) -> Dict[str, Any]:
         """Convert cost breakdown to dictionary"""
