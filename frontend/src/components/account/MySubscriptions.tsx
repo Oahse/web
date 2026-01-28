@@ -484,24 +484,30 @@ export const MySubscriptions = () => {
 
                                 {/* Variants */}
                                 {product.variants?.length ? (
-                                  <div className="space-y-2 ml-15">
+                                  <div className="space-y-2">
                                     {product.variants.map((variant: any) => (
                                       <label
                                         key={variant.id}
-                                        className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors"
+                                        className="flex items-center gap-3 p-2 rounded-lg cursor-pointer transition-colors"
                                       >
                                         <input
                                           type="checkbox"
                                           checked={selectedProductsForNew.has(variant.id)}
                                           onChange={(e) => {
                                             const next = new Set(selectedProductsForNew);
-                                            e.target.checked
-                                              ? next.add(variant.id)
-                                              : next.delete(variant.id);
+                                            e.target.checked ? next.add(variant.id) : next.delete(variant.id);
                                             setSelectedProductsForNew(next);
                                           }}
-                                          className={`${themeClasses.input.base} flex-shrink-0`}
+                                          className="
+                                            h-4 w-4 
+                                            rounded 
+                                            border-gray-300 
+                                            text-blue-600 
+                                            focus:ring-blue-500
+                                            flex-shrink-0
+                                          "
                                         />
+
 
                                         {/* Variant Image */}
                                         {variant.images?.[0]?.url ? (

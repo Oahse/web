@@ -147,7 +147,7 @@ async def calculate_subscription_cost(
                 "cost_breakdown": cost_breakdown,
                 "estimated_total": cost_breakdown["total_amount"],
                 "currency": cost_request.currency,
-                "calculation_timestamp": datetime.utcnow()
+                "calculation_timestamp": datetime.now(timezone.utc)
             },
             message="Subscription cost calculated successfully"
         )
@@ -249,9 +249,11 @@ async def add_products_to_subscription(
             subscription_id, request.variant_ids, current_user.id
         )
         return Response.success(data=subscription.to_dict(include_products=True), message="Products added to subscription successfully")
-    except APIException:
+    except APIException as e:
+        print(e,'====error')
         raise
     except Exception as e:
+        print(e,'====error')
         raise APIException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             message=f"Failed to add products to subscription: {str(e)}"

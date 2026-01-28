@@ -10,7 +10,7 @@ from models.user import User
 from models.product import ProductVariant
 from models.payments import PaymentMethod
 from uuid import UUID
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional, List, Dict, Any
 from services.payments import PaymentService
 import logging
@@ -92,7 +92,9 @@ class SubscriptionService:
             delivery_type, 
             currency=currency
         )
-        
+        from datetime import timezone
+        now = datetime.now(timezone.utc)
+        period_end = now + timedelta(days=30)
         # Create subscription with simplified fields
         subscription = Subscription(
             user_id=user_id,
@@ -102,15 +104,18 @@ class SubscriptionService:
             currency=currency,
             variant_ids=[str(vid) for vid in product_variant_ids],
             cost_breakdown=cost_breakdown,
-            current_period_start=datetime.utcnow(),
-            current_period_end=datetime.utcnow() + timedelta(days=30),  # Monthly by default
-            next_billing_date=datetime.utcnow() + timedelta(days=30),
+            current_period_start=now,
+            current_period_end=period_end,
+            next_billing_date=period_end,
             # Simplified pricing fields
             shipping_cost=cost_breakdown.get("shipping_cost", 0.0),
             tax_amount=cost_breakdown.get("tax_amount", 0.0),
             tax_rate=cost_breakdown.get("tax_rate", 0.0),
             # Store quantities
-            variant_quantities=variant_quantities or {str(vid): 1 for vid in product_variant_ids}
+            variant_quantities={
+                str(vid): max(1, int((variant_quantities or {}).get(str(vid), 1)))
+                for vid in product_variant_ids
+            }
         )
         
         # Add subscription to session first
@@ -125,15 +130,14 @@ class SubscriptionService:
         await self.db.refresh(subscription)
         
         # Process initial payment if payment method provided
-        if payment_method_id:
-            try:
+        try:
+            if payment_method_id:
                 await self.process_subscription_payment(subscription.id, payment_method_id)
-            except Exception as e:
-                # If payment fails, mark subscription as payment_failed
-                subscription.status = "payment_failed"
-                await self.db.commit()
-                raise HTTPException(status_code=400, detail=f"Payment failed: {str(e)}")
-        
+        except Exception as e:
+            subscription.status = "payment_failed"
+            await self.db.commit()
+            raise
+        print(subscription,'====')
         return subscription
 
     async def _calculate_simplified_subscription_cost(
@@ -648,7 +652,7 @@ class SubscriptionService:
             raise HTTPException(status_code=400, detail="Subscription already cancelled")
         
         subscription.status = "cancelled"
-        subscription.cancelled_at = datetime.utcnow()
+        subscription.cancelled_at = datetime.now(timezone.utc)
         subscription.auto_renew = False
         
         if reason:
@@ -677,7 +681,7 @@ class SubscriptionService:
             raise HTTPException(status_code=400, detail="Can only pause active subscriptions")
         
         subscription.status = "paused"
-        subscription.paused_at = datetime.utcnow()
+        subscription.paused_at = datetime.now(timezone.utc)
         subscription.pause_reason = reason
         
         await self.db.commit()
@@ -706,7 +710,7 @@ class SubscriptionService:
         subscription.cancelled_at = None
         
         # Update next billing date
-        subscription.next_billing_date = datetime.utcnow() + timedelta(days=30)
+        subscription.next_billing_date = datetime.now(timezone.utc) + timedelta(days=30)
         
         await self.db.commit()
         await self.db.refresh(subscription)
@@ -734,9 +738,10 @@ class SubscriptionService:
         
         if payment_result["status"] == "succeeded":
             # Update subscription billing dates
-            subscription.current_period_start = datetime.utcnow()
-            subscription.current_period_end = datetime.utcnow() + timedelta(days=30)
-            subscription.next_billing_date = datetime.utcnow() + timedelta(days=30)
+            now = datetime.now(timezone.utc)
+            subscription.current_period_start = now
+            subscription.current_period_end = now + timedelta(days=30)
+            subscription.next_billing_date = now + timedelta(days=30)
             
             await self.db.commit()
         
@@ -921,9 +926,9 @@ class SubscriptionService:
     ) -> Dict[str, Any]:
         """Get subscription analytics"""
         if not start_date:
-            start_date = datetime.utcnow() - timedelta(days=30)
+            start_date = datetime.now(timezone.utc) - timedelta(days=30)
         if not end_date:
-            end_date = datetime.utcnow()
+            end_date = datetime.now(timezone.utc)
         
         # Get subscriptions in date range
         query = select(Subscription).where(
