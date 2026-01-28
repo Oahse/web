@@ -4,7 +4,7 @@ Shipping routes for managing shipping methods and calculating shipping costs
 
 from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from typing import Optional, List
+from typing import Optional
 from uuid import UUID
 import logging
 
@@ -17,8 +17,7 @@ from services.shipping import ShippingService
 from schemas.shipping import (
     ShippingMethodCreate,
     ShippingMethodUpdate,
-    ShippingMethodInDB,
-    ShippingMethodAvailability
+    ShippingMethodInDB
 )
 
 logger = logging.getLogger(__name__)
@@ -27,35 +26,18 @@ router = APIRouter(prefix="/shipping", tags=["shipping"])
 
 @router.get("/methods")
 async def get_shipping_methods(
-    country_code: Optional[str] = Query(None, description="Country code to filter available methods"),
-    order_amount: Optional[float] = Query(0.0, description="Order amount for minimum order validation"),
-    total_weight_kg: Optional[float] = Query(1.0, description="Total weight for weight-based pricing"),
     db: AsyncSession = Depends(get_db)
 ):
     """
-    Get available shipping methods, optionally filtered by country and order details
+    Get all active shipping methods
     """
     try:
         shipping_service = ShippingService(db)
-        
-        if country_code:
-            # Get country-specific available methods with calculated pricing
-            methods = await shipping_service.get_available_shipping_methods(
-                country_code=country_code.upper(),
-                order_amount=order_amount,
-                total_weight_kg=total_weight_kg
-            )
-            return Response.success(
-                data=methods,
-                message=f"Available shipping methods for {country_code.upper()}"
-            )
-        else:
-            # Get all active methods without country filtering
-            methods = await shipping_service.get_all_active_shipping_methods()
-            return Response.success(
-                data=methods,
-                message="All active shipping methods"
-            )
+        methods = await shipping_service.get_all_active_shipping_methods()
+        return Response.success(
+            data=methods,
+            message="Active shipping methods retrieved successfully"
+        )
             
     except Exception as e:
         logger.error(f"Error getting shipping methods: {e}")
@@ -187,34 +169,29 @@ async def delete_shipping_method(
 
 @router.post("/calculate")
 async def calculate_shipping_cost(
-    country_code: str = Query(..., description="Destination country code"),
     order_amount: float = Query(..., description="Order subtotal amount"),
-    total_weight_kg: float = Query(1.0, description="Total package weight in kg"),
     shipping_method_id: Optional[UUID] = Query(None, description="Specific shipping method ID"),
     db: AsyncSession = Depends(get_db)
 ):
     """
-    Calculate shipping cost for a specific destination and order details
+    Calculate shipping cost for a specific order amount and method
     """
     try:
         shipping_service = ShippingService(db)
         
-        # Create address dict for calculation
-        address = {'country': country_code.upper()}
+        # Create simple address dict (country not needed for simple calculation)
+        address = {'country': 'US'}
         
         cost = await shipping_service.calculate_shipping_cost(
             cart_subtotal=order_amount,
             address=address,
-            shipping_method_id=shipping_method_id,
-            total_weight_kg=total_weight_kg
+            shipping_method_id=shipping_method_id
         )
         
         return Response.success(
             data={
                 "shipping_cost": cost,
-                "country_code": country_code.upper(),
                 "order_amount": order_amount,
-                "total_weight_kg": total_weight_kg,
                 "shipping_method_id": shipping_method_id
             },
             message="Shipping cost calculated successfully"

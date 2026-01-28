@@ -97,34 +97,32 @@ export const SmartCheckoutForm: React.FC<SmartCheckoutFormProps> = ({ onSuccess 
         return;
       }
 
-      // Use the new shipping API to get country-specific methods
+      // Use the shipping API to get all active methods
       const ShippingAPI = (await import('../../apis/shipping')).default;
       
-      // Calculate order amount from cart for minimum order validation
-      const orderAmount = cart?.subtotal || cart?.total_amount || 0;
-      const totalWeight = 1.0; // Default weight - could be calculated from cart items
-      
-      const availableMethods = await ShippingAPI.getAvailableShippingMethods(
-        selectedAddress.country || 'US',
-        orderAmount,
-        totalWeight
-      );
+      // Get all active shipping methods
+      const methods = await ShippingAPI.getShippingMethods();
 
-      // Filter to only available methods and sort by price
-      const availableOnly = availableMethods
-        .filter(method => method.available)
-        .sort((a, b) => a.calculated_price - b.calculated_price);
+      // For now, all methods are available (we can add country/weight filtering later)
+      const availableMethods = methods.map(method => ({
+        ...method,
+        available: true,
+        calculated_price: method.price
+      }));
 
-      setShippingMethods(availableOnly);
+      // Sort by price
+      availableMethods.sort((a, b) => a.calculated_price - b.calculated_price);
+
+      setShippingMethods(availableMethods);
 
       // Auto-select the cheapest available method if none is selected
-      if (availableOnly.length > 0 && !formData.shipping_method_id) {
-        const cheapestMethod = availableOnly[0];
-        setFormData(prev => ({ ...prev, shipping_method_id: cheapestMethod.method.id }));
-      } else if (availableOnly.length === 0) {
-        // No shipping methods available for this destination
+      if (availableMethods.length > 0 && !formData.shipping_method_id) {
+        const cheapestMethod = availableMethods[0];
+        setFormData(prev => ({ ...prev, shipping_method_id: cheapestMethod.id }));
+      } else if (availableMethods.length === 0) {
+        // No shipping methods available
         setFormData(prev => ({ ...prev, shipping_method_id: null }));
-        toast.error(`No shipping methods available for ${selectedAddress.country}. Please select a different address.`);
+        toast.error(`No shipping methods available. Please contact support.`);
       }
     } catch (error) {
       console.error('Failed to load shipping methods:', error);
@@ -257,32 +255,34 @@ export const SmartCheckoutForm: React.FC<SmartCheckoutFormProps> = ({ onSuccess 
 
       const defaultAddress = addressesRes.data?.find((addr: any) => addr.is_default) || addressesRes.data?.[0];
 
-      let shippingMethodsRes = { data: { shipping_options: [] } };
+      let shippingMethodsData = [];
       if (defaultAddress) {
         try {
-          // Get access token from TokenManager
-          const accessToken = TokenManager.getToken();
+          // Use the shipping API to get all active methods
+          const ShippingAPI = (await import('../../apis/shipping')).default;
+          const methods = await ShippingAPI.getShippingMethods();
           
-          if (accessToken) {
-            // Fetch shipping methods using the default address
-            shippingMethodsRes = await CartAPI.getShippingOptions(defaultAddress, accessToken);
-          }
+          // Transform to match expected format
+          shippingMethodsData = methods.map(method => ({
+            ...method,
+            available: true,
+            calculated_price: method.price
+          }));
         } catch (shippingError) {
           console.error('Failed to load shipping options:', shippingError);
           // Continue with empty shipping methods array
         }
       }
       
-      // Ensure we always have arrays - extract shipping_options from the response
+      // Ensure we always have arrays
       const addressesData = Array.isArray(addressesRes.data) ? addressesRes.data : [];
-      const shippingMethodsData = Array.isArray(shippingMethodsRes.data?.shipping_options) ? shippingMethodsRes.data.shipping_options : [];
       const paymentMethodsData = Array.isArray(paymentsRes.data) ? paymentsRes.data : [];
       
       setAddresses(addressesData);
       setShippingMethods(shippingMethodsData);
       setPaymentMethods(paymentMethodsData);
 
-      // Auto-select defaults - use first available options, not hardcoded names
+      // Auto-select defaults - use first available options
       const firstShipping = shippingMethodsData[0];
       const defaultPayment = paymentMethodsData.find((pm: any) => pm.is_default) || paymentMethodsData[0];
 

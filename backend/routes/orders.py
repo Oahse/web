@@ -183,7 +183,7 @@ async def validate_checkout(
         shipping_address = shipping_address.scalar_one_or_none()
         logger.info(f"Shipping address valid: {shipping_address is not None}")
         
-        # Step 3: Validate shipping method and availability for destination
+        # Step 3: Validate shipping method
         logger.info("Step 3: Validating shipping method")
         shipping_method = await order_service.db.execute(
             select(ShippingMethod).where(ShippingMethod.id == request.shipping_method_id)
@@ -191,35 +191,8 @@ async def validate_checkout(
         shipping_method = shipping_method.scalar_one_or_none()
         logger.info(f"Shipping method exists: {shipping_method is not None}")
         
-        # Check if shipping method is available for the destination country
-        shipping_method_available = False
-        shipping_availability_reason = None
-        if shipping_method and shipping_address:
-            from services.shipping import ShippingService
-            shipping_service = ShippingService(order_service.db)
-            
-            # Get cart subtotal for minimum order validation
-            cart_subtotal = 0.0
-            if cart_validation.get("valid") and cart_validation.get("cart"):
-                cart = cart_validation["cart"]
-                if hasattr(cart, 'subtotal'):
-                    cart_subtotal = cart.subtotal
-                elif isinstance(cart, dict) and 'subtotal' in cart:
-                    cart_subtotal = cart['subtotal']
-            
-            # Check availability for destination
-            availability = await shipping_service._check_method_availability(
-                method=shipping_method,
-                country_code=shipping_address.country or "US",
-                order_amount=cart_subtotal,
-                total_weight_kg=1.0  # Default weight, could be calculated from cart
-            )
-            
-            shipping_method_available = availability.available
-            shipping_availability_reason = availability.reason
-            logger.info(f"Shipping method available for {shipping_address.country}: {shipping_method_available}")
-            if not shipping_method_available:
-                logger.warning(f"Shipping method not available: {shipping_availability_reason}")
+        # Simple validation - just check if method exists and is active
+        shipping_method_valid = shipping_method is not None and shipping_method.is_active
         
         # Step 4: Validate payment method
         logger.info("Step 4: Validating payment method")
@@ -235,9 +208,7 @@ async def validate_checkout(
         validation_results = {
             "cart_validation": cart_validation,
             "shipping_address_valid": shipping_address is not None,
-            "shipping_method_valid": shipping_method is not None,
-            "shipping_method_available": shipping_method_available,
-            "shipping_availability_reason": shipping_availability_reason,
+            "shipping_method_valid": shipping_method_valid,
             "payment_method_valid": payment_method is not None,
             "can_proceed": True
         }
@@ -249,11 +220,8 @@ async def validate_checkout(
             validation_errors.append("Invalid or missing shipping address")
             validation_results["can_proceed"] = False
             
-        if not shipping_method:
+        if not shipping_method_valid:
             validation_errors.append("Invalid or missing shipping method")
-            validation_results["can_proceed"] = False
-        elif not shipping_method_available:
-            validation_errors.append(f"Shipping method not available: {shipping_availability_reason}")
             validation_results["can_proceed"] = False
             
         if not payment_method:

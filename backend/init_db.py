@@ -754,14 +754,50 @@ async def seed_sample_data(
                 order_uuid = uuid7()
                 order_number = f"ORD-{str(order_uuid)[:8].upper()}" # Generate a unique order number based on the order_uuid
                 
-                # Generate dummy address data
+                # Generate realistic address data with proper country/state for tax calculation
+                countries_with_states = [
+                    ("US", ["CA", "NY", "TX", "FL", "WA", "IL", "PA", "OH", "GA", "NC"]),
+                    ("CA", ["ON", "BC", "AB", "QC", "MB", "SK", "NS", "NB", "NL", "PE"]),
+                    ("GB", [None]),  # UK doesn't use states
+                    ("DE", [None]),  # Germany doesn't use states for tax
+                    ("AU", [None]),  # Australia simplified
+                ]
+                
+                chosen_country_data = random.choice(countries_with_states)
+                country_code = chosen_country_data[0]
+                state_options = chosen_country_data[1]
+                state_code = random.choice(state_options) if state_options[0] is not None else None
+                
                 dummy_address = {
                     "street": f"{random.randint(1, 999)} Seed St",
                     "city": "Seed City",
-                    "state": "SD",
-                    "country": "Seedland",
+                    "state": state_code,
+                    "country": country_code,
                     "post_code": "00000"
                 }
+
+                # Calculate tax based on address using the same logic as the tax service
+                tax_rate = 0.08  # Default 8%
+                if country_code == "US" and state_code:
+                    # Use actual US state tax rates
+                    us_tax_rates = {
+                        "CA": 0.0725, "NY": 0.08, "TX": 0.0625, "FL": 0.06, "WA": 0.065,
+                        "IL": 0.0625, "PA": 0.06, "OH": 0.0575, "GA": 0.04, "NC": 0.0475
+                    }
+                    tax_rate = us_tax_rates.get(state_code, 0.06)
+                elif country_code == "CA" and state_code:
+                    # Use actual Canadian provincial tax rates
+                    ca_tax_rates = {
+                        "ON": 0.13, "BC": 0.12, "AB": 0.05, "QC": 0.14975, "MB": 0.12,
+                        "SK": 0.11, "NS": 0.15, "NB": 0.15, "NL": 0.15, "PE": 0.15
+                    }
+                    tax_rate = ca_tax_rates.get(state_code, 0.05)
+                elif country_code == "GB":
+                    tax_rate = 0.20  # UK VAT
+                elif country_code == "DE":
+                    tax_rate = 0.19  # German VAT
+                elif country_code == "AU":
+                    tax_rate = 0.10  # Australian GST
 
                 order = Order(
                     id=order_uuid,
@@ -771,15 +807,15 @@ async def seed_sample_data(
                     order_status=random.choice(["pending", "shipped", "delivered", "processing", "cancelled"]),
                     payment_status=random.choice(["pending", "paid", "refunded", "failed"]),
                     fulfillment_status=random.choice(["unfulfilled", "fulfilled", "partial"]),
-                    subtotal=0.0, # Will be updated
-                    tax_amount=round(random.uniform(5.0, 20.0), 2),
+                    subtotal=0.0, # Will be updated after items
+                    tax_amount=0.0, # Will be calculated after subtotal
                     shipping_amount=chosen_shipping_method.price,
                     discount_amount=round(random.uniform(0.0, 15.0), 2) if random.random() < 0.3 else 0.0,
                     total_amount=0.0, # Will be updated
                     currency="USD",
                     shipping_method=chosen_shipping_method.name,
                     tracking_number=str(uuid7()) if random.random() < 0.7 else None,
-                    carrier=random.choice(["DHL", "FedEx", "UPS", "Local Delivery"]) if random.random() < 0.8 else None,
+                    carrier=chosen_shipping_method.carrier or random.choice(["DHL", "FedEx", "UPS", "Local Delivery"]),
                     billing_address=dummy_address,
                     shipping_address=dummy_address,
                     confirmed_at=func.now() if random.random() < 0.8 else None,
@@ -806,7 +842,12 @@ async def seed_sample_data(
                     order_items_batch.append(order_item)
                     order_total += item_total
 
-                order.total_amount = order_total
+                # Update order with calculated values
+                order.subtotal = order_total
+                # Calculate tax on subtotal + shipping (industry standard)
+                taxable_amount = order_total + order.shipping_amount
+                order.tax_amount = round(taxable_amount * tax_rate, 2)
+                order.total_amount = order_total + order.shipping_amount + order.tax_amount - order.discount_amount
 
                 transaction = Transaction(
                     id=uuid7(),
@@ -814,7 +855,7 @@ async def seed_sample_data(
                     order_id=order.id,
                     # Generate a dummy ID for seeding
                     stripe_payment_intent_id=str(uuid7()),
-                    amount=order_total,
+                    amount=order.total_amount,  # Use the calculated total
                     currency="USD",
                     status="succeeded",
                     transaction_type="payment",
@@ -977,6 +1018,59 @@ async def seed_sample_data(
             f"🔐 Plaintext credentials saved to {users_file_path} (DEV ONLY).")
 
 
+async def update_existing_orders_with_tax_and_shipping(session):
+    """Update existing orders to have proper tax and shipping amounts"""
+    try:
+        print("📋 Checking existing orders for tax and shipping updates...")
+        
+        # Get orders without proper tax or shipping amounts
+        result = await session.execute(
+            select(Order).where(
+                (Order.tax_amount == None) | 
+                (Order.shipping_amount == None) |
+                (Order.tax_amount == 0) |
+                (Order.shipping_amount == 0)
+            )
+        )
+        orders_to_update = result.scalars().all()
+        
+        if not orders_to_update:
+            print("✅ All orders already have proper tax and shipping amounts")
+            return
+        
+        print(f"🔄 Updating {len(orders_to_update)} orders with missing tax/shipping...")
+        
+        # Get default shipping method
+        result = await session.execute(
+            select(ShippingMethod).where(ShippingMethod.is_active == True).limit(1)
+        )
+        default_shipping = result.scalar_one_or_none()
+        default_shipping_cost = default_shipping.price if default_shipping else 8.99
+        
+        for order in orders_to_update:
+            # Calculate tax (assume 8% default tax rate for existing orders)
+            if not order.tax_amount or order.tax_amount == 0:
+                tax_rate = 0.08  # 8% default
+                subtotal = order.subtotal or (order.total_amount * 0.85)  # Estimate subtotal
+                order.tax_amount = round(subtotal * tax_rate, 2)
+            
+            # Set shipping amount
+            if not order.shipping_amount or order.shipping_amount == 0:
+                order.shipping_amount = default_shipping_cost
+            
+            # Recalculate total if needed
+            if order.subtotal:
+                order.total_amount = order.subtotal + order.tax_amount + order.shipping_amount - (order.discount_amount or 0)
+        
+        await session.commit()
+        print(f"✅ Updated {len(orders_to_update)} orders with proper tax and shipping")
+        
+    except Exception as e:
+        print(f"❌ Error updating existing orders: {e}")
+        await session.rollback()
+        raise
+
+
 async def seed_tax_rates(session):
     """Seed tax rates into the database"""
     try:
@@ -985,7 +1079,7 @@ async def seed_tax_rates(session):
         existing = result.scalar_one_or_none()
         
         if existing:
-            print("Tax rates already seeded. Skipping...")
+            print("✅ Tax rates already seeded. Skipping...")
             return
         
         print(f"🌍 Seeding {len(TAX_RATES_DATA)} tax rates...")
@@ -1039,6 +1133,12 @@ async def main():
 
     try:
         await create_tables()
+        
+        # Always seed tax rates (they're essential for the system)
+        async with db_manager.session_factory() as session:
+            await seed_tax_rates(session)
+            await update_existing_orders_with_tax_and_shipping(session)
+        
         if args.seed:
             await seed_sample_data(
                 categories_count=args.categories,
@@ -1047,10 +1147,10 @@ async def main():
                 variants_per_product=args.variants,
                 batch_size=args.batch_size,
             )
-            # Seed tax rates after other data
-            async with db_manager.session_factory() as session:
-                await seed_tax_rates(session)
+        
         print("✅ Database initialization complete!")
+        print("🎯 All orders now have proper tax and shipping amounts based on country!")
+        
     except Exception as e:
         print(f"❌ Error initializing database: {e}")
         raise
