@@ -61,20 +61,6 @@ export const Orders = ({
       console.log('Processed orders:', orders);
     }
   }, [paginatedData, orders]);
-      }
-      // Otherwise return data directly if it's an array
-      return Array.isArray(data) ? data : [];
-    }
-    // Handle direct array response
-    if (Array.isArray(paginatedData)) {
-      return paginatedData;
-    }
-    // Handle object with orders property
-    if (paginatedData && typeof paginatedData === 'object' && 'orders' in paginatedData) {
-      return (paginatedData as any).orders || [];
-    }
-    return [];
-  })();
 
   const toggleOrderExpand = (orderId: string) => {
     setExpandedOrderId(expandedOrderId === orderId ? null : orderId);

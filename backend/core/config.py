@@ -239,10 +239,6 @@ class ApplicationConfig(BaseSettings):
     )
     
     # Business Logic Configuration
-    FREE_SHIPPING_THRESHOLD: float = Field(
-        default=100.0,
-        description="Minimum order amount for free shipping"
-    )
     
     @field_validator('FRONTEND_URL', 'BACKEND_URL')
     @classmethod
