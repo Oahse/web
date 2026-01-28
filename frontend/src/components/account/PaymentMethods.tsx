@@ -89,7 +89,7 @@ export const PaymentMethods = () => {
   };
 
   /**
-   * Handles adding a new card using Stripe API directly
+   * Handles adding a new card using modern Stripe API
    */
   const handleAddCard = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -118,7 +118,7 @@ export const PaymentMethods = () => {
     setAddingCard(true);
 
     try {
-      // Create token using Stripe.js API directly
+      // Create payment method using modern Stripe API
       const stripeKey = (import.meta as any).env?.VITE_STRIPE_PUBLIC_KEY;
       if (!stripeKey) {
         toast.error('Stripe is not configured');
@@ -127,34 +127,39 @@ export const PaymentMethods = () => {
       }
       const stripe = (window as any).Stripe(stripeKey);
       
-      const { token, error } = await stripe.createToken('card', {
-        number: newCardData.cardNumber.replace(/\s/g, ''),
-        exp_month: newCardData.expiryMonth,
-        exp_year: newCardData.expiryYear,
-        cvc: newCardData.cvv,
-        name: newCardData.cardholderName,
+      const { paymentMethod, error } = await stripe.createPaymentMethod({
+        type: 'card',
+        card: {
+          number: newCardData.cardNumber.replace(/\s/g, ''),
+          exp_month: parseInt(newCardData.expiryMonth),
+          exp_year: parseInt(newCardData.expiryYear),
+          cvc: newCardData.cvv,
+        },
+        billing_details: {
+          name: newCardData.cardholderName,
+        },
       });
 
       if (error) {
-        toast.error(error.message || 'Failed to tokenize card');
+        toast.error(error.message || 'Failed to create payment method');
         setAddingCard(false);
         return;
       }
 
-      if (!token) {
-        toast.error('Failed to create token');
+      if (!paymentMethod) {
+        toast.error('Failed to create payment method');
         setAddingCard(false);
         return;
       }
 
-      // Send token to backend
+      // Send payment method to backend
       const payload = {
-        stripe_token: token.id,
+        stripe_payment_method_id: paymentMethod.id,
         type: 'card',
-        provider: token.card?.brand || 'unknown',
-        last_four: token.card?.last4 || '',
-        expiry_month: token.card?.exp_month || 0,
-        expiry_year: token.card?.exp_year || 0,
+        provider: paymentMethod.card?.brand || 'unknown',
+        last_four: paymentMethod.card?.last4 || '',
+        expiry_month: paymentMethod.card?.exp_month || 0,
+        expiry_year: paymentMethod.card?.exp_year || 0,
         is_default: false,
       };
 

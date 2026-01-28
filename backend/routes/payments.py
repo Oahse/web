@@ -46,9 +46,21 @@ async def create_payment_method(
 ):
     """Create a new payment method"""
     service = PaymentService(db)
+    
+    # Prepare payment method data for the service
+    method_data = {
+        "type": payment_method_data.type,
+        "provider": payment_method_data.provider,
+        "last_four": payment_method_data.last_four,
+        "expiry_month": payment_method_data.expiry_month,
+        "expiry_year": payment_method_data.expiry_year,
+    }
+    
     payment_method = await service.create_payment_method(
         user_id=current_user.id,
         stripe_payment_method_id=payment_method_data.stripe_payment_method_id,
+        stripe_token=payment_method_data.stripe_token,
+        payment_method_data=method_data,
         is_default=payment_method_data.is_default
     )
     return Response.success(data=PaymentMethodResponse.from_orm(payment_method))

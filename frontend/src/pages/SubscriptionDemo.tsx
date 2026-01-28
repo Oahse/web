@@ -69,7 +69,17 @@ const mockProducts = [
   }
 ];
 
-const mockVariants = [
+const mockVariants: Array<{
+  id: string;
+  name: string;
+  price: number;
+  sale_price?: number;
+  stock: number;
+  sku?: string;
+  images?: Array<{ url: string; is_primary?: boolean }>;
+  primary_image?: { url: string };
+  attributes?: { [key: string]: string };
+}> = [
   {
     id: 'var_1',
     name: 'Light Roast',

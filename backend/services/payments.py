@@ -50,42 +50,115 @@ class PaymentService:
     async def create_payment_method(
         self,
         user_id: UUID,
-        stripe_payment_method_id: str,
+        stripe_payment_method_id: Optional[str] = None,
+        stripe_token: Optional[str] = None,
+        payment_method_data: Optional[Dict] = None,
         is_default: bool = False
     ) -> PaymentMethod:
-        """Create a new payment method"""
+        """Create a new payment method supporting both modern and legacy Stripe APIs"""
         try:
-            # Get payment method details from Stripe
-            stripe_pm = stripe.PaymentMethod.retrieve(stripe_payment_method_id)
-            
-            # If this is set as default, unset other defaults atomically
-            if is_default:
-                # Get existing default payment methods with lock
-                existing_defaults = await self.db.execute(
-                    select(PaymentMethod).where(
-                        and_(PaymentMethod.user_id == user_id, PaymentMethod.is_default == True)
-                    ).with_for_update()
+            # Handle modern payment method API
+            if stripe_payment_method_id:
+                # Get payment method details from Stripe
+                stripe_pm = stripe.PaymentMethod.retrieve(stripe_payment_method_id)
+                
+                # If this is set as default, unset other defaults atomically
+                if is_default:
+                    # Get existing default payment methods with lock
+                    existing_defaults = await self.db.execute(
+                        select(PaymentMethod).where(
+                            and_(PaymentMethod.user_id == user_id, PaymentMethod.is_default == True)
+                        ).with_for_update()
+                    )
+                    
+                    # Update them to not be default
+                    for pm in existing_defaults.scalars().all():
+                        pm.is_default = False
+                
+                payment_method = PaymentMethod(
+                    user_id=user_id,
+                    type=stripe_pm.type,
+                    provider="stripe",
+                    stripe_payment_method_id=stripe_payment_method_id,
+                    is_default=is_default,
+                    is_active=True
                 )
                 
-                # Update them to not be default
-                for pm in existing_defaults.scalars().all():
-                    pm.is_default = False
+                # Set card-specific details if it's a card
+                if stripe_pm.type == "card" and stripe_pm.card:
+                    payment_method.last_four = stripe_pm.card.last4
+                    payment_method.expiry_month = stripe_pm.card.exp_month
+                    payment_method.expiry_year = stripe_pm.card.exp_year
+                    payment_method.brand = stripe_pm.card.brand
             
-            payment_method = PaymentMethod(
-                user_id=user_id,
-                type=stripe_pm.type,
-                provider="stripe",
-                stripe_payment_method_id=stripe_payment_method_id,
-                is_default=is_default,
-                is_active=True
-            )
+            # Handle legacy token API (deprecated but supported for backward compatibility)
+            elif stripe_token:
+                # Get token details from Stripe
+                stripe_token_obj = stripe.Token.retrieve(stripe_token)
+                
+                # Create payment method from token (this is the old way)
+                stripe_pm = stripe.PaymentMethod.create(
+                    type="card",
+                    card={"token": stripe_token}
+                )
+                
+                # If this is set as default, unset other defaults atomically
+                if is_default:
+                    existing_defaults = await self.db.execute(
+                        select(PaymentMethod).where(
+                            and_(PaymentMethod.user_id == user_id, PaymentMethod.is_default == True)
+                        ).with_for_update()
+                    )
+                    
+                    for pm in existing_defaults.scalars().all():
+                        pm.is_default = False
+                
+                payment_method = PaymentMethod(
+                    user_id=user_id,
+                    type="card",
+                    provider="stripe",
+                    stripe_payment_method_id=stripe_pm.id,
+                    is_default=is_default,
+                    is_active=True
+                )
+                
+                # Set card details from token
+                if stripe_token_obj.card:
+                    payment_method.last_four = stripe_token_obj.card.last4
+                    payment_method.expiry_month = stripe_token_obj.card.exp_month
+                    payment_method.expiry_year = stripe_token_obj.card.exp_year
+                    payment_method.brand = stripe_token_obj.card.brand
             
-            # Set card-specific details if it's a card
-            if stripe_pm.type == "card" and stripe_pm.card:
-                payment_method.last_four = stripe_pm.card.last4
-                payment_method.expiry_month = stripe_pm.card.exp_month
-                payment_method.expiry_year = stripe_pm.card.exp_year
-                payment_method.brand = stripe_pm.card.brand
+            # Handle direct payment method data (from frontend)
+            elif payment_method_data:
+                # If this is set as default, unset other defaults atomically
+                if is_default:
+                    existing_defaults = await self.db.execute(
+                        select(PaymentMethod).where(
+                            and_(PaymentMethod.user_id == user_id, PaymentMethod.is_default == True)
+                        ).with_for_update()
+                    )
+                    
+                    for pm in existing_defaults.scalars().all():
+                        pm.is_default = False
+                
+                payment_method = PaymentMethod(
+                    user_id=user_id,
+                    type=payment_method_data.get("type", "card"),
+                    provider=payment_method_data.get("provider", "unknown"),
+                    last_four=payment_method_data.get("last_four"),
+                    expiry_month=payment_method_data.get("expiry_month"),
+                    expiry_year=payment_method_data.get("expiry_year"),
+                    brand=payment_method_data.get("provider"),  # Use provider as brand for now
+                    is_default=is_default,
+                    is_active=True
+                )
+            
+            else:
+                raise HTTPException(
+                    status_code=400, 
+                    detail="Either stripe_payment_method_id, stripe_token, or payment_method_data must be provided"
+                )
             
             self.db.add(payment_method)
             await self.db.commit()

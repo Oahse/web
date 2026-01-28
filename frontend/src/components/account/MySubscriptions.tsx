@@ -374,70 +374,90 @@ export const MySubscriptions = () => {
                     <label className={`${themeClasses.text.primary} block text-sm font-medium mb-2`}>
                       Select Product Variants ({selectedProductsForNew.size} selected)
                     </label>
-                    <div className="max-h-48 overflow-y-auto border border-border rounded-md p-2">
-                      {availableProducts.length === 0 ? (
-                        <p className={`${themeClasses.text.secondary} text-sm text-center py-4`}>
-                          Loading products...
-                        </p>
-                      ) : (
-                        <div className="space-y-2">
-                          {availableProducts.map((product: Product) => (
-                            <div key={product.id} className="border-b border-border pb-2 last:border-b-0">
-                              <div className="flex items-center space-x-2 mb-1">
-                                <span className={`${themeClasses.text.primary} text-sm font-medium`}>
-                                  {product.name}
-                                </span>
+                    <div className="border border-border rounded-md bg-background shadow-sm">
+                      <div className="max-h-48 overflow-y-auto divide-y divide-border">
+                        {availableProducts.length === 0 ? (
+                          <p className={`${themeClasses.text.secondary} text-sm text-center py-4`}>
+                            Loading products…
+                          </p>
+                        ) : (
+                          availableProducts.map((product: Product) => (
+                            <div key={product.id} className="px-3 py-2 space-y-1">
+                              {/* Product name */}
+                              <div className={`${themeClasses.text.primary} text-xs font-semibold truncate`}>
+                                {product.name}
                               </div>
-                              {product.variants && product.variants.length > 0 ? (
-                                <div className="ml-4 space-y-1">
+
+                              {/* Variants */}
+                              {product.variants?.length ? (
+                                <div className="space-y-1">
                                   {product.variants.map((variant: any) => (
-                                    <div key={variant.id} className="flex items-center space-x-2">
+                                    <label
+                                      key={variant.id}
+                                      className="
+                                        grid grid-cols-[16px_28px_1fr_auto]
+                                        items-center gap-2
+                                        px-2 py-1
+                                        rounded
+                                        hover:bg-muted
+                                        cursor-pointer
+                                      "
+                                    >
+                                      {/* Checkbox */}
                                       <input
                                         type="checkbox"
                                         checked={selectedProductsForNew.has(variant.id)}
                                         onChange={(e) => {
-                                          const newSelected = new Set(selectedProductsForNew);
-                                          if (e.target.checked) {
-                                            newSelected.add(variant.id);
-                                          } else {
-                                            newSelected.delete(variant.id);
-                                          }
-                                          setSelectedProductsForNew(newSelected);
+                                          const next = new Set(selectedProductsForNew);
+                                          e.target.checked
+                                            ? next.add(variant.id)
+                                            : next.delete(variant.id);
+                                          setSelectedProductsForNew(next);
                                         }}
-                                        className={`${themeClasses.input.base} flex-shrink-0`}
+                                        className={`${themeClasses.input.base}`}
                                       />
-                                      <div className="flex items-center space-x-2 flex-1 min-w-0">
-                                        {variant.images && variant.images.length > 0 && (
-                                          <img 
-                                            src={variant.images[0].url} 
-                                            alt={variant.name}
-                                            className="w-6 h-6 rounded object-cover flex-shrink-0"
-                                          />
+
+                                      {/* Image */}
+                                      {variant.images?.[0]?.url ? (
+                                        <img
+                                          src={variant.images[0].url}
+                                          alt={variant.name}
+                                          className="w-6 h-6 rounded object-cover border border-border"
+                                        />
+                                      ) : (
+                                        <div className="w-6 h-6" />
+                                      )}
+
+                                      {/* Name */}
+                                      <span
+                                        className={`${themeClasses.text.primary} text-xs truncate`}
+                                      >
+                                        {variant.name || "Default Variant"}
+                                      </span>
+
+                                      {/* Price */}
+                                      <span
+                                        className={`${themeClasses.text.muted} text-xs text-right whitespace-nowrap`}
+                                      >
+                                        {formatCurrencyLocale(
+                                          variant.current_price || variant.base_price || 0,
+                                          currency
                                         )}
-                                        <div className="flex-1 min-w-0">
-                                          <span className={`${themeClasses.text.primary} text-xs block truncate`}>
-                                            {variant.name || 'Default Variant'}
-                                          </span>
-                                          <span className={`${themeClasses.text.muted} text-xs`}>
-                                            {formatCurrencyLocale(variant.current_price || variant.base_price || 0, currency)}
-                                          </span>
-                                        </div>
-                                      </div>
-                                    </div>
+                                      </span>
+                                    </label>
                                   ))}
                                 </div>
                               ) : (
-                                <div className="ml-4">
-                                  <span className={`${themeClasses.text.muted} text-xs`}>
-                                    No variants available
-                                  </span>
-                                </div>
+                                <span className={`${themeClasses.text.muted} text-xs`}>
+                                  No variants available
+                                </span>
                               )}
                             </div>
-                          ))}
-                        </div>
-                      )}
+                          ))
+                        )}
+                      </div>
                     </div>
+
                   </div>
                   
                   <div className={`${themeClasses.background.elevated} rounded-md p-3`}>

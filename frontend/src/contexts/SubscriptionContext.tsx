@@ -63,7 +63,7 @@ export const SubscriptionProvider: React.FC<SubscriptionProviderProps> = ({ chil
     }
   }, [isAuthenticated, user]);
 
-  const refreshSubscriptions = useCallback(async () => {
+  const refreshSubscriptions = async () => {
     if (!isAuthenticated) return;
 
     setLoading(true);
@@ -77,7 +77,7 @@ export const SubscriptionProvider: React.FC<SubscriptionProviderProps> = ({ chil
     } finally {
       setLoading(false);
     }
-  }, [isAuthenticated]);
+  };
 
   const createSubscription = async (data: any): Promise<Subscription | null> => {
     if (!isAuthenticated) {

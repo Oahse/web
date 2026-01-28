@@ -17,24 +17,25 @@ describe('Property 10: Card tokenization', () => {
   beforeEach(() => {
     // Mock Stripe on window
     (window as any).Stripe = vi.fn(() => ({
-      createToken: vi.fn(async (type: string, cardData: any) => {
-        // Simulate successful tokenization
-        if (cardData.number && cardData.exp_month && cardData.exp_year && cardData.cvc) {
+      createPaymentMethod: vi.fn(async (paymentMethodData: any) => {
+        // Simulate successful payment method creation
+        if (paymentMethodData.card && paymentMethodData.card.number && paymentMethodData.card.exp_month && paymentMethodData.card.exp_year && paymentMethodData.card.cvc) {
           return {
-            token: {
-              id: `tok_${Math.random().toString(36).substring(7)}`,
+            paymentMethod: {
+              id: `pm_${Math.random().toString(36).substring(7)}`,
+              type: 'card',
               card: {
                 brand: 'visa',
-                last4: cardData.number.slice(-4),
-                exp_month: cardData.exp_month,
-                exp_year: cardData.exp_year,
+                last4: paymentMethodData.card.number.slice(-4),
+                exp_month: paymentMethodData.card.exp_month,
+                exp_year: paymentMethodData.card.exp_year,
               },
             },
             error: null,
           };
         }
         return {
-          token: null,
+          paymentMethod: null,
           error: { message: 'Invalid card details' },
         };
       }),
@@ -54,14 +55,20 @@ describe('Property 10: Card tokenization', () => {
         }),
         async (cardData) => {
           const stripe = (window as any).Stripe('pk_test_mock');
-          const result = await stripe.createToken('card', cardData);
+          const result = await stripe.createPaymentMethod({
+            type: 'card',
+            card: cardData,
+            billing_details: {
+              name: cardData.name || 'Test User'
+            }
+          });
 
-          // Property: Valid card details should result in successful tokenization
-          expect(result.token).toBeDefined();
-          expect(result.token.id).toMatch(/^tok_/);
-          expect(result.token.card.last4).toBe(cardData.number.slice(-4));
-          expect(result.token.card.exp_month).toBe(cardData.exp_month);
-          expect(result.token.card.exp_year).toBe(cardData.exp_year);
+          // Property: Valid card details should result in successful payment method creation
+          expect(result.paymentMethod).toBeDefined();
+          expect(result.paymentMethod.id).toMatch(/^pm_/);
+          expect(result.paymentMethod.card.last4).toBe(cardData.number.slice(-4));
+          expect(result.paymentMethod.card.exp_month).toBe(cardData.exp_month);
+          expect(result.paymentMethod.card.exp_year).toBe(cardData.exp_year);
           expect(result.error).toBeNull();
         }
       ),
@@ -81,10 +88,16 @@ describe('Property 10: Card tokenization', () => {
         }).filter(data => !data.number || !data.exp_month || !data.exp_year || !data.cvc),
         async (cardData) => {
           const stripe = (window as any).Stripe('pk_test_mock');
-          const result = await stripe.createToken('card', cardData);
+          const result = await stripe.createPaymentMethod({
+            type: 'card',
+            card: cardData,
+            billing_details: {
+              name: cardData.name || 'Test User'
+            }
+          });
 
-          // Property: Invalid card details should result in tokenization failure
-          expect(result.token).toBeNull();
+          // Property: Invalid card details should result in payment method creation failure
+          expect(result.paymentMethod).toBeNull();
           expect(result.error).toBeDefined();
           expect(result.error.message).toBeTruthy();
         }
@@ -104,7 +117,7 @@ describe('Property 11: Payment method persistence', () => {
     await fc.assert(
       fc.asyncProperty(
         fc.record({
-          stripe_token: fc.string({ minLength: 10, maxLength: 50 }),
+          stripe_payment_method_id: fc.string({ minLength: 10, maxLength: 50 }),
           type: fc.constant('card'),
           provider: fc.constantFrom('visa', 'mastercard', 'amex', 'discover'),
           last_four: fc.stringMatching(/^[0-9]{4}$/),
@@ -124,7 +137,7 @@ describe('Property 11: Payment method persistence', () => {
 
           // Property: Payment method should be persisted with all required fields
           expect(result.id).toBeDefined();
-          expect(result.stripe_token).toBe(paymentMethodData.stripe_token);
+          expect(result.stripe_payment_method_id).toBe(paymentMethodData.stripe_payment_method_id);
           expect(result.type).toBe(paymentMethodData.type);
           expect(result.provider).toBe(paymentMethodData.provider);
           expect(result.last_four).toBe(paymentMethodData.last_four);

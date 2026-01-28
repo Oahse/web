@@ -35,6 +35,7 @@ const Contact = lazy(() => import('./pages/Contact'));
 const FAQ = lazy(() => import('./pages/FAQ'));
 const Wishlist = lazy(() => import('./pages/Wishlist'));
 const SubscriptionManagement = lazy(() => import('./pages/SubscriptionManagement'));
+const SubscriptionDemo = lazy(() => import('./pages/SubscriptionDemo'));
 const TermsAndConditions = lazy(() => import('./pages/TermsAndConditions'));
 const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy'));
 const EmailVerification = lazy(() => import('./pages/EmailVerification'));
@@ -454,6 +455,14 @@ export const App: React.FC = () => {
                                       <SubscriptionManagement />
                                     </Layout>
                                   </ProtectedRoute>
+                                }
+                              />
+                              <Route
+                                path="/subscription-demo"
+                                element={
+                                  <Layout>
+                                    <SubscriptionDemo />
+                                  </Layout>
                                 }
                               />
                               <Route
