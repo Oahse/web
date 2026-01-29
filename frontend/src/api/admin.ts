@@ -1,5 +1,8 @@
 /**
  * Admin API endpoints
+ * 
+ * ACCESS LEVELS:
+ * - Admin Only: All endpoints require admin role
  */
 
 import { apiClient } from './client';
@@ -7,6 +10,7 @@ import { apiClient } from './client';
 export class AdminAPI {
   /**
    * Get admin dashboard statistics
+   * ACCESS: Admin Only - Requires admin role
    */
   static async getAdminStats() {
     return await apiClient.get('/v1/admin/stats', {});
@@ -14,6 +18,7 @@ export class AdminAPI {
 
   /**
    * Get platform overview
+   * ACCESS: Admin Only - Requires admin role
    */
   static async getPlatformOverview() {
     return await apiClient.get('/v1/admin/overview', {});

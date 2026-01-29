@@ -1,5 +1,11 @@
 /**
  * Orders API endpoints
+ * 
+ * ACCESS LEVELS:
+ * - Public: Order tracking (no authentication required)
+ * - Authenticated: Order creation, viewing own orders, order management
+ * - Supplier: View and manage supplier orders, update order status
+ * - Admin: View all orders, order statistics, export functionality
  */
 
 import { apiClient } from './client'; 
@@ -99,6 +105,7 @@ export interface OrderCalculation {
 export class OrdersAPI {
   /**
    * Create new order
+   * ACCESS: Authenticated - Requires user login
    */
   static async createOrder(orderData) {
     return await apiClient.post('/v1/orders', orderData);
@@ -106,6 +113,7 @@ export class OrdersAPI {
 
   /**
    * Validate checkout before placing order
+   * ACCESS: Authenticated - Requires user login
    */
   static async validateCheckout(checkoutData: {
     shipping_address_id: string;
@@ -135,6 +143,7 @@ export class OrdersAPI {
 
   /**
    * Place order (checkout)
+   * ACCESS: Authenticated - Requires user login
    */
   static async placeOrder(checkoutData: {
     shipping_address_id: string;
@@ -165,6 +174,7 @@ export class OrdersAPI {
 
   /**
    * Create Payment Intent and return client secret
+   * ACCESS: Authenticated - Requires user login
    */
   static async createPaymentIntent(checkoutData: any) {
     return await apiClient.post('/v1/orders/create-payment-intent', checkoutData);
@@ -181,6 +191,7 @@ export class OrdersAPI {
 
   /**
    * Get user's orders
+   * ACCESS: Authenticated - Requires user login (own orders only)
    */
   static async getOrders(params) {
     const queryParams = new URLSearchParams();
@@ -197,6 +208,7 @@ export class OrdersAPI {
 
   /**
    * Get order by ID
+   * ACCESS: Authenticated - Requires user login (own orders only)
    */
   static async getOrder(orderId) {
     return await apiClient.get(`/v1/orders/${orderId}`);
@@ -204,6 +216,7 @@ export class OrdersAPI {
 
   /**
    * Get order tracking information (authenticated)
+   * ACCESS: Authenticated - Requires user login (own orders only)
    */
   static async getOrderTracking(orderId) {
     return await apiClient.get(`/v1/orders/${orderId}/tracking`);
@@ -211,6 +224,7 @@ export class OrdersAPI {
 
   /**
    * Get order tracking information (public - no auth required)
+   * ACCESS: Public - No authentication required
    */
   static async trackOrderPublic(orderId) {
     return await apiClient.get(`/v1/orders/track/${orderId}`);
@@ -218,6 +232,7 @@ export class OrdersAPI {
 
   /**
    * Cancel order
+   * ACCESS: Authenticated - Requires user login (own orders only)
    */
   static async cancelOrder(orderId, reason) {
     return await apiClient.put(`/v1/orders/${orderId}/cancel`, { reason });
@@ -267,7 +282,8 @@ export class OrdersAPI {
 
   // Supplier endpoints
   /**
-   * Get supplier orders (Supplier only)
+   * Get supplier orders
+   * ACCESS: Supplier - Requires supplier role (own orders only)
    */
   static async getSupplierOrders(params) {
     const queryParams = new URLSearchParams();
@@ -283,28 +299,32 @@ export class OrdersAPI {
   }
 
   /**
-   * Update order status (Supplier/Admin only)
+   * Update order status
+   * ACCESS: Supplier/Admin - Requires supplier or admin role
    */
   static async updateOrderStatus(orderId, data) {
     return await apiClient.put(`/orders/${orderId}/status`, data);
   }
 
   /**
-   * Mark order as shipped (Supplier only)
+   * Mark order as shipped
+   * ACCESS: Supplier - Requires supplier role
    */
   static async markAsShipped(orderId, data) {
     return await apiClient.put(`/orders/${orderId}/ship`, data);
   }
 
   /**
-   * Mark order as delivered (Supplier only)
+   * Mark order as delivered
+   * ACCESS: Supplier - Requires supplier role
    */
   static async markAsDelivered(orderId, data) {
     return await apiClient.put(`/orders/${orderId}/deliver`, data || {});
   }
 
   /**
-   * Process refund (Supplier/Admin only)
+   * Process refund
+   * ACCESS: Supplier/Admin - Requires supplier or admin role
    */
   static async processRefund(refundId, data) {
     return await apiClient.put(`/refunds/${refundId}/process`, data);
@@ -312,7 +332,8 @@ export class OrdersAPI {
 
   // Admin endpoints
   /**
-   * Get all orders (Admin only)
+   * Get all orders
+   * ACCESS: Admin Only - Requires admin role
    */
   static async getAllOrders(params) {
     const queryParams = new URLSearchParams();
@@ -330,7 +351,8 @@ export class OrdersAPI {
   }
 
   /**
-   * Get order statistics (Admin only)
+   * Get order statistics
+   * ACCESS: Admin Only - Requires admin role
    */
   static async getOrderStatistics(params) {
     const queryParams = new URLSearchParams();
@@ -344,7 +366,8 @@ export class OrdersAPI {
   }
 
   /**
-   * Export orders (Admin only)
+   * Export orders
+   * ACCESS: Admin Only - Requires admin role
    */
   static async exportOrders(params) {
     const queryParams = new URLSearchParams();

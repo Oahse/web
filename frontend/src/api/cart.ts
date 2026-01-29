@@ -75,30 +75,50 @@ export class CartAPI {
     });
   }
 
+  /**
+   * Remove item from cart
+   * ACCESS: Authenticated - Requires user login
+   */
   static async removeFromCart(itemId: string, access_token: string) {
     return await apiClient.delete(`/v1/cart/items/${itemId}`, {
       headers: { 'Authorization': `Bearer ${access_token}` },
     });
   }
 
+  /**
+   * Clear entire cart
+   * ACCESS: Authenticated - Requires user login
+   */
   static async clearCart(access_token: string) {
     return await apiClient.post('/v1/cart/clear', {}, {
       headers: { 'Authorization': `Bearer ${access_token}` },
     });
   }
 
+  /**
+   * Apply promo code to cart
+   * ACCESS: Authenticated - Requires user login
+   */
   static async applyPromocode(code: string, access_token: string) {
     return await apiClient.post('/v1/cart/promocode', { code }, {
       headers: { 'Authorization': `Bearer ${access_token}` },
     });
   }
 
+  /**
+   * Remove promo code from cart
+   * ACCESS: Authenticated - Requires user login
+   */
   static async removePromocode(access_token: string) {
     return await apiClient.delete('/v1/cart/promocode', {
       headers: { 'Authorization': `Bearer ${access_token}` },
     });
   }
 
+  /**
+   * Check stock availability for a variant
+   * ACCESS: Public - No authentication required
+   */
   static async checkStock(variantId, quantity) {
     // Guard against undefined/null variantId
     if (!variantId || variantId === 'undefined' || variantId === 'null') {
@@ -110,6 +130,7 @@ export class CartAPI {
 
   /**
    * Check stock for multiple items at once (for Checkout)
+   * ACCESS: Public - No authentication required
    */
   static async checkBulkStock(items) {
     // Validate items array
@@ -131,6 +152,10 @@ export class CartAPI {
     return await apiClient.post('/v1/inventory/check-stock/bulk', validatedItems);
   }
 
+  /**
+   * Get cart item count
+   * ACCESS: Authenticated - Requires user login
+   */
   static async getCartItemCount(access_token) {
     return await apiClient.get('/v1/cart/count', {
       headers: { 'Authorization': `Bearer ${access_token}` },

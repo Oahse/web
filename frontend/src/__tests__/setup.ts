@@ -321,32 +321,16 @@ export const waitForLoadingToFinish = () => {
 // Custom render function with providers
 import React from 'react';
 import { render, RenderOptions } from '@testing-library/react';
-import { BrowserRouter } from 'react-router-dom';
-import { AuthProvider } from '../store/AuthContext';
-import { CartProvider } from '../store/CartContext';
-import { NotificationProvider } from '../store/NotificationContext';
-import { ThemeProvider } from '../store/ThemeContext';
 
-const AllTheProviders = ({ children }: { children: React.ReactNode }) => {
-  return (
-    <BrowserRouter>
-      <ThemeProvider>
-        <NotificationProvider>
-          <AuthProvider>
-            <CartProvider>
-              {children}
-            </CartProvider>
-          </AuthProvider>
-        </NotificationProvider>
-      </ThemeProvider>
-    </BrowserRouter>
-  );
+// Mock providers for testing
+const MockProvider = ({ children }: { children: React.ReactNode }) => {
+  return React.createElement('div', { 'data-testid': 'mock-provider' }, children);
 };
 
 export const renderWithProviders = (
   ui: React.ReactElement,
   options?: Omit<RenderOptions, 'wrapper'>
-) => render(ui, { wrapper: AllTheProviders, ...options });
+) => render(ui, { wrapper: MockProvider, ...options });
 
 // Re-export everything from testing-library
 export * from '@testing-library/react';

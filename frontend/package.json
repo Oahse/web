@@ -27,7 +27,7 @@
     "test:admin": "vitest src/__tests__/components/admin/",
     "test:dashboard": "vitest src/__tests__/components/dashboard/",
     "test:subscription": "vitest src/__tests__/components/subscription/ src/__tests__/pages/Subscriptions.test.tsx",
-    "test:ui": "vitest src/__tests__/components/ui/",
+    "test:ui": "vitest --ui",
     "test:forms": "vitest src/__tests__/components/forms/",
     "test:layout": "vitest src/__tests__/components/layout/",
     "test:generate": "node generate-tests.js",
@@ -45,7 +45,10 @@
     "test:watch-unit": "vitest --watch src/__tests__/api/ src/__tests__/hooks/ src/__tests__/components/",
     "test:debug": "vitest --inspect-brk --no-coverage",
     "test:parallel": "vitest run --reporter=verbose --threads",
-    "test:smoke": "vitest run src/__tests__/e2e/smoke.test.tsx"
+    "test:smoke": "vitest run src/__tests__/e2e/smoke.test.tsx",
+    "test:utils": "vitest src/__tests__/utils/",
+    "test:ts-files": "vitest run src/__tests__/api/ src/__tests__/hooks/ src/__tests__/utils/",
+    "test:backend-aligned": "vitest run src/__tests__/api/ --reporter=verbose"
   },
   "dependencies": {
     "@greatsumini/react-facebook-login": "^3.4.0",
