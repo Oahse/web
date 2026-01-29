@@ -32,6 +32,13 @@ export const Cart = () => {
   // Use cart items directly from context - this ensures the component re-renders when cart object changes
   var cartItems = cart?.items || [];
   
+  // Authentication check - require user to be logged in to view cart
+  useEffect(() => {
+    if (!authLoading && !isAuthenticated) {
+      setIntendedDestination('/cart');
+      navigate('/login', { state: { from: '/cart' } });
+    }
+  }, [isAuthenticated, authLoading, navigate, setIntendedDestination]);
   
   const validateForCheckout = () => {
     if (!cart?.items.length) {
