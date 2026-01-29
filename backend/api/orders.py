@@ -472,47 +472,6 @@ async def place_order(
         )
 
 
-@router.post("/checkout")
-async def checkout(
-    request: CheckoutRequest,
-    background_tasks: BackgroundTasks,
-    current_user: User = Depends(get_current_auth_user),
-    order_service: OrderService = Depends(get_order_service),
-    idempotency_key: Optional[str] = Header(None, alias="Idempotency-Key")
-):
-    """
-    Place an order from the current cart with comprehensive validation and security checks.
-    
-    Cart validation is ALWAYS performed before order creation.
-    Price tampering protection is enforced.
-    Idempotency-Key header prevents duplicate orders from being created.
-    If not provided, one will be generated based on cart contents.
-    """
-    try:
-        # Import security service
-        from core.middleware.rate_limit import SecurityService
-        from fastapi import Request
-        
-        # Get request object for security checks
-        # Note: In a real implementation, you'd get this from the middleware
-        # For now, we'll perform price validation in the order service
-        
-        order = await order_service.place_order_with_security_validation(
-            current_user.id, 
-            request, 
-            background_tasks,
-            idempotency_key
-        )
-        return Response.success(data=order, message="Order placed successfully")
-    except APIException:
-        raise
-    except Exception as e:
-        raise APIException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            message=f"Failed to place order: {str(e)}"
-        )
-
-
 @router.get("/")
 async def get_orders(
     page: int = Query(1, ge=1),

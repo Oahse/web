@@ -696,6 +696,7 @@ async def seed_sample_data(
             ("admin@banwee.com", "Admin", "User", "adminpass", "Admin"),
             ("supplier@banwee.com", "Supplier",
              "User", "supplierpass", "Supplier"),
+            ("test_cart_user@example.com", "Test", "User", "TestPass123!", "Customer"),
         ]
 
         for email, fname, lname, pwd_plain, role in predefined:

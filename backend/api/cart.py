@@ -356,11 +356,12 @@ async def calculate_totals(
 
 
 @router.post("/clear")
-async def clear_cart_post(
+async def clear_cart(
     request: Request,
     current_user: Optional[User] = Depends(get_current_auth_user),
     db: AsyncSession = Depends(get_db)
 ):
+    """Clear all items from the cart"""
     try:
         cart_service = CartService(db)
         session_id = get_session_id(request) if not current_user else None
@@ -369,28 +370,11 @@ async def clear_cart_post(
             session_id=session_id
         )
         return Response(success=True, data=result, message="Cart cleared successfully")
-    except Exception:
+    except Exception as e:
         raise APIException(
-            status_code=status.HTTP_400_BAD_REQUEST, message="Failed to clear cart")
-
-
-@router.delete("/clear")
-async def clear_cart_delete(
-    request: Request,
-    current_user: Optional[User] = Depends(get_current_auth_user),
-    db: AsyncSession = Depends(get_db)
-):
-    try:
-        cart_service = CartService(db)
-        session_id = get_session_id(request) if not current_user else None
-        result = await cart_service.clear_cart(
-            user_id=current_user.id if current_user else None,
-            session_id=session_id
+            status_code=status.HTTP_400_BAD_REQUEST,
+            message=f"Failed to clear cart: {str(e)}"
         )
-        return Response(success=True, data=result, message="Cart cleared successfully")
-    except Exception:
-        raise APIException(
-            status_code=status.HTTP_400_BAD_REQUEST, message="Failed to clear cart")
 
 
 @router.post("/merge")

@@ -3,6 +3,7 @@ from .admin import router as admin_router
 from .analytics import router as analytics_router 
 from .auth import router as auth_router
 from .cart import router as cart_router
+from .categories import router as categories_router
 from .health import router as health_router
 from .inventory import router as inventory_router
 from .loyalty import router as loyalty_router
@@ -26,6 +27,7 @@ __all__ = [
     "analytics_router",
     "auth_router",
     "cart_router",
+    "categories_router",
     "health_router",
     "inventory_router",
     "loyalty_router",
@@ -43,3 +45,4 @@ __all__ = [
     "webhooks_router",
     "wishlist_router",
 ]
+

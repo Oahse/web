@@ -42,7 +42,7 @@ class UpdateOrderStatusRequest(BaseModel):
 
 def require_admin(current_user: User = Depends(get_current_auth_user)):
     """Require admin role."""
-    if current_user.role not in ["Admin", "SuperAdmin"]:
+    if current_user.role not in ["admin", "manager", "Admin", "SuperAdmin"]:
         raise APIException(
             status_code=status.HTTP_403_FORBIDDEN,
             message="Admin access required"

@@ -5,6 +5,7 @@ from typing import Optional, List
 from core.utils.response import Response
 from core.errors import APIException
 from core.db import get_db
+from core.logging import get_logger
 from services.user import UserService, AddressService
 from services.search import SearchService
 # Import AddressResponse
@@ -15,12 +16,50 @@ from services.auth import AuthService
 from core.dependencies import get_current_auth_user
 from models.user import User  # Import User model
 
+logger = get_logger(__name__)
 router = APIRouter(prefix="/users", tags=["Users & Addresses"])
 
 
 # ==========================================================
 # USER ENDPOINTS
 # ==========================================================
+
+@router.get("/me")
+async def get_current_user_me(
+    current_user: User = Depends(get_current_auth_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Get current user profile (alias for /profile)"""
+    try:
+        from schemas.user import UserResponse
+        
+        user_data = {
+            "id": current_user.id,
+            "email": current_user.email,
+            "firstname": current_user.firstname,
+            "lastname": current_user.lastname,
+            "full_name": f"{current_user.firstname} {current_user.lastname}",
+            "phone": current_user.phone,
+            "role": current_user.role,
+            "verified": current_user.verified,
+            "is_active": current_user.is_active,
+            "age": current_user.age,
+            "gender": current_user.gender,
+            "country": current_user.country,
+            "language": current_user.language,
+            "timezone": current_user.timezone,
+            "created_at": current_user.created_at,
+            "updated_at": current_user.updated_at
+        }
+        
+        user_response = UserResponse.model_validate(user_data)
+        return Response.success(data=user_response)
+    except APIException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting user profile: {str(e)}")
+        raise APIException(status_code=500, message="Internal server error")
+
 
 @router.get("/profile")
 async def get_user_profile(
@@ -250,62 +289,110 @@ async def list_addresses(user_id: UUID, db: AsyncSession = Depends(get_db)):
 
 
 @router.get("/addresses/{address_id}")
-async def get_address(address_id: UUID, db: AsyncSession = Depends(get_db)):
-    service = AddressService(db)
-    address = await service.get_address(address_id)
-    if not address:
-        raise APIException(status_code=status.HTTP_404_NOT_FOUND,
-                           message="Address not found")
-    return Response.success(data=address)
-
-
-@router.post("/{user_id}/addresses")
-async def create_address(user_id: UUID, payload: AddressCreate, db: AsyncSession = Depends(get_db)):
-    service = AddressService(db)
-    address = await service.create_address(user_id=user_id, **payload.model_dump())
-    return Response.success(data=address, code=status.HTTP_201_CREATED)
-
-
-@router.put("/addresses/{address_id}")
-async def update_address(address_id: UUID, payload: AddressUpdate, db: AsyncSession = Depends(get_db)):
-    service = AddressService(db)
-    updated = await service.update_address(address_id, **payload.model_dump(exclude_unset=True))
-    if not updated:
-        raise APIException(status_code=status.HTTP_404_NOT_FOUND,
-                           message="Address not found")
-    return Response.success(data=updated)
+async def get_address(
+    address_id: UUID,
+    current_user: User = Depends(get_current_auth_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Get a specific address (must be owned by current user)"""
+    try:
+        service = AddressService(db)
+        address = await service.get_address_by_id(address_id)
+        if not address or address.user_id != current_user.id:
+            raise APIException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                message="Address not found"
+            )
+        return Response.success(data=address)
+    except APIException:
+        raise
+    except Exception as e:
+        logger.error(f"Error retrieving address {address_id}: {e}")
+        raise APIException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            message="Failed to retrieve address"
+        )
 
 
 @router.post("/addresses")
-async def create_user_address(payload: AddressCreate, db: AsyncSession = Depends(get_db)):
+async def create_user_address(
+    payload: AddressCreate, 
+    current_user: User = Depends(get_current_auth_user),
+    db: AsyncSession = Depends(get_db)
+):
     """Create address for current user (requires authentication)"""
-    # This would need authentication to get current user ID
-    # For now, we'll use a placeholder
-    service = AddressService(db)
-    # This endpoint would need proper authentication
-    raise APIException(status_code=status.HTTP_501_NOT_IMPLEMENTED,
-                       message="Endpoint requires authentication")
+    try:
+        service = AddressService(db)
+        address = await service.create_address(user_id=current_user.id, **payload.model_dump())
+        return Response.success(
+            data=address,
+            message="Address created successfully",
+            status_code=status.HTTP_201_CREATED
+        )
+    except Exception as e:
+        logger.error(f"Error creating address for user {current_user.id}: {e}")
+        raise APIException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            message="Failed to create address"
+        )
 
 
 @router.put("/addresses/{address_id}")
-async def update_user_address(address_id: UUID, payload: AddressUpdate, db: AsyncSession = Depends(get_db)):
+async def update_user_address(
+    address_id: UUID, 
+    payload: AddressUpdate, 
+    current_user: User = Depends(get_current_auth_user),
+    db: AsyncSession = Depends(get_db)
+):
     """Update address for current user (requires authentication)"""
-    service = AddressService(db)
-    # This would need authentication to get current user ID
-    updated = await service.update_address(address_id, None, **payload.model_dump(exclude_unset=True))
-    if not updated:
-        raise APIException(status_code=status.HTTP_404_NOT_FOUND,
-                           message="Address not found")
-    return Response.success(data=updated)
+    try:
+        service = AddressService(db)
+        updated = await service.update_address(address_id, current_user.id, **payload.model_dump(exclude_unset=True))
+        if not updated:
+            raise APIException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                message="Address not found"
+            )
+        return Response.success(data=updated, message="Address updated successfully")
+    except APIException:
+        raise
+    except Exception as e:
+        logger.error(f"Error updating address {address_id} for user {current_user.id}: {e}")
+        raise APIException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            message="Failed to update address"
+        )
 
 
 @router.delete("/addresses/{address_id}")
-async def delete_user_address(address_id: UUID, db: AsyncSession = Depends(get_db)):
+async def delete_user_address(
+    address_id: UUID,
+    current_user: User = Depends(get_current_auth_user),
+    db: AsyncSession = Depends(get_db)
+):
     """Delete address for current user (requires authentication)"""
-    service = AddressService(db)
-    # This would need authentication to get current user ID
-    deleted = await service.delete_address(address_id)
-    if not deleted:
-        raise APIException(status_code=status.HTTP_404_NOT_FOUND,
-                           message="Address not found")
-    return Response.success(message="Address deleted successfully")
+    try:
+        service = AddressService(db)
+        # Verify the address belongs to current user
+        address = await service.get_address_by_id(address_id)
+        if not address or address.user_id != current_user.id:
+            raise APIException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                message="Address not found"
+            )
+        deleted = await service.delete_address(address_id)
+        if not deleted:
+            raise APIException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                message="Address not found"
+            )
+        return Response.success(message="Address deleted successfully")
+    except APIException:
+        raise
+    except Exception as e:
+        logger.error(f"Error deleting address {address_id}: {e}")
+        raise APIException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            message="Failed to delete address"
+        )
+

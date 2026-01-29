@@ -23,6 +23,23 @@ from schemas.payments import (
 router = APIRouter(prefix="/payments", tags=["payments"])
 
 
+@router.get("/")
+async def get_payments_overview(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Get payments overview for current user"""
+    service = PaymentService(db)
+    payment_methods = await service.get_user_payment_methods(current_user.id)
+    return Response.success(
+        data={
+            "payment_methods": [PaymentMethodResponse.from_orm(pm) for pm in payment_methods],
+            "total_methods": len(payment_methods) if payment_methods else 0
+        },
+        message="Payments overview retrieved"
+    )
+
+
 @router.get("/methods")
 async def get_payment_methods(
     current_user: User = Depends(get_current_user),

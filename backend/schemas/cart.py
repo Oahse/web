@@ -6,8 +6,8 @@ from schemas.product import ProductVariantResponse, ProductImageResponse
 
 
 class AddToCartRequest(BaseModel):
-    variant_id: UUID
-    quantity: int = 1
+    variant_id: UUID = Field(..., description="Product variant ID")
+    quantity: int = Field(default=1, ge=1, description="Quantity must be at least 1")
 
 
 class ApplyPromocodeRequest(BaseModel):

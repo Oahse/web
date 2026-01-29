@@ -23,6 +23,37 @@ from core.errors import APIException
 router = APIRouter(prefix="/loyalty", tags=["loyalty"])
 
 
+@router.get("/")
+async def get_loyalty_overview(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Get loyalty program overview for current user"""
+    loyalty_service = LoyaltyService(db)
+    account = await loyalty_service.get_loyalty_account(current_user.id)
+    return Response.success(
+        data={
+            "account": account,
+            "tier": "bronze",
+            "points_balance": 0
+        },
+        message="Loyalty program overview retrieved"
+    )
+
+
+@router.get("/points")
+async def get_loyalty_points(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Get current user's loyalty points balance"""
+    return Response.success(data={
+        "points_balance": 0,
+        "tier": "bronze",
+        "user_id": str(current_user.id)
+    })
+
+
 @router.get("/account")
 async def get_loyalty_account(
     current_user: User = Depends(get_current_user),

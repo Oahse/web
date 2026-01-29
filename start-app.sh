@@ -97,7 +97,8 @@ pip install -r requirements.txt
 # Initialize and seed database
 print_step "Initializing database..."
 print_status "Creating tables and seeding data..."
-python init_db.py --seed --products 50 --users 25
+# python init_db.py --seed --products 50 --users 25
+python init_db.py --users 25
 
 if [ $? -eq 0 ]; then
     print_status "Database initialized successfully!"
@@ -133,6 +134,7 @@ cd frontend
 # Install Node.js dependencies
 print_step "Installing Node.js dependencies..."
 npm install
+npm install axios
 
 # Start frontend server in background
 print_step "Starting frontend server..."

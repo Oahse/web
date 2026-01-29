@@ -200,12 +200,6 @@ async def delete_warehouse_location(
 
 # --- Inventory Item Endpoints ---
 # --- Inventory CRUD Endpoints ---
-@router.get("/test")
-async def test_endpoint():
-    """Simple test endpoint"""
-    return {"message": "Hello World", "status": "working"}
-
-
 @router.post("/")
 async def create_inventory_item(
     inventory_data: InventoryCreate,

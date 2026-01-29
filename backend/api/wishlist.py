@@ -128,3 +128,46 @@ async def add_to_wishlist(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             message=f"Failed to add to wishlist: {str(e)}"
         )
+
+
+@router.delete("/items/{product_id}")
+async def remove_from_wishlist(
+    product_id: UUID,
+    current_user: User = Depends(get_current_auth_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Remove product from current user's default wishlist"""
+    try:
+        wishlist_service = WishlistService(db)
+        
+        # Get default wishlist
+        wishlists = await wishlist_service.get_wishlists(current_user.id)
+        default_wishlist = next((w for w in wishlists if w.is_default), None)
+        
+        if not default_wishlist:
+            raise APIException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                message="Wishlist not found"
+            )
+        
+        # Remove item from wishlist
+        success = await wishlist_service.remove_item_from_wishlist(default_wishlist.id, product_id)
+        
+        if not success:
+            raise APIException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                message="Product not found in wishlist"
+            )
+        
+        return Response.success(
+            data={"product_id": str(product_id)},
+            message="Product removed from wishlist successfully"
+        )
+    except APIException:
+        raise
+    except Exception as e:
+        logger.error(f"Error removing from wishlist for user {current_user.id}: {e}")
+        raise APIException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            message=f"Failed to remove from wishlist: {str(e)}"
+        )

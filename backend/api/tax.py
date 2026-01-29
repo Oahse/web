@@ -30,63 +30,6 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/tax", tags=["tax"])
 
 
-@router.post("/simple-test")
-async def simple_test(
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
-):
-    """
-    Simple test endpoint without TaxService
-    """
-    try:
-        logger.info("Simple test endpoint called")
-        
-        # Just return a simple response without using TaxService
-        return {"status": "success", "message": "Simple test works"}
-        
-    except Exception as e:
-        import traceback
-        logger.error(f"Simple test error: {str(e)}")
-        logger.error(f"Traceback: {traceback.format_exc()}")
-        raise HTTPException(
-            status_code=500,
-            detail=f"Simple test failed: {str(e)}"
-        )
-
-
-@router.post("/test")
-async def test_tax_service(
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
-):
-    """
-    Test endpoint to isolate the TaxService issue
-    """
-    try:
-        logger.info("Starting test endpoint")
-        
-        # Test 1: Just create TaxService
-        logger.info("Creating TaxService...")
-        tax_service = TaxService(db)
-        logger.info("TaxService created successfully")
-        
-        # Test 2: Try to call a simple method
-        logger.info("Calling get_tax_rate...")
-        tax_rate = await tax_service.get_tax_rate("US", "CA")
-        logger.info(f"Tax rate retrieved: {tax_rate}")
-        
-        return {"status": "success", "tax_rate": tax_rate}
-        
-    except Exception as e:
-        import traceback
-        logger.error(f"Test error: {str(e)}")
-        logger.error(f"Traceback: {traceback.format_exc()}")
-        raise HTTPException(
-            status_code=500,
-            detail=f"Test failed: {str(e)}"
-        )
-
-
 @router.post("/calculate")
 async def calculate_tax(
     request: TaxCalculationRequest,
@@ -96,21 +39,11 @@ async def calculate_tax(
     Calculate tax amount based on subtotal, shipping, and location
     """
     try:
-        logger.info(f"Starting tax calculation for request: {request}")
+        logger.info(f"Calculating tax for request: subtotal={request.subtotal}, shipping={request.shipping}, country={request.country_code}")
         
         tax_service = TaxService(db)
-        logger.info("TaxService created successfully")
-        
-        # Use the tax service to get tax rate
-        logger.info(f"Getting tax rate for {request.country_code or 'US'}-{request.state_code}")
-        tax_rate = await tax_service.get_tax_rate(
-            country_code=request.country_code or 'US',
-            province_code=request.state_code
-        )
-        logger.info(f"Tax rate retrieved: {tax_rate}")
         
         # Calculate tax amount
-        logger.info(f"Calculating tax for amount: {request.subtotal + request.shipping}")
         tax_amount = await tax_service.calculate_tax(
             amount=request.subtotal + request.shipping,
             country_code=request.country_code or 'US',
@@ -118,24 +51,26 @@ async def calculate_tax(
         )
         logger.info(f"Tax amount calculated: {tax_amount}")
         
-        # Get tax info for response
-        logger.info("Getting tax info")
+        # Get tax rate for response
+        tax_rate = await tax_service.get_tax_rate(
+            country_code=request.country_code or 'US',
+            province_code=request.state_code
+        )
+        
+        # Get tax info
         tax_info = await tax_service.get_tax_info(
             country_code=request.country_code or 'US',
             province_code=request.state_code
         )
-        logger.info(f"Tax info retrieved: {tax_info}")
         
-        # Create response data as dict first
         response_data = {
-            "tax_amount": tax_amount,
-            "tax_rate": tax_rate,
+            "tax_amount": float(tax_amount),
+            "tax_rate": float(tax_rate),
             "tax_type": tax_info.get('tax_name', 'Tax'),
             "jurisdiction": f"{tax_info.get('province_name', tax_info.get('country_name', 'Unknown'))}",
             "currency": request.currency,
             "breakdown": []
         }
-        logger.info(f"Response data created: {response_data}")
         
         return Response.success(data=response_data)
         
@@ -143,9 +78,9 @@ async def calculate_tax(
         import traceback
         logger.error(f"Tax calculation error: {str(e)}")
         logger.error(f"Traceback: {traceback.format_exc()}")
-        raise HTTPException(
-            status_code=500,
-            detail=f"Tax calculation failed: {str(e)}"
+        raise APIException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            message=f"Failed to calculate tax: {str(e)}"
         )
 
 

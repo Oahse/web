@@ -16,7 +16,6 @@ from models.orders import Order, OrderItem
 from models.payments import Transaction
 from models.user import User
 from schemas.refunds import RefundRequest, RefundResponse, RefundItemRequest
-from services.payments import PaymentService
 from core.config import settings
 import stripe
 
@@ -28,8 +27,6 @@ class RefundService:
     
     def __init__(self, db: AsyncSession):
         self.db = db
-        self.payment_service = PaymentService(db)
-        self.hybrid_task_manager = HybridTaskManager()
     
     async def request_refund(
         self,
@@ -106,7 +103,7 @@ class RefundService:
             
 
             
-            # Refund event handled by hybrid task system
+            # Send refund events using ARQ
             
             return await self._format_refund_response(refund)
             
@@ -505,7 +502,7 @@ class RefundService:
                 "event_type": event_type
             }
             
-            # Refund notification handled by hybrid task system
+            # Send refund notifications using ARQ
             
         except Exception as e:
             logger.error(f"Failed to send refund notification: {e}")
@@ -543,6 +540,97 @@ class RefundService:
             ] if refund.refund_items else [],
             timeline=self._generate_refund_timeline(refund)
         )
+    
+    async def get_user_refunds_count(
+        self,
+        user_id: UUID,
+        status: Optional[RefundStatus] = None
+    ) -> int:
+        """Get count of user's refunds"""
+        try:
+            query = select(Refund).where(Refund.user_id == user_id)
+            
+            if status:
+                query = query.where(Refund.status == status)
+            
+            result = await self.db.execute(query)
+            refunds = result.scalars().all()
+            
+            return len(refunds)
+            
+        except Exception as e:
+            logger.error(f"Failed to get user refunds count: {e}")
+            return 0
+    
+    async def get_user_refund_stats(self, user_id: UUID) -> Dict[str, Any]:
+        """Get user's refund statistics"""
+        try:
+            # Get all user refunds
+            refunds = await self.get_user_refunds(user_id)
+            
+            stats = {
+                "total_refunds": len(refunds),
+                "total_refunded_amount": sum(r.processed_amount or 0 for r in refunds),
+                "by_status": {},
+                "by_reason": {},
+                "average_processing_time_days": 0
+            }
+            
+            # Count by status
+            for refund in refunds:
+                status_key = refund.status.value if refund.status else "unknown"
+                stats["by_status"][status_key] = stats["by_status"].get(status_key, 0) + 1
+            
+            # Count by reason
+            for refund in refunds:
+                reason_key = refund.reason.value if refund.reason else "unknown"
+                stats["by_reason"][reason_key] = stats["by_reason"].get(reason_key, 0) + 1
+            
+            return stats
+            
+        except Exception as e:
+            logger.error(f"Failed to get user refund stats: {e}")
+            return {
+                "total_refunds": 0,
+                "total_refunded_amount": 0.0,
+                "by_status": {},
+                "by_reason": {},
+                "average_processing_time_days": 0
+            }
+    
+    async def check_order_refund_eligibility(
+        self,
+        user_id: UUID,
+        order_id: UUID
+    ) -> Dict[str, Any]:
+        """Check if order is eligible for refund"""
+        try:
+            order = await self._get_user_order(user_id, order_id)
+            eligibility = await self._check_refund_eligibility(order)
+            
+            return {
+                "eligible": eligibility["eligible"],
+                "reason": eligibility["reason"],
+                "order_id": str(order_id),
+                "order_date": order.created_at.isoformat(),
+                "order_amount": float(order.total_amount),
+                "refund_window_days": 90,
+                "days_remaining": max(0, 90 - (datetime.now(timezone.utc) - order.created_at).days)
+            }
+            
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error(f"Failed to check order refund eligibility: {e}")
+            return {
+                "eligible": False,
+                "reason": "Unable to check eligibility",
+                "order_id": str(order_id),
+                "order_date": None,
+                "order_amount": 0.0,
+                "refund_window_days": 90,
+                "days_remaining": 0
+            }
     
     def _generate_refund_timeline(self, refund: Refund) -> List[Dict[str, Any]]:
         """Generate refund timeline for customer"""

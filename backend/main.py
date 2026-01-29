@@ -24,6 +24,7 @@ from api import (
     analytics_router,
     auth_router,
     cart_router,
+    categories_router,
     health_router,
     inventory_router,
     loyalty_router,
@@ -246,6 +247,7 @@ v1_router.include_router(refunds_router)
 v1_router.include_router(shipping_router)
 v1_router.include_router(tax_router)
 v1_router.include_router(webhooks_router)
+v1_router.include_router(categories_router)
 
 # Include the v1 router into the main app
 app.include_router(v1_router)

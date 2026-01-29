@@ -722,3 +722,79 @@ class AnalyticsService:
         except Exception as e:
             logger.error(f"Failed to get sales overview data: {e}")
             raise HTTPException(status_code=500, detail="Failed to retrieve sales overview data")
+    
+    async def get_revenue_metrics(
+        self,
+        start_date: datetime,
+        end_date: datetime
+    ) -> Dict[str, Any]:
+        """Get revenue analytics metrics"""
+        try:
+            # Total revenue from completed orders
+            total_revenue_result = await self.db.execute(
+                select(func.coalesce(func.sum(Order.total_amount), 0)).where(
+                    and_(
+                        Order.created_at >= start_date,
+                        Order.created_at <= end_date,
+                        Order.status.in_(["completed", "shipped", "delivered"])
+                    )
+                )
+            )
+            total_revenue = float(total_revenue_result.scalar() or 0)
+            
+            # Number of completed orders
+            completed_orders_result = await self.db.execute(
+                select(func.count(Order.id)).where(
+                    and_(
+                        Order.created_at >= start_date,
+                        Order.created_at <= end_date,
+                        Order.status.in_(["completed", "shipped", "delivered"])
+                    )
+                )
+            )
+            completed_orders = completed_orders_result.scalar() or 0
+            
+            # Average order value
+            avg_order_value = total_revenue / completed_orders if completed_orders > 0 else 0
+            
+            # Revenue by day (daily breakdown)
+            daily_revenue_result = await self.db.execute(
+                select(
+                    func.date(Order.created_at).label("date"),
+                    func.sum(Order.total_amount).label("revenue"),
+                    func.count(Order.id).label("orders")
+                ).where(
+                    and_(
+                        Order.created_at >= start_date,
+                        Order.created_at <= end_date,
+                        Order.status.in_(["completed", "shipped", "delivered"])
+                    )
+                ).group_by(func.date(Order.created_at))
+            )
+            
+            daily_data = []
+            for row in daily_revenue_result:
+                if row[0]:  # date exists
+                    daily_data.append({
+                        "date": row[0].isoformat() if hasattr(row[0], 'isoformat') else str(row[0]),
+                        "revenue": float(row[1] or 0),
+                        "orders": row[2]
+                    })
+            
+            return {
+                "period": {
+                    "start_date": start_date.isoformat(),
+                    "end_date": end_date.isoformat()
+                },
+                "summary": {
+                    "total_revenue": round(total_revenue, 2),
+                    "completed_orders": completed_orders,
+                    "average_order_value": round(avg_order_value, 2),
+                    "days_in_period": (end_date - start_date).days + 1
+                },
+                "daily_breakdown": daily_data
+            }
+            
+        except Exception as e:
+            logger.error(f"Failed to get revenue metrics: {e}")
+            raise HTTPException(status_code=500, detail="Failed to retrieve revenue metrics")
