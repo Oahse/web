@@ -5,16 +5,16 @@ from sqlalchemy import select, and_
 from sqlalchemy.orm import selectinload
 from uuid import UUID
 from typing import List
-from lib.db import get_db,logger
-from lib.utils.response import Response
-from lib.errors import APIException
+from core.db import get_db,logger
+from core.utils.response import Response
+from core.errors import APIException
 from schemas.subscriptions import SubscriptionCreate, SubscriptionUpdate, SubscriptionCostCalculationRequest, SubscriptionAddProducts, SubscriptionRemoveProducts, SubscriptionUpdateQuantity, SubscriptionQuantityChange, DiscountApplicationRequest
 from services.subscriptions import SubscriptionService, SubscriptionSchedulerService
 from models.user import User
 from models.product import Product, ProductVariant, Category, ProductImage
 from models.subscriptions import Subscription
 from services.auth import AuthService
-from tasks.subscription_tasks import (
+from jobs.subscription_tasks import (
     process_subscription_renewal,
     send_subscription_pause_notification,
     send_subscription_resume_notification
@@ -45,7 +45,7 @@ async def trigger_subscription_order_processing(
                 detail="Admin access required"
             )
         
-        from tasks.subscription_tasks import trigger_subscription_order_processing
+        from jobs.subscription_tasks import trigger_subscription_order_processing
         
         # Trigger the processing
         result = await trigger_subscription_order_processing()
@@ -77,7 +77,7 @@ async def trigger_subscription_notifications(
                 detail="Admin access required"
             )
         
-        from tasks.subscription_tasks import trigger_order_notifications
+        from jobs.subscription_tasks import trigger_order_notifications
         
         # Trigger the notifications
         await trigger_order_notifications()

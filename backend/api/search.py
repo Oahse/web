@@ -2,9 +2,9 @@ from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional, List, Dict, Any
 from uuid import UUID
-from lib.db import get_db
-from lib.utils.response import Response
-from lib.errors import APIException
+from core.db import get_db
+from core.utils.response import Response
+from core.errors import APIException
 from services.search import SearchService
 
 router = APIRouter(prefix="/search", tags=["Search"])

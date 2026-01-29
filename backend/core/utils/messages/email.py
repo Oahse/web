@@ -4,7 +4,7 @@ Mailgun email service for sending emails
 import aiohttp
 import asyncio
 from jinja2 import Environment, FileSystemLoader, select_autoescape
-from lib.config import settings
+from core.config import settings
 import os
 from pathlib import Path
 

@@ -440,7 +440,7 @@ describe('UsersAPI', () => {
 
       const result = await UsersAPI.getUsers(params);
 
-      expect(mockApiClient.get).toHaveBeenCalledWith('/v1/users?limit=15&q=supplier%20tech&search_mode=advanced');
+      expect(mockApiClient.get).toHaveBeenCalledWith('/v1/users?limit=15&q=supplier+tech&search_mode=advanced');
       expect(result.data.search_mode).toBe('advanced');
     });
 

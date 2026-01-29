@@ -39,11 +39,8 @@ describe('useAuth', () => {
     clearIntendedDestination: vi.fn()
   };
 
-  const wrapper = ({ children }: { children: React.ReactNode }) => (
-    <AuthContext.Provider value={mockAuthContext}>
-      {children}
-    </AuthContext.Provider>
-  );
+  const wrapper = ({ children }: { children: React.ReactNode }) => 
+    React.createElement(AuthContext.Provider, { value: mockAuthContext }, children);
 
   beforeEach(() => {
     vi.clearAllMocks();

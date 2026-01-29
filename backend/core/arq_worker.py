@@ -101,7 +101,7 @@ async def process_payment_task(ctx: Dict[str, Any], payment_id: str, action: str
 async def update_inventory_task(ctx: Dict[str, Any], variant_id: str, action: str, **kwargs) -> str:
     """Update inventory background task"""
     try:
-        from services.inventories import InventoryService
+        from services.inventory import InventoryService
         from uuid import UUID
         
         async with ctx['db_session']() as db:
@@ -292,7 +292,7 @@ async def cleanup_old_data_task(ctx: Dict[str, Any], data_type: str, days_old: i
             return await cleanup_expired_carts_task(ctx)
 
         elif data_type == "failed_payments":
-            from tasks.payment_retry_tasks import cleanup_old_failed_payments
+            from jobs.payment_retry_tasks import cleanup_old_failed_payments
             await cleanup_old_failed_payments(days_old)
             return f"Cleaned up failed payments older than {days_old} days"
         else:

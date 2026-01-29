@@ -295,9 +295,11 @@ global.console = {
 
 // Mock environment variables
 vi.mock('../config/environment', () => ({
-  API_BASE_URL: 'http://localhost:8000',
-  STRIPE_PUBLISHABLE_KEY: 'pk_test_mock',
-  ENVIRONMENT: 'test'
+  config: {
+    apiBaseUrl: 'http://localhost:8000',
+    stripePublishableKey: 'pk_test_mock',
+    environment: 'test'
+  }
 }));
 
 // Test utilities

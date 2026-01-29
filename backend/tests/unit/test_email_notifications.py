@@ -7,7 +7,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from uuid import uuid4
 from decimal import Decimal
 
-from core.utils.messages.email import EmailService, send_email
+from core.utils.messages.email import send_email_mailgun as send_email
+from services.email import EmailService
 from services.email import EmailNotificationService
 from models.user import User
 from models.orders import Order, OrderStatus

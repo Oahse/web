@@ -9,8 +9,8 @@ from datetime import datetime, timedelta
 from fastapi import BackgroundTasks
 from uuid import UUID
 
-from lib.config import settings
-from lib.arq_worker import (
+from core.config import settings
+from core.arq_worker import (
     enqueue_email, enqueue_payment_processing, 
     enqueue_inventory_update
 )
@@ -36,7 +36,7 @@ class HybridTaskManager:
         else:
             # Fallback to direct email sending
             from services.email import EmailService
-            from lib.db import AsyncSessionDB
+            from core.db import AsyncSessionDB
             async with AsyncSessionDB() as db:
                 email_service = EmailService(db)
                 # Handle different email types
@@ -58,7 +58,7 @@ class HybridTaskManager:
         else:
             # Fallback to direct processing
             from services.payments import PaymentService
-            from lib.db import AsyncSessionDB
+            from core.db import AsyncSessionDB
             async with AsyncSessionDB() as db:
                 payment_service = PaymentService(db)
                 if action == "confirm":
@@ -77,8 +77,8 @@ class HybridTaskManager:
             await enqueue_inventory_update(variant_id, action, **kwargs)
         else:
             # Fallback to direct update
-            from services.inventories import InventoryService
-            from lib.db import AsyncSessionDB
+            from services.inventory import InventoryService
+            from core.db import AsyncSessionDB
             async with AsyncSessionDB() as db:
                 inventory_service = InventoryService(db)
                 if action == "decrement":
@@ -98,7 +98,7 @@ class HybridTaskManager:
     async def process_subscription_renewal(self, subscription_id: str, **kwargs):
         """Process subscription renewal using ARQ for reliability"""
         if self.arq_enabled:
-            from lib.arq_worker import get_arq_pool
+            from core.arq_worker import get_arq_pool
             pool = await get_arq_pool()
             await pool.enqueue_job(
                 'process_subscription_renewal_task',
@@ -113,7 +113,7 @@ class HybridTaskManager:
         """Direct subscription renewal processing"""
         try:
             from services.subscriptions.subscription_scheduler import SubscriptionSchedulerService
-            from lib.db import AsyncSessionDB
+            from core.db import AsyncSessionDB
             
             async with AsyncSessionDB() as db:
                 scheduler = SubscriptionSchedulerService(db)
@@ -148,7 +148,7 @@ class HybridTaskManager:
     async def schedule_payment_retry(self, payment_id: str, retry_delay_hours: int = 1, **kwargs):
         """Schedule payment retry using ARQ"""
         if self.arq_enabled:
-            from lib.arq_worker import get_arq_pool
+            from core.arq_worker import get_arq_pool
             pool = await get_arq_pool()
             # Schedule for future execution
             await pool.enqueue_job(
@@ -176,12 +176,12 @@ class HybridTaskManager:
     async def schedule_cart_cleanup(self):
         """Schedule cart cleanup using ARQ"""
         if self.arq_enabled:
-            from lib.arq_worker import enqueue_cart_cleanup
+            from core.arq_worker import enqueue_cart_cleanup
             await enqueue_cart_cleanup()
         else:
             # Fallback to direct cleanup
             from services.cart import CartService
-            from lib.db import AsyncSessionDB
+            from core.db import AsyncSessionDB
             async with AsyncSessionDB() as db:
                 cart_service = CartService(db)
                 # Implement direct cleanup logic here
@@ -223,7 +223,7 @@ class HybridTaskManager:
         if self.should_use_arq(task_type, estimated_duration_seconds):
             # Use ARQ for long-running or critical tasks
             if self.arq_enabled:
-                from lib.arq_worker import get_arq_pool
+                from core.arq_worker import get_arq_pool
                 pool = await get_arq_pool()
                 await pool.enqueue_job(task_func.__name__, *args, **kwargs)
             else:

@@ -20,7 +20,7 @@ from .barcode import BarcodeService
 from .orders import OrderService
 from .subscriptions import SubscriptionService
 from .payments import PaymentService
-from .inventories import InventoryService
+from .inventory import InventoryService
 from .admin import AdminService
 from .export import ExportService
 

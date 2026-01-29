@@ -1,5 +1,9 @@
 /**
  * Analytics API endpoints
+ * 
+ * ACCESS LEVELS:
+ * - Public: Event tracking (with user consent)
+ * - Admin: All analytics data, reports, and insights
  */
 
 import { apiClient } from './client';
@@ -7,6 +11,7 @@ import { apiClient } from './client';
 export class AnalyticsAPI {
   /**
    * Track an event
+   * ACCESS: Public - No authentication required (anonymous tracking allowed)
    */
   static async trackEvent(eventData: {
     event_type: string;
@@ -20,6 +25,7 @@ export class AnalyticsAPI {
 
   /**
    * Get conversion rates (Admin only)
+   * ACCESS: Admin - Requires admin authentication
    */
   static async getConversionRates(params?: {
     start_date?: string;
@@ -38,6 +44,7 @@ export class AnalyticsAPI {
 
   /**
    * Get cart abandonment data (Admin only)
+   * ACCESS: Admin - Requires admin authentication
    */
   static async getCartAbandonment(params?: {
     start_date?: string;
@@ -56,6 +63,7 @@ export class AnalyticsAPI {
 
   /**
    * Get time to purchase analytics (Admin only)
+   * ACCESS: Admin - Requires admin authentication
    */
   static async getTimeToPurchase(params?: {
     start_date?: string;
@@ -74,6 +82,7 @@ export class AnalyticsAPI {
 
   /**
    * Get refund rates (Admin only)
+   * ACCESS: Admin - Requires admin authentication
    */
   static async getRefundRates(params?: {
     start_date?: string;
@@ -92,6 +101,7 @@ export class AnalyticsAPI {
 
   /**
    * Get repeat customers data (Admin only)
+   * ACCESS: Admin - Requires admin authentication
    */
   static async getRepeatCustomers(params?: {
     start_date?: string;
@@ -110,6 +120,7 @@ export class AnalyticsAPI {
 
   /**
    * Get dashboard data (Admin only)
+   * ACCESS: Admin - Requires admin authentication
    */
   static async getDashboardData(params?: {
     start_date?: string;
@@ -130,6 +141,7 @@ export class AnalyticsAPI {
 
   /**
    * Get sales trend (Admin only)
+   * ACCESS: Admin - Requires admin authentication
    */
   static async getSalesTrend(days: number = 30) {
     return await apiClient.get(`/v1/analytics/sales-trend?days=${days}`);
@@ -137,6 +149,7 @@ export class AnalyticsAPI {
 
   /**
    * Get sales overview (Admin only)
+   * ACCESS: Admin - Requires admin authentication
    */
   static async getSalesOverview(params?: {
     start_date?: string;
@@ -157,6 +170,7 @@ export class AnalyticsAPI {
 
   /**
    * Get KPIs (Admin only)
+   * ACCESS: Admin - Requires admin authentication
    */
   static async getKPIs(params?: {
     start_date?: string;

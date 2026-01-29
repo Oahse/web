@@ -11,6 +11,7 @@ from unittest.mock import patch
 from models.orders import Order, OrderItem, OrderStatus
 from models.cart import Cart, CartItem
 from models.user import User, Address
+from models.product import ProductVariant
 from models.shipping import ShippingMethod
 from models.payments import PaymentMethod
 from models.tax_rates import TaxRate

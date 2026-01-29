@@ -5,7 +5,7 @@ Includes: Refund, RefundItem, RefundReason
 from sqlalchemy import Column, String, ForeignKey, Float, Text, Integer, DateTime, Boolean, Enum as SQLEnum
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import relationship
-from lib.db import BaseModel, GUID, Index
+from core.db import BaseModel, GUID, Index
 from enum import Enum
 from typing import Dict, Any
 from datetime import datetime, timezone

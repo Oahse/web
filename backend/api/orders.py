@@ -5,9 +5,9 @@ from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_
 from typing import Optional
-from lib.db import get_db
-from lib.utils.response import Response
-from lib.errors import APIException
+from core.db import get_db
+from core.utils.response import Response
+from core.errors import APIException
 from services.orders import OrderService
 from models.user import User, Address
 from models.orders import Order
@@ -15,7 +15,7 @@ from models.shipping import ShippingMethod
 from models.payments import PaymentMethod
 from services.auth import AuthService
 from schemas.orders import OrderCreate, CheckoutRequest
-from lib.dependencies import get_current_auth_user, get_order_service
+from core.dependencies import get_current_auth_user, get_order_service
 
 from fastapi.security import OAuth2PasswordBearer
 
@@ -127,8 +127,6 @@ async def place_order(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             message=f"Order placement failed: {str(e)}"
         )
-                province_code = shipping_address.state
-                logger.info(f"Using shipping address location: {country_code}, {province_code}")
         
         # Step 1: Validate cart with location for proper tax calculation
         logger.info("Step 1: Validating cart")    
@@ -418,7 +416,7 @@ async def checkout(
     """
     try:
         # Import security service
-        from lib.middleware.rate_limit import SecurityService
+        from core.middleware.rate_limit import SecurityService
         from fastapi import Request
         
         # Get request object for security checks

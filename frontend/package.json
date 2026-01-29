@@ -27,7 +27,7 @@
     "test:admin": "vitest src/__tests__/components/admin/",
     "test:dashboard": "vitest src/__tests__/components/dashboard/",
     "test:subscription": "vitest src/__tests__/components/subscription/ src/__tests__/pages/Subscriptions.test.tsx",
-    "test:ui": "vitest --ui",
+    "test:ui-components": "vitest src/__tests__/components/ui/",
     "test:forms": "vitest src/__tests__/components/forms/",
     "test:layout": "vitest src/__tests__/components/layout/",
     "test:generate": "node generate-tests.js",

@@ -18,7 +18,7 @@ from schemas.orders import OrderResponse, OrderItemResponse, CheckoutRequest, Or
 from schemas.inventory import StockAdjustmentCreate
 from services.cart import CartService
 from services.payments import PaymentService
-from services.inventories import InventoryService 
+from services.inventory import InventoryService 
 from services.tax import TaxService
 from services.shipping import ShippingService
 from services.discounts import DiscountEngine

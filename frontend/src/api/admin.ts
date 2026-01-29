@@ -27,6 +27,7 @@ export class AdminAPI {
   // User Management
   /**
    * Get all users with filters
+   * ACCESS: Admin Only - Requires admin role
    */
   static async getUsers(params: {
     page?: number;

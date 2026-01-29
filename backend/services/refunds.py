@@ -406,7 +406,7 @@ class RefundService:
     async def _restore_inventory_for_refund(self, refund: Refund):
         """Restore inventory when refund is confirmed"""
         try:
-            from services.inventories import InventoryService
+            from services.inventory import InventoryService
             
             inventory_service = InventoryService(self.db)
             

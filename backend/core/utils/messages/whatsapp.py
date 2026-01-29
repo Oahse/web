@@ -1,7 +1,7 @@
 import httpx
 from typing import Optional
 from fastapi import BackgroundTasks
-from lib.config import settings
+from core.config import settings
 
 
 class WhatsappBotHandler:

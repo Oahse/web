@@ -1,5 +1,9 @@
 /**
  * Tax API endpoints
+ * 
+ * ACCESS LEVELS:
+ * - Public: Tax calculation for orders
+ * - Admin: Tax rate management, configuration
  */
 
 import { apiClient } from './client';
@@ -24,6 +28,7 @@ export interface TaxCalculationResponse {
 export class TaxAPI {
   /**
    * Calculate tax for an order
+   * ACCESS: Public - No authentication required
    */
   static async calculateTax(request: TaxCalculationRequest): Promise<TaxCalculationResponse> {
     const response = await apiClient.post('/v1/tax/calculate', request);
@@ -32,6 +37,7 @@ export class TaxAPI {
 
   /**
    * Get tax rates for a location (Admin only)
+   * ACCESS: Admin - Requires admin authentication
    */
   static async getTaxRates(params?: {
     country_code?: string;
@@ -56,6 +62,7 @@ export class TaxAPI {
 
   /**
    * Create tax rate (Admin only)
+   * ACCESS: Admin - Requires admin authentication
    */
   static async createTaxRate(data: {
     country_code: string;
@@ -71,6 +78,7 @@ export class TaxAPI {
 
   /**
    * Update tax rate (Admin only)
+   * ACCESS: Admin - Requires admin authentication
    */
   static async updateTaxRate(taxRateId: string, data: {
     country_name?: string;
@@ -84,6 +92,7 @@ export class TaxAPI {
 
   /**
    * Delete tax rate (Admin only)
+   * ACCESS: Admin - Requires admin authentication
    */
   static async deleteTaxRate(taxRateId: string) {
     return await apiClient.delete(`/v1/tax/admin/tax-rates/${taxRateId}`);
@@ -91,6 +100,7 @@ export class TaxAPI {
 
   /**
    * Get countries with tax rates (Admin only)
+   * ACCESS: Admin - Requires admin authentication
    */
   static async getCountriesWithTaxRates() {
     return await apiClient.get('/v1/tax/admin/tax-rates/countries');
@@ -98,6 +108,7 @@ export class TaxAPI {
 
   /**
    * Get available tax types (Admin only)
+   * ACCESS: Admin - Requires admin authentication
    */
   static async getAvailableTaxTypes() {
     return await apiClient.get('/v1/tax/admin/tax-rates/tax-types');

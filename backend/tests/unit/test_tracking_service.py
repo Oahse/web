@@ -22,7 +22,8 @@ class TestVariantTrackingService:
     async def tracking_service(self, db_session):
         return VariantTrackingService(db_session)
     
-    @pytest_asyncio.async def test_track_variant_subscription_addition_success(
+    @pytest.mark.asyncio
+    async def test_track_variant_subscription_addition_success(
         self, tracking_service, test_product, test_subscription
     ):
         """Test successful variant tracking for subscription addition"""
@@ -43,7 +44,8 @@ class TestVariantTrackingService:
         assert tracking_entry.metadata["source"] == "web"
         assert tracking_entry.created_at is not None
     
-    @pytest_asyncio.async def test_track_variant_subscription_addition_invalid_variant(
+    @pytest.mark.asyncio
+    async def test_track_variant_subscription_addition_invalid_variant(
         self, tracking_service, test_subscription
     ):
         """Test tracking with invalid variant ID"""
@@ -59,7 +61,8 @@ class TestVariantTrackingService:
         assert exc_info.value.status_code == 404
         assert "variant not found" in str(exc_info.value.message).lower()
     
-    @pytest_asyncio.async def test_track_variant_subscription_addition_invalid_subscription(
+    @pytest.mark.asyncio
+    async def test_track_variant_subscription_addition_invalid_subscription(
         self, tracking_service, test_product
     ):
         """Test tracking with invalid subscription ID"""
@@ -76,7 +79,8 @@ class TestVariantTrackingService:
         assert exc_info.value.status_code == 404
         assert "subscription not found" in str(exc_info.value.message).lower()
     
-    @pytest_asyncio.async def test_track_price_change(self, tracking_service, test_product):
+    @pytest.mark.asyncio
+    async def test_track_price_change(self, tracking_service, test_product):
         """Test tracking variant price changes"""
         product, variant = test_product
         old_price = variant.price
@@ -96,7 +100,8 @@ class TestVariantTrackingService:
         assert price_history.reason == "market_adjustment"
         assert price_history.changed_at is not None
     
-    @pytest_asyncio.async def test_get_variant_analytics(self, tracking_service, test_product, test_subscription):
+    @pytest.mark.asyncio
+    async def test_get_variant_analytics(self, tracking_service, test_product, test_subscription):
         """Test getting variant analytics"""
         product, variant = test_product
         
@@ -120,7 +125,8 @@ class TestVariantTrackingService:
         assert analytics.average_price > 0
         assert analytics.total_revenue > 0
     
-    @pytest_asyncio.async def test_get_price_history(self, tracking_service, test_product):
+    @pytest.mark.asyncio
+    async def test_get_price_history(self, tracking_service, test_product):
         """Test getting variant price history"""
         product, variant = test_product
         
@@ -145,7 +151,8 @@ class TestVariantTrackingService:
         # Should be ordered by date descending
         assert price_history[0].changed_at >= price_history[1].changed_at
     
-    @pytest_asyncio.async def test_calculate_variant_performance(self, tracking_service, test_product, test_subscription):
+    @pytest.mark.asyncio
+    async def test_calculate_variant_performance(self, tracking_service, test_product, test_subscription):
         """Test calculating variant performance metrics"""
         product, variant = test_product
         
@@ -170,7 +177,8 @@ class TestVariantTrackingService:
         assert performance["subscription_count"] == 10
         assert performance["revenue_total"] > 0
     
-    @pytest_asyncio.async def test_find_variant_substitutions(self, tracking_service, test_product, db_session):
+    @pytest.mark.asyncio
+    async def test_find_variant_substitutions(self, tracking_service, test_product, db_session):
         """Test finding variant substitutions"""
         product, variant = test_product
         
@@ -206,7 +214,8 @@ class TestVariantTrackingService:
         assert substitutions[0].substitute_variant_id == substitute_variant.id
         assert substitutions[0].confidence_score == 0.85
     
-    @pytest_asyncio.async def test_track_variant_view(self, tracking_service, test_product):
+    @pytest.mark.asyncio
+    async def test_track_variant_view(self, tracking_service, test_product):
         """Test tracking variant views"""
         product, variant = test_product
         user_id = uuid4()
@@ -223,7 +232,8 @@ class TestVariantTrackingService:
         assert view_entry.source == "product_page"
         assert view_entry.metadata["referrer"] == "search"
     
-    @pytest_asyncio.async def test_get_trending_variants(self, tracking_service, test_product, test_subscription):
+    @pytest.mark.asyncio
+    async def test_get_trending_variants(self, tracking_service, test_product, test_subscription):
         """Test getting trending variants"""
         product, variant = test_product
         
@@ -245,7 +255,8 @@ class TestVariantTrackingService:
         assert any(tv["variant_id"] == variant.id for tv in trending_variants)
         assert all("trend_score" in tv for tv in trending_variants)
     
-    @pytest_asyncio.async def test_calculate_conversion_rate(self, tracking_service, test_product):
+    @pytest.mark.asyncio
+    async def test_calculate_conversion_rate(self, tracking_service, test_product):
         """Test calculating variant conversion rates"""
         product, variant = test_product
         user_id = uuid4()
@@ -275,7 +286,8 @@ class TestVariantTrackingService:
         # Should be around 0.3 (3 conversions / 10 views)
         assert abs(conversion_rate - 0.3) < 0.1
     
-    @pytest_asyncio.async def test_get_variant_cohort_analysis(self, tracking_service, test_product, test_subscription):
+    @pytest.mark.asyncio
+    async def test_get_variant_cohort_analysis(self, tracking_service, test_product, test_subscription):
         """Test variant cohort analysis"""
         product, variant = test_product
         
@@ -303,7 +315,8 @@ class TestVariantTrackingService:
         assert all("period" in cohort for cohort in cohort_analysis["cohorts"])
         assert all("subscription_count" in cohort for cohort in cohort_analysis["cohorts"])
     
-    @pytest_asyncio.async def test_export_tracking_data(self, tracking_service, test_product, test_subscription):
+    @pytest.mark.asyncio
+    async def test_export_tracking_data(self, tracking_service, test_product, test_subscription):
         """Test exporting tracking data"""
         product, variant = test_product
         
@@ -328,7 +341,8 @@ class TestVariantTrackingService:
         assert "analytics_summary" in export_data
         assert len(export_data["tracking_entries"]) >= 5
     
-    @pytest_asyncio.async def test_bulk_track_variants(self, tracking_service, test_product, test_subscription):
+    @pytest.mark.asyncio
+    async def test_bulk_track_variants(self, tracking_service, test_product, test_subscription):
         """Test bulk tracking of multiple variants"""
         product, variant = test_product
         
@@ -354,7 +368,8 @@ class TestVariantTrackingService:
         assert tracking_entries[0].price_at_time == Decimal("99.99")
         assert tracking_entries[1].price_at_time == Decimal("109.99")
     
-    @pytest_asyncio.async def test_get_variant_recommendations(self, tracking_service, test_product):
+    @pytest.mark.asyncio
+    async def test_get_variant_recommendations(self, tracking_service, test_product):
         """Test getting variant recommendations based on tracking data"""
         product, variant = test_product
         

@@ -1,5 +1,9 @@
 /**
  * Search API endpoints
+ * 
+ * ACCESS LEVELS:
+ * - Public: Product and category search, autocomplete suggestions
+ * - Admin: User search functionality
  */
 
 import { apiClient } from './client';
@@ -7,6 +11,8 @@ import { apiClient } from './client';
 export class SearchAPI {
   /**
    * Get autocomplete suggestions for search queries
+   * ACCESS: Public - No authentication required for product/category suggestions
+   * ACCESS: Admin - Authentication required for user suggestions
    */
   static async getAutocompleteSuggestions(query: string, type: 'product' | 'user' | 'category' = 'product', limit: number = 10) {
     const params = new URLSearchParams({
@@ -20,6 +26,7 @@ export class SearchAPI {
 
   /**
    * Advanced search for products (distributed to products API)
+   * ACCESS: Public - No authentication required
    */
   static async searchProducts(query: string, filters?: {
     category_id?: string;
@@ -39,6 +46,7 @@ export class SearchAPI {
 
   /**
    * Advanced search for users (distributed to users API)
+   * ACCESS: Admin - Requires admin authentication
    */
   static async searchUsers(query: string, filters?: {
     role?: 'Customer' | 'Supplier' | 'Admin';
@@ -54,6 +62,7 @@ export class SearchAPI {
 
   /**
    * Advanced search for categories (distributed to products API)
+   * ACCESS: Public - No authentication required
    */
   static async searchCategories(query: string, limit: number = 20) {
     const params = new URLSearchParams({
@@ -66,6 +75,7 @@ export class SearchAPI {
 
   /**
    * Universal search across all types
+   * ACCESS: Mixed - Public for products/categories, Admin for users
    */
   static async universalSearch(query: string, options?: {
     includeProducts?: boolean;

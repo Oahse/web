@@ -11,7 +11,8 @@ from main import app
 
 class TestAuthFlow:
     
-    @pytest_asyncio.async def test_complete_registration_flow(self, client: AsyncClient):
+    @pytest.mark.asyncio
+    async def test_complete_registration_flow(self, client: AsyncClient):
         """Test complete user registration flow"""
         # Step 1: Register user
         registration_data = {
@@ -60,7 +61,8 @@ class TestAuthFlow:
         assert "refresh_token" in login_response
         assert login_response["token_type"] == "bearer"
     
-    @pytest_asyncio.async def test_login_with_invalid_credentials(self, client: AsyncClient, test_user):
+    @pytest.mark.asyncio
+    async def test_login_with_invalid_credentials(self, client: AsyncClient, test_user):
         """Test login with invalid credentials"""
         login_data = {
             "email": test_user.email,
@@ -71,7 +73,8 @@ class TestAuthFlow:
         assert response.status_code == 401
         assert "invalid credentials" in response.json()["message"].lower()
     
-    @pytest_asyncio.async def test_token_refresh_flow(self, client: AsyncClient, test_user):
+    @pytest.mark.asyncio
+    async def test_token_refresh_flow(self, client: AsyncClient, test_user):
         """Test token refresh flow"""
         # First login to get tokens
         login_data = {
@@ -102,7 +105,8 @@ class TestAuthFlow:
             assert "access_token" in new_tokens
             assert new_tokens["access_token"] != tokens["access_token"]
     
-    @pytest_asyncio.async def test_password_reset_flow(self, client: AsyncClient, test_user):
+    @pytest.mark.asyncio
+    async def test_password_reset_flow(self, client: AsyncClient, test_user):
         """Test complete password reset flow"""
         # Step 1: Request password reset
         response = await client.post(
@@ -137,7 +141,8 @@ class TestAuthFlow:
             )
             assert response.status_code == 200
     
-    @pytest_asyncio.async def test_protected_route_access(self, client: AsyncClient, test_user):
+    @pytest.mark.asyncio
+    async def test_protected_route_access(self, client: AsyncClient, test_user):
         """Test accessing protected routes with and without authentication"""
         # Try accessing protected route without token
         response = await client.get("/api/user/profile")
@@ -165,7 +170,8 @@ class TestAuthFlow:
             profile_data = response.json()
             assert profile_data["email"] == test_user.email
     
-    @pytest_asyncio.async def test_oauth_login_flow(self, client: AsyncClient):
+    @pytest.mark.asyncio
+    async def test_oauth_login_flow(self, client: AsyncClient):
         """Test OAuth login flow"""
         # Mock OAuth provider response
         oauth_data = {
@@ -190,7 +196,8 @@ class TestAuthFlow:
             assert "user" in login_response
             assert login_response["user"]["email"] == oauth_data["user_info"]["email"]
     
-    @pytest_asyncio.async def test_logout_flow(self, client: AsyncClient, test_user):
+    @pytest.mark.asyncio
+    async def test_logout_flow(self, client: AsyncClient, test_user):
         """Test logout flow"""
         # Login first
         with patch('services.auth.verify_password') as mock_verify:
@@ -215,7 +222,8 @@ class TestAuthFlow:
         response = await client.get("/api/user/profile", headers=headers)
         assert response.status_code == 401
     
-    @pytest_asyncio.async def test_account_deactivation_flow(self, client: AsyncClient, test_user):
+    @pytest.mark.asyncio
+    async def test_account_deactivation_flow(self, client: AsyncClient, test_user):
         """Test account deactivation flow"""
         # Login first
         with patch('services.auth.verify_password') as mock_verify:
@@ -248,7 +256,8 @@ class TestAuthFlow:
         assert response.status_code == 401
         assert "deactivated" in response.json()["message"].lower()
     
-    @pytest_asyncio.async def test_concurrent_login_attempts(self, client: AsyncClient, test_user):
+    @pytest.mark.asyncio
+    async def test_concurrent_login_attempts(self, client: AsyncClient, test_user):
         """Test handling of concurrent login attempts"""
         import asyncio
         
@@ -275,7 +284,8 @@ class TestAuthFlow:
             tokens = [r.json()["access_token"] for r in responses]
             assert all(token for token in tokens)
     
-    @pytest_asyncio.async def test_rate_limiting_on_auth_endpoints(self, client: AsyncClient):
+    @pytest.mark.asyncio
+    async def test_rate_limiting_on_auth_endpoints(self, client: AsyncClient):
         """Test rate limiting on authentication endpoints"""
         # This would require actual rate limiting middleware to be configured
         # For now, we'll test the structure

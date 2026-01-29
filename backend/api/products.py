@@ -2,10 +2,10 @@ from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional
 from uuid import UUID
-from lib.db import get_db
-from lib.utils.response import Response
-from lib.errors import APIException
-from lib.logging import get_logger
+from core.db import get_db
+from core.utils.response import Response
+from core.errors import APIException
+from core.logging import get_logger
 from schemas.product import ProductCreate, ProductUpdate, BarcodeGenerateRequest, BarcodeResponse, BarcodeUpdateRequest
 from services.products import ProductService
 from services.search import SearchService

@@ -2,11 +2,11 @@ from fastapi import APIRouter, Depends, status, BackgroundTasks
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
-from lib.db import get_db
-from lib.utils.response import Response as APIResponse
-from lib.errors import APIException
-from lib.config import settings
-from lib.logging import get_logger
+from core.db import get_db
+from core.utils.response import Response as APIResponse
+from core.errors import APIException
+from core.config import settings
+from core.logging import get_logger
 from schemas.auth import UserCreate, UserLogin, RefreshTokenRequest
 from schemas.user import AddressCreate, AddressUpdate, AddressResponse
 from services.auth import AuthService

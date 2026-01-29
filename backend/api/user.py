@@ -2,9 +2,9 @@ from fastapi import APIRouter, Depends, status, Query, BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession
 from uuid import UUID
 from typing import Optional, List
-from lib.utils.response import Response
-from lib.errors import APIException
-from lib.db import get_db
+from core.utils.response import Response
+from core.errors import APIException
+from core.db import get_db
 from services.user import UserService, AddressService
 from services.search import SearchService
 # Import AddressResponse
@@ -12,7 +12,7 @@ from schemas.user import UserCreate, UserUpdate, AddressResponse
 from schemas.user import AddressCreate, AddressUpdate
 # Import AuthService and oauth2_scheme
 from services.auth import AuthService
-from routes.auth import get_current_auth_user
+from core.dependencies import get_current_auth_user
 from models.user import User  # Import User model
 
 router = APIRouter(prefix="/users", tags=["Users & Addresses"])

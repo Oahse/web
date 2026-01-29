@@ -8,10 +8,10 @@ from typing import Optional
 from uuid import UUID
 import logging
 
-from lib.db import get_db
-from lib.dependencies import get_current_user, require_admin
-from lib.utils.response import Response
-from lib.errors import APIException
+from core.db import get_db
+from core.dependencies import get_current_user, require_admin
+from core.utils.response import Response
+from core.errors import APIException
 from models.user import User
 from services.shipping import ShippingService
 from schemas.shipping import (

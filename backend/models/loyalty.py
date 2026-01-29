@@ -1,7 +1,7 @@
 from sqlalchemy import Column, String, Integer, ForeignKey, JSON, Text, Float, Index
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
-from lib.db import BaseModel, GUID
+from core.db import BaseModel, GUID
 from typing import Dict, Any
 
 

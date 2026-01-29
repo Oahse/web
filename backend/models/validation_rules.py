@@ -3,7 +3,7 @@ Validation rules models for tax and shipping fallback calculations
 """
 from sqlalchemy import Column, String, Boolean, DateTime, Float, Text, Integer, Index
 from sqlalchemy.dialects.postgresql import UUID
-from lib.db import BaseModel
+from core.db import BaseModel
 from typing import Dict, Any
 
 

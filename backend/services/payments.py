@@ -1029,7 +1029,7 @@ class PaymentService:
             })
             
             # Restore inventory for failed payment
-            from services.inventories import InventoryService
+            from services.inventory import InventoryService
             inventory_service = InventoryService(self.db)
             inventory_restored = []
             

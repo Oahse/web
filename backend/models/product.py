@@ -4,7 +4,7 @@ Optimized product models with strategic JSONB usage
 from sqlalchemy import Column, String, Boolean, ForeignKey, Text, Float, Integer, DateTime
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import relationship
-from lib.db import BaseModel, CHAR_LENGTH, GUID, Index
+from core.db import BaseModel, CHAR_LENGTH, GUID, Index
 
 
 class Category(BaseModel):

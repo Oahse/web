@@ -3,7 +3,7 @@ Webhook Routes - Simple Stripe webhook handling without storage
 """
 from fastapi import APIRouter, Request, HTTPException, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
-from lib.db import get_db
+from core.db import get_db
 from services.webhooks import WebhookService
 import logging
 

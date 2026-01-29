@@ -409,9 +409,10 @@ MAILGUN_DOMAIN=mg.yourdomain.com
 ```
 
 ### Environment Files
-- **`.dev.env`**: Development configuration
-- **`.prod.env`**: Production configuration
-- **`.env.example`**: Template with documentation
+- **`backend/.env`**: Backend configuration
+- **`backend/.env.example`**: Backend template
+- **`frontend/.env`**: Frontend configuration
+- **`frontend/.env.example`**: Frontend template
 
 ### Configuration Validation
 The application validates all configuration at startup using Pydantic models:
@@ -517,7 +518,7 @@ response = requests.get(f"{BASE_URL}/auth/me",
 - Backup database before major migrations
 
 ### Environment Setup
-1. Copy `.env.example` to `.dev.env` or `.prod.env`
+1. Copy `backend/.env.example` to `backend/.env` and `frontend/.env.example` to `frontend/.env`
 2. Update all required variables
 3. Validate configuration before deployment
 4. Use Docker Compose for consistent environments

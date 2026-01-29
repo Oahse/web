@@ -1,16 +1,16 @@
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.ext.asyncio import AsyncSession
-from lib.db import get_db
+from core.db import get_db
 from models.user import User
 from services.auth import AuthService
 from typing import Optional, Dict, Any, List
 from uuid import UUID
-from lib.utils.uuid_utils import uuid7
+from core.utils.uuid_utils import uuid7
 from datetime import datetime, timedelta
 import asyncio
-from lib.cache import RedisService, RedisKeyManager
-from lib.config import settings
+from core.cache import RedisService, RedisKeyManager
+from core.config import settings
 import logging
 
 logger = logging.getLogger(__name__)
@@ -246,7 +246,7 @@ async def get_inventory_service(
     lock_service: Optional[RedisDistributedLockService] = Depends(get_redis_lock_service)
 ):
     """Get inventory service with optional Redis distributed lock service"""
-    from services.inventories import InventoryService
+    from services.inventory import InventoryService
     return InventoryService(db, lock_service)
 
 

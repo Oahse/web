@@ -12,8 +12,8 @@ import time
 from typing import Dict, Any, Optional
 import logging
 
-from lib.db import get_db, DatabaseOptimizer
-from lib.dependencies import get_current_user
+from core.db import get_db, DatabaseOptimizer
+from core.dependencies import get_current_user
 from models.user import User
 
 router = APIRouter(prefix="/health", tags=["health"])

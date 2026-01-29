@@ -5,7 +5,7 @@ from typing import Dict, Any
 from fastapi import Request, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 import stripe
-from lib.config import settings
+from core.config import settings
 import logging
 
 logger = logging.getLogger(__name__)

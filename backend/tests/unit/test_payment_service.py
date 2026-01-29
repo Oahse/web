@@ -36,7 +36,8 @@ class TestPaymentService:
         await db_session.refresh(order)
         return order
     
-    @pytest_asyncio.async def test_create_payment_intent_success(self, payment_service, test_order):
+    @pytest.mark.asyncio
+    async def test_create_payment_intent_success(self, payment_service, test_order):
         """Test successful payment intent creation"""
         amount = Decimal("99.99")
         currency = "usd"
@@ -51,7 +52,8 @@ class TestPaymentService:
         assert result["client_secret"] == "pi_test_123_secret_test"
         assert result["status"] == "requires_payment_method"
     
-    @pytest_asyncio.async def test_create_payment_intent_invalid_amount(self, payment_service, test_order):
+    @pytest.mark.asyncio
+    async def test_create_payment_intent_invalid_amount(self, payment_service, test_order):
         """Test payment intent creation with invalid amount"""
         with pytest.raises(APIException) as exc_info:
             await payment_service.create_payment_intent(
@@ -63,7 +65,8 @@ class TestPaymentService:
         assert exc_info.value.status_code == 400
         assert "amount" in str(exc_info.value.message).lower()
     
-    @pytest_asyncio.async def test_confirm_payment_success(self, payment_service, test_order):
+    @pytest.mark.asyncio
+    async def test_confirm_payment_success(self, payment_service, test_order):
         """Test successful payment confirmation"""
         payment_intent_id = "pi_test_123"
         
@@ -89,7 +92,8 @@ class TestPaymentService:
         await payment_service.db.refresh(payment)
         assert payment.status == PaymentStatus.COMPLETED
     
-    @pytest_asyncio.async def test_confirm_payment_not_found(self, payment_service):
+    @pytest.mark.asyncio
+    async def test_confirm_payment_not_found(self, payment_service):
         """Test payment confirmation with non-existent payment"""
         with pytest.raises(APIException) as exc_info:
             await payment_service.confirm_payment("pi_nonexistent")
@@ -97,7 +101,8 @@ class TestPaymentService:
         assert exc_info.value.status_code == 404
         assert "payment" in str(exc_info.value.message).lower()
     
-    @pytest_asyncio.async def test_process_webhook_payment_succeeded(self, payment_service, test_order):
+    @pytest.mark.asyncio
+    async def test_process_webhook_payment_succeeded(self, payment_service, test_order):
         """Test webhook processing for successful payment"""
         payment_intent_id = "pi_test_123"
         
@@ -132,7 +137,8 @@ class TestPaymentService:
         await payment_service.db.refresh(payment)
         assert payment.status == PaymentStatus.COMPLETED
     
-    @pytest_asyncio.async def test_process_webhook_payment_failed(self, payment_service, test_order):
+    @pytest.mark.asyncio
+    async def test_process_webhook_payment_failed(self, payment_service, test_order):
         """Test webhook processing for failed payment"""
         payment_intent_id = "pi_test_123"
         
@@ -168,7 +174,8 @@ class TestPaymentService:
         await payment_service.db.refresh(payment)
         assert payment.status == PaymentStatus.FAILED
     
-    @pytest_asyncio.async def test_refund_payment_success(self, payment_service, test_order):
+    @pytest.mark.asyncio
+    async def test_refund_payment_success(self, payment_service, test_order):
         """Test successful payment refund"""
         payment_intent_id = "pi_test_123"
         
@@ -206,7 +213,8 @@ class TestPaymentService:
             await payment_service.db.refresh(payment)
             assert payment.status == PaymentStatus.REFUNDED
     
-    @pytest_asyncio.async def test_refund_payment_not_completed(self, payment_service, test_order):
+    @pytest.mark.asyncio
+    async def test_refund_payment_not_completed(self, payment_service, test_order):
         """Test refund attempt on non-completed payment"""
         payment = Payment(
             id=uuid4(),
@@ -230,7 +238,8 @@ class TestPaymentService:
         assert exc_info.value.status_code == 400
         assert "cannot be refunded" in str(exc_info.value.message).lower()
     
-    @pytest_asyncio.async def test_get_payment_by_id(self, payment_service, test_order):
+    @pytest.mark.asyncio
+    async def test_get_payment_by_id(self, payment_service, test_order):
         """Test getting payment by ID"""
         payment = Payment(
             id=uuid4(),
@@ -250,7 +259,8 @@ class TestPaymentService:
         assert retrieved_payment.amount == payment.amount
         assert retrieved_payment.status == payment.status
     
-    @pytest_asyncio.async def test_get_payments_by_order(self, payment_service, test_order):
+    @pytest.mark.asyncio
+    async def test_get_payments_by_order(self, payment_service, test_order):
         """Test getting payments by order ID"""
         payment1 = Payment(
             id=uuid4(),
@@ -278,7 +288,8 @@ class TestPaymentService:
         assert len(payments) == 2
         assert all(p.order_id == test_order.id for p in payments)
     
-    @pytest_asyncio.async def test_calculate_fees(self, payment_service):
+    @pytest.mark.asyncio
+    async def test_calculate_fees(self, payment_service):
         """Test payment fee calculation"""
         amount = Decimal("100.00")
         
@@ -288,7 +299,8 @@ class TestPaymentService:
         expected_fee = amount * Decimal("0.029") + Decimal("0.30")
         assert abs(fees - expected_fee) < Decimal("0.01")
     
-    @pytest_asyncio.async def test_validate_payment_method(self, payment_service):
+    @pytest.mark.asyncio
+    async def test_validate_payment_method(self, payment_service):
         """Test payment method validation"""
         # Valid payment methods
         assert payment_service.validate_payment_method("stripe")
@@ -297,7 +309,8 @@ class TestPaymentService:
         # Invalid payment method
         assert not payment_service.validate_payment_method("invalid_method")
     
-    @pytest_asyncio.async def test_retry_failed_payment(self, payment_service, test_order):
+    @pytest.mark.asyncio
+    async def test_retry_failed_payment(self, payment_service, test_order):
         """Test retrying a failed payment"""
         payment = Payment(
             id=uuid4(),

@@ -10,7 +10,7 @@ from datetime import datetime
 from fastapi import BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from lib.config import settings
+from core.config import settings
 from core.hybrid_tasks import hybrid_task_manager, send_email_hybrid
 from core.utils.messages.email import send_email
 from services.templates import JinjaTemplateService

@@ -20,7 +20,8 @@ class TestInventoryService:
     async def inventory_service(self, db_session):
         return InventoryService(db_session)
     
-    @pytest_asyncio.async def test_get_inventory_by_variant(self, inventory_service, test_inventory):
+    @pytest.mark.asyncio
+    async def test_get_inventory_by_variant(self, inventory_service, test_inventory):
         """Test getting inventory by variant ID"""
         inventory = await inventory_service.get_inventory_by_variant(test_inventory.variant_id)
         
@@ -28,7 +29,8 @@ class TestInventoryService:
         assert inventory.variant_id == test_inventory.variant_id
         assert inventory.quantity_available == 100
     
-    @pytest_asyncio.async def test_check_stock_availability_sufficient(self, inventory_service, test_inventory):
+    @pytest.mark.asyncio
+    async def test_check_stock_availability_sufficient(self, inventory_service, test_inventory):
         """Test stock availability check with sufficient stock"""
         is_available = await inventory_service.check_stock_availability(
             test_inventory.variant_id,
@@ -37,7 +39,8 @@ class TestInventoryService:
         
         assert is_available is True
     
-    @pytest_asyncio.async def test_check_stock_availability_insufficient(self, inventory_service, test_inventory):
+    @pytest.mark.asyncio
+    async def test_check_stock_availability_insufficient(self, inventory_service, test_inventory):
         """Test stock availability check with insufficient stock"""
         is_available = await inventory_service.check_stock_availability(
             test_inventory.variant_id,
@@ -46,7 +49,8 @@ class TestInventoryService:
         
         assert is_available is False
     
-    @pytest_asyncio.async def test_reserve_stock_success(self, inventory_service, test_inventory):
+    @pytest.mark.asyncio
+    async def test_reserve_stock_success(self, inventory_service, test_inventory):
         """Test successful stock reservation"""
         quantity_to_reserve = 25
         
@@ -60,7 +64,8 @@ class TestInventoryService:
         assert reserved_inventory.quantity_reserved == quantity_to_reserve
         assert reserved_inventory.quantity_available == 100 - quantity_to_reserve
     
-    @pytest_asyncio.async def test_reserve_stock_insufficient(self, inventory_service, test_inventory):
+    @pytest.mark.asyncio
+    async def test_reserve_stock_insufficient(self, inventory_service, test_inventory):
         """Test stock reservation with insufficient stock"""
         quantity_to_reserve = 150
         
@@ -75,7 +80,8 @@ class TestInventoryService:
         assert exc_info.value.status_code == 400
         assert "insufficient stock" in str(exc_info.value.message).lower()
     
-    @pytest_asyncio.async def test_release_stock_reservation(self, inventory_service, test_inventory):
+    @pytest.mark.asyncio
+    async def test_release_stock_reservation(self, inventory_service, test_inventory):
         """Test releasing stock reservation"""
         # First reserve some stock
         quantity_reserved = 25
@@ -98,7 +104,8 @@ class TestInventoryService:
         assert released_inventory.quantity_reserved == 0
         assert released_inventory.quantity_available == 100
     
-    @pytest_asyncio.async def test_fulfill_stock_reservation(self, inventory_service, test_inventory):
+    @pytest.mark.asyncio
+    async def test_fulfill_stock_reservation(self, inventory_service, test_inventory):
         """Test fulfilling stock reservation (converting to actual sale)"""
         # First reserve some stock
         quantity_reserved = 25
@@ -121,7 +128,8 @@ class TestInventoryService:
         assert fulfilled_inventory.quantity_reserved == 0
         assert fulfilled_inventory.quantity_available == 100 - quantity_reserved
     
-    @pytest_asyncio.async def test_add_stock(self, inventory_service, test_inventory):
+    @pytest.mark.asyncio
+    async def test_add_stock(self, inventory_service, test_inventory):
         """Test adding stock to inventory"""
         quantity_to_add = 50
         
@@ -134,7 +142,8 @@ class TestInventoryService:
         
         assert updated_inventory.quantity_available == 100 + quantity_to_add
     
-    @pytest_asyncio.async def test_remove_stock(self, inventory_service, test_inventory):
+    @pytest.mark.asyncio
+    async def test_remove_stock(self, inventory_service, test_inventory):
         """Test removing stock from inventory"""
         quantity_to_remove = 30
         
@@ -147,7 +156,8 @@ class TestInventoryService:
         
         assert updated_inventory.quantity_available == 100 - quantity_to_remove
     
-    @pytest_asyncio.async def test_remove_stock_insufficient(self, inventory_service, test_inventory):
+    @pytest.mark.asyncio
+    async def test_remove_stock_insufficient(self, inventory_service, test_inventory):
         """Test removing more stock than available"""
         quantity_to_remove = 150
         
@@ -162,7 +172,8 @@ class TestInventoryService:
         assert exc_info.value.status_code == 400
         assert "insufficient stock" in str(exc_info.value.message).lower()
     
-    @pytest_asyncio.async def test_transfer_stock_between_warehouses(self, inventory_service, test_product, db_session):
+    @pytest.mark.asyncio
+    async def test_transfer_stock_between_warehouses(self, inventory_service, test_product, db_session):
         """Test transferring stock between warehouses"""
         product, variant = test_product
         
@@ -201,7 +212,8 @@ class TestInventoryService:
         assert warehouse1.quantity_available == 100 - transfer_quantity
         assert warehouse2.quantity_available == 50 + transfer_quantity
     
-    @pytest_asyncio.async def test_get_low_stock_items(self, inventory_service, test_inventory):
+    @pytest.mark.asyncio
+    async def test_get_low_stock_items(self, inventory_service, test_inventory):
         """Test getting items with low stock"""
         # Set inventory below reorder level
         test_inventory.quantity_available = 5
@@ -213,7 +225,8 @@ class TestInventoryService:
         assert len(low_stock_items) == 1
         assert low_stock_items[0].id == test_inventory.id
     
-    @pytest_asyncio.async def test_get_stock_movements(self, inventory_service, test_inventory):
+    @pytest.mark.asyncio
+    async def test_get_stock_movements(self, inventory_service, test_inventory):
         """Test getting stock movement history"""
         # Create some stock movements
         movement1 = StockMovement(
@@ -241,7 +254,8 @@ class TestInventoryService:
         assert any(m.movement_type == StockMovementType.IN for m in movements)
         assert any(m.movement_type == StockMovementType.OUT for m in movements)
     
-    @pytest_asyncio.async def test_calculate_stock_value(self, inventory_service, test_inventory, test_product):
+    @pytest.mark.asyncio
+    async def test_calculate_stock_value(self, inventory_service, test_inventory, test_product):
         """Test calculating total stock value"""
         product, variant = test_product
         
@@ -255,7 +269,8 @@ class TestInventoryService:
         expected_value = test_inventory.quantity_available * variant.cost
         assert stock_value == expected_value
     
-    @pytest_asyncio.async def test_bulk_stock_update(self, inventory_service, test_product, db_session):
+    @pytest.mark.asyncio
+    async def test_bulk_stock_update(self, inventory_service, test_product, db_session):
         """Test bulk stock updates"""
         product, variant = test_product
         
@@ -288,7 +303,8 @@ class TestInventoryService:
         assert updated_inventories[1].quantity_available == 75
         assert updated_inventories[2].quantity_available == 200
     
-    @pytest_asyncio.async def test_inventory_audit(self, inventory_service, test_inventory):
+    @pytest.mark.asyncio
+    async def test_inventory_audit(self, inventory_service, test_inventory):
         """Test inventory audit functionality"""
         # Perform audit count
         actual_count = 95  # 5 less than system count
@@ -307,7 +323,8 @@ class TestInventoryService:
         await inventory_service.db.refresh(test_inventory)
         assert test_inventory.quantity_available == actual_count
     
-    @pytest_asyncio.async def test_concurrent_stock_operations(self, inventory_service, test_inventory):
+    @pytest.mark.asyncio
+    async def test_concurrent_stock_operations(self, inventory_service, test_inventory):
         """Test concurrent stock operations don't cause race conditions"""
         import asyncio
         
@@ -331,7 +348,8 @@ class TestInventoryService:
         successful_reservations = sum(1 for r in results if r is True)
         assert successful_reservations <= 1  # At most one should succeed
     
-    @pytest_asyncio.async def test_stock_alerts(self, inventory_service, test_inventory):
+    @pytest.mark.asyncio
+    async def test_stock_alerts(self, inventory_service, test_inventory):
         """Test stock alert generation"""
         # Set inventory to trigger alerts
         test_inventory.quantity_available = 5
@@ -344,7 +362,8 @@ class TestInventoryService:
         assert len(alerts) > 0
         assert any("low stock" in alert["message"].lower() for alert in alerts)
     
-    @pytest_asyncio.async def test_inventory_forecasting(self, inventory_service, test_inventory):
+    @pytest.mark.asyncio
+    async def test_inventory_forecasting(self, inventory_service, test_inventory):
         """Test inventory demand forecasting"""
         # Mock historical sales data
         with patch.object(inventory_service, '_get_historical_sales') as mock_sales:

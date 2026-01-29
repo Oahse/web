@@ -1,6 +1,10 @@
 /**
  * Consolidated Subscription API
  * Handles all subscription-related API calls with comprehensive error handling and retry logic
+ * 
+ * ACCESS LEVELS:
+ * - Authenticated: All subscription CRUD operations, product management, quantity updates
+ * - Admin: Trigger order processing, trigger notifications, advanced subscription management
  */
 
 import { apiClient } from './client';
@@ -197,6 +201,7 @@ export class SubscriptionAPI {
 
   /**
    * Trigger order processing (admin only)
+   * ACCESS: Admin - Requires admin authentication
    */
   static async triggerOrderProcessing() {
     return await apiClient.post('/subscriptions/trigger-order-processing', {});
@@ -204,6 +209,7 @@ export class SubscriptionAPI {
 
   /**
    * Trigger notifications (admin only)
+   * ACCESS: Admin - Requires admin authentication
    */
   static async triggerNotifications() {
     return await apiClient.post('/subscriptions/trigger-notifications', {});
@@ -213,6 +219,7 @@ export class SubscriptionAPI {
 
   /**
    * Calculate subscription cost
+   * ACCESS: Authenticated - Requires user login
    */
   static async calculateCost(request: CostCalculationRequest) {
     return await apiClient.post('/subscriptions/calculate-cost', request);
@@ -222,6 +229,7 @@ export class SubscriptionAPI {
 
   /**
    * Create new subscription
+   * ACCESS: Authenticated - Requires user login
    */
   static async createSubscription(request: CreateSubscriptionRequest): Promise<Subscription> {
     return withErrorHandling(async () => {
@@ -232,6 +240,7 @@ export class SubscriptionAPI {
 
   /**
    * Get all user subscriptions with pagination
+   * ACCESS: Authenticated - Requires user login, returns only user's subscriptions
    */
   static async getSubscriptions(params?: {
     page?: number;
@@ -247,6 +256,7 @@ export class SubscriptionAPI {
 
   /**
    * Get subscription by ID
+   * ACCESS: Authenticated - Requires user login and ownership of subscription
    */
   static async getSubscription(subscriptionId: string): Promise<Subscription> {
     return withErrorHandling(async () => {
@@ -257,6 +267,7 @@ export class SubscriptionAPI {
 
   /**
    * Update subscription
+   * ACCESS: Authenticated - Requires user login and ownership of subscription
    */
   static async updateSubscription(subscriptionId: string, request: UpdateSubscriptionRequest): Promise<Subscription> {
     return withErrorHandling(async () => {
@@ -267,6 +278,7 @@ export class SubscriptionAPI {
 
   /**
    * Cancel subscription
+   * ACCESS: Authenticated - Requires user login and ownership of subscription
    */
   static async cancelSubscription(subscriptionId: string, reason?: string) {
     return withErrorHandling(async () => {
@@ -280,6 +292,7 @@ export class SubscriptionAPI {
 
   /**
    * Pause subscription
+   * ACCESS: Authenticated - Requires user login and ownership of subscription
    */
   static async pauseSubscription(subscriptionId: string, reason?: string) {
     const data = reason ? { pause_reason: reason } : {};
@@ -288,6 +301,7 @@ export class SubscriptionAPI {
 
   /**
    * Resume subscription
+   * ACCESS: Authenticated - Requires user login and ownership of subscription
    */
   static async resumeSubscription(subscriptionId: string) {
     return await apiClient.post(`/subscriptions/${subscriptionId}/resume`, {});
@@ -295,6 +309,7 @@ export class SubscriptionAPI {
 
   /**
    * Activate subscription (alias for resume)
+   * ACCESS: Authenticated - Requires user login and ownership of subscription
    */
   static async activateSubscription(subscriptionId: string) {
     return this.resumeSubscription(subscriptionId);
@@ -304,6 +319,7 @@ export class SubscriptionAPI {
 
   /**
    * Add products to subscription
+   * ACCESS: Authenticated - Requires user login and ownership of subscription
    */
   static async addProducts(subscriptionId: string, variantIds: string[]): Promise<Subscription> {
     return withErrorHandling(async () => {
@@ -316,6 +332,7 @@ export class SubscriptionAPI {
 
   /**
    * Remove products from subscription
+   * ACCESS: Authenticated - Requires user login and ownership of subscription
    */
   static async removeProducts(subscriptionId: string, variantIds: string[]): Promise<Subscription> {
     return withErrorHandling(async () => {
@@ -328,6 +345,7 @@ export class SubscriptionAPI {
 
   /**
    * Remove single product from subscription
+   * ACCESS: Authenticated - Requires user login and ownership of subscription
    */
   static async removeProduct(subscriptionId: string, productId: string): Promise<Subscription> {
     return withErrorHandling(async () => {
@@ -338,6 +356,7 @@ export class SubscriptionAPI {
 
   /**
    * Get subscription details with products and discounts
+   * ACCESS: Authenticated - Requires user login and ownership of subscription
    */
   static async getSubscriptionDetails(subscriptionId: string): Promise<SubscriptionDetailsResponse> {
     return withErrorHandling(async () => {
@@ -350,6 +369,7 @@ export class SubscriptionAPI {
 
   /**
    * Update variant quantity (set specific amount)
+   * ACCESS: Authenticated - Requires user login and ownership of subscription
    */
   static async updateVariantQuantity(subscriptionId: string, variantId: string, quantity: number): Promise<Subscription> {
     return withErrorHandling(async () => {
@@ -363,6 +383,7 @@ export class SubscriptionAPI {
 
   /**
    * Change variant quantity (increment/decrement)
+   * ACCESS: Authenticated - Requires user login and ownership of subscription
    */
   static async changeVariantQuantity(subscriptionId: string, variantId: string, change: number): Promise<Subscription> {
     return withErrorHandling(async () => {
@@ -376,6 +397,7 @@ export class SubscriptionAPI {
 
   /**
    * Get variant quantities
+   * ACCESS: Authenticated - Requires user login and ownership of subscription
    */
   static async getVariantQuantities(subscriptionId: string) {
     return await apiClient.get(`/subscriptions/${subscriptionId}/products/quantities`);
@@ -383,6 +405,7 @@ export class SubscriptionAPI {
 
   /**
    * Increment quantity by 1
+   * ACCESS: Authenticated - Requires user login and ownership of subscription
    */
   static async incrementQuantity(subscriptionId: string, variantId: string): Promise<Subscription> {
     return this.changeVariantQuantity(subscriptionId, variantId, 1);
@@ -390,6 +413,7 @@ export class SubscriptionAPI {
 
   /**
    * Decrement quantity by 1
+   * ACCESS: Authenticated - Requires user login and ownership of subscription
    */
   static async decrementQuantity(subscriptionId: string, variantId: string): Promise<Subscription> {
     return this.changeVariantQuantity(subscriptionId, variantId, -1);
@@ -399,6 +423,7 @@ export class SubscriptionAPI {
 
   /**
    * Apply discount to subscription
+   * ACCESS: Authenticated - Requires user login and ownership of subscription
    */
   static async applyDiscount(subscriptionId: string, discountCode: string): Promise<DiscountResponse> {
     return withErrorHandling(async () => {
@@ -420,6 +445,7 @@ export class SubscriptionAPI {
 
   /**
    * Remove discount from subscription
+   * ACCESS: Authenticated - Requires user login and ownership of subscription
    */
   static async removeDiscount(subscriptionId: string, discountId: string): Promise<Subscription> {
     return withErrorHandling(async () => {
@@ -432,6 +458,7 @@ export class SubscriptionAPI {
 
   /**
    * Toggle auto-renew
+   * ACCESS: Authenticated - Requires user login and ownership of subscription
    */
   static async toggleAutoRenew(subscriptionId: string, autoRenew: boolean): Promise<Subscription> {
     return withErrorHandling(async () => {
@@ -446,6 +473,7 @@ export class SubscriptionAPI {
 
   /**
    * Get subscription orders
+   * ACCESS: Authenticated - Requires user login and ownership of subscription
    */
   static async getSubscriptionOrders(subscriptionId: string, params?: {
     page?: number;
@@ -461,6 +489,7 @@ export class SubscriptionAPI {
 
   /**
    * Process subscription shipment manually
+   * ACCESS: Authenticated - Requires user login and ownership of subscription
    */
   static async processShipment(subscriptionId: string) {
     return await apiClient.post(`/subscriptions/${subscriptionId}/process-shipment`, {});

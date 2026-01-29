@@ -29,11 +29,8 @@ describe('useCart', () => {
     mergeGuestCart: vi.fn()
   };
 
-  const wrapper = ({ children }: { children: React.ReactNode }) => (
-    <CartContext.Provider value={mockCartContext}>
-      {children}
-    </CartContext.Provider>
-  );
+  const wrapper = ({ children }: { children: React.ReactNode }) => 
+    React.createElement(CartContext.Provider, { value: mockCartContext }, children);
 
   beforeEach(() => {
     vi.clearAllMocks();

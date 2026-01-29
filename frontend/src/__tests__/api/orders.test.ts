@@ -727,6 +727,11 @@ describe('OrdersAPI', () => {
 
     describe('exportOrders', () => {
       it('should export orders as CSV', async () => {
+        // Mock Date to return a fixed date
+        const mockDate = new Date('2024-01-28T00:00:00Z');
+        vi.spyOn(global, 'Date').mockImplementation(() => mockDate);
+        mockDate.toISOString = () => '2024-01-28T00:00:00.000Z';
+
         const params = {
           format: 'csv',
           status: 'completed',
@@ -740,9 +745,16 @@ describe('OrdersAPI', () => {
           '/admin/orders/export?format=csv&status=completed&date_from=2024-01-01&date_to=2024-01-31',
           'orders-export-2024-01-28.csv'
         );
+        
+        vi.restoreAllMocks();
       });
 
       it('should export orders as Excel', async () => {
+        // Mock Date to return a fixed date
+        const mockDate = new Date('2024-01-28T00:00:00Z');
+        vi.spyOn(global, 'Date').mockImplementation(() => mockDate);
+        mockDate.toISOString = () => '2024-01-28T00:00:00.000Z';
+
         const params = {
           format: 'excel'
         };
@@ -753,6 +765,8 @@ describe('OrdersAPI', () => {
           '/admin/orders/export?format=excel',
           'orders-export-2024-01-28.xlsx'
         );
+        
+        vi.restoreAllMocks();
       });
     });
   });

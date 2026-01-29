@@ -1,7 +1,7 @@
 from sqlalchemy import Column, String, Boolean, ForeignKey, DateTime, Integer
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import relationship
-from lib.db import BaseModel, CHAR_LENGTH, GUID, Index
+from core.db import BaseModel, CHAR_LENGTH, GUID, Index
 from enum import Enum
 
 class UserRole(str, Enum):

@@ -20,7 +20,8 @@ class TestSubscriptionService:
     async def subscription_service(self, db_session):
         return SubscriptionService(db_session)
     
-    @pytest_asyncio.async def test_create_subscription_success(self, subscription_service, test_user, test_product):
+    @pytest.mark.asyncio
+    async def test_create_subscription_success(self, subscription_service, test_user, test_product):
         """Test successful subscription creation"""
         product, variant = test_product
         
@@ -43,7 +44,8 @@ class TestSubscriptionService:
         assert subscription.items[0].variant_id == variant.id
         assert subscription.items[0].quantity == 2
     
-    @pytest_asyncio.async def test_create_subscription_invalid_variant(self, subscription_service, test_user):
+    @pytest.mark.asyncio
+    async def test_create_subscription_invalid_variant(self, subscription_service, test_user):
         """Test subscription creation with invalid variant"""
         invalid_variant_id = uuid4()
         
@@ -60,7 +62,8 @@ class TestSubscriptionService:
         assert exc_info.value.status_code == 404
         assert "variant" in str(exc_info.value.message).lower()
     
-    @pytest_asyncio.async def test_update_subscription_items(self, subscription_service, test_subscription, test_product):
+    @pytest.mark.asyncio
+    async def test_update_subscription_items(self, subscription_service, test_subscription, test_product):
         """Test updating subscription items"""
         product, variant = test_product
         
@@ -78,7 +81,8 @@ class TestSubscriptionService:
         assert updated_subscription.items[0].variant_id == variant.id
         assert updated_subscription.items[0].quantity == 3
     
-    @pytest_asyncio.async def test_pause_subscription(self, subscription_service, test_subscription):
+    @pytest.mark.asyncio
+    async def test_pause_subscription(self, subscription_service, test_subscription):
         """Test pausing an active subscription"""
         # Ensure subscription is active
         test_subscription.status = SubscriptionStatus.ACTIVE
@@ -89,7 +93,8 @@ class TestSubscriptionService:
         assert paused_subscription.status == SubscriptionStatus.PAUSED
         assert paused_subscription.paused_at is not None
     
-    @pytest_asyncio.async def test_resume_subscription(self, subscription_service, test_subscription):
+    @pytest.mark.asyncio
+    async def test_resume_subscription(self, subscription_service, test_subscription):
         """Test resuming a paused subscription"""
         # Set subscription as paused
         test_subscription.status = SubscriptionStatus.PAUSED
@@ -102,7 +107,8 @@ class TestSubscriptionService:
         assert resumed_subscription.paused_at is None
         assert resumed_subscription.next_billing_date > datetime.utcnow()
     
-    @pytest_asyncio.async def test_cancel_subscription(self, subscription_service, test_subscription):
+    @pytest.mark.asyncio
+    async def test_cancel_subscription(self, subscription_service, test_subscription):
         """Test canceling a subscription"""
         canceled_subscription = await subscription_service.cancel_subscription(
             test_subscription.id,
@@ -113,7 +119,8 @@ class TestSubscriptionService:
         assert canceled_subscription.canceled_at is not None
         assert canceled_subscription.cancellation_reason == "customer_request"
     
-    @pytest_asyncio.async def test_process_subscription_renewal(self, subscription_service, test_subscription, test_product):
+    @pytest.mark.asyncio
+    async def test_process_subscription_renewal(self, subscription_service, test_subscription, test_product):
         """Test processing subscription renewal"""
         product, variant = test_product
         
@@ -140,7 +147,8 @@ class TestSubscriptionService:
             assert renewed_subscription.next_billing_date > datetime.utcnow()
             assert renewed_subscription.billing_cycle_count > 0
     
-    @pytest_asyncio.async def test_calculate_subscription_total(self, subscription_service, test_subscription, test_product):
+    @pytest.mark.asyncio
+    async def test_calculate_subscription_total(self, subscription_service, test_subscription, test_product):
         """Test calculating subscription total"""
         product, variant = test_product
         
@@ -167,7 +175,8 @@ class TestSubscriptionService:
         # (2 * 50.00) + (1 * 30.00) = 130.00
         assert total == Decimal("130.00")
     
-    @pytest_asyncio.async def test_get_user_subscriptions(self, subscription_service, test_user, test_subscription):
+    @pytest.mark.asyncio
+    async def test_get_user_subscriptions(self, subscription_service, test_user, test_subscription):
         """Test getting user subscriptions"""
         subscriptions = await subscription_service.get_user_subscriptions(test_user.id)
         
@@ -175,14 +184,16 @@ class TestSubscriptionService:
         assert subscriptions[0].id == test_subscription.id
         assert subscriptions[0].user_id == test_user.id
     
-    @pytest_asyncio.async def test_get_subscription_by_id(self, subscription_service, test_subscription):
+    @pytest.mark.asyncio
+    async def test_get_subscription_by_id(self, subscription_service, test_subscription):
         """Test getting subscription by ID"""
         subscription = await subscription_service.get_subscription_by_id(test_subscription.id)
         
         assert subscription.id == test_subscription.id
         assert subscription.user_id == test_subscription.user_id
     
-    @pytest_asyncio.async def test_get_subscription_not_found(self, subscription_service):
+    @pytest.mark.asyncio
+    async def test_get_subscription_not_found(self, subscription_service):
         """Test getting non-existent subscription"""
         with pytest.raises(APIException) as exc_info:
             await subscription_service.get_subscription_by_id(uuid4())
@@ -190,7 +201,8 @@ class TestSubscriptionService:
         assert exc_info.value.status_code == 404
         assert "subscription" in str(exc_info.value.message).lower()
     
-    @pytest_asyncio.async def test_update_subscription_frequency(self, subscription_service, test_subscription):
+    @pytest.mark.asyncio
+    async def test_update_subscription_frequency(self, subscription_service, test_subscription):
         """Test updating subscription frequency"""
         new_frequency = "weekly"
         
@@ -203,7 +215,8 @@ class TestSubscriptionService:
         # Next billing date should be recalculated
         assert updated_subscription.next_billing_date != test_subscription.next_billing_date
     
-    @pytest_asyncio.async def test_apply_discount_to_subscription(self, subscription_service, test_subscription):
+    @pytest.mark.asyncio
+    async def test_apply_discount_to_subscription(self, subscription_service, test_subscription):
         """Test applying discount to subscription"""
         discount_code = "SAVE20"
         discount_amount = Decimal("20.00")
@@ -223,7 +236,8 @@ class TestSubscriptionService:
             assert updated_subscription.discount_code == discount_code
             assert updated_subscription.discount_amount == discount_amount
     
-    @pytest_asyncio.async def test_get_subscription_analytics(self, subscription_service, test_user, test_subscription):
+    @pytest.mark.asyncio
+    async def test_get_subscription_analytics(self, subscription_service, test_user, test_subscription):
         """Test getting subscription analytics"""
         analytics = await subscription_service.get_subscription_analytics(test_user.id)
         
@@ -235,7 +249,8 @@ class TestSubscriptionService:
         assert analytics["total_subscriptions"] == 1
         assert analytics["active_subscriptions"] == 1
     
-    @pytest_asyncio.async def test_get_due_renewals(self, subscription_service, test_subscription):
+    @pytest.mark.asyncio
+    async def test_get_due_renewals(self, subscription_service, test_subscription):
         """Test getting subscriptions due for renewal"""
         # Set subscription due for renewal
         test_subscription.next_billing_date = datetime.utcnow() - timedelta(hours=1)
@@ -247,7 +262,8 @@ class TestSubscriptionService:
         assert len(due_subscriptions) == 1
         assert due_subscriptions[0].id == test_subscription.id
     
-    @pytest_asyncio.async def test_subscription_status_transitions(self, subscription_service, test_subscription):
+    @pytest.mark.asyncio
+    async def test_subscription_status_transitions(self, subscription_service, test_subscription):
         """Test valid subscription status transitions"""
         # Active -> Paused
         test_subscription.status = SubscriptionStatus.ACTIVE
@@ -264,7 +280,8 @@ class TestSubscriptionService:
         canceled = await subscription_service.cancel_subscription(test_subscription.id)
         assert canceled.status == SubscriptionStatus.CANCELED
     
-    @pytest_asyncio.async def test_invalid_status_transition(self, subscription_service, test_subscription):
+    @pytest.mark.asyncio
+    async def test_invalid_status_transition(self, subscription_service, test_subscription):
         """Test invalid subscription status transitions"""
         # Set subscription as canceled
         test_subscription.status = SubscriptionStatus.CANCELED
@@ -277,7 +294,8 @@ class TestSubscriptionService:
         assert exc_info.value.status_code == 400
         assert "cannot resume" in str(exc_info.value.message).lower()
     
-    @pytest_asyncio.async def test_subscription_item_price_tracking(self, subscription_service, test_subscription, test_product):
+    @pytest.mark.asyncio
+    async def test_subscription_item_price_tracking(self, subscription_service, test_subscription, test_product):
         """Test that subscription items track price at time of creation"""
         product, variant = test_product
         

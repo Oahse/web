@@ -8,7 +8,7 @@ from fastapi import HTTPException, Request
 from models.payments import Transaction, PaymentIntent
 from models.orders import Order
 from services.payments import PaymentService
-from services.inventories import InventoryService
+from services.inventory import InventoryService
 from core.auth.webhook import verify_stripe_webhook_request, WebhookSecurityError
 from uuid import UUID
 from datetime import datetime

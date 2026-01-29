@@ -4,7 +4,7 @@ from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from sqlalchemy.exc import SQLAlchemyError
 from datetime import datetime
-from lib.utils.uuid_utils import uuid7
+from core.utils.uuid_utils import uuid7
 import traceback
 
 from .api_exceptions import APIException

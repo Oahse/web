@@ -30,7 +30,8 @@ class TestAuthService:
             "password": "testpassword123"
         }
     
-    @pytest_asyncio.async def test_register_user_success(self, auth_service, user_data):
+    @pytest.mark.asyncio
+    async def test_register_user_success(self, auth_service, user_data):
         """Test successful user registration"""
         user_create = UserCreate(**user_data)
         
@@ -47,7 +48,8 @@ class TestAuthService:
             assert not user.is_verified
             assert user.is_active
     
-    @pytest_asyncio.async def test_register_user_duplicate_email(self, auth_service, user_data, test_user):
+    @pytest.mark.asyncio
+    async def test_register_user_duplicate_email(self, auth_service, user_data, test_user):
         """Test registration with duplicate email"""
         user_data["email"] = test_user.email
         user_create = UserCreate(**user_data)
@@ -58,7 +60,8 @@ class TestAuthService:
         assert exc_info.value.status_code == 400
         assert "already registered" in str(exc_info.value.message).lower()
     
-    @pytest_asyncio.async def test_authenticate_user_success(self, auth_service, test_user):
+    @pytest.mark.asyncio
+    async def test_authenticate_user_success(self, auth_service, test_user):
         """Test successful user authentication"""
         with patch('services.auth.verify_password') as mock_verify:
             mock_verify.return_value = True
@@ -68,7 +71,8 @@ class TestAuthService:
             assert user.id == test_user.id
             assert user.email == test_user.email
     
-    @pytest_asyncio.async def test_authenticate_user_invalid_credentials(self, auth_service, test_user):
+    @pytest.mark.asyncio
+    async def test_authenticate_user_invalid_credentials(self, auth_service, test_user):
         """Test authentication with invalid credentials"""
         with patch('services.auth.verify_password') as mock_verify:
             mock_verify.return_value = False
@@ -77,12 +81,14 @@ class TestAuthService:
             
             assert user is None
     
-    @pytest_asyncio.async def test_authenticate_user_not_found(self, auth_service):
+    @pytest.mark.asyncio
+    async def test_authenticate_user_not_found(self, auth_service):
         """Test authentication with non-existent user"""
         user = await auth_service.authenticate_user("nonexistent@example.com", "password")
         assert user is None
     
-    @pytest_asyncio.async def test_create_access_token(self, auth_service):
+    @pytest.mark.asyncio
+    async def test_create_access_token(self, auth_service):
         """Test access token creation"""
         user_id = uuid4()
         
@@ -94,7 +100,8 @@ class TestAuthService:
             assert token == "test_token"
             mock_create.assert_called_once_with(data={"sub": str(user_id)})
     
-    @pytest_asyncio.async def test_verify_token_valid(self, auth_service):
+    @pytest.mark.asyncio
+    async def test_verify_token_valid(self, auth_service):
         """Test token verification with valid token"""
         user_id = uuid4()
         
@@ -105,7 +112,8 @@ class TestAuthService:
             
             assert payload["sub"] == str(user_id)
     
-    @pytest_asyncio.async def test_verify_token_invalid(self, auth_service):
+    @pytest.mark.asyncio
+    async def test_verify_token_invalid(self, auth_service):
         """Test token verification with invalid token"""
         with patch('services.auth.verify_token') as mock_verify:
             mock_verify.return_value = None
@@ -114,21 +122,24 @@ class TestAuthService:
             
             assert payload is None
     
-    @pytest_asyncio.async def test_get_user_by_id(self, auth_service, test_user):
+    @pytest.mark.asyncio
+    async def test_get_user_by_id(self, auth_service, test_user):
         """Test getting user by ID"""
         user = await auth_service.get_user_by_id(test_user.id)
         
         assert user.id == test_user.id
         assert user.email == test_user.email
     
-    @pytest_asyncio.async def test_get_user_by_email(self, auth_service, test_user):
+    @pytest.mark.asyncio
+    async def test_get_user_by_email(self, auth_service, test_user):
         """Test getting user by email"""
         user = await auth_service.get_user_by_email(test_user.email)
         
         assert user.id == test_user.id
         assert user.email == test_user.email
     
-    @pytest_asyncio.async def test_update_user_password(self, auth_service, test_user):
+    @pytest.mark.asyncio
+    async def test_update_user_password(self, auth_service, test_user):
         """Test updating user password"""
         new_password = "newpassword123"
         
@@ -141,7 +152,8 @@ class TestAuthService:
             await auth_service.db.refresh(test_user)
             assert test_user.hashed_password == "new_hashed_password"
     
-    @pytest_asyncio.async def test_verify_user_email(self, auth_service, test_user):
+    @pytest.mark.asyncio
+    async def test_verify_user_email(self, auth_service, test_user):
         """Test email verification"""
         # Initially user is not verified
         test_user.is_verified = False
@@ -152,14 +164,16 @@ class TestAuthService:
         await auth_service.db.refresh(test_user)
         assert test_user.is_verified
     
-    @pytest_asyncio.async def test_deactivate_user(self, auth_service, test_user):
+    @pytest.mark.asyncio
+    async def test_deactivate_user(self, auth_service, test_user):
         """Test user deactivation"""
         await auth_service.deactivate_user(test_user.id)
         
         await auth_service.db.refresh(test_user)
         assert not test_user.is_active
     
-    @pytest_asyncio.async def test_reset_password_request(self, auth_service, test_user):
+    @pytest.mark.asyncio
+    async def test_reset_password_request(self, auth_service, test_user):
         """Test password reset request"""
         with patch('services.auth.generate_reset_token') as mock_token:
             mock_token.return_value = "reset_token_123"
@@ -168,7 +182,8 @@ class TestAuthService:
             
             assert token == "reset_token_123"
     
-    @pytest_asyncio.async def test_reset_password_with_token(self, auth_service, test_user):
+    @pytest.mark.asyncio
+    async def test_reset_password_with_token(self, auth_service, test_user):
         """Test password reset with valid token"""
         reset_token = "valid_reset_token"
         new_password = "newpassword123"
@@ -185,7 +200,8 @@ class TestAuthService:
                 await auth_service.db.refresh(test_user)
                 assert test_user.hashed_password == "new_hashed_password"
     
-    @pytest_asyncio.async def test_reset_password_invalid_token(self, auth_service):
+    @pytest.mark.asyncio
+    async def test_reset_password_invalid_token(self, auth_service):
         """Test password reset with invalid token"""
         with patch('services.auth.verify_reset_token') as mock_verify:
             mock_verify.return_value = None

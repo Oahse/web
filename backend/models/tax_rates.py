@@ -2,7 +2,7 @@ from sqlalchemy import Column, String, Float, Boolean, DateTime, Index
 from sqlalchemy.dialects.postgresql import UUID
 from datetime import datetime
 import uuid
-from lib.db import BaseModel, GUID, Base
+from core.db import BaseModel, GUID, Base
 
 
 class TaxRate(BaseModel):

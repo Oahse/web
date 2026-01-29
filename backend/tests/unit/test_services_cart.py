@@ -10,7 +10,7 @@ from services.cart import CartService
 from models.cart import Cart, CartItem
 from models.user import User
 from models.product import ProductVariant
-from models.inventories import Inventory
+from models.inventories import Inventory, WarehouseLocation
 
 
 class TestCartService:

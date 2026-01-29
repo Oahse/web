@@ -473,14 +473,13 @@ class Settings:
         if ENVIRONMENT in ['local', 'dev']:
             # For local development, check these files in order
             env_files = [
-                os.path.join(BASE_DIR, 'backend', '.env.local'),  # Backend-specific local config
-                os.path.join(BASE_DIR, '.dev.env'),               # Development config
-                os.path.join(BASE_DIR, '.env')                    # Fallback
+                os.path.join(BASE_DIR, 'backend', '.env'),        # Backend-specific config
+                os.path.join(BASE_DIR, 'backend', '.env.example') # Backend template
             ]
         else:
             env_files = [
-                os.path.join(BASE_DIR, '.prod.env'),              # Production config
-                os.path.join(BASE_DIR, '.env')                    # Fallback
+                os.path.join(BASE_DIR, 'backend', '.env'),        # Backend config
+                os.path.join(BASE_DIR, 'backend', '.env.example') # Backend template
             ]
         
         # Load the first existing file

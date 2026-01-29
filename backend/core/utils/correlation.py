@@ -1,4 +1,4 @@
-from lib.utils.uuid_utils import uuid7
+from core.utils.uuid_utils import uuid7
 from typing import Optional, Any
 
 # This function should ideally be used in conjunction with a middleware

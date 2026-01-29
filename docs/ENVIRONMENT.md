@@ -1,50 +1,51 @@
 # Environment Configuration Guide
 
-This guide explains how to configure environment variables for the Banwee application across different environments.
+This guide explains how to configure environment variables for the Banwee application.
 
 ## Quick Start
 
 ### Development Setup
 
-1. Copy the example environment file:
+1. Copy environment files:
    ```bash
-   cp .env.example .dev.env
+   # Backend environment
+   cp backend/.env.example backend/.env
+   
+   # Frontend environment  
+   cp frontend/.env.example frontend/.env
    ```
 
-2. Update the following required variables in `.dev.env`:
+2. Update the required variables in `backend/.env`:
    ```bash
    SECRET_KEY=<generate-with-openssl-rand-hex-32>
    STRIPE_SECRET_KEY=sk_test_<your-test-key>
    STRIPE_WEBHOOK_SECRET=whsec_<your-webhook-secret>
-   POSTGRES_DB_URL=postgresql+asyncpg://banwee:<strong-password>@postgres:5432/banwee_db
+   POSTGRES_DB_URL=postgresql://user:password@host:port/database
    ```
 
-3. Start the application:
+3. Update the required variables in `frontend/.env`:
    ```bash
-   docker-compose up -d
+   VITE_API_BASE_URL=http://localhost:8000/api
+   VITE_STRIPE_PUBLIC_KEY=pk_test_<your-public-key>
    ```
 
-### Production Setup
-
-1. Copy the example environment file:
+4. Start the application:
    ```bash
-   cp .env.example .prod.env
-   ```
-
-2. Update ALL required variables in `.prod.env` (see Production Checklist below)
-
-3. Deploy using production configuration:
-   ```bash
-   docker-compose -f docker-compose.prod.yml up -d
+   # Backend
+   cd backend && python main.py
+   
+   # Frontend
+   cd frontend && npm run dev
    ```
 
 ## Environment Files
 
-The application uses different environment files based on the `ENVIRONMENT` variable:
+The application uses separate environment files for backend and frontend:
 
-- **`.dev.env`**: Development environment (ENVIRONMENT=local or dev)
-- **`.prod.env`**: Production environment (ENVIRONMENT=production)
-- **`.env.example`**: Template with all available variables and documentation
+- **`backend/.env`**: Backend-specific configuration (database, API keys, etc.)
+- **`backend/.env.example`**: Backend configuration template
+- **`frontend/.env`**: Frontend-specific configuration (API URLs, public keys, etc.)
+- **`frontend/.env.example`**: Frontend configuration template
 
 ## Configuration Validation
 
@@ -247,7 +248,7 @@ If you see validation errors at startup, check:
 
 ## Docker Compose Configuration
 
-The `docker-compose.yml` file automatically loads environment variables from `.dev.env` or `.prod.env` based on the `ENVIRONMENT` variable.
+The application now uses separate environment files for backend and frontend components.
 
 ### Volume Configuration
 
@@ -288,7 +289,7 @@ volumes:
 
 ## Best Practices
 
-1. **Never commit .env files**: Add `.dev.env` and `.prod.env` to `.gitignore`
+1. **Never commit .env files**: Add `backend/.env` and `frontend/.env` to `.gitignore`
 2. **Use strong secrets**: Generate random values, don't use defaults
 3. **Separate environments**: Use different values for dev/staging/prod
 4. **Document changes**: Update `.env.example` when adding new variables

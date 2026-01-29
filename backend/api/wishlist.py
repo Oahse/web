@@ -2,14 +2,14 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from uuid import UUID
 
-from lib.db import get_db
-from lib.logging import get_logger
+from core.db import get_db
+from core.logging import get_logger
 from services.wishlist import WishlistService
 from schemas.wishlist import WishlistCreate, WishlistUpdate, WishlistResponse, WishlistItemCreate, WishlistItemResponse
 from models.user import User
-from lib.dependencies import get_current_auth_user
-from lib.utils.response import Response
-from lib.errors import APIException
+from core.dependencies import get_current_auth_user
+from core.utils.response import Response
+from core.errors import APIException
 
 logger = get_logger(__name__)
 

@@ -6,7 +6,7 @@ import pytest
 import pytest_asyncio
 from typing import AsyncGenerator, Generator
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
-from sqlalchemy.pool import StaticPool
+from sqlalchemy import text
 from fastapi.testclient import TestClient
 from httpx import AsyncClient
 import redis.asyncio as redis
@@ -29,15 +29,17 @@ from uuid import uuid4
 from datetime import datetime, timedelta
 from decimal import Decimal
 
-# Test database URL
-TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
+# Test database URL - using the same Neon PostgreSQL database with asyncpg driver
+TEST_DATABASE_URL = "postgresql+asyncpg://neondb_owner:npg_qI9D0igTcRXw@ep-plain-morning-ah8l56gm-pooler.c-3.us-east-1.aws.neon.tech/neondb?ssl=require"
 
 # Create test engine
 test_engine = create_async_engine(
     TEST_DATABASE_URL,
-    poolclass=StaticPool,
-    connect_args={"check_same_thread": False},
-    echo=False
+    echo=False,
+    pool_pre_ping=True,
+    pool_recycle=3600,
+    pool_size=5,
+    max_overflow=10
 )
 
 TestSessionLocal = async_sessionmaker(
@@ -48,27 +50,47 @@ TestSessionLocal = async_sessionmaker(
 @pytest_asyncio.fixture(scope="session")
 def event_loop():
     """Create an instance of the default event loop for the test session."""
-    loop = asyncio.get_event_loop_policy().new_event_loop()
+    policy = asyncio.get_event_loop_policy()
+    loop = policy.new_event_loop()
     yield loop
     loop.close()
 
 
 @pytest_asyncio.fixture(scope="session")
 async def setup_database():
-    """Set up test database tables."""
+    """Set up test database tables in a test schema."""
+    # Import all models to ensure they're registered with Base
+    from models import user, product, cart, orders, payments, shipping, tax_rates, inventories, loyalty, analytics, admin, discounts, promocode, refunds, review, subscriptions, variant_tracking, wishlist, validation_rules
+    
     async with test_engine.begin() as conn:
+        # Create test schema
+        await conn.execute(text("CREATE SCHEMA IF NOT EXISTS test_schema"))
+        
+        # Set search path to use test schema
+        await conn.execute(text("SET search_path TO test_schema"))
+        
+        # Drop all tables first (clean slate)
+        await conn.run_sync(BaseModel.metadata.drop_all)
+        # Create all tables in test schema
         await conn.run_sync(BaseModel.metadata.create_all)
     yield
+    # Cleanup after all tests
     async with test_engine.begin() as conn:
-        await conn.run_sync(BaseModel.metadata.drop_all)
+        # Drop test schema and all its contents
+        await conn.execute(text("DROP SCHEMA IF EXISTS test_schema CASCADE"))
 
 
 @pytest_asyncio.fixture
 async def db_session(setup_database) -> AsyncGenerator[AsyncSession, None]:
     """Create a test database session."""
     async with TestSessionLocal() as session:
-        yield session
-        await session.rollback()
+        try:
+            # Set search path to test schema for this session
+            await session.execute(text("SET search_path TO test_schema"))
+            yield session
+        finally:
+            await session.rollback()
+            await session.close()
 
 
 @pytest_asyncio.fixture

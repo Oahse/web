@@ -1,6 +1,6 @@
 from fastapi import HTTPException
 from datetime import datetime
-from lib.utils.uuid_utils import uuid7
+from core.utils.uuid_utils import uuid7
 from typing import Any, Dict, Optional
 
 

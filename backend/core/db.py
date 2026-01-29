@@ -15,9 +15,9 @@ from pydantic import ValidationError
 import logging
 from datetime import datetime as dt
 
-from lib.logging import structured_logger
-from lib.utils.uuid_utils import uuid7
-from lib.errors.api_exceptions import DatabaseException, APIException
+from core.logging import structured_logger
+from core.utils.uuid_utils import uuid7
+from core.errors.api_exceptions import DatabaseException, APIException
 
 logger = logging.getLogger(__name__)
 
@@ -117,7 +117,7 @@ class DatabaseOptimizer:
         """Create optimized async engine with connection pooling"""
         # Import settings here to avoid circular dependency
         if database_uri is None or env_is_local is None:
-            from lib.config import settings
+            from core.config import settings
             database_uri = database_uri or settings.SQLALCHEMY_DATABASE_URI
             env_is_local = env_is_local if env_is_local is not None else (settings.ENVIRONMENT == "local")
             pool_size = getattr(settings, 'DB_POOL_SIZE', 20)

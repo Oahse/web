@@ -127,7 +127,7 @@ describe('ProductsAPI', () => {
       const result = await ProductsAPI.searchProducts(query, filters);
 
       expect(mockApiClient.get).toHaveBeenCalledWith(
-        '/v1/products/search?q=gaming%20laptop&category_id=cat123&min_price=500&max_price=2000&limit=20'
+        '/v1/products/search?q=gaming+laptop&category_id=cat123&min_price=500&max_price=2000&limit=20'
       );
       expect(result).toEqual(mockResponse);
     });

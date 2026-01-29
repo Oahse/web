@@ -1,4 +1,4 @@
-from lib.utils.uuid_utils import uuid7
+from core.utils.uuid_utils import uuid7
 from datetime import datetime
 from typing import Any, Dict, Optional
 

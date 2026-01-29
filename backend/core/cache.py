@@ -7,7 +7,7 @@ import json
 import logging
 from typing import Any, Optional, Dict, List, Union
 from datetime import datetime, timedelta
-from lib.config import settings
+from core.config import settings
 import pickle
 import hashlib
 from uuid import UUID

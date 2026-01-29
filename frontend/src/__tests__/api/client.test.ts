@@ -2,12 +2,26 @@
  * Tests for API Client - Comprehensive test suite aligned with backend reality
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { apiClient, TokenManager } from '../../api/client';
-import axios from 'axios';
 
-// Mock axios
-vi.mock('axios');
-const mockedAxios = vi.mocked(axios);
+// Mock axios first before importing anything else
+const mockAxiosInstance = {
+  get: vi.fn(),
+  post: vi.fn(),
+  put: vi.fn(),
+  patch: vi.fn(),
+  delete: vi.fn(),
+  interceptors: {
+    request: { use: vi.fn() },
+    response: { use: vi.fn() }
+  }
+};
+
+vi.mock('axios', () => ({
+  default: {
+    create: vi.fn(() => mockAxiosInstance),
+    isAxiosError: vi.fn()
+  }
+}));
 
 // Mock environment
 vi.mock('../../config/environment', () => ({
@@ -17,6 +31,9 @@ vi.mock('../../config/environment', () => ({
     environment: 'test'
   }
 }));
+
+// Now import the modules after mocking
+import { apiClient, TokenManager } from '../../api/client';
 
 // Mock localStorage and sessionStorage
 const mockLocalStorage = {
@@ -106,22 +123,7 @@ describe('TokenManager', () => {
 });
 
 describe('APIClient', () => {
-  let mockAxiosInstance: any;
-
   beforeEach(() => {
-    mockAxiosInstance = {
-      get: vi.fn(),
-      post: vi.fn(),
-      put: vi.fn(),
-      patch: vi.fn(),
-      delete: vi.fn(),
-      interceptors: {
-        request: { use: vi.fn() },
-        response: { use: vi.fn() }
-      }
-    };
-    
-    mockedAxios.create.mockReturnValue(mockAxiosInstance);
     vi.clearAllMocks();
   });
 

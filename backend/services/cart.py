@@ -8,7 +8,7 @@ from sqlalchemy.orm import selectinload
 from fastapi import HTTPException
 from typing import Optional, Dict, Any, List
 from uuid import UUID
-from lib.utils.uuid_utils import uuid7
+from core.utils.uuid_utils import uuid7
 from decimal import Decimal, ROUND_HALF_UP
 from datetime import datetime
 import logging
@@ -17,7 +17,7 @@ from models.cart import Cart, CartItem
 from models.product import ProductVariant, Product
 from models.user import User
 from services.tax import TaxService
-from lib.config import settings
+from core.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -317,7 +317,7 @@ class CartService:
         
         # Check stock availability
         try:
-            from services.inventories import InventoryService
+            from services.inventory import InventoryService
             inventory_service = InventoryService(self.db)
             stock_info = await inventory_service.get_variant_stock_info(item.variant_id)
             
@@ -423,18 +423,6 @@ class CartService:
             'cart': result.cart,
             'issues': result.issues,
             'summary': result.summary
-        }
-            "subtotal": float(subtotal),
-            "tax_amount": float(tax_amount),
-            "shipping_amount": float(shipping_amount),
-            "total_amount": float(total_amount),
-            "item_count": len(cart.items),
-            "total_items": sum((item.quantity for item in cart.items), 0),
-            "currency": "USD",  # Can be made configurable
-            "created_at": cart.created_at.isoformat() if cart.created_at else None,
-            "updated_at": cart.updated_at.isoformat() if cart.updated_at else None,
-            "country_code": country_code,
-            "province_code": province_code
         }
 
         # Enrich cart items with detailed variant data
