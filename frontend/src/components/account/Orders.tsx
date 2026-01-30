@@ -231,11 +231,11 @@ export const Orders = ({
     );
   }
 
-  return <div className="p-3 space-y-3">
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 gap-2">
+  return <div className="space-y-3">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-3 gap-2">
         
         {orders.length > 0 && (
-          <p className="text-sm text-gray-500 dark:text-gray-400">
+          <p className="text-xs text-gray-600 dark:text-gray-300">
             {totalOrders} order{totalOrders !== 1 ? 's' : ''}
           </p>
         )}
@@ -245,26 +245,26 @@ export const Orders = ({
           {orders.map((order: Order) => <div key={order.id} className="bg-white dark:bg-gray-800 rounded-lg shadow-sm overflow-hidden">
               <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center p-3 cursor-pointer gap-2" onClick={() => toggleOrderExpand(order.id)}>
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">
+                  <p className="text-xs text-gray-600 dark:text-gray-300 mb-1">
                     Order placed
                   </p>
-                  <p className="text-sm font-medium text-gray-900 dark:text-white">
+                  <p className="text-xs font-medium text-gray-900 dark:text-white">
                     {new Date(order.created_at).toLocaleDateString()}
                   </p>
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">
+                  <p className="text-xs text-gray-600 dark:text-gray-300 mb-1">
                     Order ID
                   </p>
-                  <p className="text-sm font-medium text-gray-900 dark:text-white break-all">
+                  <p className="text-xs font-medium text-gray-900 dark:text-white break-all">
                     {order.id}
                   </p>
                 </div>
                 <div className="flex-1 min-w-0 text-right">
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">
+                  <p className="text-xs text-gray-600 dark:text-gray-300 mb-1">
                     Total
                   </p>
-                  <p className="text-sm font-medium text-gray-900 dark:text-white">
+                  <p className="text-xs font-medium text-gray-900 dark:text-white">
                     {formatCurrency(order.total_amount)}
                   </p>
                 </div>

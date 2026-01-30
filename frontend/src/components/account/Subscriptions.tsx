@@ -206,12 +206,12 @@ export const Subscriptions: React.FC<SubscriptionsProps> = ({ mode = 'list', sub
   // List mode - show all subscriptions
   if (mode === 'list') {
     return (
-      <div className="p-4 sm:p-6">
+      <div className="space-y-3">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-3 gap-3">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">My Subscriptions</h1>
-            <p className="text-gray-600 dark:text-gray-400 mt-1">
+            <h1 className="text-base font-medium text-gray-900 dark:text-white">My Subscriptions</h1>
+            <p className="text-xs text-gray-600 dark:text-gray-300 mt-1">
               {subscriptions.length} {subscriptions.length === 1 ? 'subscription' : 'subscriptions'}
             </p>
           </div>
@@ -221,15 +221,15 @@ export const Subscriptions: React.FC<SubscriptionsProps> = ({ mode = 'list', sub
               setShowCreateModal(true);
               setShowProductVariantModal(true);
             }}
-            className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"
+            className="flex items-center gap-2 px-3 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors text-xs"
           >
-            <PlusIcon size={20} />
+            <PlusIcon size={16} />
             New Subscription
           </button>
         </div>
 
         {/* Tabs */}
-        <div className="flex space-x-1 mb-6 bg-gray-100 dark:bg-gray-800 rounded-lg p-1 overflow-x-auto">
+        <div className="flex space-x-1 mb-3 bg-gray-100 dark:bg-gray-800 rounded-lg p-1 overflow-x-auto">
           {[
             { key: 'all', label: 'All', count: subscriptions.length },
             { key: 'active', label: 'Active', count: subscriptions.filter((s: any) => s.status === 'active').length },
@@ -239,7 +239,7 @@ export const Subscriptions: React.FC<SubscriptionsProps> = ({ mode = 'list', sub
             <button
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
-              className={`px-3 sm:px-4 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap ${
+              className={`px-2 sm:px-3 py-1.5 rounded-md text-xs font-medium transition-colors whitespace-nowrap ${
                 activeTab === tab.key
                   ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
                   : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'

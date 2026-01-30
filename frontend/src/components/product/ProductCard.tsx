@@ -58,16 +58,17 @@ import { cn } from '../../utils/utils';
 
 /**
  * @typedef {object} ProductCardProps
- * @property {Product} [product]
+ * @property {Product} product
  * @property {ProductVariant} [selectedVariant]
  * @property {boolean} [showQRCode=false]
  * @property {boolean} [showBarcode=false]
- * @property {'grid' | 'list'} [viewMode='grid']
+ * @property {string} [viewMode='grid']
  * @property {string} [className]
  * @property {boolean} [isLoading=false]
- * @property {'shimmer' | 'pulse' | 'wave'} [animation='shimmer']
+ * @property {string} [animation='shimmer']
  * @property {boolean} [showSubscriptionButton=false]
  * @property {string} [subscriptionId]
+ * @property {boolean} [wishlistMode=false]
  */
 
 export const ProductCard = ({
@@ -81,6 +82,7 @@ export const ProductCard = ({
   animation = 'shimmer',
   showSubscriptionButton = false,
   subscriptionId,
+  wishlistMode = false,
 }) => {
   const { addItem: addToCart, removeItem: removeFromCart, cart } = useCart();
   const { addItem: addToWishlist, removeItem: removeFromWishlist, isInWishlist, defaultWishlist, fetchWishlists } = useWishlist();
@@ -151,6 +153,22 @@ export const ProductCard = ({
 
   const displayImage = getPrimaryImage();
   const { basePrice, salePrice, currentPrice, discountPercentage } = getDisplayPrice();
+  
+  // Debug: Log price data
+  console.log('ProductCard price data:', {
+    productId: product?.id,
+    productName: product?.name,
+    displayVariant: displayVariant,
+    basePrice,
+    salePrice,
+    currentPrice,
+    discountPercentage,
+    hasVariantData: !!displayVariant,
+    variantBasePrice: displayVariant?.base_price,
+    variantSalePrice: displayVariant?.sale_price,
+    productMinPrice: product?.min_price,
+    productMaxPrice: product?.max_price
+  });
 
       const handleAddToCart = async (e) => {
         e.preventDefault();
@@ -278,11 +296,14 @@ export const ProductCard = ({
               if (wishlistItem && defaultWishlist) {
                 // Check if this is a temporary item (optimistic update)
                 if (wishlistItem.id.startsWith('temp-')) {
-                  console.warn('Attempting to remove temporary item, waiting for real data...');
-                  // Refresh wishlist data to get real item IDs
-                  await fetchWishlists();
-                  toast.error('Please try again in a moment...');
-                  return false;
+                  console.warn('Removing temporary item from optimistic update...');
+                  // For temporary items, just remove them from the optimistic state
+                  // The WishlistContext will handle the actual API call
+                  const success = await removeFromWishlist(defaultWishlist.id, wishlistItem.id);
+                  if (success) {
+                    toast.success('Item removed from wishlist');
+                  }
+                  return true;
                 }
                 
                 console.log('Calling removeFromWishlist with:', {
@@ -295,9 +316,7 @@ export const ProductCard = ({
                   toast.success('Item removed from wishlist');
                 }
               } else {
-                console.warn('Wishlist item not found, refreshing wishlist...');
-                // If item not found, refresh wishlist data
-                await fetchWishlists();
+                console.warn('Wishlist item not found');
                 toast.error('Item not found in wishlist. Please try again.');
               }
               return true;
@@ -404,7 +423,18 @@ export const ProductCard = ({
       <div className={cn('flex flex-col flex-grow p-2 sm:p-3', viewMode === 'list' && 'p-0')}>
         <div className="space-y-1">
           <span className="text-xs text-copy-light dark:text-gray-400 line-clamp-1 uppercase tracking-wide">
-            {(safeProduct.category && safeProduct.category.name) ? safeProduct.category.name : 'Uncategorized'}
+            {(() => {
+              const category = (safeProduct.category && safeProduct.category.name) ? safeProduct.category.name : 'Uncategorized';
+              console.log('ProductCard category data:', {
+                productId: safeProduct.id,
+                productName: safeProduct.name,
+                category,
+                hasCategory: !!safeProduct.category,
+                categoryData: safeProduct.category,
+                productKeys: Object.keys(safeProduct)
+              });
+              return category;
+            })()}
           </span>
           <Link to={`/products/${safeProduct.id || ''}`}>
             <h3 className="font-semibold text-xs sm:text-sm text-main dark:text-white hover:text-primary transition-colors line-clamp-2 min-h-[1.5rem] sm:min-h-[2rem]">
@@ -451,7 +481,18 @@ export const ProductCard = ({
               )}
               {displayVariant && (
                 <div className="text-xs text-copy-light dark:text-gray-400">
-                  {displayVariant.name || 'Default Variant'}
+                  {(() => {
+                    const variantName = displayVariant.name || 'Default Variant';
+                    console.log('ProductCard variant data:', {
+                      productId: safeProduct.id,
+                      variantId: displayVariant.id,
+                      variantName,
+                      variantData: displayVariant,
+                      hasVariant: !!displayVariant,
+                      variantKeys: displayVariant ? Object.keys(displayVariant) : []
+                    });
+                    return variantName;
+                  })()}
                 </div>
               )}
             </div>
@@ -488,12 +529,12 @@ export const ProductCard = ({
                 onClick={handleAddToWishlist}
                 className={cn(
                   'flex items-center justify-center px-1.5 py-1.5 rounded-md text-xs font-medium transition-colors',
-                  isInWishlist(product.id, displayVariant?.id)
+                  wishlistMode || isInWishlist(product.id, displayVariant?.id)
                     ? 'bg-red-100 text-red-700 dark:bg-red-800 dark:text-red-100'
                     : 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
                 )}
-                aria-label={isInWishlist(product.id, displayVariant?.id) ? "Remove from wishlist" : "Add to wishlist"}>
-                <HeartIcon size={10} fill={isInWishlist(product.id, displayVariant?.id) ? 'currentColor' : 'none'} />
+                aria-label={wishlistMode || isInWishlist(product.id, displayVariant?.id) ? "Remove from wishlist" : "Add to wishlist"}>
+                <HeartIcon size={10} fill={wishlistMode || isInWishlist(product.id, displayVariant?.id) ? 'currentColor' : 'none'} />
               </button>
             </div>
             
@@ -544,12 +585,12 @@ export const ProductCard = ({
               onClick={handleAddToWishlist}
               className={cn(
                 'flex items-center justify-center px-3 py-2 rounded-md text-sm font-medium transition-colors min-w-[40px]',
-                isInWishlist(product.id, displayVariant?.id)
+                wishlistMode || isInWishlist(product.id, displayVariant?.id)
                   ? 'bg-red-100 text-red-700 dark:bg-red-800 dark:text-red-100 hover:bg-red-200 dark:hover:bg-red-700'
                   : 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
               )}
-              aria-label={isInWishlist(product.id, displayVariant?.id) ? "Remove from wishlist" : "Add to wishlist"}>
-              <HeartIcon size={12} fill={isInWishlist(product.id, displayVariant?.id) ? 'currentColor' : 'none'} />
+              aria-label={wishlistMode || isInWishlist(product.id, displayVariant?.id) ? "Remove from wishlist" : "Add to wishlist"}>
+              <HeartIcon size={12} fill={wishlistMode || isInWishlist(product.id, displayVariant?.id) ? 'currentColor' : 'none'} />
             </button>
             
             {/* Desktop subscription button */}

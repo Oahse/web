@@ -261,34 +261,34 @@ export const PaymentMethods = () => {
         );
       })()}
       
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 mb-6">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-lg font-medium text-main dark:text-white">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-3 mb-3">
+        <div className="flex justify-between items-center mb-3">
+          <h2 className="text-base font-medium text-main dark:text-white">
             Saved Payment Methods
           </h2>
           {/* Button to toggle the add card form */}
           <button 
             onClick={() => setShowAddCardForm(!showAddCardForm)} 
-            className="flex items-center text-primary hover:text-primary-dark"
+            className="flex items-center text-primary hover:text-primary-dark text-xs"
           >
-            <PlusCircle size={18} className="mr-1" />
+            <PlusCircle size={14} className="mr-1" />
             <span>Add New Card</span>
           </button>
         </div>
         {/* Display existing payment methods or a message if none are saved */}
         {localPaymentMethods && localPaymentMethods.length > 0 ? (
-          <div className="space-y-4">
+          <div className="space-y-3">
             {localPaymentMethods.map((method: any) => (
-              <div key={method.id} className={`border rounded-lg p-4 ${method.is_default ? 'border-primary bg-primary/5 dark:bg-primary/10' : 'border-gray-200 dark:border-gray-700'}`}>
+              <div key={method.id} className={`border rounded-lg p-3 ${method.is_default ? 'border-primary bg-primary/5 dark:bg-primary/10' : 'border-gray-200 dark:border-gray-700'}`}>
                 <div className="flex justify-between items-center">
                   <div className="flex items-center">
-                    <span className="mr-3">{getCardIcon(method.brand || method.provider)}</span>
+                    <span className="mr-2">{getCardIcon(method.brand || method.provider)}</span>
                     <div>
-                      <p className="font-medium text-main dark:text-white">
+                      <p className="text-xs font-medium text-main dark:text-white">
                         {method.brand?.charAt(0).toUpperCase() + method.brand?.slice(1) || method.provider?.charAt(0).toUpperCase() + method.provider?.slice(1)}{' '}
                         •••• {method.last_four}
                       </p>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">
+                      <p className="text-xs text-gray-600 dark:text-gray-300">
                         Expires {method.expiry_month}/{method.expiry_year}
                       </p>
                     </div>
@@ -296,22 +296,22 @@ export const PaymentMethods = () => {
                   <div className="flex items-center">
                     {/* Set as default button or default badge */}
                     {method.is_default ? (
-                      <span className="flex items-center text-xs bg-primary/10 text-primary px-2 py-1 rounded mr-3">
-                        <CheckCircle size={14} className="mr-1" /> Default
+                      <span className="flex items-center text-xs bg-primary/10 text-primary px-2 py-1 rounded mr-2">
+                        <CheckCircle size={12} className="mr-1" /> Default
                       </span>
                     ) : (
-                      <button onClick={() => handleSetDefault(method.id)} className="text-sm text-gray-600 hover:text-primary dark:text-gray-400 dark:hover:text-primary mr-3">
+                      <button onClick={() => handleSetDefault(method.id)} className="text-xs text-gray-600 hover:text-primary dark:text-gray-400 dark:hover:text-primary mr-2">
                         Set as default
                       </button>
                     )}
                     {/* Delete button */}
                     <button 
                       onClick={() => handleDeleteCard(method.id)} 
-                      className="text-copy-lighter hover:text-error dark:text-copy-lighter dark:hover:text-error p-1" 
+                      className="text-gray-500 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400 p-1" 
                       disabled={method.is_default}
                       title={method.is_default ? "Cannot delete default payment method" : "Delete payment method"}
                     >
-                      <Trash2 size={18} />
+                      <Trash2 size={14} />
                     </button>
                   </div>
                 </div>
@@ -319,32 +319,32 @@ export const PaymentMethods = () => {
             ))}
           </div>
         ) : (
-          <div className="text-center py-8 border border-dashed border-gray-300 dark:border-gray-700 rounded-lg">
-            <CreditCard size={48} className="mx-auto text-gray-400 mb-3" />
-            <p className="text-gray-500 dark:text-gray-400 mb-3">
+          <div className="text-center py-6 border border-dashed border-gray-300 dark:border-gray-700 rounded-lg">
+            <CreditCard size={36} className="mx-auto text-gray-400 mb-2" />
+            <p className="text-xs text-gray-600 dark:text-gray-300 mb-2">
               No payment methods saved yet
             </p>
-            <button onClick={() => setShowAddCardForm(true)} className="text-primary hover:underline">
+            <button onClick={() => setShowAddCardForm(true)} className="text-primary hover:underline text-xs">
               Add your first payment method
             </button>
           </div>
         )}
         {/* Add Card Form */}
         {showAddCardForm && (
-          <div className="mt-6 border-t border-gray-200 dark:border-gray-700 pt-6">
-            <h3 className="text-lg font-medium text-main dark:text-white mb-4">
+          <div className="mt-3 border-t border-gray-200 dark:border-gray-700 pt-3">
+            <h3 className="text-base font-medium text-main dark:text-white mb-3">
               Add New Payment Method
             </h3>
             <form onSubmit={handleAddCard}>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {/* Card Number Input */}
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Card Number
                   </label>
                   <input
                     type="text"
-                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-1 focus:ring-primary dark:bg-gray-700 dark:text-white"
+                    className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-1 focus:ring-primary dark:bg-gray-700 dark:text-white text-xs"
                     placeholder="1234 5678 9012 3456"
                     value={newCardData.cardNumber}
                     onChange={(e) => {

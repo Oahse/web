@@ -83,8 +83,8 @@ class CartService:
             "tax_amount": pricing_result['tax_amount'],
             "shipping_amount": 0.0,  # Calculated at checkout
             "total_amount": pricing_result['subtotal'] + pricing_result['tax_amount'],
-            "created_at": cart.created_at.isoformat(),
-            "updated_at": cart.updated_at.isoformat(),
+            "created_at": cart.created_at.isoformat() if cart.created_at else None,
+            "updated_at": cart.updated_at.isoformat() if cart.updated_at else None,
             "country_code": country_code,
             "province_code": province_code,
             "item_count": len(cart.items),
@@ -93,53 +93,66 @@ class CartService:
         
         # Add detailed item information
         for item in cart.items:
-            # Get current price (sale_price if available, otherwise base_price)
-            current_price = item.variant.sale_price or item.variant.base_price
-            item_total = current_price * item.quantity
+            try:
+                # Check if variant and product are loaded
+                if not item.variant:
+                    logger.error(f"Cart item {item.id} has no variant loaded")
+                    continue
+                
+                # Get current price (sale_price if available, otherwise base_price)
+                current_price = item.variant.sale_price or item.variant.base_price
+                if current_price is None:
+                    logger.error(f"Variant {item.variant_id} has no price data")
+                    current_price = Decimal('0.00')
+                
+                item_total = current_price * item.quantity
             
-            cart_response["items"].append({
-                "id": str(item.id),
-                "variant_id": str(item.variant_id),
-                "product_id": str(item.product_id),
-                "quantity": item.quantity,
-                "unit_price": float(current_price),
-                "total_price": float(item_total),
-                "added_at": item.created_at.isoformat(),
-                "variant": {
-                    "id": str(item.variant.id),
-                    "name": item.variant.name,
-                    "sku": item.variant.sku,
-                    "base_price": float(item.variant.base_price),
-                    "sale_price": float(item.variant.sale_price) if item.variant.sale_price else None,
-                    "current_price": float(current_price),
-                    "on_sale": item.variant.sale_price is not None,
-                    "discount_percentage": (
-                        round(((item.variant.base_price - item.variant.sale_price) / item.variant.base_price) * 100, 1)
-                        if item.variant.sale_price else 0
-                    ),
-                    "weight": getattr(item.variant, 'weight', 0.0),  # Default weight if not available
-                    "attributes": item.variant.attributes,
-                    "is_active": item.variant.is_active,
-                    "images": [
-                        {
-                            "id": str(img.id),
-                            "url": img.url,
-                            "alt_text": img.alt_text,
-                            "is_primary": img.is_primary
-                        } for img in item.variant.images
-                    ] if item.variant.images else []
-                },
-                "product": {
-                    "id": str(item.product.id),
-                    "name": item.product.name,
-                    "slug": item.product.slug,
-                    "short_description": item.product.short_description,
-                    "category_id": str(item.product.category_id),
-                    "is_featured": item.product.is_featured,
-                    "rating_average": item.product.rating_average,
-                    "availability_status": item.product.availability_status
-                } if item.product else None
-            })
+                cart_response["items"].append({
+                    "id": str(item.id),
+                    "variant_id": str(item.variant_id),
+                    "product_id": str(item.product_id),
+                    "quantity": item.quantity,
+                    "unit_price": float(current_price),
+                    "total_price": float(item_total),
+                    "added_at": item.created_at.isoformat() if item.created_at else None,
+                    "variant": {
+                        "id": str(item.variant.id),
+                        "name": item.variant.name,
+                        "sku": item.variant.sku,
+                        "base_price": float(item.variant.base_price),
+                        "sale_price": float(item.variant.sale_price) if item.variant.sale_price else None,
+                        "current_price": float(current_price),
+                        "on_sale": item.variant.sale_price is not None,
+                        "discount_percentage": (
+                            round(((item.variant.base_price - item.variant.sale_price) / item.variant.base_price) * 100, 1)
+                            if item.variant.sale_price else 0
+                        ),
+                        "weight": getattr(item.variant, 'weight', 0.0),  # Default weight if not available
+                        "attributes": item.variant.attributes,
+                        "is_active": item.variant.is_active,
+                        "images": [
+                            {
+                                "id": str(img.id),
+                                "url": img.url,
+                                "alt_text": img.alt_text,
+                                "is_primary": img.is_primary
+                            } for img in item.variant.images
+                        ] if item.variant.images else []
+                    },
+                    "product": {
+                        "id": str(item.product.id),
+                        "name": item.product.name,
+                        "slug": item.product.slug,
+                        "short_description": item.product.short_description,
+                        "category_id": str(item.product.category_id),
+                        "is_featured": item.product.is_featured,
+                        "rating_average": item.product.rating_average,
+                        "availability_status": item.product.availability_status
+                    } if item.product else None
+                })
+            except Exception as e:
+                logger.error(f"Error processing cart item {item.id}: {e}")
+                continue
         
         return cart_response
 
@@ -158,18 +171,31 @@ class CartService:
         
         # Calculate subtotal from current variant prices
         for item in cart_items:
-            # Always use current price from database (sale_price if available, otherwise base_price)
-            current_price = Decimal(str(item.variant.sale_price or item.variant.base_price))
-            item_total = current_price * Decimal(str(item.quantity))
-            subtotal += item_total
-            
-            item_breakdown.append({
-                'variant_id': str(item.variant_id),
-                'quantity': item.quantity,
-                'unit_price': float(current_price),
-                'total_price': float(item_total),
-                'on_sale': item.variant.sale_price is not None
-            })
+            try:
+                # Check if variant is loaded
+                if not item.variant:
+                    logger.error(f"Cart item {item.id} has no variant loaded in pricing calculation")
+                    continue
+                
+                # Always use current price from database (sale_price if available, otherwise base_price)
+                current_price = Decimal(str(item.variant.sale_price or item.variant.base_price))
+                if current_price is None:
+                    logger.error(f"Variant {item.variant_id} has no price data in pricing calculation")
+                    current_price = Decimal('0.00')
+                
+                item_total = current_price * Decimal(str(item.quantity))
+                subtotal += item_total
+                
+                item_breakdown.append({
+                    'variant_id': str(item.variant_id),
+                    'quantity': item.quantity,
+                    'unit_price': float(current_price),
+                    'total_price': float(item_total),
+                    'on_sale': item.variant.sale_price is not None
+                })
+            except Exception as e:
+                logger.error(f"Error calculating price for cart item {item.id}: {e}")
+                continue
         
         # Calculate tax based on location
         tax_amount = Decimal('0.00')
@@ -455,7 +481,7 @@ class CartService:
                     'name': variant.name,
                     'base_price': float(variant.base_price),
                     'sale_price': float(variant.sale_price) if variant.sale_price else None,
-                    'current_price': float(variant.current_price),
+                    'current_price': float(variant.sale_price or variant.base_price),
                     'discount_percentage': discount_percentage,
                     'stock': variant.stock,
                     'is_active': variant.is_active,
@@ -610,7 +636,7 @@ class CartService:
                 )
             
             existing_item.quantity = new_quantity
-            existing_item.price_per_unit = variant.current_price
+            existing_item.price_per_unit = variant.sale_price or variant.base_price
         else:
             # Add new item
             new_item = CartItem(
@@ -619,7 +645,7 @@ class CartService:
                 product_id=variant.product_id,
                 variant_id=variant_id,
                 quantity=quantity,
-                price_per_unit=variant.current_price
+                price_per_unit=variant.sale_price or variant.base_price
             )
             self.db.add(new_item)
 
@@ -669,7 +695,7 @@ class CartService:
 
         # Update item
         cart_item.quantity = quantity
-        cart_item.price_per_unit = variant.current_price
+        cart_item.price_per_unit = variant.sale_price or variant.base_price
         
         await self.db.commit()
         

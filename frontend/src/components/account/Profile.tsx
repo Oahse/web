@@ -120,20 +120,20 @@ export const Profile = () => {
   }
 
   return (
-    <div className="p-3 space-y-3">
+    <div className="space-y-3">
       
       {/* Profile Header */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4">
-        <div className="flex items-center justify-between mb-4">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-3">
+        <div className="flex items-center justify-between mb-3">
           <div className="flex items-center">
-            <div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center text-primary text-xl font-bold">
+            <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center text-primary text-sm font-bold">
               {user.firstname?.charAt(0) || user.full_name?.charAt(0) || 'U'}
             </div>
             <div className="ml-3">
-              <h2 className="text-lg font-semibold text-main dark:text-white">
+              <h2 className="text-base font-medium text-main dark:text-white">
                 {user.full_name || `${user.firstname} ${user.lastname}`}
               </h2>
-              <p className="text-sm text-copy-light dark:text-gray-400">{user.email}</p>
+              <p className="text-xs text-gray-600 dark:text-gray-300">{user.email}</p>
               <div className="flex items-center mt-1">
                 <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
                   user.verified 
@@ -142,7 +142,7 @@ export const Profile = () => {
                 }`}>
                   {user.verified ? '✓ Verified' : '⚠ Unverified'}
                 </span>
-                <span className="ml-2 text-xs text-copy-light dark:text-gray-400 capitalize">
+                <span className="ml-2 text-xs text-gray-600 dark:text-gray-300 capitalize">
                   {user.role}
                 </span>
               </div>
@@ -160,7 +160,7 @@ export const Profile = () => {
       </div>
 
       {/* Profile Information */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-3">
         <h3 className="text-base font-medium text-main dark:text-white mb-3">
           Personal Information
         </h3>
@@ -170,7 +170,7 @@ export const Profile = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {/* First Name */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
                   First Name *
                 </label>
                 <input
@@ -178,14 +178,14 @@ export const Profile = () => {
                   name="firstname"
                   value={formData.firstname}
                   onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-1 focus:ring-primary dark:bg-gray-700 dark:text-white text-sm"
+                  className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-1 focus:ring-primary dark:bg-gray-700 dark:text-white text-xs"
                   required
                 />
               </div>
 
               {/* Last Name */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Last Name *
                 </label>
                 <input
@@ -193,14 +193,14 @@ export const Profile = () => {
                   name="lastname"
                   value={formData.lastname}
                   onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-1 focus:ring-primary dark:bg-gray-700 dark:text-white text-sm"
+                  className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-1 focus:ring-primary dark:bg-gray-700 dark:text-white text-xs"
                   required
                 />
               </div>
 
               {/* Email */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Email *
                 </label>
                 <input
@@ -208,14 +208,14 @@ export const Profile = () => {
                   name="email"
                   value={formData.email}
                   onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-1 focus:ring-primary dark:bg-gray-700 dark:text-white text-sm"
+                  className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-1 focus:ring-primary dark:bg-gray-700 dark:text-white text-xs"
                   required
                 />
               </div>
 
               {/* Phone */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Phone
                 </label>
                 <input
@@ -223,14 +223,14 @@ export const Profile = () => {
                   name="phone"
                   value={formData.phone}
                   onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-1 focus:ring-primary dark:bg-gray-700 dark:text-white text-sm"
+                  className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-1 focus:ring-primary dark:bg-gray-700 dark:text-white text-xs"
                   placeholder="+1 (555) 123-4567"
                 />
               </div>
 
               {/* Age */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Age
                 </label>
                 <input
@@ -238,7 +238,7 @@ export const Profile = () => {
                   name="age"
                   value={formData.age}
                   onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-1 focus:ring-primary dark:bg-gray-700 dark:text-white text-sm"
+                  className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-1 focus:ring-primary dark:bg-gray-700 dark:text-white text-xs"
                   min="13"
                   max="120"
                 />
@@ -246,14 +246,14 @@ export const Profile = () => {
 
               {/* Gender */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Gender
                 </label>
                 <select
                   name="gender"
                   value={formData.gender}
                   onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-1 focus:ring-primary dark:bg-gray-700 dark:text-white text-sm"
+                  className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-1 focus:ring-primary dark:bg-gray-700 dark:text-white text-xs"
                 >
                   <option value="">Select Gender</option>
                   <option value="Male">Male</option>
@@ -264,7 +264,7 @@ export const Profile = () => {
 
               {/* Country */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Country
                 </label>
                 <input
@@ -272,21 +272,21 @@ export const Profile = () => {
                   name="country"
                   value={formData.country}
                   onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-1 focus:ring-primary dark:bg-gray-700 dark:text-white text-sm"
+                  className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-1 focus:ring-primary dark:bg-gray-700 dark:text-white text-xs"
                   placeholder="United States"
                 />
               </div>
 
               {/* Language */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Language
                 </label>
                 <select
                   name="language"
                   value={formData.language}
                   onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-1 focus:ring-primary dark:bg-gray-700 dark:text-white text-sm"
+                  className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-1 focus:ring-primary dark:bg-gray-700 dark:text-white text-xs"
                 >
                   <option value="en">English</option>
                   <option value="es">Spanish</option>
@@ -299,14 +299,14 @@ export const Profile = () => {
 
               {/* Timezone */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Timezone
                 </label>
                 <select
                   name="timezone"
                   value={formData.timezone}
                   onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-1 focus:ring-primary dark:bg-gray-700 dark:text-white text-sm"
+                  className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-1 focus:ring-primary dark:bg-gray-700 dark:text-white text-xs"
                 >
                   <option value="">Select Timezone</option>
                   <option value="UTC">UTC</option>

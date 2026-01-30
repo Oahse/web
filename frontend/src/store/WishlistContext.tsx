@@ -1,7 +1,8 @@
 import React, { useEffect, useState, createContext, useCallback, useContext, ReactNode } from 'react';
 import { useAuth } from './AuthContext';
+import { ProductsAPI } from '../api/products';
+import { WishlistAPI } from '../api/wishlists';
 import { toast } from 'react-hot-toast';
-import WishlistAPI from '../api/wishlists';
 import { Wishlist } from '../types';
 
 interface WishlistContextType {
@@ -44,8 +45,39 @@ export const WishlistProvider = ({ children }: { children: ReactNode }) => {
       const response = await WishlistAPI.getWishlists(userId);
       // The API client returns the response data directly, which includes success, data, message
       if (response.success) {
-        setWishlists(response.data);
-        setDefaultWishlist(response.data.find((wl: Wishlist) => wl.is_default) || response.data[0]);
+        // Fetch complete product data for each wishlist item
+        const enhancedWishlists = await Promise.all(
+          response.data.map(async (wishlist: Wishlist) => {
+            const enhancedItems = await Promise.all(
+              wishlist.items.map(async (item: any) => {
+                try {
+                  // Fetch complete product data
+                  const productResponse = await fetch(`/products/${item.product_id}`);
+                  if (productResponse.ok) {
+                    const productData = await productResponse.json();
+                    return {
+                      ...item,
+                      product: productData.data || productData,
+                      variant: productData.data?.variants?.find((v: any) => v.id === item.variant_id) || 
+                              productData.data?.variants?.[0] || item.variant
+                    };
+                  }
+                  return item;
+                } catch (error) {
+                  console.error(`Failed to fetch product ${item.product_id}:`, error);
+                  return item;
+                }
+              })
+            );
+            return {
+              ...wishlist,
+              items: enhancedItems
+            };
+          })
+        );
+        
+        setWishlists(enhancedWishlists);
+        setDefaultWishlist(enhancedWishlists.find((wl: Wishlist) => wl.is_default) || enhancedWishlists[0]);
         setError(null);
       } else {
         const errorMsg = response.message || 'Failed to load wishlists.';
@@ -151,19 +183,21 @@ export const WishlistProvider = ({ children }: { children: ReactNode }) => {
 
       if (response.success) {
         toast.success('Item added to wishlist!');
-        // Fetch fresh data to get the real item with all details
-        await fetchWishlists();
+        // Don't fetch immediately - let optimistic update handle UI
+        // Background refresh will happen naturally on next page load or user action
         return true;
       } else {
-        // Revert optimistic update on error
+        // Revert optimistic update on error and fetch fresh data
         setDefaultWishlist(previousWishlist);
+        fetchWishlists();
         console.error('Failed to add item to wishlist:', response.message);
         toast.error(response.message || 'Failed to add item to wishlist.');
         return false;
       }
     } catch (error) {
-      // Revert optimistic update on error
+      // Revert optimistic update on error and fetch fresh data
       setDefaultWishlist(previousWishlist);
+      fetchWishlists();
       console.error('Failed to add item to wishlist:', error);
       toast.error('Failed to add item to wishlist.');
       return false;
@@ -178,10 +212,15 @@ export const WishlistProvider = ({ children }: { children: ReactNode }) => {
 
     // Check if this is a temporary item (from optimistic update)
     if (itemId.startsWith('temp-')) {
-      console.warn('Cannot remove temporary item, waiting for real data...');
-      // Refresh data to get real item IDs
-      await fetchWishlists();
-      return false;
+      console.log('Removing temporary item from optimistic update');
+      // For temporary items, just remove them from the optimistic state
+      // No need to call the API since they don't exist on the backend yet
+      setDefaultWishlist(prev => prev ? {
+        ...prev,
+        items: prev.items.filter(item => item.id !== itemId),
+      } : undefined);
+      toast.success('Item removed from wishlist!');
+      return true;
     }
 
     const userId = (user as any).id;
@@ -197,19 +236,21 @@ export const WishlistProvider = ({ children }: { children: ReactNode }) => {
       const response = await WishlistAPI.removeItemFromWishlist(userId, wishlistId, itemId);
       if (response.success) {
         toast.success('Item removed from wishlist!');
-        // Fetch fresh data to ensure consistency
-        fetchWishlists();
+        // Don't fetch immediately - let optimistic update handle UI
+        // Background refresh will happen naturally on next page load or user action
         return true;
       } else {
-        // Revert optimistic update on error
+        // Revert optimistic update on error and fetch fresh data
         setDefaultWishlist(previousWishlist);
+        fetchWishlists();
         console.error('Failed to remove item from wishlist:', response.message);
         toast.error(response.message || 'Failed to remove item from wishlist.');
         return false;
       }
     } catch (error) {
-      // Revert optimistic update on error
+      // Revert optimistic update on error and fetch fresh data
       setDefaultWishlist(previousWishlist);
+      fetchWishlists();
       console.error('Failed to remove item from wishlist:', error);
       toast.error('Failed to remove item from wishlist.');
       return false;

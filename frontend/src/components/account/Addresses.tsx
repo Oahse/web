@@ -197,34 +197,34 @@ export const Addresses = () => {
         {localAddresses && localAddresses.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {localAddresses.map((address: any) => (
-              <div key={address.id} className={`border rounded-lg p-4 border-gray-200 dark:border-gray-700'`}>
+              <div key={address.id} className={`border rounded-lg p-3 border-gray-200 dark:border-gray-700'}`}>
                 <div className="flex justify-between mb-2">
                   <div className="flex items-center">
                     <span className="mr-1">
                       {getAddressTypeIcon(address.kind)}
                     </span>
-                    <span className="font-medium text-main dark:text-white capitalize">
+                    <span className="text-xs font-medium text-main dark:text-white capitalize">
                       {address.kind}
                     </span>
                   </div>
                 </div>
-                <p className="text-gray-600 dark:text-gray-300 text-sm">
+                <p className="text-gray-600 dark:text-gray-300 text-xs">
                   {address.street}
                 </p>
-                <p className="text-gray-600 dark:text-gray-300 text-sm">
+                <p className="text-gray-600 dark:text-gray-300 text-xs">
                   {address.city}, {address.state} {address.post_code}
                 </p>
-                <p className="text-gray-600 dark:text-gray-300 text-sm">
+                <p className="text-gray-600 dark:text-gray-300 text-xs">
                   {address.country}
                 </p>
-                <div className="flex mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
+                <div className="flex mt-3 pt-3 border-t border-gray-100 dark:border-gray-700">
                   {/* Edit and Delete buttons for each address */}
-                  <button onClick={() => handleEditAddress(address)} className="flex items-center text-sm text-gray-600 hover:text-primary dark:text-gray-300 mr-4">
-                    <PencilIcon size={14} className="mr-1" />
+                  <button onClick={() => handleEditAddress(address)} className="flex items-center text-xs text-gray-600 hover:text-primary dark:text-gray-300 mr-3">
+                    <PencilIcon size={12} className="mr-1" />
                     Edit
                   </button>
-                  <button onClick={() => handleDeleteAddress(address.id)} className="flex items-center text-sm text-copy-light hover:text-error dark:text-copy-lighter mr-4">
-                    <TrashIcon size={14} className="mr-1" />
+                  <button onClick={() => handleDeleteAddress(address.id)} className="flex items-center text-xs text-gray-500 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400 mr-3">
+                    <TrashIcon size={12} className="mr-1" />
                     Delete
                   </button>
                 </div>
@@ -232,20 +232,20 @@ export const Addresses = () => {
             ))}
           </div>
         ) : (
-          <div className="text-center py-8 border border-dashed border-gray-300 dark:border-gray-700 rounded-lg">
-            <MapPinIcon size={48} className="mx-auto text-gray-400 mb-3" />
-            <p className="text-gray-500 dark:text-gray-400 mb-3">
+          <div className="text-center py-6 border border-dashed border-gray-300 dark:border-gray-700 rounded-lg">
+            <MapPinIcon size={36} className="mx-auto text-gray-400 mb-2" />
+            <p className="text-xs text-gray-600 dark:text-gray-300 mb-2">
               No addresses saved yet
             </p>
-            <button onClick={() => setShowAddressForm(true)} className="text-primary hover:underline">
+            <button onClick={() => setShowAddressForm(true)} className="text-primary hover:underline text-xs">
               Add your first address
             </button>
           </div>
         )}
         {/* Add/Edit Address Form */}
         {showAddressForm && (
-          <div className="mt-6 border-t border-gray-200 dark:border-gray-700 pt-6">
-            <h3 className="text-lg font-medium text-main dark:text-white mb-4">
+          <div className="mt-3 border-t border-gray-200 dark:border-gray-700 pt-3">
+            <h3 className="text-base font-medium text-main dark:text-white mb-3">
               {editingAddressId ? 'Edit Address' : 'Add New Address'}
             </h3>
             <form onSubmit={handleAddressSubmit}>

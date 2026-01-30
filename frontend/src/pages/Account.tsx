@@ -19,7 +19,7 @@ const Orders = lazy(() => import('../components/account/Orders'));
 const OrderDetail = lazy(() => import('../components/account/OrderDetail'));
 const TrackOrder = lazy(() => import('../components/account/TrackOrder'));
 const ShipmentTracking = lazy(() => import('../components/shipping/ShipmentTracking'));
-const Wishlist = lazy(() => import('../pages/Wishlist'));
+const Wishlist = lazy(() => import('../components/account/Wishlist'));
 const WishlistEdit = lazy(() => import('../pages/WishlistEdit'));
 const Addresses = lazy(() => import('../components/account/Addresses'));
 const MySubscriptions = lazy(() => import('../components/account/MySubscriptions').then(module => ({ default: module.MySubscriptions })));
