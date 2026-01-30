@@ -5,10 +5,15 @@ import {
   PlusIcon, 
   PackageIcon,
   ChevronLeftIcon,
-  ChevronRightIcon
+  ChevronRightIcon,
+  XIcon,
+  SearchIcon
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { SubscriptionCard } from '../subscription/SubscriptionCard';
+import { ConfirmationModal } from '../ui/ConfirmationModal';
+import ProductsAPI from '../../api/products';
+import { Product } from '../../types';
 
 export const MySubscriptions = () => {
   const { 
@@ -30,11 +35,41 @@ export const MySubscriptions = () => {
   const [showCreateModal, setShowCreateModal] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [currentPage, setCurrentPage] = useState<number>(1);
+  const [newSubscriptionData, setNewSubscriptionData] = useState({
+    plan_id: 'basic',
+    billing_cycle: 'monthly',
+    delivery_type: 'standard',
+    auto_renew: true
+  });
+  const [availableProducts, setAvailableProducts] = useState<Product[]>([]);
+  const [selectedProducts, setSelectedProducts] = useState<Set<string>>(new Set());
+  const [productSearchQuery, setProductSearchQuery] = useState<string>('');
   const itemsPerPage = 6;
 
   useEffect(() => {
     refreshSubscriptions();
   }, [refreshSubscriptions]);
+
+  useEffect(() => {
+    if (showCreateModal) {
+      loadProducts();
+    }
+  }, [showCreateModal]);
+
+  const loadProducts = async () => {
+    try {
+      const response = await ProductsAPI.getProducts({ 
+        q: productSearchQuery,
+        page: 1,
+        limit: 20 
+      });
+      const products = response.data?.data || response.data || [];
+      setAvailableProducts(Array.isArray(products) ? products : []);
+    } catch (error) {
+      console.error('Failed to load products:', error);
+      setAvailableProducts([]);
+    }
+  };
 
   const filteredSubscriptions = subscriptions.filter((sub: any) => {
     if (activeTab === 'all') return true;
@@ -222,6 +257,213 @@ export const MySubscriptions = () => {
             </button>
           </div>
         </>
+      )}
+
+      {/* Create Subscription Modal */}
+      {showCreateModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-base font-medium text-main dark:text-white">
+                  Create New Subscription
+                </h2>
+                <button
+                  onClick={() => {
+                    setShowCreateModal(false);
+                    setSelectedProducts(new Set());
+                  }}
+                  className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                >
+                  <XIcon size={20} />
+                </button>
+              </div>
+
+              <div className="space-y-6">
+                {/* Subscription Settings */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Subscription Plan
+                    </label>
+                    <select
+                      value={newSubscriptionData.plan_id}
+                      onChange={(e) => setNewSubscriptionData({...newSubscriptionData, plan_id: e.target.value})}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-xs"
+                    >
+                      <option value="basic">Basic Plan</option>
+                      <option value="premium">Premium Plan</option>
+                      <option value="enterprise">Enterprise Plan</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Billing Cycle
+                    </label>
+                    <select
+                      value={newSubscriptionData.billing_cycle}
+                      onChange={(e) => setNewSubscriptionData({...newSubscriptionData, billing_cycle: e.target.value})}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-xs"
+                    >
+                      <option value="weekly">Weekly</option>
+                      <option value="monthly">Monthly</option>
+                      <option value="yearly">Yearly</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Delivery Type
+                    </label>
+                    <select
+                      value={newSubscriptionData.delivery_type}
+                      onChange={(e) => setNewSubscriptionData({...newSubscriptionData, delivery_type: e.target.value})}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-xs"
+                    >
+                      <option value="standard">Standard Delivery</option>
+                      <option value="express">Express Delivery</option>
+                      <option value="overnight">Overnight Delivery</option>
+                    </select>
+                  </div>
+
+                  <div className="flex items-center">
+                    <input
+                      type="checkbox"
+                      id="auto_renew"
+                      checked={newSubscriptionData.auto_renew}
+                      onChange={(e) => setNewSubscriptionData({...newSubscriptionData, auto_renew: e.target.checked})}
+                      className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
+                    />
+                    <label htmlFor="auto_renew" className="ml-2 block text-xs text-gray-700 dark:text-gray-300">
+                      Enable auto-renewal
+                    </label>
+                  </div>
+                </div>
+
+                {/* Product Selection */}
+                <div>
+                  <div className="flex justify-between items-center mb-3">
+                    <label className="block text-xs font-medium text-gray-700 dark:text-gray-300">
+                      Select Products ({selectedProducts.size} selected)
+                    </label>
+                    <div className="relative">
+                      <SearchIcon size={16} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                      <input
+                        type="text"
+                        value={productSearchQuery}
+                        onChange={(e) => {
+                          setProductSearchQuery(e.target.value);
+                          loadProducts();
+                        }}
+                        placeholder="Search products..."
+                        className="pl-9 pr-3 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white w-48"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="border border-gray-200 dark:border-gray-600 rounded-lg max-h-60 overflow-y-auto">
+                    {availableProducts.length === 0 ? (
+                      <div className="text-center py-8">
+                        <PackageIcon size={32} className="text-gray-400 mx-auto mb-2" />
+                        <p className="text-xs text-gray-500">No products found</p>
+                      </div>
+                    ) : (
+                      <div className="divide-y divide-gray-200 dark:divide-gray-600">
+                        {availableProducts.map((product) => (
+                          <div key={product.id} className="p-3">
+                            <label className="flex items-center space-x-3 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 p-2 rounded">
+                              <input
+                                type="checkbox"
+                                checked={selectedProducts.has(product.id)}
+                                onChange={(e) => {
+                                  const newSelected = new Set(selectedProducts);
+                                  if (e.target.checked) {
+                                    newSelected.add(product.id);
+                                  } else {
+                                    newSelected.delete(product.id);
+                                  }
+                                  setSelectedProducts(newSelected);
+                                }}
+                                className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
+                              />
+                              <div className="flex-1 min-w-0">
+                                <p className="text-xs font-medium text-gray-900 dark:text-white truncate">
+                                  {product.name}
+                                </p>
+                                <p className="text-xs text-gray-500">
+                                  {product.price ? `$${product.price}` : 'Price not available'}
+                                </p>
+                              </div>
+                            </label>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-end space-x-3 mt-6">
+                <button
+                  onClick={() => {
+                    setShowCreateModal(false);
+                    setSelectedProducts(new Set());
+                    setNewSubscriptionData({
+                      plan_id: 'basic',
+                      billing_cycle: 'monthly',
+                      delivery_type: 'standard',
+                      auto_renew: true
+                    });
+                  }}
+                  className="px-4 py-2 text-xs font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={async () => {
+                    if (selectedProducts.size === 0) {
+                      toast.error('Please select at least one product');
+                      return;
+                    }
+
+                    setIsLoading(true);
+                    try {
+                      const subscriptionData = {
+                        ...newSubscriptionData,
+                        currency: currency,
+                        product_variant_ids: Array.from(selectedProducts)
+                      };
+
+                      const result = await createSubscription(subscriptionData);
+                      if (result) {
+                        setShowCreateModal(false);
+                        setSelectedProducts(new Set());
+                        setNewSubscriptionData({
+                          plan_id: 'basic',
+                          billing_cycle: 'monthly',
+                          delivery_type: 'standard',
+                          auto_renew: true
+                        });
+                        setCurrentPage(1);
+                        toast.success('Subscription created successfully!');
+                      }
+                    } catch (error) {
+                      console.error('Failed to create subscription:', error);
+                      toast.error('Failed to create subscription');
+                    } finally {
+                      setIsLoading(false);
+                    }
+                  }}
+                  disabled={isLoading || selectedProducts.size === 0}
+                  className="px-4 py-2 text-xs font-medium text-white bg-primary hover:bg-primary-dark rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isLoading ? 'Creating...' : `Create Subscription (${selectedProducts.size} products)`}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
