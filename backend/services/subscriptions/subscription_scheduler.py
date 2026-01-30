@@ -118,7 +118,7 @@ class SubscriptionSchedulerService:
                 source=OrderSource.API,
                 subtotal=updated_cost["subtotal"],
                 tax_amount=updated_cost["tax_amount"],
-                shipping_amount=updated_cost["delivery_cost"],
+                shipping_cost=updated_cost["delivery_cost"],
                 discount_amount=updated_cost.get("loyalty_discount", 0.0),
                 total_amount=updated_cost["total_amount"],
                 currency=subscription.currency or "USD",

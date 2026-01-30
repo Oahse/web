@@ -82,8 +82,8 @@ export const ProductCard = ({
   showSubscriptionButton = false,
   subscriptionId,
 }) => {
-  const { addItem: addToCart, cart } = useCart();
-  const { addItem: addToWishlist, isInWishlist } = useWishlist();
+  const { addItem: addToCart, removeItem: removeFromCart, cart } = useCart();
+  const { addItem: addToWishlist, removeItem: removeFromWishlist, isInWishlist, defaultWishlist, fetchWishlists } = useWishlist();
   const { executeWithAuth } = useAuth();
   const { isAuthenticated, hasActiveSubscriptions } = useSubscriptionAction();
   const { formatCurrency } = useLocale();
@@ -102,6 +102,10 @@ export const ProductCard = ({
   // Get the display variant (selected variant or first variant or fallback to product)
   const displayVariant = selectedVariant || (product.variants && Array.isArray(product.variants) && product.variants.length > 0 ? product.variants[0] : null);
 
+  // Ensure we have valid product data
+  const safeProduct = product || {};
+  const safeVariant = displayVariant || {};
+
   const isInCart = cart?.items?.some(item => item.variant?.id === displayVariant?.id) || false;
 
   // Get the primary image from variant or fallback to product image
@@ -110,28 +114,38 @@ export const ProductCard = ({
       const primaryImage = displayVariant.images.find(img => img.is_primary);
       return primaryImage?.url || displayVariant.images[0]?.url;
     }
-    return product.image;
+    if (safeProduct.images && Array.isArray(safeProduct.images) && safeProduct.images.length > 0) {
+      const primaryImage = safeProduct.images.find(img => img.is_primary);
+      return primaryImage?.url || safeProduct.images[0]?.url;
+    }
+    // Use a simple SVG placeholder instead of image file
+    return 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDIwMCAyMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3QgeD0iNTAiIHk9IjUwIiB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgcng9IiM5ZjVmNjYiIGZpbGw9IiNmZjdmNjYiIHJ4PSI1IiByeT0iNSIvPjxwZyBmaWxsPSIjkwOTA5YSIgc3Ryb2tlLWRhc2hlcnJheSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiBzdHJva2UtbWl0ZXJsaW1pdD0iMiIvPjxwZyBmaWxsPSIjZmZmIiBkPSJNNTAgMTAwaDh2bS0xMCAxMGgtMTAgMTAtMTB6Ii8+PC9zdmc+';
   };
 
   // Get the display price (variant price or product price)
   const getDisplayPrice = () => {
     if (displayVariant) {
+      const basePrice = Number(displayVariant.base_price) || 0;
+      const salePrice = displayVariant.sale_price ? Number(displayVariant.sale_price) : null;
+      const currentPrice = salePrice || basePrice;
       return {
-        basePrice: displayVariant.base_price,
-        salePrice: displayVariant.sale_price || null,
-        currentPrice: displayVariant.sale_price || displayVariant.base_price,
-        discountPercentage: displayVariant.sale_price 
-          ? Math.round(((displayVariant.base_price - displayVariant.sale_price) / displayVariant.base_price) * 100)
+        basePrice,
+        salePrice,
+        currentPrice,
+        discountPercentage: salePrice && basePrice > salePrice
+          ? Math.round(((basePrice - salePrice) / basePrice) * 100)
           : 0
       };
     }
+    // Use product price range when no variant
+    const minPrice = Number(safeProduct.min_price) || Number(safeProduct.price) || 0;
+    const maxPrice = Number(safeProduct.max_price) || minPrice;
+    const currentPrice = minPrice; // Use min price as display price
     return {
-      basePrice: product.price,
-      salePrice: product.discountPrice,
-      currentPrice: product.discountPrice || product.price,
-      discountPercentage: product.discountPrice 
-        ? Math.round(((product.price - product.discountPrice) / product.price) * 100)
-        : 0
+      basePrice: maxPrice,
+      salePrice: null,
+      currentPrice,
+      discountPercentage: 0
     };
   };
 
@@ -161,20 +175,34 @@ export const ProductCard = ({
         }
     
         if (isInCart) {
-          toast.success('This item is already in your cart.');
+          // Remove from cart
+          try {
+            await executeWithAuth(async () => {
+              // Find the cart item with this variant
+              const cartItem = cart?.items?.find(item => item.variant?.id === displayVariant?.id);
+              if (cartItem) {
+                await removeFromCart(cartItem.id);
+                toast.success('Item removed from cart');
+              }
+              return true;
+            }, 'cart');
+          } catch (error) {
+            console.error('Remove from cart error:', error);
+            toast.error(error?.message || 'Failed to remove item from cart. Please try again.');
+          }
         } else {
           try {
             await executeWithAuth(async () => {
-              console.log('Adding to cart:', {
+              const payload = {
                 variant_id: String(displayVariant.id),
                 quantity: 1,
-                product_name: product.name
-              });
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+              };
               
-              const success = await addToCart({
-                variant_id: String(displayVariant.id),
-                quantity: 1,
-              });
+              console.log('Adding to cart:', payload);
+              
+              const success = await addToCart(payload);
               
               if (success) {
                 toast.success('Item added to cart!');
@@ -228,7 +256,56 @@ export const ProductCard = ({
         const isProductInWishlist = isInWishlist(product.id, displayVariant?.id);
     
         if (isProductInWishlist) {
-          toast.success('This item is already in your wishlist.');
+          // Remove from wishlist
+          try {
+            await executeWithAuth(async () => {
+              // Debug: Log current state
+              console.log('Removing from wishlist:', {
+                productId: product.id,
+                variantId: displayVariant?.id,
+                defaultWishlistId: defaultWishlist?.id,
+                wishlistItems: defaultWishlist?.items?.length
+              });
+              
+              // Find the wishlist item
+              const wishlistItem = defaultWishlist?.items?.find(
+                item => item.product_id === product.id && 
+                       (!displayVariant?.id || item.variant_id === displayVariant?.id)
+              );
+              
+              console.log('Found wishlist item:', wishlistItem);
+              
+              if (wishlistItem && defaultWishlist) {
+                // Check if this is a temporary item (optimistic update)
+                if (wishlistItem.id.startsWith('temp-')) {
+                  console.warn('Attempting to remove temporary item, waiting for real data...');
+                  // Refresh wishlist data to get real item IDs
+                  await fetchWishlists();
+                  toast.error('Please try again in a moment...');
+                  return false;
+                }
+                
+                console.log('Calling removeFromWishlist with:', {
+                  wishlistId: defaultWishlist.id,
+                  itemId: wishlistItem.id
+                });
+                
+                const success = await removeFromWishlist(defaultWishlist.id, wishlistItem.id);
+                if (success) {
+                  toast.success('Item removed from wishlist');
+                }
+              } else {
+                console.warn('Wishlist item not found, refreshing wishlist...');
+                // If item not found, refresh wishlist data
+                await fetchWishlists();
+                toast.error('Item not found in wishlist. Please try again.');
+              }
+              return true;
+            }, 'wishlist');
+          } catch (error) {
+            console.error('Remove from wishlist error:', error);
+            toast.error(error?.message || 'Failed to remove item from wishlist. Please try again.');
+          }
         } else {
           await executeWithAuth(async () => {
             await addToWishlist(product.id, displayVariant?.id);
@@ -240,21 +317,22 @@ export const ProductCard = ({
   return (
     <motion.div
       className={cn(
-        'bg-surface rounded-lg overflow-hidden shadow-sm border border-border-light transition-shadow hover:shadow-md group text-copy',
-        viewMode === 'list' && 'flex flex-col md:flex-row items-center p-4',
-        className
+        'bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 transition-all duration-200 hover:shadow-lg hover:-translate-y-1 group text-copy',
+        'flex flex-col h-full',
+        viewMode === 'list' && 'flex-row items-center p-4',
+        'w-full'
       )}
       whileHover={{ y: -5 }}
       transition={{ duration: 0.2 }}>
-      <div className={cn('relative', viewMode === 'list' && 'w-full md:w-1/3 flex-shrink-0 mb-4 md:mb-0 md:mr-4')}>
+      <div className={cn('relative flex-shrink-0', viewMode === 'list' && 'w-48 h-48 mr-4')}>
         <Link to={`/products/${product.id}`}>
           <img
             src={displayImage}
             alt={displayVariant ? `${product.name} - ${displayVariant.name}` : product.name}
             className={cn(
               'w-full object-cover group-hover:scale-105 transition-transform duration-300',
-              viewMode === 'grid' && 'h-40 sm:h-48', // Adjusted height
-              viewMode === 'list' && 'h-40 md:h-32 rounded-md'
+              viewMode === 'grid' && 'h-32 sm:h-36 md:h-40',
+              viewMode === 'list' && 'h-32 w-32 rounded-lg'
             )}
           />
         </Link>
@@ -323,85 +401,109 @@ export const ProductCard = ({
           </div>
         </div>
       </div>
-      <div className={cn('p-3 sm:p-4', viewMode === 'list' && 'flex-grow')}>
-        <span className="text-xs text-copy-lighter">{product.category}</span>
-        <Link to={`/products/${product.id}`}>
-          <h3 className="font-medium text-sm sm:text-base text-copy hover:text-primary transition-colors mb-1 line-clamp-2 h-10 sm:h-12">
-            {product.name}
-          </h3>
-        </Link>
-        <div className="flex items-center mb-2">
-          <div className="flex text-yellow-400 text-xs">
-            {'★'.repeat(Math.floor(product.rating))}
-            {'☆'.repeat(5 - Math.floor(product.rating))}
+      <div className={cn('flex flex-col flex-grow p-2 sm:p-3', viewMode === 'list' && 'p-0')}>
+        <div className="space-y-1">
+          <span className="text-xs text-copy-light dark:text-gray-400 line-clamp-1 uppercase tracking-wide">
+            {(safeProduct.category && safeProduct.category.name) ? safeProduct.category.name : 'Uncategorized'}
+          </span>
+          <Link to={`/products/${safeProduct.id || ''}`}>
+            <h3 className="font-semibold text-xs sm:text-sm text-main dark:text-white hover:text-primary transition-colors line-clamp-2 min-h-[1.5rem] sm:min-h-[2rem]">
+              {safeProduct.name || 'Unknown Product'}
+            </h3>
+          </Link>
+          <div className="flex items-center space-x-1">
+            <div className="flex text-yellow-400 text-xs">
+              {'★'.repeat(Math.floor(Number(safeProduct.rating_average) || Number(safeProduct.average_rating) || Number(safeProduct.rating) || 0))}
+              {'☆'.repeat(5 - Math.floor(Number(safeProduct.rating_average) || Number(safeProduct.average_rating) || Number(safeProduct.rating) || 0))}
+            </div>
+            <span className="text-xs text-copy-light dark:text-gray-400">({Number(safeProduct.rating_count) || Number(safeProduct.review_count) || 0})</span>
           </div>
-          <span className="text-xs text-copy-lighter ml-1">({product.reviewCount})</span>
         </div>
-        <div className={cn('flex items-center justify-between', viewMode === 'list' && 'flex-grow md:flex-row-reverse md:justify-start md:space-x-4 md:space-x-reverse')}>
-          <div>
-            {salePrice && discountPercentage > 0 ? (
-              <div className="flex items-center flex-wrap">
-                <span className="font-bold text-primary mr-2 text-sm sm:text-base">
+        
+        {/* Subscription Icon - Show above buttons for users with active subscriptions */}
+        {isAuthenticated && hasActiveSubscriptions && (
+          <div className="flex justify-center pt-2 pb-1">
+            <div className="inline-flex items-center justify-center w-8 h-8 bg-green-100 dark:bg-green-900 rounded-full hover:bg-green-200 dark:hover:bg-green-800 transition-colors cursor-pointer group">
+              <CalendarIcon size={16} className="text-green-600 dark:text-green-300 group-hover:scale-110 transition-transform" />
+            </div>
+          </div>
+        )}
+        
+        <div className="mt-auto pt-1.5 sm:pt-2 space-y-1.5 sm:space-y-2">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
+            <div className="space-y-0.5">
+              {salePrice && discountPercentage > 0 ? (
+                <div className="flex items-center flex-wrap gap-1">
+                  <span className="font-bold text-sm sm:text-base text-primary">
+                    {formatCurrency(currentPrice)}
+                  </span>
+                  <span className="text-xs text-copy-light dark:text-gray-400 line-through">
+                    {formatCurrency(basePrice)}
+                  </span>
+                  <span className="bg-red-500 text-white text-xs font-bold px-1 py-0.5 rounded-full">
+                    -{discountPercentage}%
+                  </span>
+                </div>
+              ) : (
+                <span className="font-bold text-sm sm:text-base text-primary">
                   {formatCurrency(currentPrice)}
                 </span>
-                <span className="text-xs text-copy-lighter line-through">
-                  {formatCurrency(basePrice)}
-                </span>
-                <span className="bg-error text-white text-xs font-medium px-2 py-1 rounded-full ml-2">
-                  -{discountPercentage}%
-                </span>
-              </div>
-            ) : (
-              <span className="font-bold text-primary text-sm sm:text-base">
-                {formatCurrency(currentPrice)}
-              </span>
-            )}
-            {displayVariant && (
-              <div className="text-xs text-copy-lighter mt-1">
-                {displayVariant.name}
-              </div>
-            )}
+              )}
+              {displayVariant && (
+                <div className="text-xs text-copy-light dark:text-gray-400">
+                  {displayVariant.name || 'Default Variant'}
+                </div>
+              )}
+            </div>
           </div>
           
-          {/* Mobile buttons (visible on mobile only) */}
-          <div className={cn(
-            'flex items-center gap-1.5 sm:gap-2',
-            viewMode === 'grid' && 'sm:hidden',
-            viewMode === 'list' && 'md:hidden'
-          )}>
-            <button
-              onClick={handleAddToCart}
-              disabled={displayVariant?.stock === 0}
-              className={cn(
-                'flex items-center justify-center px-2 py-1.5 rounded-md text-xs font-medium transition-colors min-w-[60px]',
-                displayVariant?.stock === 0 
-                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                  : isInCart
-                    ? 'bg-green-600 text-white'
-                    : 'bg-primary text-white hover:bg-primary-dark'
-              )}
-              aria-label={isInCart ? "In cart" : "Add to cart"}>
-              {isInCart ? (
-                <>
-                  <CheckIcon size={14} />
-                  <span className="ml-1 hidden xs:inline">Added</span>
-                </>
-              ) : (
-                <>
-                  <ShoppingCartIcon size={14} />
-                  <span className="ml-1 hidden xs:inline">Add</span>
-                </>
-              )}
-            </button>
+          {/* Mobile buttons - optimized for smaller cards */}
+          <div className="flex flex-col gap-1 sm:hidden">
+            <div className="grid grid-cols-2 gap-1">
+              <button
+                onClick={handleAddToCart}
+                disabled={(displayVariant?.stock ?? displayVariant?.inventory_quantity_available ?? 0) === 0}
+                className={cn(
+                  'flex items-center justify-center px-1.5 py-1.5 rounded-md text-xs font-medium transition-colors',
+                  (displayVariant?.stock ?? displayVariant?.inventory_quantity_available ?? 0) === 0 
+                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                    : isInCart
+                      ? 'bg-green-600 text-white'
+                      : 'bg-primary text-white hover:bg-primary-dark'
+                )}
+                aria-label={isInCart ? "In cart" : "Add to cart"}>
+                {isInCart ? (
+                  <>
+                    <CheckIcon size={10} />
+                  </>
+                ) : (
+                  <>
+                    <ShoppingCartIcon size={10} />
+                  </>
+                )}
+              </button>
+              
+              {/* Mobile wishlist button */}
+              <button
+                onClick={handleAddToWishlist}
+                className={cn(
+                  'flex items-center justify-center px-1.5 py-1.5 rounded-md text-xs font-medium transition-colors',
+                  isInWishlist(product.id, displayVariant?.id)
+                    ? 'bg-red-100 text-red-700 dark:bg-red-800 dark:text-red-100'
+                    : 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                )}
+                aria-label={isInWishlist(product.id, displayVariant?.id) ? "Remove from wishlist" : "Add to wishlist"}>
+                <HeartIcon size={10} fill={isInWishlist(product.id, displayVariant?.id) ? 'currentColor' : 'none'} />
+              </button>
+            </div>
             
-            {/* Mobile subscription button */}
+            {/* Mobile subscription button - full width */}
             {isAuthenticated && hasActiveSubscriptions && (
               <button
                 onClick={handleAddToSubscription}
-                className="flex items-center justify-center bg-green-600 hover:bg-green-700 text-white px-2 py-1.5 rounded-md text-xs font-medium transition-colors min-w-[50px]"
+                className="flex items-center justify-center bg-green-600 hover:bg-green-700 text-white px-1.5 py-1.5 rounded-md text-xs font-medium transition-colors"
                 aria-label="Subscribe">
-                <CalendarIcon size={14} />
-                <span className="ml-1 hidden xs:inline">Sub</span>
+                <CalendarIcon size={10} />
               </button>
             )}
           </div>
@@ -409,15 +511,15 @@ export const ProductCard = ({
           {/* Desktop buttons (hidden on mobile) */}
           <div className={cn(
             'hidden items-center gap-2',
-            viewMode === 'grid' && 'sm:flex',
+            'sm:flex',
             viewMode === 'list' && 'md:flex md:order-1'
           )}>
             <button
               onClick={handleAddToCart}
-              disabled={displayVariant?.stock === 0}
+              disabled={(displayVariant?.stock ?? displayVariant?.inventory_quantity_available ?? 0) === 0}
               className={cn(
-                'flex items-center justify-center px-4 py-2.5 rounded-md text-sm font-medium transition-colors min-w-[120px] whitespace-nowrap',
-                displayVariant?.stock === 0 
+                'flex items-center justify-center px-2 py-1.5 rounded-md text-xs font-medium transition-colors min-w-[80px] sm:min-w-[100px] whitespace-nowrap',
+                (displayVariant?.stock ?? displayVariant?.inventory_quantity_available ?? 0) === 0 
                   ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                   : isInCart
                     ? 'bg-green-600 text-white hover:bg-green-700'
@@ -426,25 +528,38 @@ export const ProductCard = ({
               aria-label={isInCart ? "In cart" : "Add to cart"}>
               {isInCart ? (
                 <>
-                  <CheckIcon size={18} />
-                  <span className="ml-2">In Cart</span>
+                  <CheckIcon size={12} />
+                  <span className="ml-1 text-xs">In Cart</span>
                 </>
               ) : (
                 <>
-                  <ShoppingCartIcon size={18} />
-                  <span className="ml-2">Add to Cart</span>
+                  <ShoppingCartIcon size={12} />
+                  <span className="ml-1 text-xs">Add</span>
                 </>
               )}
+            </button>
+            
+            {/* Desktop wishlist button */}
+            <button
+              onClick={handleAddToWishlist}
+              className={cn(
+                'flex items-center justify-center px-3 py-2 rounded-md text-sm font-medium transition-colors min-w-[40px]',
+                isInWishlist(product.id, displayVariant?.id)
+                  ? 'bg-red-100 text-red-700 dark:bg-red-800 dark:text-red-100 hover:bg-red-200 dark:hover:bg-red-700'
+                  : 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+              )}
+              aria-label={isInWishlist(product.id, displayVariant?.id) ? "Remove from wishlist" : "Add to wishlist"}>
+              <HeartIcon size={12} fill={isInWishlist(product.id, displayVariant?.id) ? 'currentColor' : 'none'} />
             </button>
             
             {/* Desktop subscription button */}
             {isAuthenticated && hasActiveSubscriptions && (
               <button
                 onClick={handleAddToSubscription}
-                className="flex items-center justify-center bg-green-600 hover:bg-green-700 text-white px-4 py-2.5 rounded-md text-sm font-medium transition-colors min-w-[110px] whitespace-nowrap"
+                className="flex items-center justify-center bg-green-600 hover:bg-green-700 text-white px-2 py-1.5 rounded-md text-xs font-medium transition-colors min-w-[70px] sm:min-w-[90px] whitespace-nowrap"
                 aria-label="Add to subscription">
-                <CalendarIcon size={18} />
-                <span className="ml-2">Subscribe</span>
+                <CalendarIcon size={12} />
+                <span className="ml-1 text-xs">Sub</span>
               </button>
             )}
           </div>

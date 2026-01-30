@@ -44,8 +44,7 @@ export class WishlistAPI {
   }
 
   static async setAsDefault(userId: string, wishlistId: string) {
-    // Assuming a PUT endpoint for setting default wishlist
-    return await apiClient.put(`/v1/users/${userId}/wishlists/${wishlistId}/default`);
+    return await apiClient.put(`/users/${userId}/wishlists/${wishlistId}/default`);
   }
 }
 

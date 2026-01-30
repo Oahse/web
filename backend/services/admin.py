@@ -12,6 +12,7 @@ from typing import Optional, List, Dict, Any
 from decimal import Decimal
 
 
+
 class AdminService:
     """Consolidated admin service with comprehensive admin functionality"""
     
@@ -449,31 +450,105 @@ class AdminService:
             }
 
     async def get_order_by_id(self, order_id: str) -> Optional[Dict[str, Any]]:
-        """Get a single order by ID"""
+        """Get a single order by ID with items, product, variant, and variant images"""
         try:
-            from models.orders import Order
-            
+            from models.orders import Order, OrderItem
+            from models.product import ProductVariant, Product, ProductImage
+
             result = await self.db.execute(
                 select(Order)
                 .options(selectinload(Order.user))
+                .options(
+                    selectinload(Order.items)
+                    .selectinload(OrderItem.variant)
+                    .selectinload(ProductVariant.product),
+                    selectinload(Order.items)
+                    .selectinload(OrderItem.variant)
+                    .selectinload(ProductVariant.images),
+                )
                 .where(Order.id == UUID(order_id))
             )
             order = result.scalar_one_or_none()
             
             if not order:
                 return None
+
+            def serialize_order_item(item) -> dict:
+                variant = getattr(item, "variant", None)
+                product = getattr(variant, "product", None) if variant else None
+                images = list(getattr(variant, "images", None) or [])
+                return {
+                    "id": str(item.id),
+                    "order_id": str(item.order_id),
+                    "variant_id": str(item.variant_id),
+                    "product_id": str(product.id) if product else None,
+                    "product_name": getattr(product, "name", None) if product else None,
+                    "variant_name": getattr(variant, "sku", None) or getattr(variant, "name", None) if variant else None,
+                    "sku": getattr(variant, "sku", None) if variant else None,
+                    "quantity": item.quantity,
+                    "price_per_unit": float(item.price_per_unit),
+                    "unit_price": float(item.price_per_unit),
+                    "total_price": float(item.total_price),
+                    "created_at": item.created_at.isoformat() if item.created_at else None,
+                    "product": {
+                        "id": str(product.id),
+                        "name": getattr(product, "name", None),
+                        "slug": getattr(product, "slug", None),
+                    } if product else None,
+                    "variant": {
+                        "id": str(variant.id),
+                        "sku": getattr(variant, "sku", None),
+                        "name": getattr(variant, "name", None),
+                        "images": [
+                            {"id": str(img.id), "url": img.url, "alt_text": img.alt_text, "is_primary": getattr(img, "is_primary", False)}
+                            for img in images
+                        ],
+                    } if variant else None,
+                }
             
             return {
                 "id": str(order.id),
+                "order_number": order.order_number,
                 "user_email": order.user.email if order.user else "Unknown",
+                "user": {
+                    "firstname": order.user.firstname if order.user else None,
+                    "lastname": order.user.lastname if order.user else None,
+                    "email": order.user.email if order.user else "Unknown"
+                } if order.user else None,
                 "total_amount": float(order.total_amount),
-                "status": order.order_status,
+                "sub_total": float(order.subtotal),
+                "subtotal": float(order.subtotal),
+                "shipping_cost": float(order.shipping_cost),
+                "tax_amount": float(order.tax_amount),
+                "tax_rate": float(order.tax_rate or 0),
+                "currency": order.currency,
+                "discount_amount": float(getattr(order, "discount_amount", 0.0)),
+                "order_status": order.order_status.value if hasattr(order.order_status, "value") else order.order_status,
+                "payment_status": order.payment_status.value if hasattr(order.payment_status, "value") else order.payment_status,
+                "fulfillment_status": order.fulfillment_status.value if hasattr(order.fulfillment_status, "value") else order.fulfillment_status,
                 "created_at": order.created_at.isoformat() if order.created_at else None,
-                "updated_at": order.updated_at.isoformat() if order.updated_at else None
+                "updated_at": order.updated_at.isoformat() if order.updated_at else None,
+                "confirmed_at": order.confirmed_at.isoformat() if order.confirmed_at else None,
+                "shipped_at": order.shipped_at.isoformat() if order.shipped_at else None,
+                "delivered_at": order.delivered_at.isoformat() if order.delivered_at else None,
+                "cancelled_at": order.cancelled_at.isoformat() if order.cancelled_at else None,
+                "shipping_method": order.shipping_method,
+                "shipping_address": order.shipping_address,
+                "billing_address": order.billing_address,
+                "tracking_number": order.tracking_number,
+                "carrier": order.carrier,
+                "customer_notes": order.customer_notes,
+                "internal_notes": order.internal_notes,
+                "source": order.source.value if hasattr(order.source, "value") else order.source,
+                "notes": order.notes,
+                "items": [serialize_order_item(item) for item in order.items]
+
             }
             
         except Exception as e:
+            print(f"Error fetching order by ID: {e}")
             return None
+
 
     async def get_all_products(
         self,
@@ -569,16 +644,26 @@ class AdminService:
                 else:
                     stock_status = "in_stock"
                 
+                # Derive min/max price from variants when product.min_price/max_price are null
+                variant_prices = [
+                    (v.sale_price if v.sale_price is not None else v.base_price)
+                    for v in product.variants
+                    if v.is_active
+                ] if product.variants else []
+                min_price_val = product.min_price if product.min_price is not None else (min(variant_prices) if variant_prices else 0)
+                max_price_val = product.max_price if product.max_price is not None else (max(variant_prices) if variant_prices else 0)
+                
                 # Format variants data
                 variants_data = []
                 for variant in product.variants:
+                    current_price = variant.sale_price if variant.sale_price is not None else variant.base_price
                     variant_data = {
                         "id": str(variant.id),
                         "sku": variant.sku,
                         "name": variant.name,
-                        "base_price": variant.base_price,
-                        "sale_price": variant.sale_price,
-                        "current_price": variant.sale_price if variant.sale_price else variant.base_price,
+                        "base_price": float(variant.base_price),
+                        "sale_price": float(variant.sale_price) if variant.sale_price is not None else None,
+                        "current_price": float(current_price),
                         "stock": variant.inventory.quantity_available if variant.inventory else 0,
                         "is_active": variant.is_active,
                         "attributes": variant.attributes,
@@ -587,22 +672,17 @@ class AdminService:
                                 "id": str(img.id),
                                 "url": img.url,
                                 "alt_text": img.alt_text,
-                                "is_primary": img.is_primary,
-                                "sort_order": img.sort_order
+                                "is_primary": getattr(img, "is_primary", False),
+                                "sort_order": getattr(img, "sort_order", 0),
                             }
-                            for img in variant.images
+                            for img in (variant.images or [])
                         ],
                         "primary_image": next(
                             (
-                                {
-                                    "id": str(img.id),
-                                    "url": img.url,
-                                    "alt_text": img.alt_text,
-                                    "is_primary": img.is_primary
-                                }
-                                for img in variant.images if img.is_primary
+                                {"id": str(img.id), "url": img.url, "alt_text": img.alt_text, "is_primary": True}
+                                for img in (variant.images or []) if getattr(img, "is_primary", False)
                             ),
-                            variant.images[0].to_dict() if variant.images else None
+                            (variant.images[0].to_dict() if variant.images else None)
                         )
                     }
                     variants_data.append(variant_data)
@@ -621,8 +701,9 @@ class AdminService:
                     "rating_average": product.rating_average,
                     "rating_count": product.rating_count,
                     "review_count": product.review_count,
-                    "min_price": product.min_price,
-                    "max_price": product.max_price,
+                    "min_price": float(min_price_val) if min_price_val is not None else 0,
+                    "max_price": float(max_price_val) if max_price_val is not None else 0,
+                    "price": float(min_price_val) if min_price_val is not None else 0,
                     "view_count": product.view_count,
                     "purchase_count": product.purchase_count,
                     "total_stock": total_stock,

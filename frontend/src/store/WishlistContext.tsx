@@ -132,7 +132,8 @@ export const WishlistProvider = ({ children }: { children: ReactNode }) => {
       variant_id: variantId,
       quantity,
       wishlist_id: currentDefaultWishlist.id,
-      added_at: new Date().toISOString(),
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
     };
 
     const previousWishlist = currentDefaultWishlist;
@@ -151,7 +152,7 @@ export const WishlistProvider = ({ children }: { children: ReactNode }) => {
       if (response.success) {
         toast.success('Item added to wishlist!');
         // Fetch fresh data to get the real item with all details
-        fetchWishlists();
+        await fetchWishlists();
         return true;
       } else {
         // Revert optimistic update on error
@@ -172,6 +173,14 @@ export const WishlistProvider = ({ children }: { children: ReactNode }) => {
   const removeItem = async (wishlistId: string, itemId: string): Promise<boolean> => {
     if (!isAuthenticated || !user || !(user as any).id) {
       toast.error('Please log in to remove items from wishlist.');
+      return false;
+    }
+
+    // Check if this is a temporary item (from optimistic update)
+    if (itemId.startsWith('temp-')) {
+      console.warn('Cannot remove temporary item, waiting for real data...');
+      // Refresh data to get real item IDs
+      await fetchWishlists();
       return false;
     }
 

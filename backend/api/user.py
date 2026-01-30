@@ -125,6 +125,11 @@ async def update_user_profile(
             "firstname": updated_user.firstname,
             "lastname": updated_user.lastname,
             "full_name": f"{updated_user.firstname} {updated_user.lastname}",
+            "age": updated_user.age,
+            "gender": updated_user.gender,
+            "country": updated_user.country,
+            "language": updated_user.language,
+            "timezone": updated_user.timezone,
             "phone": updated_user.phone,
             "role": updated_user.role,
             "verified": updated_user.verified,
@@ -394,5 +399,238 @@ async def delete_user_address(
         raise APIException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             message="Failed to delete address"
+        )
+
+
+# ==========================================================
+# USER WISHLIST ENDPOINTS (user-scoped: /users/{user_id}/wishlists)
+# ==========================================================
+
+def _serialize_wishlist(wishlist) -> dict:
+    """Serialize a Wishlist ORM object with items for API response."""
+    items = []
+    if getattr(wishlist, "items", None):
+        for item in wishlist.items:
+            item_data = {
+                "id": str(item.id),
+                "wishlist_id": str(item.wishlist_id),
+                "product_id": str(item.product_id),
+                "variant_id": str(item.variant_id) if item.variant_id else None,
+                "quantity": item.quantity,
+                "created_at": item.created_at.isoformat() if item.created_at else None,
+                "added_at": item.created_at.isoformat() if item.created_at else None,
+            }
+            if getattr(item, "product", None):
+                item_data["product"] = {"id": str(item.product.id), "name": getattr(item.product, "name", None)}
+            if getattr(item, "variant", None):
+                item_data["variant"] = {"id": str(item.variant.id), "sku": getattr(item.variant, "sku", None)}
+            items.append(item_data)
+    return {
+        "id": str(wishlist.id),
+        "user_id": str(wishlist.user_id),
+        "name": wishlist.name,
+        "is_default": wishlist.is_default,
+        "is_public": getattr(wishlist, "is_public", False),
+        "items": items,
+        "created_at": wishlist.created_at.isoformat() if wishlist.created_at else None,
+        "updated_at": wishlist.updated_at.isoformat() if wishlist.updated_at else None,
+    }
+
+
+@router.get("/{user_id}/wishlists")
+async def get_user_wishlists(
+    user_id: UUID,
+    current_user: User = Depends(get_current_auth_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Get all wishlists for a user. Caller must be the same user."""
+    if current_user.id != user_id:
+        raise APIException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            message="You can only access your own wishlists",
+        )
+    try:
+        from services.wishlist import WishlistService
+        wishlist_service = WishlistService(db)
+        wishlists = await wishlist_service.get_wishlists(user_id)
+        data = [_serialize_wishlist(w) for w in wishlists]
+        return Response.success(data=data)
+    except APIException:
+        raise
+    except Exception as e:
+        logger.error(f"Error fetching wishlists for user {user_id}: {e}")
+        raise APIException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            message="Failed to fetch wishlists",
+        )
+
+
+@router.post("/{user_id}/wishlists")
+async def create_user_wishlist(
+    user_id: UUID,
+    data: dict,
+    current_user: User = Depends(get_current_auth_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Create a wishlist for a user. Caller must be the same user."""
+    if current_user.id != user_id:
+        raise APIException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            message="You can only create wishlists for yourself",
+        )
+    try:
+        from services.wishlist import WishlistService
+        from schemas.wishlist import WishlistCreate
+        wishlist_service = WishlistService(db)
+        payload = WishlistCreate(
+            name=data.get("name", "My Wishlist"),
+            is_default=data.get("is_default", False),
+        )
+        wishlist = await wishlist_service.create_wishlist(user_id, payload)
+        return Response.success(data=_serialize_wishlist(wishlist), message="Wishlist created")
+    except APIException:
+        raise
+    except Exception as e:
+        logger.error(f"Error creating wishlist for user {user_id}: {e}")
+        raise APIException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            message="Failed to create wishlist",
+        )
+
+
+@router.post("/{user_id}/wishlists/{wishlist_id}/items")
+async def add_item_to_user_wishlist(
+    user_id: UUID,
+    wishlist_id: UUID,
+    data: dict,
+    current_user: User = Depends(get_current_auth_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Add an item to a user's wishlist. Caller must be the same user."""
+    if current_user.id != user_id:
+        raise APIException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            message="You can only modify your own wishlists",
+        )
+    try:
+        from services.wishlist import WishlistService
+        from schemas.wishlist import WishlistItemCreate
+        from models.product import ProductVariant
+        from sqlalchemy import select
+        wishlist_service = WishlistService(db)
+        product_id = data.get("product_id")
+        if not product_id:
+            raise APIException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                message="product_id is required",
+            )
+        product_uuid = UUID(product_id) if isinstance(product_id, str) else product_id
+        variant_id = data.get("variant_id")
+        if variant_id:
+            variant_uuid = UUID(variant_id) if isinstance(variant_id, str) else variant_id
+        else:
+            variant_result = await db.execute(
+                select(ProductVariant).where(
+                    ProductVariant.product_id == product_uuid,
+                    ProductVariant.is_active == True,
+                ).limit(1)
+            )
+            variant = variant_result.scalar_one_or_none()
+            if not variant:
+                raise APIException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    message="No active variants found for this product",
+                )
+            variant_uuid = variant.id
+        payload = WishlistItemCreate(
+            product_id=product_uuid,
+            variant_id=variant_uuid,
+            quantity=data.get("quantity", 1),
+        )
+        item = await wishlist_service.add_item_to_wishlist(wishlist_id, payload)
+        return Response.success(
+            data={
+                "id": str(item.id),
+                "wishlist_id": str(item.wishlist_id),
+                "product_id": str(item.product_id),
+                "variant_id": str(item.variant_id) if item.variant_id else None,
+                "quantity": item.quantity,
+            },
+            message="Item added to wishlist",
+        )
+    except APIException:
+        raise
+    except Exception as e:
+        logger.error(f"Error adding item to wishlist: {e}")
+        raise APIException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            message="Failed to add item to wishlist",
+        )
+
+
+@router.delete("/{user_id}/wishlists/{wishlist_id}/items/{item_id}")
+async def remove_item_from_user_wishlist(
+    user_id: UUID,
+    wishlist_id: UUID,
+    item_id: UUID,
+    current_user: User = Depends(get_current_auth_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Remove an item from a user's wishlist. Caller must be the same user."""
+    if current_user.id != user_id:
+        raise APIException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            message="You can only modify your own wishlists",
+        )
+    try:
+        from services.wishlist import WishlistService
+        wishlist_service = WishlistService(db)
+        success = await wishlist_service.remove_item_from_wishlist(wishlist_id, item_id)
+        if not success:
+            raise APIException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                message="Item not found in wishlist",
+            )
+        return Response.success(data={"item_id": str(item_id)}, message="Item removed from wishlist")
+    except APIException:
+        raise
+    except Exception as e:
+        logger.error(f"Error removing item from wishlist: {e}")
+        raise APIException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            message="Failed to remove item from wishlist",
+        )
+
+
+@router.put("/{user_id}/wishlists/{wishlist_id}/default")
+async def set_user_wishlist_default(
+    user_id: UUID,
+    wishlist_id: UUID,
+    current_user: User = Depends(get_current_auth_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Set a wishlist as the user's default. Caller must be the same user."""
+    if current_user.id != user_id:
+        raise APIException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            message="You can only modify your own wishlists",
+        )
+    try:
+        from services.wishlist import WishlistService
+        wishlist_service = WishlistService(db)
+        updated = await wishlist_service.set_default_wishlist(user_id, wishlist_id)
+        if not updated:
+            raise APIException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                message="Wishlist not found",
+            )
+        return Response.success(data=_serialize_wishlist(updated), message="Default wishlist updated")
+    except APIException:
+        raise
+    except Exception as e:
+        logger.error(f"Error setting default wishlist: {e}")
+        raise APIException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            message="Failed to set default wishlist",
         )
 

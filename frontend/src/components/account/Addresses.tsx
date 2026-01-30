@@ -4,6 +4,7 @@ import { toast } from 'react-hot-toast';
 import { useApi } from '../../hooks/useAsync';
 import { AuthAPI } from '../../api';
 import { unwrapResponse, extractErrorMessage } from '../../utils/api-response';
+import { SkeletonAddresses } from '../ui/SkeletonAddresses';
 
 /**
  * Addresses component allows users to manage their saved addresses.
@@ -156,22 +157,31 @@ export const Addresses = () => {
     }
   };
 
-  // Display loading message while addresses are being fetched
+  // Display loading skeleton while addresses are being fetched
   if (loading) {
-    return <div className="p-6 text-center text-copy-light">Loading addresses...</div>;
+    return <SkeletonAddresses count={3} />;
   }
 
-  // Display error message if fetching addresses failed
+  // Display empty UI instead of error message if fetching addresses failed
   if (error) {
-    const errorMessage = typeof error.message === 'object' ? JSON.stringify(error.message) : error.message;
-    return <div className="p-6 text-center text-error">Error: {errorMessage}</div>;
+    return (
+      <div className="text-center py-8 border border-dashed border-gray-300 dark:border-gray-700 rounded-lg">
+        <MapPinIcon size={48} className="mx-auto text-gray-400 mb-3" />
+        <p className="text-gray-500 dark:text-gray-400 mb-3">
+          Unable to load addresses
+        </p>
+        <button 
+          onClick={() => fetchAddresses(AuthAPI.getAddresses)} 
+          className="text-primary hover:underline"
+        >
+          Try again
+        </button>
+      </div>
+    );
   }
 
   return (
-    <div className="p-6">
-      <h1 className="text-2xl font-bold text-main dark:text-white mb-6">
-        My Addresses
-      </h1>
+    <div>
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 mb-6">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-lg font-medium text-main dark:text-white">

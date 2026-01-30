@@ -369,11 +369,6 @@ export const Header = ({
                   </Link>
                 </li>
                 <li>
-                  <Link to="/subscriptions" className="block py-3 font-medium hover:text-primary transition-colors">
-                    Subscriptions
-                  </Link>
-                </li>
-                <li>
                   <Link to="/about" className="block py-3 font-medium hover:text-primary transition-colors">
                     About
                   </Link>

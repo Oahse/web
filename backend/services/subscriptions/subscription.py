@@ -131,9 +131,12 @@ class SubscriptionService:
             current_period_end=period_end,
             next_billing_date=period_end,
             # Simplified pricing fields
+            subtotal=cost_breakdown.get("subtotal", 0.0),
             shipping_cost=cost_breakdown.get("shipping_cost", 0.0),
             tax_amount=cost_breakdown.get("tax_amount", 0.0),
             tax_rate=cost_breakdown.get("tax_rate", 0.0),
+            discount_amount=cost_breakdown.get("discount_amount", 0.0),
+            total=cost_breakdown.get("total_amount", 0.0),
             # Store quantities
             variant_quantities={
                 str(vid): max(1, int((variant_quantities or {}).get(str(vid), 1)))
@@ -222,6 +225,9 @@ class SubscriptionService:
         tax_rate = Decimal('0.00')
         tax_amount = Decimal('0.00')
         
+        # Calculate discount (for now, default to 0, but can be extended for loyalty programs)
+        discount_amount = Decimal('0.00')
+        
         if customer_address:
             try:
                 # Use the tax service directly instead of recursive call
@@ -244,6 +250,9 @@ class SubscriptionService:
                     tax_amount = Decimal(str(tax_result.get("tax_amount", 0.0)))
                     tax_rate = Decimal(str(tax_result.get("tax_rate", 0.0)))
                     
+                # TODO: Add loyalty discount calculation here in the future
+                # For now, discount_amount remains 0.0
+                    
             except Exception as e:
                 logger.warning(f"Tax calculation failed, using 0% tax: {e}")
                 tax_rate = Decimal('0.00')
@@ -252,13 +261,14 @@ class SubscriptionService:
             logger.info("No customer address provided, using 0% tax")
         
         # Calculate final total
-        total_amount = subtotal + shipping_cost + tax_amount
+        total_amount = subtotal + shipping_cost + tax_amount - discount_amount
         
         return {
             "subtotal": float(subtotal),
             "shipping_cost": float(shipping_cost),
             "tax_amount": float(tax_amount),
             "tax_rate": float(tax_rate),
+            "discount_amount": float(discount_amount),
             "total_amount": float(total_amount),
             "currency": currency,
             "product_variants": product_details,  # Changed from product_details to product_variants

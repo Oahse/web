@@ -261,9 +261,6 @@ export const PaymentMethods = () => {
         );
       })()}
       
-      <h1 className="text-2xl font-bold text-main dark:text-white mb-6">
-        Payment Methods
-      </h1>
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 mb-6">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-lg font-medium text-main dark:text-white">

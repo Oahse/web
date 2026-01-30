@@ -226,9 +226,18 @@ class APIClient {
                 refresh_token: refreshToken,
               });
 
-              // Extract token from response - backend returns { success, data: { access_token } }
-              const access_token = response.data?.access_token || response.access_token;
+              // Extract token from response - backend returns { success, data: { access_token, refresh_token } }
+              const access_token = response.data?.data?.access_token || response.data?.access_token || response.access_token;
+              const refresh_token = response.data?.data?.refresh_token || response.data?.refresh_token;
+              
+              if (!access_token) {
+                throw new Error('No access token in refresh response');
+              }
+              
               TokenManager.setToken(access_token);
+              if (refresh_token) {
+                TokenManager.setRefreshToken(refresh_token);
+              }
 
               this.processQueue(null, access_token);
 

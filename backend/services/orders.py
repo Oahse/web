@@ -745,7 +745,7 @@ class OrderService:
                     order_number=order_number,
                     subtotal=subtotal,
                     tax_amount=tax_amount,
-                    shipping_amount=shipping_amount,
+                    shipping_cost=shipping_amount,
                     discount_amount=discount_amount,
                     total_amount=total_amount,
                     currency=request.currency or "USD",  # Use user's currency from frontend
@@ -767,12 +767,12 @@ class OrderService:
                 )
                 
                 # CRITICAL VALIDATION: Ensure order total is correct before saving
-                order_calculated_total = order.subtotal + order.shipping_amount + order.tax_amount - order.discount_amount
+                order_calculated_total = order.subtotal + order.shipping_cost + order.tax_amount - order.discount_amount
                 
                 # ALWAYS log order creation for debugging
                 logger.info(f"🔍 ORDER CREATION - User {user_id}:")
                 logger.info(f"   Subtotal: ${order.subtotal:.2f}")
-                logger.info(f"   Shipping: ${order.shipping_amount:.2f}")
+                logger.info(f"   Shipping: ${order.shipping_cost:.2f}")
                 logger.info(f"   Tax:      ${order.tax_amount:.2f}")
                 logger.info(f"   Discount: ${order.discount_amount:.2f}")
                 logger.info(f"   Total:    ${order.total_amount:.2f}")
@@ -783,7 +783,7 @@ class OrderService:
                     logger.error(f"  Calculated: ${order_calculated_total:.2f}")
                     logger.error(f"  Set total:  ${order.total_amount:.2f}")
                     logger.error(f"  Subtotal:   ${order.subtotal:.2f}")
-                    logger.error(f"  Shipping:   ${order.shipping_amount:.2f}")
+                    logger.error(f"  Shipping:   ${order.shipping_cost:.2f}")
                     logger.error(f"  Tax:        ${order.tax_amount:.2f}")
                     logger.error(f"  Discount:   ${order.discount_amount:.2f}")
                     logger.error(f"  Difference: ${abs(order_calculated_total - order.total_amount):.2f}")
@@ -923,12 +923,12 @@ class OrderService:
             await self.db.refresh(order)
             
             # POST-COMMIT VALIDATION: Verify order total is still correct after database commit
-            post_commit_calculated_total = order.subtotal + order.shipping_amount + order.tax_amount - order.discount_amount
+            post_commit_calculated_total = order.subtotal + order.shipping_cost + order.tax_amount - order.discount_amount
             
             # ALWAYS log post-commit state for debugging
             logger.info(f"🔍 POST-COMMIT CHECK - Order {order.id}:")
             logger.info(f"   Subtotal: ${order.subtotal:.2f}")
-            logger.info(f"   Shipping: ${order.shipping_amount:.2f}")
+            logger.info(f"   Shipping: ${order.shipping_cost:.2f}")
             logger.info(f"   Tax:      ${order.tax_amount:.2f}")
             logger.info(f"   Discount: ${order.discount_amount:.2f}")
             logger.info(f"   Total:    ${order.total_amount:.2f}")
@@ -939,7 +939,7 @@ class OrderService:
                 logger.error(f"  Expected: ${post_commit_calculated_total:.2f}")
                 logger.error(f"  Actual:   ${order.total_amount:.2f}")
                 logger.error(f"  Subtotal: ${order.subtotal:.2f}")
-                logger.error(f"  Shipping: ${order.shipping_amount:.2f}")
+                logger.error(f"  Shipping: ${order.shipping_cost:.2f}")
                 logger.error(f"  Tax:      ${order.tax_amount:.2f}")
                 logger.error(f"  Discount: ${order.discount_amount:.2f}")
                 logger.error(f"  Difference: ${abs(post_commit_calculated_total - order.total_amount):.2f}")
@@ -988,14 +988,97 @@ class OrderService:
 
     async def get_user_orders(self, user_id: UUID, page: int = 1, limit: int = 10, status_filter: Optional[str] = None) -> Dict[str, Any]:
         """Get paginated list of user's orders"""
+        try:
+            query = select(Order).where(Order.user_id == user_id).options(
+                selectinload(Order.items).selectinload(OrderItem.variant).selectinload(ProductVariant.images),
+                selectinload(Order.items).selectinload(OrderItem.variant).selectinload(ProductVariant.product)
+            )
+
+            if status_filter:
+                query = query.where(Order.status == status_filter)
+
+            query = query.order_by(desc(Order.created_at))
+
+            # Calculate offset
+            offset = (page - 1) * limit
+
+            # Get total count using COUNT() instead of loading all records
+            from sqlalchemy import func
+            count_query = select(func.count(Order.id)).where(Order.user_id == user_id)
+            if status_filter:
+                count_query = count_query.where(Order.status == status_filter)
+
+            total_result = await self.db.execute(count_query)
+            total = total_result.scalar() or 0
+
+            # Get paginated results
+            result = await self.db.execute(query.offset(offset).limit(limit))
+            orders = result.scalars().all()
+
+            formatted_orders = []
+            for order in orders:
+                formatted_orders.append(await self._format_order_response(order))
+
+            return {
+                "orders": formatted_orders,
+                "pagination": {
+                    "page": page,
+                    "limit": limit,
+                    "total": total,
+                    "pages": (total + limit - 1) // limit
+                }
+            }
+        except Exception as e:
+            # Log the full error for debugging
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Error in get_user_orders: {str(e)}", exc_info=True)
+            
+            # Re-raise with more context
+            from core.errors import APIException
+            raise APIException(
+                message=f"Failed to fetch orders: {str(e)}",
+                metadata={
+                    "user_id": str(user_id),
+                    "page": page,
+                    "limit": limit,
+                    "status_filter": status_filter
+                }
+            )
+
+    async def get_order_by_id(self, order_id: UUID, user_id: UUID) -> Optional[OrderResponse]:
+        """Get a specific order by ID"""
         
-        query = select(Order).where(Order.user_id == user_id).options(
+        query = select(Order).where(and_(Order.id == order_id, Order.user_id == user_id)).options(
             selectinload(Order.items).selectinload(OrderItem.variant).selectinload(ProductVariant.images),
             selectinload(Order.items).selectinload(OrderItem.variant).selectinload(ProductVariant.product)
         )
 
+        result = await self.db.execute(query)
+        order = result.scalar_one_or_none()
+
+        if not order:
+            return None
+
+        return await self._format_order_response(order)
+
+    async def get_supplier_orders(self, supplier_id: UUID, page: int = 1, limit: int = 10, status_filter: Optional[str] = None, date_from: Optional[str] = None, date_to: Optional[str] = None) -> Dict[str, Any]:
+        """Get paginated list of supplier's orders (orders containing supplier's products)"""
+        
+        # Query orders that contain items from this supplier's products
+        query = select(Order).join(OrderItem).join(ProductVariant).join(Product).where(Product.supplier_id == supplier_id).options(
+            selectinload(Order.items).selectinload(OrderItem.variant).selectinload(ProductVariant.images),
+            selectinload(Order.items).selectinload(OrderItem.variant).selectinload(ProductVariant.product)
+        ).distinct()
+
         if status_filter:
-            query = query.where(Order.status == status_filter)
+            query = query.where(Order.order_status == status_filter)
+
+        if date_from:
+            query = query.where(Order.created_at >= date_from)
+        
+        if date_to:
+            query = query.where(Order.created_at <= date_to)
 
         query = query.order_by(desc(Order.created_at))
 
@@ -1003,12 +1086,19 @@ class OrderService:
         offset = (page - 1) * limit
 
         # Get total count
-        count_query = select(Order).where(Order.user_id == user_id)
+        count_query = select(func.count(Order.id)).join(OrderItem).join(ProductVariant).join(Product).where(Product.supplier_id == supplier_id).distinct()
+        
         if status_filter:
-            count_query = count_query.where(Order.status == status_filter)
+            count_query = count_query.where(Order.order_status == status_filter)
+        
+        if date_from:
+            count_query = count_query.where(Order.created_at >= date_from)
+        
+        if date_to:
+            count_query = count_query.where(Order.created_at <= date_to)
 
         total_result = await self.db.execute(count_query)
-        total = len(total_result.scalars().all())
+        total = total_result.scalar() or 0
 
         # Get paginated results
         result = await self.db.execute(query.offset(offset).limit(limit))
@@ -1027,22 +1117,6 @@ class OrderService:
                 "pages": (total + limit - 1) // limit
             }
         }
-
-    async def get_order_by_id(self, order_id: UUID, user_id: UUID) -> Optional[OrderResponse]:
-        """Get a specific order by ID"""
-        
-        query = select(Order).where(and_(Order.id == order_id, Order.user_id == user_id)).options(
-            selectinload(Order.items).selectinload(OrderItem.variant).selectinload(ProductVariant.images),
-            selectinload(Order.items).selectinload(OrderItem.variant).selectinload(ProductVariant.product)
-        )
-
-        result = await self.db.execute(query)
-        order = result.scalar_one_or_none()
-
-        if not order:
-            return None
-
-        return await self._format_order_response(order)
 
     async def cancel_order(self, order_id: UUID, user_id: UUID) -> OrderResponse:
         """Cancel an order with transaction safety"""
@@ -1215,7 +1289,7 @@ class OrderService:
         display_subtotal = order.subtotal if order.subtotal and order.subtotal > 0 else calculated_subtotal
 
         # CRITICAL FIX: Validate and correct order total before returning to frontend
-        expected_total = display_subtotal + (order.shipping_amount or 0) + (order.tax_amount or 0) - (order.discount_amount or 0)
+        expected_total = display_subtotal + (order.shipping_cost or 0) + (order.tax_amount or 0) - (order.discount_amount or 0)
         
         # If the stored total is wrong, log it and use the calculated total
         if abs(expected_total - order.total_amount) > 0.01:
@@ -1223,7 +1297,7 @@ class OrderService:
             logger.warning(f"   Stored total:    ${order.total_amount:.2f}")
             logger.warning(f"   Calculated total: ${expected_total:.2f}")
             logger.warning(f"   Subtotal:        ${display_subtotal:.2f}")
-            logger.warning(f"   Shipping:        ${order.shipping_amount or 0:.2f}")
+            logger.warning(f"   Shipping:        ${order.shipping_cost or 0:.2f}")
             logger.warning(f"   Tax:             ${order.tax_amount or 0:.2f}")
             logger.warning(f"   Discount:        ${order.discount_amount or 0:.2f}")
             
@@ -1254,8 +1328,8 @@ class OrderService:
             total_amount=corrected_total,  # Use corrected total instead of order.total_amount
             subtotal=display_subtotal,
             tax_amount=order.tax_amount,
-            shipping_amount=order.shipping_amount,
-            discount_amount=order.discount_amount,
+            shipping_amount=order.shipping_cost,
+            discount_amount=order.discount_amount,  # Now using the actual field from Order model
             currency=order.currency,  # Use order's currency
             tracking_number=order.tracking_number,
             estimated_delivery=estimated_delivery,
@@ -1925,14 +1999,20 @@ class OrderService:
             invoice_generator = InvoiceGenerator()
             
             # Prepare order data for invoice
+            customer_name = "Customer"
+            if order.user:
+                firstname = order.user.firstname or ""
+                lastname = order.user.lastname or ""
+                customer_name = f"{firstname} {lastname}".strip() or order.user.email or "Customer"
+            
             order_data = {
                 "order_id": str(order.id),
                 "order_number": order.order_number,
                 "order_date": order.created_at,
                 "customer": {
-                    "name": f"{order.user.firstname} {order.user.lastname}",
-                    "email": order.user.email,
-                    "phone": order.user.phone
+                    "name": customer_name,
+                    "email": order.user.email if order.user else "N/A",
+                    "phone": order.user.phone if order.user and order.user.phone else None
                 },
                 "billing_address": order.billing_address,
                 "shipping_address": order.shipping_address,
@@ -1948,8 +2028,10 @@ class OrderService:
                 ],
                 "subtotal": order.subtotal,
                 "tax_amount": order.tax_amount,
-                "shipping_amount": order.shipping_amount,
-                "discount_amount": order.discount_amount,
+                # Model uses `shipping_cost` (renamed) — fall back if legacy attribute exists
+                "shipping_amount": getattr(order, 'shipping_cost', getattr(order, 'shipping_amount', 0.0)),
+                # discount_amount may be missing on the model for some records — default to 0.0
+                "discount_amount": getattr(order, 'discount_amount', 0.0),
                 "total_amount": order.total_amount,
                 "currency": order.currency,
                 "payment_status": order.payment_status

@@ -118,6 +118,33 @@ async def create_order(
         )
 
 
+@router.post("/create-payment-intent")
+async def create_payment_intent(
+    request: dict,
+    current_user: User = Depends(get_current_auth_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Create payment intent for order"""
+    try:
+        from services.payments import PaymentService
+        payment_service = PaymentService(db)
+        
+        payment_intent = await payment_service.create_payment_intent(
+            user_id=current_user.id,
+            amount=request.get("amount", 0),
+            currency=request.get("currency", "USD"),
+            order_id=request.get("order_id"),
+            metadata=request.get("metadata", {})
+        )
+        
+        return Response.success(data=payment_intent)
+    except Exception as e:
+        raise APIException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            message=f"Failed to create payment intent: {str(e)}"
+        )
+
+
 @router.post("/checkout/validate")
 async def validate_checkout(
     request: CheckoutRequest,
@@ -550,6 +577,43 @@ async def get_order_tracking(
         raise APIException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             message="Failed to fetch tracking information"
+        )
+
+
+@router.get("/supplier/orders")
+async def get_supplier_orders(
+    page: int = Query(1, ge=1),
+    limit: int = Query(10, ge=1, le=100),
+    status_filter: Optional[str] = Query(None),
+    date_from: Optional[str] = Query(None),
+    date_to: Optional[str] = Query(None),
+    current_user: User = Depends(get_current_auth_user),
+    order_service: OrderService = Depends(get_order_service)
+):
+    """Get supplier's orders"""
+    try:
+        # Check if user is a supplier
+        if current_user.role != "supplier":
+            raise APIException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                message="Access denied. Supplier role required."
+            )
+        
+        orders = await order_service.get_supplier_orders(
+            supplier_id=current_user.id,
+            page=page,
+            limit=limit,
+            status_filter=status_filter,
+            date_from=date_from,
+            date_to=date_to
+        )
+        return Response.success(data=orders)
+    except APIException:
+        raise
+    except Exception as e:
+        raise APIException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            message=f"Failed to fetch supplier orders: {str(e)}"
         )
 
 

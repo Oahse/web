@@ -17,15 +17,9 @@ from models.orders import Order
 from services.auth import AuthService
 from schemas.auth import UserCreate
 from schemas.shipping import ShippingMethodCreate, ShippingMethodUpdate
-from fastapi.security import OAuth2PasswordBearer
+from core.dependencies import get_current_auth_user
 
 logger = get_logger(__name__)
-
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
-
-async def get_current_auth_user(token: str = Depends(oauth2_scheme), db: AsyncSession = Depends(get_db)) -> User:
-    auth_service = AuthService(db)
-    return await auth_service.get_current_user(token)
 
 router = APIRouter(prefix="/admin", tags=["Admin"])
 
@@ -198,9 +192,10 @@ async def get_order_invoice_admin(
     db: AsyncSession = Depends(get_db)
 ):
     """Get order invoice (admin only)."""
-    from fastapi.responses import FileResponse
+    from fastapi.responses import StreamingResponse, FileResponse
     from services.orders import OrderService as EnhancedOrderService
     import os
+    import io
     
     try:
         order_service = EnhancedOrderService(db)
@@ -217,6 +212,26 @@ async def get_order_invoice_admin(
         
         invoice = await order_service.generate_invoice(order_id, order.user_id)
         
+        # Check if invoice generation was successful
+        if not invoice.get('success', False):
+            error_msg = invoice.get('message', 'Failed to generate invoice')
+            raise APIException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                message=error_msg
+            )
+        
+        # Handle pdf_bytes response (new format)
+        if 'pdf_bytes' in invoice:
+            pdf_bytes = invoice['pdf_bytes']
+            return StreamingResponse(
+                io.BytesIO(pdf_bytes),
+                media_type="application/pdf",
+                headers={
+                    "Content-Disposition": f"attachment; filename=invoice-{order_id}.pdf"
+                }
+            )
+        
+        # Handle invoice_path response (legacy format)
         if 'invoice_path' in invoice and os.path.exists(invoice['invoice_path']):
             file_path = invoice['invoice_path']
             if file_path.endswith('.pdf'):
@@ -232,10 +247,12 @@ async def get_order_invoice_admin(
                     media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                 )
         
+        # Fallback: return invoice data as JSON
         return Response.success(data=invoice)
     except APIException:
         raise
     except Exception as e:
+        logger.exception(f"Failed to generate invoice for order {order_id}")
         raise APIException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             message=f"Failed to generate invoice: {str(e)}"
@@ -432,6 +449,102 @@ async def get_all_products_admin(
         raise APIException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             message="Failed to fetch products"
+        )
+
+@router.get("/products/{product_id}")
+async def get_product_by_id_admin(
+    product_id: UUID,
+    current_user: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db)
+):
+    """Get a single product by ID with all related data (admin only)."""
+    try:
+        from models.product import Product, ProductVariant, ProductImage, Category
+        from sqlalchemy import select
+        from sqlalchemy.orm import selectinload
+        
+        # Query product with all related data
+        query = select(Product).options(
+            selectinload(Product.variants).selectinload(ProductVariant.images),
+            selectinload(Product.variants).selectinload(ProductVariant.inventory),
+            selectinload(Product.category),
+            selectinload(Product.supplier)
+        ).where(Product.id == product_id)
+        
+        result = await db.execute(query)
+        product = result.scalar_one_or_none()
+        
+        if not product:
+            raise APIException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                message="Product not found"
+            )
+        
+        # Convert to detailed dict with all related data
+        product_data = product.to_dict(include_variants=True)
+        
+        # Add detailed variant information
+        detailed_variants = []
+        for variant in product.variants:
+            variant_data = variant.to_dict(include_images=True, include_product=False)
+            
+            # Add inventory details with error handling
+            if variant.inventory:
+                try:
+                    variant_data["inventory"] = {
+                        "quantity_available": getattr(variant.inventory, 'quantity_available', 0),
+                        "quantity": getattr(variant.inventory, 'quantity', 0),
+                        "reorder_level": getattr(variant.inventory, 'reorder_level', None),
+                        "reorder_quantity": getattr(variant.inventory, 'reorder_quantity', None),
+                        "warehouse_location": getattr(variant.inventory, 'warehouse_location', None),
+                        "updated_at": variant.inventory.updated_at.isoformat() if variant.inventory.updated_at else None
+                    }
+                except Exception as inv_error:
+                    logger.warning(f"Error processing inventory for variant {variant.id}: {inv_error}")
+                    variant_data["inventory"] = {"error": "Failed to load inventory data"}
+            
+            detailed_variants.append(variant_data)
+        
+        product_data["variants"] = detailed_variants
+        
+        # Add category details with error handling
+        if product.category:
+            try:
+                product_data["category"] = product.category.to_dict()
+            except Exception as cat_error:
+                logger.warning(f"Error processing category for product {product.id}: {cat_error}")
+                product_data["category"] = {"error": "Failed to load category data"}
+        
+        # Add supplier details with error handling
+        if product.supplier:
+            try:
+                supplier = product.supplier
+                # Handle different possible name field combinations
+                supplier_name = (
+                    getattr(supplier, 'name', None) or 
+                    getattr(supplier, 'firstname', None) and getattr(supplier, 'lastname', None) and 
+                    f"{supplier.firstname} {supplier.lastname}".strip() or 
+                    supplier.email
+                )
+                
+                product_data["supplier"] = {
+                    "id": str(supplier.id),
+                    "name": supplier_name,
+                    "email": getattr(supplier, 'email', None),
+                    "phone": getattr(supplier, 'phone', None),
+                }
+            except Exception as sup_error:
+                logger.warning(f"Error processing supplier for product {product.id}: {sup_error}")
+                product_data["supplier"] = {"error": "Failed to load supplier data"}
+        
+        return Response.success(data=product_data)
+    except APIException:
+        raise
+    except Exception as e:
+        logger.exception(f"Failed to fetch product {product_id}")
+        raise APIException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            message=f"Failed to fetch product: {str(e)}"
         )
 
 @router.get("/variants")

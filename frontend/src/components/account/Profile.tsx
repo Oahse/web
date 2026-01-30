@@ -4,6 +4,7 @@ import { toast } from 'react-hot-toast';
 import { useAuth } from '../../store/AuthContext';
 import { AuthAPI } from '../../api';
 import { unwrapResponse, extractErrorMessage } from '../../utils/api-response';
+import { SkeletonProfile } from '../ui/SkeletonProfile';
 
 /**
  * Profile component allows users to view and edit their personal information.
@@ -22,6 +23,7 @@ export const Profile = () => {
     country: '',
     language: 'en',
     timezone: '',
+    is_active: true,
   });
 
   // Initialize form data with user information
@@ -32,11 +34,12 @@ export const Profile = () => {
         lastname: user.lastname || '',
         email: user.email || '',
         phone: user.phone || '',
-        age: user.age || '',
-        gender: user.gender || '',
-        country: user.country || '',
-        language: user.language || 'en',
-        timezone: user.timezone || '',
+        age: (user as any).age?.toString() || '',
+        gender: (user as any).gender || '',
+        country: (user as any).country || '',
+        language: (user as any).language || 'en',
+        timezone: (user as any).timezone || '',
+        is_active: (user as any).is_active ?? true,
       });
     }
   }, [user]);
@@ -44,7 +47,7 @@ export const Profile = () => {
   /**
    * Handles changes to form input fields.
    */
-  const handleInputChange = (e) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData({ ...formData, [name]: value });
   };
@@ -52,16 +55,32 @@ export const Profile = () => {
   /**
    * Handles form submission to update user profile.
    */
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
     try {
-      const result = await AuthAPI.updateProfile(formData);
+      // Convert data to match backend schema
+      const submissionData = {
+        firstname: formData.firstname,
+        lastname: formData.lastname,
+        email: formData.email,
+        phone: formData.phone || undefined,
+        age: formData.age || undefined,  // Keep as string since DB expects VARCHAR
+        gender: formData.gender || undefined,
+        country: formData.country || undefined,
+        language: formData.language || undefined,
+        timezone: formData.timezone || undefined,
+        is_active: formData.is_active,
+      };
+
+      const result = await AuthAPI.updateProfile(submissionData);
+      
       // Handle wrapped response
       const data = unwrapResponse(result);
+      
       if (data) {
-        // Update user in context
+        // Update user in context - this should trigger the useEffect to refresh form data
         updateUser(data);
         toast.success('Profile updated successfully');
         setIsEditing(false);
@@ -85,47 +104,45 @@ export const Profile = () => {
         lastname: user.lastname || '',
         email: user.email || '',
         phone: user.phone || '',
-        age: user.age || '',
-        gender: user.gender || '',
-        country: user.country || '',
-        language: user.language || 'en',
-        timezone: user.timezone || '',
+        age: (user as any).age?.toString() || '',
+        gender: (user as any).gender || '',
+        country: (user as any).country || '',
+        language: (user as any).language || 'en',
+        timezone: (user as any).timezone || '',
+        is_active: (user as any).is_active ?? true,
       });
     }
     setIsEditing(false);
   };
 
   if (!user) {
-    return <div className="p-6 text-center text-copy-light">Loading profile...</div>;
+    return <SkeletonProfile />;
   }
 
   return (
-    <div className="p-6">
-      <h1 className="text-2xl font-bold text-main dark:text-white mb-6">
-        My Profile
-      </h1>
-
+    <div className="p-3 space-y-3">
+      
       {/* Profile Header */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 mb-6">
-        <div className="flex items-center justify-between mb-6">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4">
+        <div className="flex items-center justify-between mb-4">
           <div className="flex items-center">
-            <div className="w-20 h-20 rounded-full bg-primary/20 flex items-center justify-center text-primary text-2xl font-bold">
+            <div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center text-primary text-xl font-bold">
               {user.firstname?.charAt(0) || user.full_name?.charAt(0) || 'U'}
             </div>
-            <div className="ml-4">
-              <h2 className="text-xl font-semibold text-main dark:text-white">
+            <div className="ml-3">
+              <h2 className="text-lg font-semibold text-main dark:text-white">
                 {user.full_name || `${user.firstname} ${user.lastname}`}
               </h2>
-              <p className="text-copy-light">{user.email}</p>
-              <div className="flex items-center mt-2">
-                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+              <p className="text-sm text-copy-light dark:text-gray-400">{user.email}</p>
+              <div className="flex items-center mt-1">
+                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
                   user.verified 
-                    ? 'bg-success-light text-success-dark dark:bg-success-dark dark:text-success-light'
+                    ? 'bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-100'
                     : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-800 dark:text-yellow-100'
                 }`}>
                   {user.verified ? '✓ Verified' : '⚠ Unverified'}
                 </span>
-                <span className="ml-2 text-xs text-copy-light capitalize">
+                <span className="ml-2 text-xs text-copy-light dark:text-gray-400 capitalize">
                   {user.role}
                 </span>
               </div>
@@ -134,7 +151,7 @@ export const Profile = () => {
           {!isEditing && (
             <button
               onClick={() => setIsEditing(true)}
-              className="px-4 py-2 bg-primary hover:bg-primary-dark text-white rounded-md transition-colors"
+              className="px-3 py-2 bg-primary hover:bg-primary-dark text-white rounded-md transition-colors text-sm"
             >
               Edit Profile
             </button>
@@ -143,14 +160,14 @@ export const Profile = () => {
       </div>
 
       {/* Profile Information */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
-        <h3 className="text-lg font-medium text-main dark:text-white mb-4">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4">
+        <h3 className="text-base font-medium text-main dark:text-white mb-3">
           Personal Information
         </h3>
 
         {isEditing ? (
           <form onSubmit={handleSubmit}>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {/* First Name */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -161,7 +178,7 @@ export const Profile = () => {
                   name="firstname"
                   value={formData.firstname}
                   onChange={handleInputChange}
-                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-1 focus:ring-primary dark:bg-gray-700 dark:text-white"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-1 focus:ring-primary dark:bg-gray-700 dark:text-white text-sm"
                   required
                 />
               </div>
@@ -176,7 +193,7 @@ export const Profile = () => {
                   name="lastname"
                   value={formData.lastname}
                   onChange={handleInputChange}
-                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-1 focus:ring-primary dark:bg-gray-700 dark:text-white"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-1 focus:ring-primary dark:bg-gray-700 dark:text-white text-sm"
                   required
                 />
               </div>
@@ -191,7 +208,7 @@ export const Profile = () => {
                   name="email"
                   value={formData.email}
                   onChange={handleInputChange}
-                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-1 focus:ring-primary dark:bg-gray-700 dark:text-white"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-1 focus:ring-primary dark:bg-gray-700 dark:text-white text-sm"
                   required
                 />
               </div>
@@ -206,7 +223,7 @@ export const Profile = () => {
                   name="phone"
                   value={formData.phone}
                   onChange={handleInputChange}
-                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-1 focus:ring-primary dark:bg-gray-700 dark:text-white"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-1 focus:ring-primary dark:bg-gray-700 dark:text-white text-sm"
                   placeholder="+1 (555) 123-4567"
                 />
               </div>
@@ -221,7 +238,7 @@ export const Profile = () => {
                   name="age"
                   value={formData.age}
                   onChange={handleInputChange}
-                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-1 focus:ring-primary dark:bg-gray-700 dark:text-white"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-1 focus:ring-primary dark:bg-gray-700 dark:text-white text-sm"
                   min="13"
                   max="120"
                 />
@@ -236,7 +253,7 @@ export const Profile = () => {
                   name="gender"
                   value={formData.gender}
                   onChange={handleInputChange}
-                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-1 focus:ring-primary dark:bg-gray-700 dark:text-white"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-1 focus:ring-primary dark:bg-gray-700 dark:text-white text-sm"
                 >
                   <option value="">Select Gender</option>
                   <option value="Male">Male</option>
@@ -255,7 +272,7 @@ export const Profile = () => {
                   name="country"
                   value={formData.country}
                   onChange={handleInputChange}
-                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-1 focus:ring-primary dark:bg-gray-700 dark:text-white"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-1 focus:ring-primary dark:bg-gray-700 dark:text-white text-sm"
                   placeholder="United States"
                 />
               </div>
@@ -269,7 +286,7 @@ export const Profile = () => {
                   name="language"
                   value={formData.language}
                   onChange={handleInputChange}
-                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-1 focus:ring-primary dark:bg-gray-700 dark:text-white"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-1 focus:ring-primary dark:bg-gray-700 dark:text-white text-sm"
                 >
                   <option value="en">English</option>
                   <option value="es">Spanish</option>
@@ -279,21 +296,45 @@ export const Profile = () => {
                   <option value="pt">Portuguese</option>
                 </select>
               </div>
+
+              {/* Timezone */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Timezone
+                </label>
+                <select
+                  name="timezone"
+                  value={formData.timezone}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-1 focus:ring-primary dark:bg-gray-700 dark:text-white text-sm"
+                >
+                  <option value="">Select Timezone</option>
+                  <option value="UTC">UTC</option>
+                  <option value="America/New_York">Eastern Time</option>
+                  <option value="America/Chicago">Central Time</option>
+                  <option value="America/Denver">Mountain Time</option>
+                  <option value="America/Los_Angeles">Pacific Time</option>
+                  <option value="Europe/London">London</option>
+                  <option value="Europe/Paris">Paris</option>
+                  <option value="Asia/Tokyo">Tokyo</option>
+                  <option value="Asia/Shanghai">Shanghai</option>
+                </select>
+              </div>
             </div>
 
             {/* Form Actions */}
-            <div className="mt-6 flex justify-end space-x-3">
+            <div className="mt-4 flex justify-end space-x-2">
               <button
                 type="button"
                 onClick={handleCancel}
-                className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
+                className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 text-sm"
                 disabled={loading}
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="px-4 py-2 bg-primary hover:bg-primary-dark text-white rounded-md flex items-center"
+                className="px-3 py-2 bg-primary hover:bg-primary-dark text-white rounded-md flex items-center text-sm"
                 disabled={loading}
               >
                 {loading ? (
@@ -303,7 +344,7 @@ export const Profile = () => {
                   </>
                 ) : (
                   <>
-                    <SaveIcon size={16} className="mr-2" />
+                    <SaveIcon size={14} className="mr-2" />
                     Save Changes
                   </>
                 )}
@@ -312,102 +353,140 @@ export const Profile = () => {
           </form>
         ) : (
           <div className="space-y-4">
-            {/* Display Mode */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Display Mode - Only Show Relevant Fields */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Basic Information */}
               <div className="flex items-start">
-                <UserIcon size={20} className="text-gray-400 mr-3 mt-1" />
+                <UserIcon size={16} className="text-gray-400 mr-3 mt-1" />
                 <div>
-                  <p className="text-sm text-copy-light">Full Name</p>
-                  <p className="text-main dark:text-white font-medium">
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Full Name</p>
+                  <p className="text-sm text-gray-900 dark:text-white font-medium">
                     {user.firstname} {user.lastname}
                   </p>
                 </div>
               </div>
 
               <div className="flex items-start">
-                <MailIcon size={20} className="text-gray-400 mr-3 mt-1" />
+                <MailIcon size={16} className="text-gray-400 mr-3 mt-1" />
                 <div>
-                  <p className="text-sm text-copy-light">Email</p>
-                  <p className="text-main dark:text-white font-medium">{user.email}</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Email</p>
+                  <p className="text-sm text-gray-900 dark:text-white font-medium">{user.email}</p>
                 </div>
               </div>
 
               {user.phone && (
                 <div className="flex items-start">
-                  <PhoneIcon size={20} className="text-gray-400 mr-3 mt-1" />
+                  <PhoneIcon size={16} className="text-gray-400 mr-3 mt-1" />
                   <div>
-                    <p className="text-sm text-copy-light">Phone</p>
-                    <p className="text-main dark:text-white font-medium">{user.phone}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">Phone</p>
+                    <p className="text-sm text-gray-900 dark:text-white font-medium">{user.phone}</p>
                   </div>
                 </div>
               )}
 
-              {user.country && (
+              {/* Personal Details */}
+              {(user as any).age && (
                 <div className="flex items-start">
-                  <MapPinIcon size={20} className="text-gray-400 mr-3 mt-1" />
+                  <CalendarIcon size={16} className="text-gray-400 mr-3 mt-1" />
                   <div>
-                    <p className="text-sm text-copy-light">Country</p>
-                    <p className="text-main dark:text-white font-medium">{user.country}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">Age</p>
+                    <p className="text-sm text-gray-900 dark:text-white font-medium">{(user as any).age} years</p>
                   </div>
                 </div>
               )}
 
-              {user.age && (
+              {(user as any).gender && (
                 <div className="flex items-start">
-                  <CalendarIcon size={20} className="text-gray-400 mr-3 mt-1" />
+                  <UserIcon size={16} className="text-gray-400 mr-3 mt-1" />
                   <div>
-                    <p className="text-sm text-copy-light">Age</p>
-                    <p className="text-main dark:text-white font-medium">{user.age} years</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">Gender</p>
+                    <p className="text-sm text-gray-900 dark:text-white font-medium capitalize">{(user as any).gender}</p>
                   </div>
                 </div>
               )}
 
-              {user.language && (
+              {/* Location & Preferences */}
+              {(user as any).country && (
                 <div className="flex items-start">
-                  <GlobeIcon size={20} className="text-gray-400 mr-3 mt-1" />
+                  <MapPinIcon size={16} className="text-gray-400 mr-3 mt-1" />
                   <div>
-                    <p className="text-sm text-copy-light">Language</p>
-                    <p className="text-main dark:text-white font-medium capitalize">{user.language}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">Country</p>
+                    <p className="text-sm text-gray-900 dark:text-white font-medium">{(user as any).country}</p>
                   </div>
                 </div>
               )}
+
+              {(user as any).language && (
+                <div className="flex items-start">
+                  <GlobeIcon size={16} className="text-gray-400 mr-3 mt-1" />
+                  <div>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">Language</p>
+                    <p className="text-sm text-gray-900 dark:text-white font-medium capitalize">{(user as any).language}</p>
+                  </div>
+                </div>
+              )}
+
+              {(user as any).timezone && (
+                <div className="flex items-start">
+                  <GlobeIcon size={16} className="text-gray-400 mr-3 mt-1" />
+                  <div>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">Timezone</p>
+                    <p className="text-sm text-gray-900 dark:text-white font-medium">{(user as any).timezone}</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Account Status - Important Info */}
+              <div className="flex items-start">
+                <UserIcon size={16} className="text-gray-400 mr-3 mt-1" />
+                <div>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Account Status</p>
+                  <p className="text-sm text-gray-900 dark:text-white font-medium capitalize">
+                    {(user as any).account_status || (user.is_active ? 'Active' : 'Inactive')}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-start">
+                <MailIcon size={16} className="text-gray-400 mr-3 mt-1" />
+                <div>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Email Verification</p>
+                  <p className="text-sm text-gray-900 dark:text-white font-medium capitalize">
+                    {(user as any).verification_status || (user.verified ? 'Verified' : 'Not Verified')}
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
         )}
       </div>
 
       {/* Account Information */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 mt-6">
-        <h3 className="text-lg font-medium text-main dark:text-white mb-4">
-          Account Information
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4">
+        <h3 className="text-base font-medium text-gray-900 dark:text-white mb-3">
+          Account Details
         </h3>
-        <div className="space-y-3">
+        <div className="space-y-2">
           <div className="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gray-700">
-            <span className="text-copy-light">Account Status</span>
-            <span className={`px-2 py-1 text-xs rounded-full ${
-              user.is_active 
-                ? 'bg-success-light text-success-dark dark:bg-success-dark dark:text-success-light'
-                : 'bg-error-light text-error-dark dark:bg-error-dark dark:text-error-light'
-            }`}>
-              {user.is_active ? 'Active' : 'Inactive'}
-            </span>
-          </div>
-          <div className="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gray-700">
-            <span className="text-copy-light">Email Verification</span>
-            <span className={`px-2 py-1 text-xs rounded-full ${
-              user.verified 
-                ? 'bg-success-light text-success-dark dark:bg-success-dark dark:text-success-light'
-                : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-800 dark:text-yellow-100'
-            }`}>
-              {user.verified ? 'Verified' : 'Not Verified'}
-            </span>
-          </div>
-          <div className="flex justify-between items-center py-2">
-            <span className="text-copy-light">Member Since</span>
-            <span className="text-main dark:text-white font-medium">
+            <span className="text-sm text-gray-500 dark:text-gray-400">Member Since</span>
+            <span className="text-sm text-gray-900 dark:text-white font-medium">
               {user.created_at ? new Date(user.created_at).toLocaleDateString() : 'N/A'}
             </span>
           </div>
+          <div className="flex justify-between items-center py-2">
+            <span className="text-sm text-gray-500 dark:text-gray-400">Last Updated</span>
+            <span className="text-sm text-gray-900 dark:text-white font-medium">
+              {user.updated_at ? new Date(user.updated_at).toLocaleDateString() : 'N/A'}
+            </span>
+          </div>
+          {(user as any).last_login && (
+            <div className="flex justify-between items-center py-2">
+              <span className="text-sm text-gray-500 dark:text-gray-400">Last Login</span>
+              <span className="text-sm text-gray-900 dark:text-white font-medium">
+                {new Date((user as any).last_login).toLocaleDateString()}
+              </span>
+            </div>
+          )}
         </div>
       </div>
     </div>

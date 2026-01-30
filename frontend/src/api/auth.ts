@@ -24,6 +24,13 @@ interface ProfileData {
   firstname?: string;
   lastname?: string;
   email?: string;
+  phone?: string | undefined;
+  age?: string | undefined;
+  gender?: string | undefined;
+  country?: string | undefined;
+  language?: string | undefined;
+  timezone?: string | undefined;
+  is_active?: boolean | undefined;
 }
 
 interface ChangePasswordData {

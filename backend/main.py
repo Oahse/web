@@ -1,5 +1,6 @@
 import asyncio
 import os
+import subprocess
 from fastapi import FastAPI, HTTPException, APIRouter
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
@@ -49,6 +50,71 @@ import logging
 
 # Global variable to store the ARQ worker
 arq_worker = None
+
+async def run_database_migrations():
+    """Run Alembic database migrations during startup"""
+    logger = logging.getLogger(__name__)
+    try:
+        logger.info("Checking for pending database migrations...")
+        
+        # First, try to stamp head if there are no migrations
+        try:
+            result = subprocess.run(
+                ["alembic", "current"],
+                capture_output=True,
+                text=True,
+                cwd=os.path.dirname(os.path.abspath(__file__))
+            )
+            
+            if "Can't locate revision" in result.stderr:
+                logger.warning("Found stale alembic version records, resetting...")
+                # Clear the stale state by stamping with a new base revision
+                subprocess.run(
+                    ["alembic", "stamp", "001"],
+                    capture_output=True,
+                    text=True,
+                    cwd=os.path.dirname(os.path.abspath(__file__))
+                )
+        except Exception:
+            pass  # Ignore errors in this pre-check
+        
+        # Run alembic upgrade head
+        result = subprocess.run(
+            ["alembic", "upgrade", "head"],
+            capture_output=True,
+            text=True,
+            cwd=os.path.dirname(os.path.abspath(__file__))
+        )
+        
+        if result.returncode == 0:
+            if "No migrations to run" in result.stdout or result.stdout.strip() == "":
+                logger.info("Database is up to date - no migrations needed")
+            else:
+                logger.info(f"Database migrations completed successfully: {result.stdout.strip()}")
+        else:
+            logger.error(f"Migration failed: {result.stderr}")
+            # In development, we might want to continue despite migration errors
+            if os.getenv("ENVIRONMENT", "local").lower() in ["local", "development", "dev"]:
+                logger.warning("Continuing despite migration failure in development mode")
+            else:
+                raise RuntimeError(f"Database migration failed: {result.stderr}")
+            
+    except subprocess.CalledProcessError as e:
+        logger.error(f"Migration process failed: {e}")
+        # In development, we might want to continue despite migration errors
+        if os.getenv("ENVIRONMENT", "local").lower() in ["local", "development", "dev"]:
+            logger.warning("Continuing without migrations in development mode")
+        else:
+            raise RuntimeError(f"Database migration failed: {e}")
+    except FileNotFoundError:
+        logger.warning("Alembic not found - skipping migrations. Install with: pip install alembic")
+    except Exception as e:
+        logger.error(f"Unexpected error during migrations: {e}")
+        # In development, we might want to continue despite migration errors
+        if os.getenv("ENVIRONMENT", "local").lower() in ["local", "development", "dev"]:
+            logger.warning("Continuing without migrations in development mode")
+        else:
+            raise RuntimeError(f"Database migration failed: {e}")
 
 async def run_notification_cleanup():
     """Background task to clean up old notifications"""
@@ -133,7 +199,7 @@ async def lifespan(app: FastAPI):
     if validation_result.warnings:
         for warning in validation_result.warnings:
             logger.warning(warning)
-    
+
     # Initialize the database engine and session factory with optimization
     from core.config import settings
     optimized_engine = DatabaseOptimizer.get_optimized_engine()

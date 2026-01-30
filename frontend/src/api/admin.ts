@@ -98,6 +98,120 @@ export class AdminAPI {
     return await apiClient.get(url, {});
   }
 
+  // Export Functions
+  /**
+   * Download products list
+   */
+  static async downloadProducts(format: 'csv' | 'excel' | 'pdf' = 'csv') {
+    return await apiClient.download(`/admin/products/export?format=${format}`, `products.${format}`);
+  }
+
+  /**
+   * Download users list
+   */
+  static async downloadUsers(format: 'csv' | 'excel' | 'pdf' = 'csv') {
+    return await apiClient.download(`/admin/users/export?format=${format}`, `users.${format}`);
+  }
+
+  /**
+   * Download subscriptions list
+   */
+  static async downloadSubscriptions(format: 'csv' | 'excel' | 'pdf' = 'csv') {
+    return await apiClient.download(`/admin/subscriptions/export?format=${format}`, `subscriptions.${format}`);
+  }
+
+  // Analytics Methods
+  /**
+   * Get sales analytics data
+   */
+  static async getSalesAnalytics(params: { period: string; group_by: string }) {
+    const queryParams = new URLSearchParams();
+    queryParams.append('period', params.period);
+    queryParams.append('group_by', params.group_by);
+
+    const url = `/admin/analytics/sales?${queryParams.toString()}`;
+    return await apiClient.get(url, {});
+  }
+
+  /**
+   * Get category analytics data
+   */
+  static async getCategoryAnalytics() {
+    return await apiClient.get('/admin/analytics/categories', {});
+  }
+
+  /**
+   * Get user growth analytics data
+   */
+  static async getUserGrowthAnalytics(params: { period: string }) {
+    const queryParams = new URLSearchParams();
+    queryParams.append('period', params.period);
+
+    const url = `/admin/analytics/user-growth?${queryParams.toString()}`;
+    return await apiClient.get(url, {});
+  }
+
+  /**
+   * Get comprehensive analytics dashboard data
+   */
+  static async getAnalyticsDashboard() {
+    return await apiClient.get('/admin/analytics/dashboard', {});
+  }
+
+  // Inventory Management
+  /**
+   * Get inventory list
+   */
+  static async getInventory(params: { 
+    page?: number; 
+    limit?: number; 
+    search?: string;
+    status?: string;
+    sort_by?: string;
+    sort_order?: 'asc' | 'desc';
+  }) {
+    const queryParams = new URLSearchParams();
+    
+    if (params?.page) queryParams.append('page', params.page.toString());
+    if (params?.limit) queryParams.append('limit', params.limit.toString());
+    if (params?.search) queryParams.append('search', params.search);
+    if (params?.status) queryParams.append('status', params.status);
+    if (params?.sort_by) queryParams.append('sort_by', params.sort_by);
+    if (params?.sort_order) queryParams.append('sort_order', params.sort_order);
+
+    const url = `/inventory${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
+    return await apiClient.get(url, {});
+  }
+
+  /**
+   * Get inventory details for a variant
+   */
+  static async getInventoryDetails(variantId: string) {
+    return await apiClient.get(`/admin/inventory/${variantId}`, {});
+  }
+
+  /**
+   * Update inventory
+   */
+  static async updateInventory(variantId: string, inventoryData: any) {
+    return await apiClient.put(`/admin/inventory/${variantId}`, inventoryData, {});
+  }
+
+  // Additional Subscription Management
+  /**
+   * Update subscription
+   */
+  static async updateSubscription(subscriptionId: string, subscriptionData: any) {
+    return await apiClient.put(`/admin/subscriptions/${subscriptionId}`, subscriptionData, {});
+  }
+
+  /**
+   * Cancel subscription
+   */
+  static async cancelSubscription(subscriptionId: string, reason: string) {
+    return await apiClient.post(`/admin/subscriptions/${subscriptionId}/cancel`, { reason }, {});
+  }
+
   /**
    * Create a new user (admin only)
    */
@@ -116,6 +230,8 @@ export class AdminAPI {
     search?: string;
     page?: number;
     limit?: number;
+    sort_by?: string;
+    sort_order?: 'asc' | 'desc';
   }) {
     const queryParams = new URLSearchParams();
     
@@ -125,9 +241,46 @@ export class AdminAPI {
     if (params?.search) queryParams.append('search', params.search);
     if (params?.page) queryParams.append('page', params.page.toString());
     if (params?.limit) queryParams.append('limit', params.limit.toString());
+    if (params?.sort_by) queryParams.append('sort_by', params.sort_by);
+    if (params?.sort_order) queryParams.append('sort_order', params.sort_order);
 
     const url = `/admin/products${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
     return await apiClient.get(url, {});
+  }
+
+  /**
+   * Get product details by ID with all related data
+   */
+  static async getProductById(productId: string) {
+    return await apiClient.get(`/admin/products/${productId}`, {});
+  }
+
+  /**
+   * Get product creation form data (categories, suppliers, etc.)
+   */
+  static async getProductCreateData() {
+    return await apiClient.get('/admin/products/create', {});
+  }
+
+  /**
+   * Create a new product
+   */
+  static async createProduct(productData: any) {
+    return await apiClient.post('/admin/products', productData, {});
+  }
+
+  /**
+   * Update product
+   */
+  static async updateProduct(productId: string, productData: any) {
+    return await apiClient.put(`/admin/products/${productId}`, productData, {});
+  }
+
+  /**
+   * Delete product
+   */
+  static async deleteProduct(productId: string) {
+    return await apiClient.delete(`/admin/products/${productId}`, {});
   }
 
   /**
@@ -159,11 +312,15 @@ export class AdminAPI {
     max_price?: number;
     page?: number;
     limit?: number;
+    search?: string;
+    sort_by?: string;
+    sort_order?: 'asc' | 'desc';
   }) {
     const queryParams = new URLSearchParams();
     
     if (params?.status) queryParams.append('status', params.status);
     if (params?.q) queryParams.append('q', params.q);
+    if (params?.search) queryParams.append('search', params.search);
     if (params?.supplier) queryParams.append('supplier', params.supplier);
     if (params?.customer) queryParams.append('customer', params.customer);
     if (params?.date_from) queryParams.append('date_from', params.date_from);
@@ -172,6 +329,8 @@ export class AdminAPI {
     if (params?.max_price) queryParams.append('max_price', params.max_price.toString());
     if (params?.page) queryParams.append('page', params.page.toString());
     if (params?.limit) queryParams.append('limit', params.limit.toString());
+    if (params?.sort_by) queryParams.append('sort_by', params.sort_by);
+    if (params?.sort_order) queryParams.append('sort_order', params.sort_order);
 
     const url = `/admin/orders${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
     return await apiClient.get(url, {});
@@ -474,8 +633,25 @@ export class AdminAPI {
   /**
    * Get all shipping methods
    */
-  static async getShippingMethods() {
-    return await apiClient.get('/admin/shipping-methods', {});
+  static async getShippingMethods(params?: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    status?: string;
+    sort_by?: string;
+    sort_order?: 'asc' | 'desc';
+  }) {
+    const queryParams = new URLSearchParams();
+    
+    if (params?.page) queryParams.append('page', params.page.toString());
+    if (params?.limit) queryParams.append('limit', params.limit.toString());
+    if (params?.search) queryParams.append('search', params.search);
+    if (params?.status) queryParams.append('status', params.status);
+    if (params?.sort_by) queryParams.append('sort_by', params.sort_by);
+    if (params?.sort_order) queryParams.append('sort_order', params.sort_order);
+
+    const url = `/admin/shipping-methods${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
+    return await apiClient.get(url, {});
   }
 
   /**
@@ -504,6 +680,96 @@ export class AdminAPI {
    */
   static async deleteShippingMethod(methodId: string) {
     return await apiClient.delete(`/admin/shipping-methods/${methodId}`, {});
+  }
+
+  /**
+   * Get all tax rates
+   */
+  static async getTaxRates(params: {
+    page?: number;
+    per_page?: number;
+    country_code?: string;
+    province_code?: string;
+    is_active?: boolean;
+    search?: string;
+  }) {
+    const queryParams = new URLSearchParams();
+    
+    if (params?.page) queryParams.append('page', params.page.toString());
+    if (params?.per_page) queryParams.append('per_page', params.per_page.toString());
+    if (params?.country_code) queryParams.append('country_code', params.country_code);
+    if (params?.province_code) queryParams.append('province_code', params.province_code);
+    if (params?.is_active !== undefined) queryParams.append('is_active', params.is_active.toString());
+    if (params?.search) queryParams.append('search', params.search);
+
+    const url = `/admin/tax-rates/${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
+    return await apiClient.get(url, {});
+  }
+
+  /**
+   * Get tax rate by ID
+   */
+  static async getTaxRate(taxRateId: string) {
+    return await apiClient.get(`/admin/tax-rates/${taxRateId}`, {});
+  }
+
+  /**
+   * Create tax rate
+   */
+  static async createTaxRate(taxRateData: any) {
+    return await apiClient.post('/admin/tax-rates/', taxRateData, {});
+  }
+
+  /**
+   * Update tax rate
+   */
+  static async updateTaxRate(taxRateId: string, taxRateData: any) {
+    return await apiClient.put(`/admin/tax-rates/${taxRateId}`, taxRateData, {});
+  }
+
+  /**
+   * Delete tax rate
+   */
+  static async deleteTaxRate(taxRateId: string) {
+    return await apiClient.delete(`/admin/tax-rates/${taxRateId}`, {});
+  }
+
+  /**
+   * Get all subscriptions for admin management
+   */
+  static async getSubscriptions(params: {
+    page?: number;
+    limit?: number;
+    status?: string;
+    search?: string;
+    date_from?: string;
+    date_to?: string;
+  }) {
+    const queryParams = new URLSearchParams();
+    
+    if (params?.page) queryParams.append('page', params.page.toString());
+    if (params?.limit) queryParams.append('limit', params.limit.toString());
+    if (params?.status) queryParams.append('status', params.status);
+    if (params?.search) queryParams.append('search', params.search);
+    if (params?.date_from) queryParams.append('date_from', params.date_from);
+    if (params?.date_to) queryParams.append('date_to', params.date_to);
+
+    const url = `/subscriptions${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
+    return await apiClient.get(url, {});
+  }
+
+  /**
+   * Get subscription by ID
+   */
+  static async getSubscription(subscriptionId: string) {
+    return await apiClient.get(`/admin/subscriptions/${subscriptionId}`, {});
+  }
+
+  /**
+   * Update subscription status
+   */
+  static async updateSubscriptionStatus(subscriptionId: string, status: string, reason?: string) {
+    return await apiClient.put(`/admin/subscriptions/${subscriptionId}/status`, { status, reason }, {});
   }
 }
 

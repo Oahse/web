@@ -337,28 +337,33 @@ export const ProductDetails = () => {
               zoomEnabled={true}
             />
             
-            {/* QR Code and Barcode Section */}
+            {/* QR Code and Barcode Section - Mobile Optimized */}
             {selectedVariant && (
-              <div className="flex space-x-4 justify-center">
+              <div className="flex flex-col sm:flex-row sm:space-x-4 sm:space-y-0 space-y-2 justify-center mt-4">
                 {selectedVariant.qr_code && (
                   <button
                     onClick={() => setShowQR(true)}
-                    className="flex items-center space-x-2 text-sm text-primary hover:underline"
+                    className="flex items-center justify-center space-x-2 text-sm text-primary hover:underline px-3 py-2 border border-primary/20 rounded-lg hover:bg-primary/5 transition-colors"
                   >
                     <QrCodeIcon size={16} />
-                    <span>View QR Code</span>
+                    <span className="sm:inline">View QR Code</span>
                   </button>
                 )}
                 
                 {selectedVariant.barcode && (
                   <button
                     onClick={() => setShowBarcode(true)}
-                    className="flex items-center space-x-2 text-sm text-primary hover:underline"
+                    className="flex items-center justify-center space-x-2 text-sm text-primary hover:underline px-3 py-2 border border-primary/20 rounded-lg hover:bg-primary/5 transition-colors"
                   >
                     <ScanLineIcon size={16} />
-                    <span>View Barcode</span>
+                    <span className="sm:inline">View Barcode</span>
                   </button>
                 )}
+                
+                {/* Show SKU on mobile */}
+                <div className="flex items-center justify-center text-xs text-gray-500 dark:text-gray-400 px-3 py-2 sm:hidden">
+                  SKU: {selectedVariant.sku || product.sku}
+                </div>
               </div>
             )}
 

@@ -1,48 +1,13 @@
 from logging.config import fileConfig
-import os
-import sys
 
 from sqlalchemy import engine_from_config
 from sqlalchemy import pool
-
-from alembic import context
-
-# Add the backend directory to the Python path
-sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/..')
-
-# Import our models and database configuration
 from core.db import Base
-from core.config import settings
-
-# Import all models to ensure they're registered with SQLAlchemy
-from models.user import *
-from models.product import *
-from models.subscriptions import *
-from models.orders import *
-from models.cart import *
-from models.payments import *
-from models.shipping import *
-from models.tax_rates import *
-from models.promocode import *
-from models.review import *
-from models.wishlist import *
-from models.inventories import *
-from models.loyalty import *
-from models.discounts import *
-from models.validation_rules import *
-from models.refunds import *
-from models.analytics import *
-from models.admin import *
-from models.variant_tracking import *
-from models.discounts import *
-from models.validation_rules import *
-
+from alembic import context
+from models import *  # Import all models to register them with Alembic
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config
-
-# Set the database URL from our settings (use sync version for Alembic)
-config.set_main_option("sqlalchemy.url", settings.SQLALCHEMY_DATABASE_URI_SYNC)
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.
@@ -51,6 +16,8 @@ if config.config_file_name is not None:
 
 # add your model's MetaData object here
 # for 'autogenerate' support
+# from myapp import mymodel
+# target_metadata = mymodel.Base.metadata
 target_metadata = Base.metadata
 
 # other values from the config, defined by the needs of env.py,

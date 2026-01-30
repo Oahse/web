@@ -82,6 +82,7 @@ class Order(BaseModel):
     # Simplified financial information - only the essentials
     subtotal = Column(Float, nullable=False)  # Sum of all product variant prices
     shipping_cost = Column(Float, default=0.0)  # Shipping cost (renamed from shipping_amount)
+    discount_amount = Column(Float, default=0.0)  # Discount amount applied to order
     tax_amount = Column(Float, default=0.0)  # Tax amount
     tax_rate = Column(Float, default=0.0)  # Tax rate applied (e.g., 0.08 for 8%)
     total_amount = Column(Float, nullable=False)  # Final total
@@ -130,6 +131,7 @@ class Order(BaseModel):
     transactions = relationship("Transaction", back_populates="order", lazy="select")
     payment_intents = relationship("PaymentIntent", back_populates="order", lazy="select")
     refunds = relationship("Refund", back_populates="order", lazy="select")
+    shipments = relationship("ShipmentTracking", back_populates="order", cascade="all, delete-orphan", lazy="select")
 
     def to_dict(self) -> dict:
         """Convert order to dictionary for API responses"""
@@ -143,6 +145,7 @@ class Order(BaseModel):
             "fulfillment_status": self.fulfillment_status,
             "subtotal": self.subtotal,
             "shipping_cost": self.shipping_cost,
+            "discount_amount": self.discount_amount,
             "tax_amount": self.tax_amount,
             "tax_rate": self.tax_rate,
             "total_amount": self.total_amount,
@@ -182,6 +185,7 @@ class OrderItem(BaseModel):
     # Relationships
     order = relationship("Order", back_populates="items")
     variant = relationship("ProductVariant", back_populates="order_items")
+    shipment = relationship("ShipmentTracking", back_populates="order_item", lazy="select")
 
     def to_dict(self) -> dict:
         """Convert order item to dictionary"""

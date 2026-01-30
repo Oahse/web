@@ -17,3 +17,19 @@ export const calculateDiscountPercentage = (originalPrice: number, discountPrice
 export const applyDiscount = (price: number, discountPercent: number): number => {
   return price * (1 - discountPercent / 100);
 };
+
+export const getBestPrice = (variant: any): number => {
+  // Return the best available price for a variant
+  if (variant.current_price) return variant.current_price;
+  if (variant.discount_price) return variant.discount_price;
+  if (variant.base_price) return variant.base_price;
+  if (variant.price) return variant.price;
+  return 0;
+};
+
+export const formatPriceWithFallback = (price: number | undefined | null, currency: string = 'USD'): string => {
+  if (typeof price !== 'number' || isNaN(price)) {
+    return formatCurrency(0, currency);
+  }
+  return formatCurrency(price, currency);
+};

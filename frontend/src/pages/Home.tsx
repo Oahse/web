@@ -5,6 +5,7 @@ import { ArrowRightIcon, TruckIcon, BadgeCheckIcon, ShieldIcon, HeadphonesIcon, 
 import { ProductCard } from '../components/product/ProductCard';
 import { CategoryCard } from '../components/category/CategoryCard';
 import { useLocale } from '../store/LocaleContext';
+import { useTheme } from '../store/ThemeContext';
 import { useAsync } from '../hooks/useAsync';
 import { ProductsAPI } from '../api/products';
 
@@ -101,6 +102,7 @@ export const Home = () => {
   const [activeTab, setActiveTab] = useState('all');
   const [currentSlide, setCurrentSlide] = useState(0);
   const { formatCurrency } = useLocale();
+  const { theme } = useTheme();
 
   // Single API call for all home page data
   const { data: homeData, loading: homeLoading, error: homeError, execute } = useAsync();

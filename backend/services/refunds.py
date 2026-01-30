@@ -349,7 +349,7 @@ class RefundService:
         
         if total_refund_items == total_order_items:
             # Full refund - include shipping
-            calculation["shipping_refund"] = float(order.shipping_amount or 0)
+            calculation["shipping_refund"] = float(order.shipping_cost or 0)
             calculation["total_amount"] += calculation["shipping_refund"]
         
         # Calculate proportional tax refund

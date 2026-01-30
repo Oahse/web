@@ -483,6 +483,78 @@ async def update_variant_codes(
         )
 
 
+@router.get("/suppliers/products")
+async def get_supplier_products(
+    page: int = Query(1, ge=1),
+    limit: int = Query(10, ge=1, le=100),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_auth_user)
+):
+    """Get supplier's own products"""
+    try:
+        # Check if user is a supplier or admin
+        if current_user.role not in ["Supplier", "Admin"]:
+            raise APIException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                message="Access denied. Supplier or Admin role required."
+            )
+        
+        # Get products for this supplier
+        products = await product_service.get_products(
+            page=page,
+            limit=limit,
+            filters={"supplier_id": str(current_user.id)} if current_user.role == "Supplier" else {}
+        )
+        return Response.success(data=products)
+    except APIException:
+        raise
+    except Exception as e:
+        raise APIException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            message=f"Failed to fetch supplier products: {str(e)}"
+        )
+
+
+@router.get("/featured")
+async def get_featured_products(
+    limit: int = Query(10, ge=1, le=50, description="Maximum number of featured products"),
+    db: AsyncSession = Depends(get_db)
+):
+    """Get featured products"""
+    try:
+        products = await product_service.get_products(
+            page=1,
+            limit=limit,
+            filters={"featured": True}
+        )
+        return Response.success(data=products["data"])
+    except Exception as e:
+        raise APIException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            message=f"Failed to fetch featured products: {str(e)}"
+        )
+
+
+@router.get("/popular")
+async def get_popular_products(
+    limit: int = Query(10, ge=1, le=50, description="Maximum number of popular products"),
+    db: AsyncSession = Depends(get_db)
+):
+    """Get popular products"""
+    try:
+        products = await product_service.get_products(
+            page=1,
+            limit=limit,
+            filters={"popular": True}
+        )
+        return Response.success(data=products["data"])
+    except Exception as e:
+        raise APIException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            message=f"Failed to fetch popular products: {str(e)}"
+        )
+
+
 @router.get("/{product_id}")
 async def get_product(
     product_id: UUID,

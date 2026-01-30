@@ -11,6 +11,7 @@ from .variant_tracking import VariantTrackingEntry, VariantPriceHistory, Variant
 from .analytics import UserSession, AnalyticsEvent, ConversionFunnel, CustomerLifecycleMetrics
 from .refunds import Refund, RefundItem
 from .tax_rates import TaxRate
+from .shipping_tracking import ShipmentTracking, ShippingCarrier,ShipmentTrackingEvent
 
 # Consolidated models - single source of truth
 from .orders import Order, OrderItem, TrackingEvent
@@ -109,4 +110,9 @@ __all__ = [
     
     # Tax models
     "TaxRate",
+    
+    # Shipping tracking models
+    "ShipmentTracking", 
+    "ShippingCarrier",
+    "ShipmentTrackingEvent"
 ]

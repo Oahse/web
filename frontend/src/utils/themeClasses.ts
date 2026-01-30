@@ -9,6 +9,42 @@ export interface ThemeClasses {
   info: string;
   light: string;
   dark: string;
+  text: {
+    primary: string;
+    secondary: string;
+    muted: string;
+    heading: string;
+    error: string;
+    inverse: string;
+  };
+  background: {
+    surface: string;
+    elevated: string;
+    primary: string;
+  };
+  input: {
+    base: string;
+    default: string;
+  };
+  card: {
+    base: string;
+  };
+  loading: {
+    spinner: string;
+  };
+  layout: {
+    container: string;
+  };
+  shadow: {
+    sm: string;
+    lg: string;
+  };
+  interactive: {
+    hover: string;
+  };
+  border: {
+    default: string;
+  };
 }
 
 export const themeClasses: ThemeClasses = {
@@ -20,6 +56,42 @@ export const themeClasses: ThemeClasses = {
   info: 'bg-cyan-600 hover:bg-cyan-700 text-white',
   light: 'bg-gray-100 hover:bg-gray-200 text-gray-900',
   dark: 'bg-gray-900 hover:bg-gray-800 text-white',
+  text: {
+    primary: 'text-gray-900',
+    secondary: 'text-gray-700',
+    muted: 'text-gray-500',
+    heading: 'text-gray-900 font-semibold',
+    error: 'text-red-600',
+    inverse: 'text-white',
+  },
+  background: {
+    surface: 'bg-white',
+    elevated: 'bg-gray-50',
+    primary: 'bg-blue-600',
+  },
+  input: {
+    base: 'w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500',
+    default: 'border-gray-300',
+  },
+  card: {
+    base: 'bg-white rounded-lg border border-gray-200 shadow-sm',
+  },
+  loading: {
+    spinner: 'animate-spin border-4 border-blue-600 border-t-transparent rounded-full',
+  },
+  layout: {
+    container: 'container mx-auto px-4',
+  },
+  shadow: {
+    sm: 'shadow-sm',
+    lg: 'shadow-lg',
+  },
+  interactive: {
+    hover: 'hover:bg-gray-100',
+  },
+  border: {
+    default: 'border-gray-200',
+  },
 };
 
 export function combineThemeClasses(...classes: (string | undefined | null | false)[]): string {
@@ -33,7 +105,7 @@ export function getInputClasses(error?: string): string {
 }
 
 export function getButtonClasses(
-  variant: 'primary' | 'secondary' | 'success' | 'warning' | 'error' | 'info' | 'light' | 'dark' = 'primary',
+  variant: 'primary' | 'secondary' | 'success' | 'warning' | 'error' | 'info' | 'light' | 'dark' | 'outline' = 'primary',
   size: 'sm' | 'md' | 'lg' = 'md',
   disabled = false
 ): string {
@@ -47,9 +119,21 @@ export function getButtonClasses(
 
   const disabledClasses = disabled ? 'opacity-50 cursor-not-allowed' : '';
   
+  const variantClasses = {
+    primary: themeClasses.primary,
+    secondary: themeClasses.secondary,
+    success: themeClasses.success,
+    warning: themeClasses.warning,
+    error: themeClasses.error,
+    info: themeClasses.info,
+    light: themeClasses.light,
+    dark: themeClasses.dark,
+    outline: 'border border-gray-300 bg-white text-gray-700 hover:bg-gray-50',
+  };
+  
   return combineThemeClasses(
     baseClasses,
-    themeClasses[variant],
+    variantClasses[variant],
     sizeClasses[size],
     disabledClasses
   );

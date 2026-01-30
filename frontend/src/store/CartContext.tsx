@@ -159,7 +159,9 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
       // CartAPI now automatically uses interceptor for token
       const response = await CartAPI.addToCart({
         variant_id: item.variant_id,
-        quantity: item.quantity || 1
+        quantity: item.quantity || 1,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
       });
       
       // Unwrap response data if it comes wrapped in { success, data }

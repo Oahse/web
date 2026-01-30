@@ -5,9 +5,10 @@ import {
   PlusIcon, 
   SearchIcon,
   PackageIcon,
-  XIcon
+  XIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon
 } from 'lucide-react';
-import { themeClasses, getButtonClasses } from '../../utils/themeClasses';
 import ProductsAPI from '../../api/products';
 import { toast } from 'react-hot-toast';
 import { unwrapResponse, extractErrorMessage } from '../../utils/api-response';
@@ -48,11 +49,7 @@ export const MySubscriptions = () => {
   const [availableProducts, setAvailableProducts] = useState<Product[]>([]);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedProducts, setSelectedProducts] = useState<Set<string>>(new Set());
-  const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [showActivateModal, setShowActivateModal] = useState<boolean>(false);
-  const [subscriptionToActivate, setSubscriptionToActivate] = useState<string | null>(null);
-
-  // New subscription form state - use user's detected currency
+  const [selectedProductsForNew, setSelectedProductsForNew] = useState<Set<string>>(new Set());
   const [newSubscription, setNewSubscription] = useState<NewSubscriptionData>({
     plan_id: 'basic',
     billing_cycle: 'monthly',
@@ -61,7 +58,6 @@ export const MySubscriptions = () => {
     currency: currency, // Use user's detected currency
     auto_renew: true
   });
-  const [selectedProductsForNew, setSelectedProductsForNew] = useState<Set<string>>(new Set());
 
   // Update currency when user's locale changes
   useEffect(() => {
@@ -245,7 +241,7 @@ export const MySubscriptions = () => {
   // Early returns after all hooks
   if (loading) {
     return (
-      <div className="text-center p-6">
+      <div className="text-center py-8">
         <div className={`${themeClasses.loading.spinner} w-12 h-12 mx-auto`}></div>
         <p className={`${themeClasses.text.secondary} mt-4`}>Loading your subscriptions...</p>
       </div>
@@ -254,41 +250,55 @@ export const MySubscriptions = () => {
 
   if (error) {
     return (
-      <div className="text-center p-6">
-        <p className={themeClasses.text.error}>Error loading subscriptions: {error}</p>
+      <div className="text-center py-8 border border-dashed border-gray-300 dark:border-gray-700 rounded-lg">
+        <PackageIcon size={48} className={`${themeClasses.text.muted} mx-auto mb-4`} />
+        <p className={`${themeClasses.text.secondary} mb-3`}>
+          Unable to load subscriptions
+        </p>
+        <button 
+          onClick={() => refreshSubscriptions()} 
+          className="text-primary hover:underline"
+        >
+          Try again
+        </button>
       </div>
     );
   }
 
   return (
-    <div className="p-4 sm:p-6">
+    <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
-        <h1 className={`${themeClasses.text.heading} text-2xl`}>My Subscriptions</h1>
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">My Subscriptions</h1>
+          <p className="text-gray-600 dark:text-gray-400">
+            Manage your active and past subscriptions
+          </p>
+        </div>
         <button
           onClick={() => setShowCreateModal(true)}
-          className={`${getButtonClasses('primary')} flex items-center w-full sm:w-auto justify-center`}
+          className="bg-primary hover:bg-primary-dark text-white py-2 px-4 rounded-md transition-colors flex items-center"
         >
           <PlusIcon size={20} className="mr-2" />
-          New Subscription
+          Create Subscription
         </button>
       </div>
 
       {/* Tabs */}
-      <div className="flex space-x-1 mb-6 bg-surface-elevated rounded-lg p-1 overflow-x-auto">
+      <div className="flex space-x-1 mb-6 bg-gray-100 dark:bg-gray-700 rounded-lg p-1 overflow-x-auto">
         {[
           { key: 'all', label: 'All', count: subscriptions.length },
           { key: 'active', label: 'Active', count: subscriptions.filter((s: any) => s.status === 'active').length },
           { key: 'paused', label: 'Paused', count: subscriptions.filter((s: any) => s.status === 'paused').length },
           { key: 'cancelled', label: 'Cancelled', count: subscriptions.filter((s: any) => s.status === 'cancelled').length }
-        ].map(tab => (
+        ].map((tab) => (
           <button
             key={tab.key}
             onClick={() => setActiveTab(tab.key)}
-            className={`px-3 sm:px-4 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap ${
+            className={`flex-1 min-w-[100px] px-3 py-2 text-sm font-medium rounded-md transition-colors ${
               activeTab === tab.key
-                ? `${themeClasses.background.surface} ${themeClasses.text.primary} shadow-sm`
-                : `${themeClasses.text.secondary} hover:${themeClasses.text.primary}`
+                ? 'bg-white dark:bg-gray-800 text-primary shadow-sm'
+                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
             }`}
           >
             {tab.label} ({tab.count})
@@ -297,10 +307,10 @@ export const MySubscriptions = () => {
       </div>
 
       {/* Subscriptions List */}
-      {filteredSubscriptions.length === 0 ? (
-        <div className={`${themeClasses.card.base} text-center py-12`}>
-          <PackageIcon size={48} className={`${themeClasses.text.muted} mx-auto mb-4`} />
-          <p className={`${themeClasses.text.secondary} mb-3`}>
+      {currentSubscriptions.length === 0 ? (
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm text-center py-12">
+          <PackageIcon size={48} className="text-gray-400 dark:text-gray-500 mx-auto mb-4" />
+          <p className="text-gray-600 dark:text-gray-400 mb-3">
             {activeTab === 'all' 
               ? "You don't have any subscriptions yet." 
               : `No ${activeTab} subscriptions found.`
@@ -308,37 +318,97 @@ export const MySubscriptions = () => {
           </p>
           <button
             onClick={() => setShowCreateModal(true)}
-            className={getButtonClasses('primary')}
+            className="bg-primary hover:bg-primary-dark text-white py-2 px-4 rounded-md transition-colors"
           >
             Create Your First Subscription
           </button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-          {filteredSubscriptions.map((subscription: any) => (
-            <SubscriptionCard
-              key={subscription.id}
-              subscription={subscription}
-              onUpdate={async (subscriptionId, data) => {
-                await updateSubscription(subscriptionId, data);
-              }}
-              onCancel={handleDeleteSubscription}
-              onActivate={handleActivateSubscription}
-              onPause={handlePauseSubscription}
-              onResume={handleResumeSubscription}
-              onProductsUpdated={refreshSubscriptions}
-              onAddProducts={handleOpenAddProductModal}
-              onRemoveProduct={handleRemoveProduct}
-              showActions={true}
-              compact={false}
-            />
-          ))}
-        </div>
-      )}
+        <>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+            {currentSubscriptions.map((subscription: any) => (
+              <SubscriptionCard
+                key={subscription.id}
+                subscription={subscription}
+                onUpdate={async (subscriptionId, data) => {
+                  await updateSubscription(subscriptionId, data);
+                }}
+                onCancel={handleDeleteSubscription}
+                onActivate={async (subscriptionId) => {
+                  await activateSubscription(subscriptionId);
+                }}
+                onPause={async (subscriptionId) => {
+                  await pauseSubscription(subscriptionId);
+                }}
+                onResume={async (subscriptionId) => {
+                  await resumeSubscription(subscriptionId);
+                }}
+                onAddProducts={async (subscriptionId, productIds) => {
+                  await addProductsToSubscription(subscriptionId, productIds);
+                }}
+                onRemoveProducts={async (subscriptionId, productIds) => {
+                  await removeProductsFromSubscription(subscriptionId, productIds);
+                }}
+                onToggleAutoRenew={async (subscriptionId, autoRenew) => {
+                  await updateSubscription(subscriptionId, { auto_renew: autoRenew });
+                }}
+              />
+            ))}
+          </div>
 
-      {/* Create Subscription Modal */}
-      {showCreateModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex justify-center items-center space-x-2 pt-6">
+              <button
+                onClick={() => handlePageChange(currentPage - 1)}
+                disabled={currentPage === 1}
+                className="flex items-center px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                <ChevronLeftIcon size={16} className="mr-1" />
+                Previous
+              </button>
+              
+              <div className="flex items-center space-x-1">
+                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                  let pageNum;
+                  if (totalPages <= 5) {
+                    pageNum = i + 1;
+                  } else if (currentPage <= 3) {
+                    pageNum = i + 1;
+                  } else if (currentPage >= totalPages - 2) {
+                    pageNum = totalPages - 4 + i;
+                  } else {
+                    pageNum = currentPage - 2 + i;
+                  }
+                  
+                  return (
+                    <button
+                      key={pageNum}
+                      onClick={() => handlePageChange(pageNum)}
+                      className={`px-3 py-2 text-sm rounded transition-colors ${
+                        currentPage === pageNum
+                          ? 'bg-primary text-white'
+                          : 'border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700'
+                      }`}
+                    >
+                      {pageNum}
+                    </button>
+                  );
+                })}
+              </div>
+              
+              <button
+                onClick={() => handlePageChange(currentPage + 1)}
+                disabled={currentPage === totalPages}
+                className="flex items-center px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                Next
+                <ChevronRightIcon size={16} className="ml-1" />
+              </button>
+            </div>
+          )}
+        </>
+      )}
           <div className={`${themeClasses.card.base} w-full max-w-2xl max-h-[90vh] overflow-y-auto`}>
             <div className="p-6">
               <h2 className={`${themeClasses.text.heading} text-xl mb-4`}>Create New Subscription</h2>

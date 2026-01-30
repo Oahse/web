@@ -42,18 +42,41 @@ export function useAsync(options: UseAsyncOptions = {}) {
       
       return result;
     } catch (err: any) {
-      setError(err);
+      // Enhance error with more context for common backend issues
+      const enhancedError = {
+        ...err,
+        message: err?.data?.message || err?.message || 'An error occurred',
+        statusCode: err?.statusCode || err?.response?.status || err?.status,
+        correlationId: err?.data?.correlation_id,
+        timestamp: err?.data?.timestamp
+      };
+
+      setError(enhancedError);
       
       if (showErrorToast) {
-        const message = err?.message || 'An error occurred';
-        toast.error(message);
+        // Provide user-friendly toast messages for common errors
+        let toastMessage = enhancedError.message;
+        
+        if (enhancedError.statusCode === 500) {
+          if (enhancedError.message?.includes('shipping_amount')) {
+            toastMessage = "Order data format issue. Please try again later.";
+          } else {
+            toastMessage = "Server temporarily unavailable. Please try again.";
+          }
+        } else if (enhancedError.statusCode === 401) {
+          toastMessage = "Please log in to continue.";
+        } else if (enhancedError.statusCode === 403) {
+          toastMessage = "Permission denied.";
+        }
+        
+        toast.error(toastMessage);
       }
       
       if (onError) {
-        onError(err);
+        onError(enhancedError);
       }
       
-      throw err;
+      throw enhancedError;
     } finally {
       setLoading(false);
     }
@@ -74,17 +97,23 @@ export function usePaginatedApi(options: UseAsyncOptions = {}) {
   const { data, loading, error, execute: baseExecute } = useAsync(options);
 
   const execute = useCallback(async (apiFunction: (...args: any[]) => Promise<any>, ...args: any[]) => {
-    const result = await baseExecute(apiFunction, ...args);
-    
-    if (result && typeof result === 'object') {
-      // Handle paginated response structure
-      if (result.data && Array.isArray(result.data)) {
-        setTotalPages(result.total_pages || 1);
-        setTotalItems(result.total || result.data.length);
+    try {
+      const result = await baseExecute(apiFunction, ...args);
+      
+      if (result && typeof result === 'object') {
+        // Handle paginated response structure
+        if (result.data && Array.isArray(result.data)) {
+          setTotalPages(result.total_pages || 1);
+          setTotalItems(result.total || result.data.length);
+        }
       }
+      
+      return result;
+    } catch (err) {
+      // Error is already handled in the baseExecute function
+      console.warn('Paginated API operation failed:', err);
+      throw err;
     }
-    
-    return result;
   }, [baseExecute]);
 
   return {

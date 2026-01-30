@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, status, BackgroundTasks
+from fastapi import APIRouter, Depends, status, BackgroundTasks, HTTPException
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
@@ -55,10 +55,15 @@ async def login(
         token = await auth_service.authenticate_user(user_login.email, user_login.password, background_tasks)
         logger.info(f"User login successful: {user_login.email}")
         return APIResponse(success=True, data=token, message="Login successful")
+    except HTTPException as e:
+        # Re-raise HTTP exceptions (authentication failures) as-is
+        raise e
     except Exception as e:
+        # Log system errors but return a generic authentication failure
+        logger.error(f"System error during login for {user_login.email}: {str(e)}")
         raise APIException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            message=f"Invalid credentials - {str(e)}"
+            message="Invalid credentials"
         )
 
 
@@ -122,15 +127,25 @@ async def get_profile(
             "firstname": current_user.firstname,
             "lastname": current_user.lastname,
             "full_name": f"{current_user.firstname} {current_user.lastname}",
-            "phone": current_user.phone,
-            "role": current_user.role,
-            "verified": current_user.verified,
-            "is_active": current_user.is_active,
             "age": current_user.age,
             "gender": current_user.gender,
             "country": current_user.country,
             "language": current_user.language,
             "timezone": current_user.timezone,
+            "phone": current_user.phone,
+            "phone_verified": current_user.phone_verified,
+            "avatar_url": current_user.avatar_url,
+            "role": current_user.role.value if hasattr(current_user.role, 'value') else str(current_user.role),
+            "account_status": current_user.account_status,
+            "verification_status": current_user.verification_status,
+            "verified": current_user.verified,
+            "is_active": current_user.is_active,
+            "last_login": current_user.last_login.isoformat() if current_user.last_login else None,
+            "last_activity_at": current_user.last_activity_at.isoformat() if current_user.last_activity_at else None,
+            "login_count": current_user.login_count,
+            "failed_login_attempts": current_user.failed_login_attempts,
+            "locked_until": current_user.locked_until.isoformat() if current_user.locked_until else None,
+            "stripe_customer_id": current_user.stripe_customer_id,
             "created_at": current_user.created_at.isoformat(),
             "updated_at": current_user.updated_at.isoformat() if current_user.updated_at else None
         }
@@ -310,15 +325,25 @@ async def update_profile(
             "firstname": current_user.firstname,
             "lastname": current_user.lastname,
             "full_name": f"{current_user.firstname} {current_user.lastname}",
-            "phone": current_user.phone,
-            "role": current_user.role,
-            "verified": current_user.verified,
-            "is_active": current_user.is_active,
             "age": current_user.age,
             "gender": current_user.gender,
             "country": current_user.country,
             "language": current_user.language,
             "timezone": current_user.timezone,
+            "phone": current_user.phone,
+            "phone_verified": current_user.phone_verified,
+            "avatar_url": current_user.avatar_url,
+            "role": current_user.role.value if hasattr(current_user.role, 'value') else str(current_user.role),
+            "account_status": current_user.account_status,
+            "verification_status": current_user.verification_status,
+            "verified": current_user.verified,
+            "is_active": current_user.is_active,
+            "last_login": current_user.last_login.isoformat() if current_user.last_login else None,
+            "last_activity_at": current_user.last_activity_at.isoformat() if current_user.last_activity_at else None,
+            "login_count": current_user.login_count,
+            "failed_login_attempts": current_user.failed_login_attempts,
+            "locked_until": current_user.locked_until.isoformat() if current_user.locked_until else None,
+            "stripe_customer_id": current_user.stripe_customer_id,
             "created_at": current_user.created_at.isoformat(),
             "updated_at": current_user.updated_at.isoformat() if current_user.updated_at else None
         }
