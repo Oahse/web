@@ -39,15 +39,34 @@ export const WishlistConsolidated: React.FC<WishlistProps> = ({ mode = 'list', w
   const { addItem: addToCart } = useCart();
   const { isAuthenticated } = useAuth();
 
-  const [items, setItems] = useState<WishlistItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [showRemoveModal, setShowRemoveModal] = useState(false);
   const [itemToRemove, setItemToRemove] = useState<string | null>(null);
   const [showClearModal, setShowClearModal] = useState(false);
 
+  // Use items directly from defaultWishlist for real-time updates
+  const items = defaultWishlist?.items || [];
+
+  // Debug: Log items data to see what we're working with
+  console.log('Wishlist items debug:', {
+    itemsCount: items.length,
+    items: items,
+    defaultWishlist: defaultWishlist,
+    hasDefaultWishlist: !!defaultWishlist,
+    itemsKeys: items.map(item => ({
+      id: item.id,
+      hasProduct: !!item.product,
+      hasVariant: !!item.variant,
+      productId: item.product_id,
+      variantId: item.variant_id,
+      productKeys: item.product ? Object.keys(item.product) : [],
+      variantKeys: item.variant ? Object.keys(item.variant) : []
+    }))
+  });
+
   useEffect(() => {
-    if (defaultWishlist) {
-      setItems(defaultWishlist.items || []);
+    // Set loading to false once we have defaultWishlist (even if empty)
+    if (defaultWishlist !== undefined) {
       setLoading(false);
     }
   }, [defaultWishlist]);
@@ -88,7 +107,6 @@ export const WishlistConsolidated: React.FC<WishlistProps> = ({ mode = 'list', w
 
     try {
       await removeItem(defaultWishlist.id, itemId);
-      setItems(prev => prev.filter(item => item.id !== itemId));
       toast.success('Item removed from wishlist');
     } catch (error) {
       console.error('Failed to remove from wishlist:', error);
@@ -101,7 +119,6 @@ export const WishlistConsolidated: React.FC<WishlistProps> = ({ mode = 'list', w
 
     try {
       await clearWishlist();
-      setItems([]);
       setShowClearModal(false);
       toast.success('Wishlist cleared');
     } catch (error) {
@@ -174,7 +191,6 @@ export const WishlistConsolidated: React.FC<WishlistProps> = ({ mode = 'list', w
         {/* Header */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-3 gap-3">
           <div>
-            <h2 className="text-base font-medium text-gray-900 dark:text-white">My Wishlist</h2>
             <p className="text-xs text-gray-600 dark:text-gray-300 mt-1">
               {items.length} {items.length === 1 ? 'item' : 'items'} saved
             </p>
@@ -226,17 +242,32 @@ export const WishlistConsolidated: React.FC<WishlistProps> = ({ mode = 'list', w
             {items.map((item) => {
               const product = item.product;
               const selectedVariant = item.variant || product?.variants?.find(v => v.id === item.variant_id) || product?.variants?.[0];
-              
-              // Debug: Log the data structure
-              console.log('Wishlist item data:', {
-                item,
-                product,
-                selectedVariant,
-                hasProductData: !!product,
-                hasVariantData: !!selectedVariant,
-                productKeys: product ? Object.keys(product) : [],
-                variantKeys: selectedVariant ? Object.keys(selectedVariant) : []
-              });
+
+              // If no product data, show a simple placeholder
+              if (!product) {
+                return (
+                  <div key={item.id} className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 border border-gray-200 dark:border-gray-700">
+                    <div className="aspect-square bg-gray-100 dark:bg-gray-700 rounded-lg mb-3 flex items-center justify-center">
+                      <PackageIcon size={24} className="text-gray-400" />
+                    </div>
+                    <h3 className="text-sm font-medium text-gray-900 dark:text-white mb-1 line-clamp-2">
+                      Loading product...
+                    </h3>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      Product ID: {item.product_id}
+                    </p>
+                    <div className="mt-3">
+                      <button
+                        onClick={() => handleRemoveFromWishlist(item.id)}
+                        className="w-full flex items-center justify-center gap-1 px-2 py-1 text-xs text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
+                      >
+                        <TrashIcon size={12} />
+                        Remove
+                      </button>
+                    </div>
+                  </div>
+                );
+              }
 
               return (
                 <ProductCard

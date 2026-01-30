@@ -153,22 +153,6 @@ export const ProductCard = ({
 
   const displayImage = getPrimaryImage();
   const { basePrice, salePrice, currentPrice, discountPercentage } = getDisplayPrice();
-  
-  // Debug: Log price data
-  console.log('ProductCard price data:', {
-    productId: product?.id,
-    productName: product?.name,
-    displayVariant: displayVariant,
-    basePrice,
-    salePrice,
-    currentPrice,
-    discountPercentage,
-    hasVariantData: !!displayVariant,
-    variantBasePrice: displayVariant?.base_price,
-    variantSalePrice: displayVariant?.sale_price,
-    productMinPrice: product?.min_price,
-    productMaxPrice: product?.max_price
-  });
 
       const handleAddToCart = async (e) => {
         e.preventDefault();
@@ -423,18 +407,7 @@ export const ProductCard = ({
       <div className={cn('flex flex-col flex-grow p-2 sm:p-3', viewMode === 'list' && 'p-0')}>
         <div className="space-y-1">
           <span className="text-xs text-copy-light dark:text-gray-400 line-clamp-1 uppercase tracking-wide">
-            {(() => {
-              const category = (safeProduct.category && safeProduct.category.name) ? safeProduct.category.name : 'Uncategorized';
-              console.log('ProductCard category data:', {
-                productId: safeProduct.id,
-                productName: safeProduct.name,
-                category,
-                hasCategory: !!safeProduct.category,
-                categoryData: safeProduct.category,
-                productKeys: Object.keys(safeProduct)
-              });
-              return category;
-            })()}
+            {(safeProduct.category && safeProduct.category.name) ? safeProduct.category.name : 'Uncategorized'}
           </span>
           <Link to={`/products/${safeProduct.id || ''}`}>
             <h3 className="font-semibold text-xs sm:text-sm text-main dark:text-white hover:text-primary transition-colors line-clamp-2 min-h-[1.5rem] sm:min-h-[2rem]">
@@ -481,18 +454,7 @@ export const ProductCard = ({
               )}
               {displayVariant && (
                 <div className="text-xs text-copy-light dark:text-gray-400">
-                  {(() => {
-                    const variantName = displayVariant.name || 'Default Variant';
-                    console.log('ProductCard variant data:', {
-                      productId: safeProduct.id,
-                      variantId: displayVariant.id,
-                      variantName,
-                      variantData: displayVariant,
-                      hasVariant: !!displayVariant,
-                      variantKeys: displayVariant ? Object.keys(displayVariant) : []
-                    });
-                    return variantName;
-                  })()}
+                  {displayVariant.name || 'Default Variant'}
                 </div>
               )}
             </div>

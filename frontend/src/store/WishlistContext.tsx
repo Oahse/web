@@ -52,14 +52,14 @@ export const WishlistProvider = ({ children }: { children: ReactNode }) => {
               wishlist.items.map(async (item: any) => {
                 try {
                   // Fetch complete product data
-                  const productResponse = await fetch(`/products/${item.product_id}`);
-                  if (productResponse.ok) {
-                    const productData = await productResponse.json();
+                  const productResponse = await ProductsAPI.getProduct(item.product_id);
+                  if (productResponse.success && productResponse.data) {
+                    const productData = productResponse.data;
                     return {
                       ...item,
-                      product: productData.data || productData,
-                      variant: productData.data?.variants?.find((v: any) => v.id === item.variant_id) || 
-                              productData.data?.variants?.[0] || item.variant
+                      product: productData,
+                      variant: productData.variants?.find((v: any) => v.id === item.variant_id) || 
+                              productData.variants?.[0] || item.variant
                     };
                   }
                   return item;
@@ -157,7 +157,7 @@ export const WishlistProvider = ({ children }: { children: ReactNode }) => {
       return false;
     }
 
-    // Optimistic update: add item to UI immediately
+    // Optimistic update: add item to UI immediately with product data
     const optimisticItem: any = {
       id: `temp-${Date.now()}`,
       product_id: productId,
@@ -167,6 +167,20 @@ export const WishlistProvider = ({ children }: { children: ReactNode }) => {
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     };
+
+    // Try to get product data for optimistic update
+    try {
+      const productResponse = await ProductsAPI.getProduct(productId);
+      if (productResponse.success && productResponse.data) {
+        const productData = productResponse.data;
+        optimisticItem.product = productData;
+        optimisticItem.variant = productData.variants?.find((v: any) => v.id === variantId) || 
+                               productData.variants?.[0] || null;
+      }
+    } catch (error) {
+      console.warn('Failed to fetch product data for optimistic update:', error);
+      // Continue without product data - fallback will show placeholder
+    }
 
     const previousWishlist = currentDefaultWishlist;
     setDefaultWishlist(prev => prev ? {
@@ -272,19 +286,39 @@ export const WishlistProvider = ({ children }: { children: ReactNode }) => {
 
     const userId = (user as any).id;
 
+    // Optimistic update: clear items immediately
+    const previousWishlist = defaultWishlist;
+    setDefaultWishlist(prev => prev ? { ...prev, items: [] } : undefined);
+
     try {
-      const itemIds = defaultWishlist.items.map(item => item.id);
-      const response = await WishlistAPI.clearWishlist(userId, defaultWishlist.id, itemIds);
+      // Filter out temporary items (optimistic updates) before sending to API
+      const realItemIds = defaultWishlist.items
+        .filter(item => !item.id.startsWith('temp-'))
+        .map(item => item.id);
+      
+      if (realItemIds.length === 0) {
+        // Only temporary items exist, just clear optimistically
+        toast.success('Wishlist cleared!');
+        return true;
+      }
+      
+      const response = await WishlistAPI.clearWishlist(userId, defaultWishlist.id, realItemIds);
       if (response.success) {
         toast.success('Wishlist cleared!');
-        fetchWishlists();
+        // Don't fetch immediately - let optimistic update handle UI
         return true;
       } else {
+        // Revert optimistic update on error and fetch fresh data
+        setDefaultWishlist(previousWishlist);
+        fetchWishlists();
         console.error('Failed to clear wishlist:', response.message);
         toast.error(response.message || 'Failed to clear wishlist.');
         return false;
       }
     } catch (error) {
+      // Revert optimistic update on error and fetch fresh data
+      setDefaultWishlist(previousWishlist);
+      fetchWishlists();
       console.error('Failed to clear wishlist:', error);
       toast.error('Failed to clear wishlist.');
       return false;

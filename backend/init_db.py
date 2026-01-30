@@ -1438,7 +1438,7 @@ async def count_records(session: AsyncSession):
     print("=" * 50)
     print("✅ Database seeding completed successfully!")
     print("\n🔐 Development Login Credentials:")
-    print("   Email: admin@example.com")
+    print("   Email: admin@agrihub.com")
     print("   Password: password123")
 
 async def main():
