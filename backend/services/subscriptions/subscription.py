@@ -656,6 +656,7 @@ class SubscriptionService:
         subscription_id: UUID,
         user_id: UUID,
         product_variant_ids: Optional[List[UUID]] = None,
+        name: Optional[str] = None,
         delivery_type: Optional[str] = None,
         delivery_address_id: Optional[UUID] = None,
         auto_renew: Optional[bool] = None,
@@ -670,6 +671,11 @@ class SubscriptionService:
         
         if subscription.status not in ["active", "paused"]:
             raise HTTPException(status_code=400, detail="Cannot update inactive subscription")
+        
+        # Update name if provided
+        if name is not None:
+            subscription.name = name
+            logger.info(f"Updated subscription {subscription_id} name to {name}")
         
         # Update fields if provided
         if product_variant_ids is not None:

@@ -75,8 +75,11 @@ class SubscriptionUpdate(BaseModel):
 
     @validator('product_variant_ids')
     def validate_product_variants(cls, v):
+        # Allow empty list or None for basic subscription updates
+        # Only validate if it's provided and not empty
         if v is not None and len(v) == 0:
-            raise ValueError('At least one product variant must be specified if updating variants')
+            # If empty list is provided, set to None to skip variant updates
+            return None
         return v
 
 

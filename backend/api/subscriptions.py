@@ -502,6 +502,7 @@ async def update_subscription(
         subscription = await subscription_service.update_subscription(
             subscription_id=subscription_id,
             user_id=current_user.id,
+            name=subscription_data.name if hasattr(subscription_data, 'name') else None,
             product_variant_ids=product_variant_ids,
             # Pass other updateable fields from subscription_data
             delivery_type=subscription_data.delivery_type if hasattr(subscription_data, 'delivery_type') else None,

@@ -70,6 +70,7 @@ export interface Subscription {
   shipping_cost?: number;
   tax_amount?: number;
   tax_rate?: number;
+  discount_amount?: number;
   discounts?: AppliedDiscount[];
   subtotal?: number;
   total?: number;
