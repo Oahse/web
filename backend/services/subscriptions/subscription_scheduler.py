@@ -174,6 +174,10 @@ class SubscriptionSchedulerService:
             subscription.cost_breakdown = updated_cost
             subscription.tax_rate_applied = updated_cost.get("tax_rate")
             subscription.tax_amount = updated_cost.get("tax_amount")
+            subscription.shipping_cost = updated_cost.get("shipping_cost")
+            subscription.discount_amount = updated_cost.get("discount_amount")
+            subscription.subtotal = updated_cost.get("subtotal")
+            subscription.total = updated_cost.get("total_amount")
             
             # Update subscription billing dates
             await self._update_subscription_billing_dates(subscription)

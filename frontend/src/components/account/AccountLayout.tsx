@@ -6,7 +6,6 @@ import {
   Heart, 
   CreditCard, 
   Package, 
-  Settings, 
   LogOut,
   Menu,
   X,
@@ -76,12 +75,6 @@ const AccountLayout: React.FC<AccountLayoutProps> = ({ children }) => {
       href: '/account/addresses',
       icon: MapPin,
       current: location.pathname === '/account/addresses'
-    },
-    {
-      name: 'Settings',
-      href: '/account/settings',
-      icon: Settings,
-      current: location.pathname === '/account/settings'
     }
   ];
 

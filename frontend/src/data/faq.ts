@@ -96,7 +96,7 @@ export const faqItems = [
     id: 'faq-550e8400-e29b-41d4-a716-446655440013',
     question: 'How do I update my account information?',
     answer:
-      'You can update your account information, including shipping address, payment methods, and communication preferences, by logging into your account and navigating to the "Account Settings" section.',
+      'You can update your account information, including shipping address, payment methods, and communication preferences, by logging into your account and navigating to the appropriate sections like Profile, Addresses, or Payment Methods.',
     category: 'account',
   },
   {

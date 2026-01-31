@@ -160,6 +160,9 @@ class SubscriptionResponse(SubscriptionBase):
     shipping_cost: Optional[float] = None
     tax_amount: Optional[float] = None
     tax_rate: Optional[float] = None
+    discount_amount: Optional[float] = None
+    subtotal: Optional[float] = None
+    total: Optional[float] = None
     products: List[ProductVariantResponse] = []
 
     model_config = ConfigDict(from_attributes=True)

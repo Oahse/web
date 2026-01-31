@@ -5,6 +5,7 @@ import { themeClasses, combineThemeClasses } from '../../utils/themeClasses';
 import { formatCurrency } from '../../utils/orderCalculations';
 import { toast } from 'react-hot-toast';
 import { SubscriptionAPI } from '../../api/subscription';
+import { Dropdown } from '../../components/ui/Dropdown';
 import { 
   ArrowLeftIcon,
   EyeIcon,
@@ -328,12 +329,21 @@ export const SubscriptionDetails: React.FC<SubscriptionDetailsProps> = () => {
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                       Subscription Name
                     </label>
-                    <input
-                      type="text"
+                    <Dropdown
+                      options={[
+                        { value: 'Premium Plan', label: 'Premium Plan' },
+                        { value: 'Basic Plan', label: 'Basic Plan' },
+                        { value: 'Standard Plan', label: 'Standard Plan' },
+                        { value: 'Family Plan', label: 'Family Plan' },
+                        { value: 'Pro Plan', label: 'Pro Plan' },
+                        { value: 'Business Plan', label: 'Business Plan' },
+                        { value: 'Student Plan', label: 'Student Plan' },
+                        { value: 'Custom Subscription', label: 'Custom Subscription' }
+                      ]}
                       value={editData.name}
-                      onChange={(e) => setEditData({ ...editData, name: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                      placeholder="Enter subscription name"
+                      placeholder="Select a subscription name..."
+                      onChange={(value) => setEditData({ ...editData, name: value })}
+                      className="text-sm"
                     />
                   </div>
                   
@@ -341,30 +351,34 @@ export const SubscriptionDetails: React.FC<SubscriptionDetailsProps> = () => {
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                       Billing Cycle
                     </label>
-                    <select
+                    <Dropdown
+                      options={[
+                        { value: 'weekly', label: 'Weekly (Every 7 days)' },
+                        { value: 'monthly', label: 'Monthly (Every 30 days)' },
+                        { value: 'yearly', label: 'Yearly (Every 365 days)' }
+                      ]}
                       value={editData.billing_cycle}
-                      onChange={(e) => setEditData({ ...editData, billing_cycle: e.target.value as any })}
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                    >
-                      <option value="weekly">Weekly</option>
-                      <option value="monthly">Monthly</option>
-                      <option value="yearly">Yearly</option>
-                    </select>
+                      placeholder="Select billing cycle..."
+                      onChange={(value) => setEditData({ ...editData, billing_cycle: value as any })}
+                      className="text-sm"
+                    />
                   </div>
                   
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                       Delivery Type
                     </label>
-                    <select
+                    <Dropdown
+                      options={[
+                        { value: 'standard', label: 'Standard (5-7 business days)' },
+                        { value: 'express', label: 'Express (2-3 business days)' },
+                        { value: 'overnight', label: 'Overnight (1 business day)' }
+                      ]}
                       value={editData.delivery_type}
-                      onChange={(e) => setEditData({ ...editData, delivery_type: e.target.value as any })}
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                    >
-                      <option value="standard">Standard</option>
-                      <option value="express">Express</option>
-                      <option value="overnight">Overnight</option>
-                    </select>
+                      placeholder="Select delivery type..."
+                      onChange={(value) => setEditData({ ...editData, delivery_type: value as any })}
+                      className="text-sm"
+                    />
                   </div>
                 </div>
               </div>
