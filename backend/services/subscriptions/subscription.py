@@ -503,6 +503,8 @@ class SubscriptionService:
         subscription.shipping_cost = cost_breakdown["shipping_cost"]
         subscription.tax_amount = cost_breakdown["tax_amount"]
         subscription.tax_rate = cost_breakdown["tax_rate"]
+        subscription.discount_amount = cost_breakdown["discount_amount"]
+        subscription.subtotal = cost_breakdown["subtotal"]
 
     async def change_variant_quantity(
         self,
